@@ -232,4 +232,47 @@ t('_poziSimPodaciZaDan je kumulativan — dan N sadrži sve detekcije zaključno
   assert.ok(dan2.ha > dan1.ha, 'kumulativna površina mora rasti sa danima');
 });
 
+t('_poziOpozGrupisiPoStarosti raspoređuje tačke po ISTIM bandovima kao markeri (_POZ_MK_STAROST)', () => {
+  const src = "const _POZ_MK_STAROST = [{id:'h6',maxH:6,fill:'#fdba74'},{id:'h24',maxH:24,fill:'#fb923c'},{id:'d3',maxH:72,fill:'#c2410c'},{id:'st',maxH:Infinity,fill:'#292524'}];\n" +
+    extractFn('_poziMkStarost') + '\n' + extractFn('_poziOpozGrupisiPoStarosti') + '\nreturn _poziOpozGrupisiPoStarosti;';
+  const _poziOpozGrupisiPoStarosti = new Function(src)();
+  const now = Date.now();
+  const pts = [
+    { la: 44.8, lo: 16.0, dt: new Date(now - 2 * 3600000).toISOString() },   // 2h -> h6
+    { la: 44.8, lo: 16.0, dt: new Date(now - 10 * 3600000).toISOString() },  // 10h -> h24
+    { la: 44.8, lo: 16.0, dt: new Date(now - 5 * 86400000).toISOString() }   // 5 dana -> st
+  ];
+  const bands = _poziOpozGrupisiPoStarosti(pts);
+  assert.strictEqual(bands.h6.length, 1);
+  assert.strictEqual(bands.h24.length, 1);
+  assert.strictEqual(bands.st.length, 1);
+  assert.strictEqual(bands.d3, undefined);
+});
+
+t('_poziOpozBufKm daje veći poluprečnik za MODIS (1km) nego VIIRS (375m)', () => {
+  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
+  const _poziOpozBufKm = new Function(src)();
+  const viirs = _poziOpozBufKm(375), modis = _poziOpozBufKm(1000);
+  assert.ok(modis > viirs);
+  assert.ok(viirs > 0.15 && viirs < 0.3, 'VIIRS poluprečnik van očekivanog opsega: ' + viirs);
+});
+
+t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {
+  const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
+  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
+  const _poziOpozGeom = new Function('turf', src)(turf);
+  // Jedna tačka — mora vratiti buffer poligon (Polygon/MultiPolygon) oko nje.
+  const geomJedna = _poziOpozGeom([{ la: 44.8, lo: 16.0, rez: 375 }]);
+  assert.ok(geomJedna, 'jedna tačka mora dati geometriju (buffer kruga)');
+  assert.match(geomJedna.geometry.type, /Polygon/);
+  // Tri razmaknute tačke — hull (concave/convex) + buffer, i dalje poligon.
+  const geomTri = _poziOpozGeom([
+    { la: 44.80, lo: 16.00, rez: 375 }, { la: 44.81, lo: 16.01, rez: 375 }, { la: 44.80, lo: 16.02, rez: 375 }
+  ]);
+  assert.ok(geomTri, 'tri tačke moraju dati geometriju (hull+buffer)');
+  assert.match(geomTri.geometry.type, /Polygon/);
+  // Prazan niz / nepostojeći turf → bez pucanja, vraća null.
+  assert.strictEqual(_poziOpozGeom([]), null);
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
