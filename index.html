@@ -19,6 +19,7 @@
 <script src="static/libs/leaflet.min.js" onerror="_libErr('Leaflet')"></script>
 <script src="static/libs/proj4.js" onerror="_libErr('proj4')"></script>
 <script src="static/libs/turf.min.js" onerror="_libErr('Turf')"></script>
+<script src="static/libs/sql-wasm.js"></script>
 <script src="static/libs/firebase/firebase-app-compat.js" onerror="_libErr('Firebase')"></script>
 <script src="static/libs/firebase/firebase-auth-compat.js" onerror="_libErr('Firebase Auth')"></script>
 <script src="static/libs/firebase/firebase-firestore-compat.js" onerror="_libErr('Firestore')"></script>
@@ -424,7 +425,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="meni-card" onclick="openUcitajKartuSection()">
       <div class="mc-ico">🗂</div>
       <div class="mc-txt"><b>Učitaj kartu</b><span>Offline SQLite/MBTiles import</span></div>
-      <div class="mc-badge">U izradi</div>
+      <div class="mc-badge ready">Spremno</div>
     </div>
     <div class="meni-card" onclick="openUcitajKmlSection()">
       <div class="mc-ico">📥</div>
@@ -514,13 +515,12 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <!-- Učitaj kartu (stub) -->
 <div id="ucitajkartu-panel" class="usf-panel">
-  <div class="up-hdr"><h2>🗂 Učitaj kartu</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-hdr"><h2>🗂 Učitaj kartu <span id="sqlmap-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div class="stub-section">
-      <div class="ss-ico">🗂</div>
-      <h3>Sekcija u izradi</h3>
-      <p>Offline učitavanje SQLite/MBTiles karata (IndexedDB, OPFS za velike fajlove, crash-safe auto-load) dolazi u sljedećoj fazi GPS infrastrukture.</p>
-    </div>
+    <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
+    <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('sqlmap-file-input').click()">📂 Izaberi MBTiles/SQLite fajl</button>
+    <div id="sqlmap-status" style="color:#94a3b8;font-size:12px;margin-bottom:14px;min-height:16px;"></div>
+    <div id="sqlmap-list"></div>
   </div>
 </div>
 
@@ -554,7 +554,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.5.0';
+const APP_VER = 'v0.6.0';
 document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -2637,6 +2637,271 @@ function _kmlRegRender() {
   </div>`).join('');
 }
 _kmlRestore();
+
+// =====================================================================
+// UČITAJ KARTU — offline SQLite/MBTiles import preko sql.js (WASM SQLite
+// u browseru). Standardan MBTiles šema (tabela `tiles`: zoom_level,
+// tile_column, tile_row, tile_data BLOB; tile_row je TMS — brojano od
+// DNA, obrnuto od Leaflet-ovog XYZ odozgo — konverzija u createTile ispod
+// je OBAVEZNA, inače je karta vertikalno izvrnuta).
+//
+// Sirovi fajl (može biti stotine MB) se čuva CIJEL u IndexedDB — nema OPFS
+// streaming (v1, jednostavnije); ako fajl preveliki bude usporavao na
+// stvarnom terenskom uređaju, sljedeći korak je OPFS bez promjene javnog
+// API-ja ovih funkcija.
+//
+// Crash-safe auto-load: SVAKI pokušaj auto-učitavanja pri pokretanju upiše
+// failCount++ u IndexedDB PRIJE nego što stvarno počne (ne poslije) — ako
+// telefon/WebView bude ubijen usred otvaranja ogromne karte, taj pokušaj
+// se broji. Nakon 3 uzastopna neuspjeha auto-load se isključi za taj fajl
+// (ostaje u listi, korisnik ga ručno otvara) — fajl se NIKAD ne briše.
+// =====================================================================
+const _SQLDB_NAME = 'usf_sqlmaps', _SQLDB_STORE = 'maps';
+let _sqlSQL = null, _sqlInitPromise = null;
+let _sqlLayers = []; // {id, name, db, layer, bounds, minzoom, maxzoom, vis, failCount}
+
+function _sqlEnsureInit() {
+  if (_sqlSQL) return Promise.resolve(_sqlSQL);
+  if (_sqlInitPromise) return _sqlInitPromise;
+  if (typeof initSqlJs === 'undefined') return Promise.reject(new Error('sql.js nije učitan'));
+  _sqlInitPromise = initSqlJs({ locateFile: f => 'static/libs/' + f }).then(SQL => { _sqlSQL = SQL; return SQL; });
+  return _sqlInitPromise;
+}
+
+function _sqlIdbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(_SQLDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(_SQLDB_STORE, { keyPath: 'name' }); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function _sqlIdbPut(record) {
+  const db = await _sqlIdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(_SQLDB_STORE, 'readwrite');
+    tx.objectStore(_SQLDB_STORE).put(record);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function _sqlIdbGetAll() {
+  const db = await _sqlIdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(_SQLDB_STORE, 'readonly');
+    const req = tx.objectStore(_SQLDB_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function _sqlIdbDelete(name) {
+  const db = await _sqlIdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(_SQLDB_STORE, 'readwrite');
+    tx.objectStore(_SQLDB_STORE).delete(name);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function _sqlIdbSetFailCount(name, n) {
+  try {
+    const all = await _sqlIdbGetAll();
+    const rec = all.find(r => r.name === name);
+    if (rec) { rec.failCount = n; await _sqlIdbPut(rec); }
+  } catch(e) {}
+}
+
+// MBTiles tile_row je TMS (brojano od DNA mreže naviše), Leaflet coords.y je
+// XYZ (brojano od VRHA naniže) — bez ove konverzije karta je vertikalno
+// izvrnuta (prva pločica gore prikazuje se dolje i obrnuto).
+function _sqlTmsY(z, xyzY) { return Math.pow(2, z) - 1 - xyzY; }
+function _sqlParseBounds(metaMap) {
+  if (!metaMap.bounds) return null;
+  const parts = metaMap.bounds.split(',').map(Number);
+  if (parts.length !== 4 || parts.some(isNaN)) return null;
+  const [minLon, minLat, maxLon, maxLat] = parts;
+  return L.latLngBounds([minLat, minLon], [maxLat, maxLon]);
+}
+function _sqlReadMetadata(db) {
+  const meta = {};
+  try {
+    const stmt = db.prepare('SELECT name, value FROM metadata');
+    while (stmt.step()) { const r = stmt.getAsObject(); meta[r.name] = r.value; }
+    stmt.free();
+  } catch(e) {}
+  return meta;
+}
+
+// Jedna dijeljena GridLayer klasa — svaka instanca nosi svoju sql.js `db`
+// referencu preko this.options.db (postavljeno pri konstrukciji).
+const _SqlTileLayer = L.GridLayer.extend({
+  createTile(coords, done) {
+    const tile = document.createElement('img');
+    tile.alt = '';
+    const db = this.options.db;
+    const z = coords.z;
+    const tmsY = _sqlTmsY(z, coords.y); // MBTiles je TMS (od dna), Leaflet XYZ (odozgo)
+    try {
+      const stmt = db.prepare('SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?');
+      stmt.bind([z, coords.x, tmsY]);
+      if (stmt.step()) {
+        const row = stmt.getAsObject();
+        const bytes = row.tile_data;
+        const mime = (this.options.format === 'jpg' || this.options.format === 'jpeg') ? 'image/jpeg' : 'image/png';
+        const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+        tile.onload = () => { URL.revokeObjectURL(url); done(null, tile); };
+        tile.onerror = () => { URL.revokeObjectURL(url); done(null, tile); };
+        tile.src = url;
+      } else {
+        done(null, tile); // nema pločice na ovoj zoom/pozicija — providno, ne greška
+      }
+      stmt.free();
+    } catch(e) { done(null, tile); }
+    return tile;
+  }
+});
+
+async function _sqlmapOpenDb(arrayBuffer) {
+  const SQL = await _sqlEnsureInit();
+  return new SQL.Database(new Uint8Array(arrayBuffer));
+}
+
+async function _sqlmapAddLayer(name, db, opts) {
+  const meta = _sqlReadMetadata(db);
+  const bounds = _sqlParseBounds(meta);
+  const layer = new _SqlTileLayer({
+    db, format: meta.format || 'png',
+    minZoom: parseInt(meta.minzoom, 10) || 0,
+    maxZoom: parseInt(meta.maxzoom, 10) || 19,
+    maxNativeZoom: parseInt(meta.maxzoom, 10) || 19,
+    tileSize: 256
+  });
+  const rec = { id: 'sqlmap_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name, db, layer, bounds, vis: opts?.vis !== false };
+  _sqlLayers.push(rec);
+  if (rec.vis) layer.addTo(map);
+  return rec;
+}
+
+async function _sqlmapFileChosen(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  await _sqlmapLoadFile(file);
+}
+async function _sqlmapLoadFile(file) {
+  const statusEl = document.getElementById('sqlmap-status');
+  const setStatus = s => { if (statusEl) statusEl.textContent = s; };
+  const name = file.name;
+  try {
+    setStatus('⏳ Učitavam ' + name + '...');
+    const buf = await file.arrayBuffer();
+    const db = await _sqlmapOpenDb(buf);
+    const rec = await _sqlmapAddLayer(name, db);
+    // Sačuvaj sirov fajl u IndexedDB TEK poslije uspješnog otvaranja — pokvaren
+    // upload se ne smije trajno zaglaviti u "auto-load" listi.
+    await _sqlIdbPut({ name, blob: new Blob([buf]), failCount: 0, addedAt: Date.now() });
+    if (rec.bounds) { try { map.fitBounds(rec.bounds, { padding: [20,20] }); } catch(x) {} }
+    setStatus('✅ Učitano: ' + name);
+    _sqlmapRegRender();
+  } catch(e) {
+    setStatus('⚠ Greška pri učitavanju: ' + e.message);
+    showToast('⚠ Karta nije učitana — provjeri da je fajl ispravan MBTiles/SQLite');
+  }
+}
+
+async function _sqlmapRestoreOne(rec) {
+  // Upiši pokušaj PRIJE otvaranja — ako proces umre usred parsiranja ogromnog
+  // fajla, ovaj pokušaj se ipak broji (vidi napomenu na vrhu sekcije).
+  const newFailCount = (rec.failCount || 0) + 1;
+  await _sqlIdbSetFailCount(rec.name, newFailCount);
+  try {
+    const buf = await rec.blob.arrayBuffer();
+    const db = await _sqlmapOpenDb(buf);
+    await _sqlmapAddLayer(rec.name, db, { vis: rec.vis });
+    await _sqlIdbSetFailCount(rec.name, 0); // uspjeh — resetuj brojač
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+async function _sqlmapRestoreAll() {
+  let records;
+  try { records = await _sqlIdbGetAll(); } catch(e) { return; }
+  for (const rec of records) {
+    if ((rec.failCount || 0) >= 3) continue; // auto-load isključen — čeka ručno otvaranje
+    await _sqlmapRestoreOne(rec);
+  }
+  _sqlmapRegRender();
+}
+
+function _sqlmapToggle(id) {
+  const r = _sqlLayers.find(x => x.id === id);
+  if (!r) return;
+  r.vis = !r.vis;
+  if (r.vis) r.layer.addTo(map); else map.removeLayer(r.layer);
+  _sqlmapRegRender();
+}
+function _sqlmapZoom(id) {
+  const r = _sqlLayers.find(x => x.id === id);
+  if (!r || !r.bounds) { showToast('⚠ Karta nema definisane granice (metadata.bounds)'); return; }
+  map.fitBounds(r.bounds, { padding: [20,20] });
+  switchMainTab('karta');
+}
+async function _sqlmapDeleteConfirm(id) {
+  const ok = await _dlgConfirm('Ukloniti ovu offline kartu sa uređaja? Fajl se trajno briše.', { danger: true, okLabel: 'Ukloni' });
+  if (ok) _sqlmapDelete(id);
+}
+async function _sqlmapDelete(id) {
+  const r = _sqlLayers.find(x => x.id === id);
+  if (!r) return;
+  try { map.removeLayer(r.layer); } catch(e) {}
+  try { r.db.close(); } catch(e) {}
+  _sqlLayers = _sqlLayers.filter(x => x.id !== id);
+  await _sqlIdbDelete(r.name);
+  _sqlmapRegRender();
+}
+async function _sqlmapRegRender() {
+  const el = document.getElementById('sqlmap-list');
+  const cnt = document.getElementById('sqlmap-count');
+  if (!el) return;
+  // Kombinuj aktivne slojeve (u memoriji) sa svim sačuvanim zapisima
+  // (uklj. one koje auto-load nije pokrenuo jer failCount >= 3).
+  let stored = [];
+  try { stored = await _sqlIdbGetAll(); } catch(e) {}
+  const activeNames = new Set(_sqlLayers.map(r => r.name));
+  const pending = stored.filter(s => !activeNames.has(s.name));
+  if (cnt) cnt.textContent = (_sqlLayers.length + pending.length) ? `(${_sqlLayers.length + pending.length})` : '';
+  if (!_sqlLayers.length && !pending.length) { el.innerHTML = '<div class="treg-empty">Nema učitanih offline karata.</div>'; return; }
+  let html = _sqlLayers.map(r => `<div class="treg-row">
+    <div class="treg-name" onclick="_sqlmapZoom('${r.id}')">${_escHtml(r.name)}</div>
+    <div class="treg-meta">${r.bounds ? 'granice poznate' : 'bez granica u metapodacima'}</div>
+    <div class="treg-btns">
+      <button onclick="_sqlmapZoom('${r.id}')">🔍 Zoom</button>
+      <button onclick="_sqlmapToggle('${r.id}')">${r.vis !== false ? '🙈 Sakrij' : '👁 Prikaži'}</button>
+      <button class="del-btn" onclick="_sqlmapDeleteConfirm('${r.id}')">🗑 Ukloni</button>
+    </div>
+  </div>`).join('');
+  html += pending.map(s => `<div class="treg-row">
+    <div class="treg-name">${_escHtml(s.name)}</div>
+    <div class="treg-meta">${(s.failCount||0) >= 3 ? '⚠ auto-učitavanje isključeno (3 neuspjela pokušaja) — otvori ručno' : 'učitavanje u toku ili čeka red'}</div>
+    <div class="treg-btns">
+      <button onclick="_sqlmapRestoreManual('${_escHtml(s.name).replace(/'/g, "\\'")}')">▶ Učitaj</button>
+    </div>
+  </div>`).join('');
+  el.innerHTML = html;
+}
+async function _sqlmapRestoreManual(name) {
+  let records;
+  try { records = await _sqlIdbGetAll(); } catch(e) { return; }
+  const rec = records.find(r => r.name === name);
+  if (!rec) return;
+  showToast('⏳ Učitavam ' + name + '...');
+  const ok = await _sqlmapRestoreOne(rec);
+  showToast(ok ? '✅ Učitano: ' + name : '⚠ Greška pri učitavanju ' + name);
+  _sqlmapRegRender();
+}
+
+_sqlmapRestoreAll();
 
 // =====================================================================
 // GLAVNA NAVIGACIJA — Karta / Meni / Postavke, i sekcije iz Menija
