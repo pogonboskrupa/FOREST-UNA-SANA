@@ -37,6 +37,19 @@ t('mgiToWgs vraća [lat, lon] za poznatu MGI Zone 6 tačku', () => {
   assert.ok(lon > 15.5 && lon < 17, 'lon van očekivanog opsega: ' + lon);
 });
 
+t('wgsToMGI5 je inverz mgiToWgs (Zone 5, zaseban prikaz od podrazumijevane Zone 6)', () => {
+  const proj4 = require(path.join(__dirname, '../../static/libs/proj4.js'));
+  proj4.defs('MGI-ZONE5', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=5500000 +y_0=0 +ellps=bessel +towgs84=682,-203,480,0,0,0,0 +units=m +no_defs');
+  const src = extractFn('wgsToMGI5') + '\nreturn wgsToMGI5;';
+  const wgsToMGI5 = new Function('proj4', src)(proj4);
+  // Bihać (u Zone 5 teritoriji, ~15.87°E) — Zone 5 lako pokriva ovu oblast
+  // (13.5–16.5°E), za razliku od Zone 6 (16.5–19.5°E) koja je i dalje
+  // podrazumijevana za centar aplikacije (korisnička odluka, netaknuto).
+  const mgi = wgsToMGI5(44.8167, 15.8700);
+  assert.ok(mgi.y > 5400000 && mgi.y < 5600000, 'Y van očekivanog Zone 5 opsega: ' + mgi.y);
+  assert.ok(mgi.x > 4900000 && mgi.x < 5000000, 'X van očekivanog opsega: ' + mgi.x);
+});
+
 t('zoomForScale vraća veći zoom za manju razmjeru (bliži prikaz)', () => {
   const src = extractFn('zoomForScale') + '\nreturn zoomForScale;';
   const zoomForScale = new Function(src)();

@@ -57,26 +57,53 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 #top-bar {
   position:fixed; top:0; left:0; right:0; z-index:500;
-  display:flex; align-items:center; justify-content:space-between;
+  display:flex; align-items:flex-start; justify-content:space-between;
   padding:10px 12px; padding-top:calc(10px + env(safe-area-inset-top));
   pointer-events:none;
 }
 #top-bar > * { pointer-events:auto; }
+#top-left-stack { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
 .usf-badge {
   background:rgba(15,23,42,0.85); color:#e2e8f0; border-radius:10px;
   padding:6px 12px; font-size:12px; font-weight:600; letter-spacing:0.3px;
   box-shadow:0 2px 8px rgba(0,0,0,0.35);
 }
-#layer-switch {
-  position:fixed; bottom:24px; right:12px; z-index:500;
-  background:rgba(15,23,42,0.9); border-radius:12px; padding:6px;
-  box-shadow:0 2px 10px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:4px;
+#geo-badge {
+  background:rgba(15,23,42,0.85); color:#cbd5e1; border-radius:10px;
+  padding:5px 10px; font-size:10.5px; font-family:monospace; line-height:1.5;
+  box-shadow:0 2px 8px rgba(0,0,0,0.35); white-space:nowrap;
 }
+#geo-badge .elev { color:#4ade80; font-weight:700; }
+
+/* === Prekidač baznih slojeva — mala ikona gore desno, otvara dropdown === */
+#layer-btn {
+  width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(15,23,42,0.9); color:#e2e8f0; font-size:18px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.4); flex-shrink:0;
+}
+#layer-switch {
+  display:none; position:fixed; top:calc(54px + env(safe-area-inset-top)); right:12px; z-index:501;
+  background:rgba(15,23,42,0.95); border:1px solid #1e293b; border-radius:12px; padding:6px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.45); flex-direction:column; gap:4px;
+}
+#layer-switch.show { display:flex; }
 #layer-switch button {
   background:transparent; border:1px solid transparent; color:#cbd5e1;
-  border-radius:8px; padding:8px 10px; font-size:13px; text-align:left; cursor:pointer;
+  border-radius:8px; padding:8px 10px; font-size:13px; text-align:left; cursor:pointer; white-space:nowrap;
 }
 #layer-switch button.active { background:#16213e; border-color:#38bdf8; color:#38bdf8; }
+
+/* === Zoom +/- — donji desni ugao (ispod plutajućih alata) === */
+#zoom-ctl {
+  position:fixed; right:12px; bottom:24px; z-index:500;
+  display:flex; flex-direction:column; gap:8px;
+}
+#zoom-ctl button {
+  width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(15,23,42,0.9); color:#e2e8f0; font-size:20px; font-weight:700;
+  box-shadow:0 2px 10px rgba(0,0,0,0.4);
+}
+#zoom-ctl button:active { background:rgba(30,41,59,0.95); }
 #offline-banner {
   position:fixed; top:0; left:0; right:0; z-index:900; display:none;
   background:#7c2d12; color:#fff; font-size:12px; text-align:center;
@@ -355,10 +382,19 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="map"></div>
 
 <div id="top-bar">
-  <div class="usf-badge" id="ver-badge">Una Sana Forest</div>
+  <div id="top-left-stack">
+    <div class="usf-badge" id="ver-badge">Una Sana Forest</div>
+    <div id="geo-badge"><span class="elev">↕ — m</span> · MGI5 Y —, X —</div>
+  </div>
+  <button id="layer-btn" onclick="_toggleLayerSwitch()" title="Izbor karte">🗺</button>
 </div>
 
 <div id="layer-switch"></div>
+
+<div id="zoom-ctl">
+  <button onclick="map.zoomIn()" title="Uvećaj">+</button>
+  <button onclick="map.zoomOut()" title="Umanji">−</button>
+</div>
 
 <!-- Plutajući alati na Karti — Moja lokacija / Tragovi (vertikalni stub) -->
 <div id="map-fabs">
@@ -704,7 +740,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.10.0';
+const APP_VER = 'v0.11.0';
 document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -938,25 +974,76 @@ try {
 } catch(e) {}
 _defaultLayer.addTo(map);
 
-// ── Prekidač baznih slojeva ──────────────────────────────────────────
+// ── Prekidač baznih slojeva — mala ikona (#layer-btn) otvara dropdown
+// (#layer-switch) sa listom podloga; bira se klikom, dropdown se zatvara. ──
+function _layerIcon(name) { return name.split(' ')[0]; }
 (function buildLayerSwitch() {
   const box = document.getElementById('layer-switch');
+  const icoBtn = document.getElementById('layer-btn');
   let current = Object.keys(TL).find(k => TL[k] === _defaultLayer);
+  if (icoBtn) icoBtn.textContent = _layerIcon(current);
   Object.keys(TL).forEach(name => {
     const btn = document.createElement('button');
     btn.textContent = name;
     if (name === current) btn.classList.add('active');
     btn.onclick = () => {
+      _closeLayerSwitch();
       if (name === current) return;
       map.removeLayer(TL[current]);
       TL[name].addTo(map);
       current = name;
       try { localStorage.setItem('usf_base_layer', name); } catch(e) {}
       box.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.textContent === name));
+      if (icoBtn) icoBtn.textContent = _layerIcon(name);
     };
     box.appendChild(btn);
   });
 })();
+function _toggleLayerSwitch() {
+  const box = document.getElementById('layer-switch');
+  if (box.classList.contains('show')) { _closeLayerSwitch(); return; }
+  box.classList.add('show');
+  setTimeout(() => document.addEventListener('click', _layerSwitchOutsideClick), 0);
+}
+function _closeLayerSwitch() {
+  document.getElementById('layer-switch').classList.remove('show');
+  document.removeEventListener('click', _layerSwitchOutsideClick);
+}
+function _layerSwitchOutsideClick(e) {
+  const box = document.getElementById('layer-switch');
+  const btn = document.getElementById('layer-btn');
+  if (box.contains(e.target) || (btn && btn.contains(e.target))) return;
+  _closeLayerSwitch();
+}
+
+// ── Geo-badge (gore lijevo): nadmorska visina + MGI Zone 5 koordinate
+// centra karte. MGI Zone 5 je NOVI, zaseban prikaz (lon_0=15°, x_0=5.500.000)
+// — ne dira postojeću MGI Zone 6 logiku iznad (podrazumijevani centar/scale
+// za app ostaju na Zone 6, dogovoreno sa korisnikom). Nadmorska visina se
+// dohvata preko istog Open-Meteo poziva (_msrFetchElev) koji već koristi
+// Mjerenja "nagib" mod — keširano po zaokruženoj koordinati, pa ponovni
+// prikaz istog područja ne pravi novi mrežni poziv.
+proj4.defs('MGI-ZONE5', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=5500000 +y_0=0 +ellps=bessel +towgs84=682,-203,480,0,0,0,0 +units=m +no_defs');
+function wgsToMGI5(lat, lon) {
+  const [y, x] = proj4('EPSG:4326', 'MGI-ZONE5', [lon, lat]);
+  return { y: Math.round(y), x: Math.round(x) };
+}
+let _geoBadgeElevSeq = 0;
+async function _geoBadgeUpdate() {
+  const el = document.getElementById('geo-badge');
+  if (!el) return;
+  const c = map.getCenter();
+  const mgi = wgsToMGI5(c.lat, c.lng);
+  const mySeq = ++_geoBadgeElevSeq;
+  el.innerHTML = `<span class="elev">↕ …</span> · MGI5 Y ${mgi.y}, X ${mgi.x}`;
+  try {
+    const elev = await _msrFetchElev(c.lat, c.lng);
+    if (mySeq !== _geoBadgeElevSeq) return; // karta se pomjerila u međuvremenu — odbaci zastarjeli odgovor
+    el.innerHTML = `<span class="elev">↕ ${elev != null ? Math.round(elev) + ' m' : '—'}</span> · MGI5 Y ${mgi.y}, X ${mgi.x}`;
+  } catch(e) {}
+}
+map.on('moveend', _geoBadgeUpdate);
+_geoBadgeUpdate();
 
 // =====================================================================
 // UTIL — dijalog sistem, toast, UUID (dokazan obrazac, čuva se 1:1)
