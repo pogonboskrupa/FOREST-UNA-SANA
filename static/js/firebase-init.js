@@ -8,12 +8,22 @@
 // CDSE ključevi) samo UID-ovima upisanim u usf_admins kolekciju — vidi
 // firebase/firestore.rules i firebase/README.md za postupak dodavanja admina.
 //
-// FIREBASE_CONFIG je namjerno prazan dok se ne dobije stvarna konfiguracija
-// iz Firebase Console (Project settings → Your apps → Web app). Do tada se
-// init tiho preskače — app radi normalno bez Firebase-a (karta/GPS/trag ne
-// zavise od backend-a), samo Požari sekcija ostaje "u izradi".
+// Projekat "elaborat-256d3" — POSTOJEĆI Firebase projekat korisnika (dijeli
+// se sa drugom aplikacijom). Sve kolekcije ove app-e nose usf_ prefiks (vidi
+// firebase/firestore.rules) da se ne miješaju sa tuđim podacima u istom
+// projektu. apiKey ovdje NIJE tajna — identifikuje projekat, ne autorizuje
+// pristup (stvarna zaštita je u Firestore Security Rules).
 // =====================================================================
-const FIREBASE_CONFIG = null; // TODO: zalijepi firebaseConfig objekat iz Firebase Console
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyC2vO6URXakJAr3PBk2sfi-quShUUdnmyo",
+  authDomain: "elaborat-256d3.firebaseapp.com",
+  databaseURL: "https://elaborat-256d3-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "elaborat-256d3",
+  storageBucket: "elaborat-256d3.firebasestorage.app",
+  messagingSenderId: "871340682406",
+  appId: "1:871340682406:web:980cb8609ca3c6a41ed867",
+  measurementId: "G-J0TXVHHFCM"
+};
 
 let fbApp = null, fbAuth = null, fbDb = null, fbUid = null;
 
