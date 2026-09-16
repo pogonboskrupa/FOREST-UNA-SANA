@@ -414,11 +414,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .trag-popup-btns button { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:5px 7px; font-size:11px; cursor:pointer; }
 
 /* === Požari === */
-.poz-okvir-btn {
+.poz-okvir-btn, .poz-podtab-btn, .poz-hist-sort-btn {
   flex:1; background:#1e293b; border:1px solid #334155; color:#94a3b8;
   border-radius:8px; padding:8px 4px; font-size:12px; cursor:pointer;
 }
-.poz-okvir-btn.on { background:#7c2d12; border-color:#f97316; color:#fdba74; }
+.poz-okvir-btn.on, .poz-podtab-btn.on, .poz-hist-sort-btn.on { background:#7c2d12; border-color:#f97316; color:#fdba74; }
 .poz-mk-trokut { transition: filter 0.2s; }
 .poz-mk-trokut.svjez { animation: pozPuls 1.6s ease-in-out infinite; }
 @keyframes pozPuls { 0%,100% { filter: drop-shadow(0 2px 4px #000a) brightness(1); } 50% { filter: drop-shadow(0 2px 8px #f97316) brightness(1.25); } }
@@ -440,6 +440,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#fdba74;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">6–24 h</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c2410c;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">1–3 dana</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#292524;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">starije od 3 dana</span></div>
+</div>
+
+<!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve -->
+<div id="poz-god-legend" style="display:none;position:absolute;right:10px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:180px;">
+  <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">POŽARI — KADA</div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c2410c;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">nedavno (≤ 3 dana)</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#eab308;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">ove godine</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
 </div>
 
 <div id="top-bar">
@@ -606,6 +614,12 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="pozari-panel" class="usf-panel">
   <div class="up-hdr"><h2>🔥 Požari</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body" id="poz-panel-body">
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="poz-podtab-btn on" data-podtab="pregled" onclick="_poziPodTab('pregled')">Pregled</button>
+      <button class="poz-podtab-btn" data-podtab="historija" onclick="_poziPodTab('historija')">📜 Historija požara</button>
+    </div>
+
+    <div id="poz-podtab-pregled">
     <div class="loc-row" style="background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
       <span>Prikaz na karti</span>
       <div class="loc-switch" id="poz-on-switch" onclick="_poziToggle(!_poziOn)"></div>
@@ -642,8 +656,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">📅 Godišnji pregled (GFW, treba admin ključ ispod)</div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:8px;">Počev od 2026. — označi godinu(e) da vidiš sve požare te godine na karti i u listi.</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">📅 Godišnji pregled na karti (GFW, treba admin ključ ispod)</div>
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:8px;">Počev od 2026. — označi godinu(e) da vidiš sve požare te godine na karti (obojeno po legendi "POŽARI — KADA": nedavno/ove godine/prošlih godina). Ova godina je uključena po podrazumijevanom.</div>
       <div id="poz-god-body"></div>
     </div>
 
@@ -668,6 +682,17 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Površina je gruba procjena iz vrelih piksela (satelitska rezolucija), ne mjerena granica — za to koristi EFFIS opožarene površine iznad. Sentinel-2 dopuna dolazi u sljedećoj fazi. Sječa/vjetroizvale je sad zaseban meni ("🪓 Sječa i vjetroizvale") jer to nisu požari.</p>
+    </div>
+    </div>
+
+    <div id="poz-podtab-historija" style="display:none;">
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:10px;">Svi trenutno dostupni požari (nedavne detekcije + godišnji GFW pregled) unutar Unsko-sanskog kantona — bez obzira na okvir/godine označene u Pregledu.</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <button class="poz-hist-sort-btn" data-sort="blizina" onclick="_poziHistPostaviSort('blizina')">📍 Blizina</button>
+        <button class="poz-hist-sort-btn" data-sort="vrijeme" onclick="_poziHistPostaviSort('vrijeme')">🕒 Vrijeme</button>
+        <button class="poz-hist-sort-btn" data-sort="jacina" onclick="_poziHistPostaviSort('jacina')">⚡ Jačina</button>
+      </div>
+      <div id="poz-hist-lista"></div>
     </div>
   </div>
 </div>
@@ -863,7 +888,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.18.0';
+const APP_VER = 'v0.19.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -3364,6 +3389,17 @@ const _POZ_HEAT_KEY   = 'usf_pozari_heat';
 const _POZ_RADIUS_KM = 100;
 const _POZ_GRUPA_M   = 450; // konzervativan prag; vektorske prepreke ga dodatno sužavaju
 
+// Približna granica Unsko-sanskog kantona — pravougaonik (bbox), NE stvarna
+// administrativna granica (ta bi tražila GeoJSON poligon opština, van
+// dosega ovog izdanja). Rub je namjerno malo širi od stvarne granice, da
+// se ne odsijeku požari tik uz nju (bolje koji lažni pozitivan nego
+// propušten stvaran požar u kantonu). Pokriva sve opštine: Bihać, Bos.
+// Krupa, Bos. Petrovac, Cazin, Ključ, Sanski Most, Velika Kladuša.
+const _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };
+function _uskUnutar(la, lo) {
+  return la >= _USK_BBOX.latMin && la <= _USK_BBOX.latMax && lo >= _USK_BBOX.lonMin && lo <= _USK_BBOX.lonMax;
+}
+
 const _POZ_BAZA = 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/';
 const _POZ_IZVORI = [
   { naziv:'VIIRS S-NPP',      pref:'suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Europe_' },
@@ -3726,18 +3762,20 @@ function _poziGfwToggle(on) {
 
 // ── Godišnji pregled ("Ova godina") — koristi GFW jer besplatna FIRMS
 // arhiva ide samo do 7 dana unazad; GFW-ov cijeli-dataset upit može tražiti
-// bilo koji period. Namjerno OPT-IN i ODVOJEN od glavnog prikaza (24h/48h/7d)
-// — ovo je pregled/statistika za cijelu sezonu, ne live praćenje. ─────────
+// bilo koji period. Namjerno ODVOJEN od glavnog prikaza (24h/48h/7d) — ovo
+// je pregled/statistika za cijelu sezonu, ne live praćenje. BBOX je FIKSAN
+// na cijeli Unsko-sanski kanton (_USK_BBOX), NE radijus oko GPS/centra karte
+// — inače bi požari na drugom kraju kantona od trenutne pozicije korisnika
+// ostali neučitani (ovo je bio stvaran bug: "nisu prikazani svi požari
+// unutar 2026 godine" kad je korisnik daleko od centra kantona). ─────────
 function _povGodMjesecNaziv(m) { return ['Januar','Februar','Mart','April','Maj','Juni','Juli','August','Septembar','Oktobar','Novembar','Decembar'][m] || ''; }
-function _povGodUrl(ref, godina) {
+function _povGodUrl(godina) {
   const g = godina || new Date().getUTCFullYear();
   const od = g + '-01-01';
-  const dLat = _POZ_RADIUS_KM / 111;
-  const dLon = _POZ_RADIUS_KM / (111 * Math.cos(ref.la * Math.PI / 180));
   const sql = 'SELECT longitude, latitude, alert__date, alert__time_utc, confidence__cat FROM results'
     + " WHERE alert__date >= '" + od + "'"
-    + ' AND latitude >= '  + (ref.la - dLat).toFixed(3) + ' AND latitude <= '  + (ref.la + dLat).toFixed(3)
-    + ' AND longitude >= ' + (ref.lo - dLon).toFixed(3) + ' AND longitude <= ' + (ref.lo + dLon).toFixed(3)
+    + ' AND latitude >= '  + _USK_BBOX.latMin.toFixed(3) + ' AND latitude <= '  + _USK_BBOX.latMax.toFixed(3)
+    + ' AND longitude >= ' + _USK_BBOX.lonMin.toFixed(3) + ' AND longitude <= ' + _USK_BBOX.lonMax.toFixed(3)
     + ' ORDER BY alert__date DESC, alert__time_utc DESC LIMIT 5000';
   return 'https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql=' + encodeURIComponent(sql);
 }
@@ -3814,14 +3852,15 @@ async function _povGodLoadGodina(godina, tiho) {
   _povGodRenderSve();
   try {
     const ref = _poziRefTacka();
-    const r = await _poziDohvatiJedan('GFW ' + godina + '. godina', _povGodUrl(ref, godina), 35000,
+    const r = await _poziDohvatiJedan('GFW ' + godina + '. godina', _povGodUrl(godina), 35000,
       { headers: { 'x-api-key': gfwKljuc }, parser: _poziParseGfwJson, provjera: /"data"\s*:/ });
     if (!r.ok) {
       if (!stanje.evts.length) stanje.meta = { greska: r.greska };
       if (!tiho) showToast('❌ Požari ' + godina + '. godina: ' + r.greska);
       return;
     }
-    const pts = _poziFilterBlizu(r.pts, ref);
+    // Kanton, ne radijus oko ref tačke — vidi napomenu uz _povGodUrl.
+    const pts = r.pts.filter(p => _uskUnutar(p.la, p.lo));
     const grupe = _poziGrupeBlizu(_poziGrupisi(pts), ref);
     stanje.evts = grupe;
     stanje.meta = { dohvacenoMs: Date.now(), ukupno: r.pts.length, kes: false };
@@ -3844,11 +3883,13 @@ function _povGodRenderSve() {
   if (_povGodLayer) { try { map.removeLayer(_povGodLayer); } catch(e) {} _povGodLayer = null; }
   const ref = _poziRefTacka();
   const oznacene = _povGodOznaceneGodine().filter(g => _povGodPodaci[g]?.evts?.length);
+  const legEl = document.getElementById('poz-god-legend');
+  if (legEl) legEl.style.display = oznacene.length ? 'block' : 'none';
   if (oznacene.length) {
     const grp = L.layerGroup([], { pane: 'pozariPane' });
     oznacene.forEach(godina => {
       _povGodPodaci[godina].evts.forEach(g => {
-        const mk = L.marker([g.la, g.lo], { icon: _poziIconGrupa(g), pane: 'pozariPane' });
+        const mk = L.marker([g.la, g.lo], { icon: _poziIconGodina(g, godina), pane: 'pozariPane' });
         mk.bindPopup(() => _poziGrupaPopupHtml(g, ref), { maxWidth: 290 });
         mk.addTo(grp);
       });
@@ -4151,6 +4192,27 @@ function _poziIconGrupa(g) {
   return L.divIcon({ className:'', iconSize:[w,h], iconAnchor:[w/2,h/2],
     html:`<svg class="poz-mk-trokut${svjez?' svjez':''}" width="${w}" height="${h}" viewBox="0 0 100 90" style="overflow:visible;filter:drop-shadow(0 2px 4px #000a)">
       <polygon points="50,3 97,86 3,86" fill="${st.fill}" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <text x="50" y="65" text-anchor="middle" fill="#fff" stroke="#0008" stroke-width="2" paint-order="stroke" font-size="35" font-weight="800">${g.broj}</text>
+    </svg>` });
+}
+
+// Marker za godišnji pregled — TRI vizuelno razdvojena nivoa "svježine" da
+// korisnik odmah vidi gdje je požar bio NEDAVNO (ista shema kao
+// _poziIconGrupa, nepromijenjeno), gdje OVE GODINE (a nije nedavno) i gdje
+// PROŠLIH GODINA (vidi legendu #poz-god-legend). Bez ovoga bi sve starije
+// od 3 dana palo u istu tamnu "st" boju iz _POZ_MK_STAROST, pa se ove
+// godine i prošle godine ne bi mogle razlikovati na karti.
+const _POZ_GOD_BOJA_OVE = '#eab308';
+const _POZ_GOD_BOJA_PROSLE = '#64748b';
+function _poziIconGodina(g, godina) {
+  const h = (Date.now() - Date.parse(g.dt)) / 3600000;
+  if (isFinite(h) && h <= 72) return _poziIconGrupa(g); // nedavno — nepromijenjeno
+  const trenutna = new Date().getUTCFullYear();
+  const boja = godina < trenutna ? _POZ_GOD_BOJA_PROSLE : _POZ_GOD_BOJA_OVE;
+  const w = Math.round(Math.min(44, 30 + Math.max(0, g.broj - 2) * 0.7)), hh = Math.round(w * 0.9);
+  return L.divIcon({ className:'', iconSize:[w,hh], iconAnchor:[w/2,hh/2],
+    html:`<svg width="${w}" height="${hh}" viewBox="0 0 100 90" style="overflow:visible;filter:drop-shadow(0 2px 4px #000a)">
+      <polygon points="50,3 97,86 3,86" fill="${boja}" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
       <text x="50" y="65" text-anchor="middle" fill="#fff" stroke="#0008" stroke-width="2" paint-order="stroke" font-size="35" font-weight="800">${g.broj}</text>
     </svg>` });
 }
@@ -4489,6 +4551,83 @@ function _poziMeteoHtml() {
     ${upozorenje}
   </div>`;
 }
+// ── Historija požara (podtab) — kombinovan, kanton-ograničen, sortabilan
+// prikaz. Razlikuje se od liste iznad (koja je ograničena okvirom
+// 24h/48h/7d i radijusom oko GPS/centra karte): spaja nedavne detekcije
+// (_poziEvts) i tekuću godinu iz godišnjeg GFW pregleda (_povGodPodaci),
+// filtrira na Unsko-sanski kanton (_uskUnutar, NE radijus), dedupira isti
+// požar viđen u oba izvora (isti prag razmaka kao _poziGrupisi). ────────
+const _POZ_HIST_SORT_KEY = 'usf_pozari_hist_sort';
+function _poziHistSort() {
+  let v = null;
+  try { v = localStorage.getItem(_POZ_HIST_SORT_KEY); } catch(e) {}
+  return ['blizina', 'vrijeme', 'jacina'].includes(v) ? v : 'blizina';
+}
+function _poziHistPostaviSort(s) {
+  try { localStorage.setItem(_POZ_HIST_SORT_KEY, s); } catch(e) {}
+  _poziRenderPanel();
+}
+function _poziHistSpojiIzvore(liste) {
+  const spojeno = [];
+  (liste || []).forEach(lista => (lista || []).forEach(g => {
+    const post = spojeno.find(s => dst(s.la, s.lo, g.la, g.lo) <= _POZ_GRUPA_M);
+    if (!post) { spojeno.push({ ...g }); return; }
+    if ((g.broj || 0) > (post.broj || 0)) Object.assign(post, g);
+  }));
+  return spojeno;
+}
+function _poziHistFiltrirajKanton(grupe) { return (grupe || []).filter(g => _uskUnutar(g.la, g.lo)); }
+function _poziHistSortiraj(grupe, sort) {
+  const kopija = (grupe || []).slice();
+  if (sort === 'vrijeme') return kopija.sort((a, b) => (b.zadnji || Date.parse(b.dt) || 0) - (a.zadnji || Date.parse(a.dt) || 0));
+  if (sort === 'jacina') return kopija.sort((a, b) => (b.frpMax || 0) - (a.frpMax || 0));
+  return kopija.sort((a, b) => (a.d || 0) - (b.d || 0)); // blizina (podrazumijevano)
+}
+let _poziHistLista = [];
+function _poziHistIzracunaj() {
+  const ref = _poziRefTacka();
+  const trenutna = new Date().getUTCFullYear();
+  const godisnje = (_povGodPodaci[trenutna] && _povGodPodaci[trenutna].evts) || [];
+  const spojeno = _poziHistSpojiIzvore([_poziEvts, godisnje]);
+  const kanton = _poziHistFiltrirajKanton(spojeno);
+  return _poziHistSortiraj(_poziGrupeBlizu(kanton, ref), _poziHistSort());
+}
+function _poziHistZoom(i) {
+  const g = _poziHistLista[i];
+  if (!g) return;
+  switchMainTab('karta');
+  const zoom = g.spanM > 2000 ? 12 : 13;
+  setTimeout(() => map.setView([g.la, g.lo], Math.max(map.getZoom(), zoom)), 80);
+}
+function _poziHistRedHtml(g, i, ref) {
+  const pz = _poziPouzdanost(g.conf);
+  const smjer = _azimutSmjer(_bearing(ref.la, ref.lo, g.la, g.lo));
+  const detalji = (g.broj > 1 ? g.broj + ' detekcija' : ((g.sateliti && g.sateliti[0]) || '1 detekcija')) + ' · ~' + _poziPovrsTxt(_poziPovrsinaGrupe(g));
+  const stMk = _poziMkStarost(Date.parse(g.dt));
+  const jacina = g.frpMax ? '⚡' + g.frpMax.toFixed(0) + ' MW' : '';
+  return `<div onclick="_poziHistZoom(${i})" style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #1e293b;cursor:pointer;">
+    <span style="width:9px;height:9px;border-radius:50%;background:${stMk.fill};border:1px solid rgba(255,255,255,0.45);flex-shrink:0;"></span>
+    <span style="flex:1;min-width:0;">
+      <span style="font-size:12px;color:#e2e8f0;">${_msrFmt(g.d)} <span style="color:#64748b;">${smjer}</span></span>
+      <div style="font-size:10px;color:#64748b;">${detalji} · ${_poziStarost(g.zadnji)}${jacina ? ' · ' + jacina : ''}</div>
+    </span>
+    <span style="font-size:10px;color:#64748b;">${pz.txt}</span>
+  </div>`;
+}
+function _poziHistListaHtml() {
+  _poziHistLista = _poziHistIzracunaj();
+  if (!_poziHistLista.length) return `<div style="font-size:11px;color:#4ade80;padding:6px 0;">✓ Nema zabilježenih požara u Unsko-sanskom kantonu (od trenutno učitanih izvora).</div>`;
+  const ref = _poziRefTacka();
+  return _poziHistLista.map((g, i) => _poziHistRedHtml(g, i, ref)).join('');
+}
+function _poziPodTab(tab) {
+  document.querySelectorAll('.poz-podtab-btn').forEach(b => b.classList.toggle('on', b.dataset.podtab === tab));
+  const pregled = document.getElementById('poz-podtab-pregled'), historija = document.getElementById('poz-podtab-historija');
+  if (pregled) pregled.style.display = tab === 'historija' ? 'none' : '';
+  if (historija) historija.style.display = tab === 'historija' ? '' : 'none';
+  if (tab === 'historija') _poziRenderPanel();
+}
+
 function _poziRenderPanel() {
   const el = document.getElementById('poz-panel-body');
   if (!el) return;
@@ -4499,6 +4638,8 @@ function _poziRenderPanel() {
   const meteo = document.getElementById('poz-meteo'); if (meteo) meteo.innerHTML = _poziOn ? _poziMeteoHtml() : '';
   const godBody = document.getElementById('poz-god-body'); if (godBody) godBody.innerHTML = _povGodPanelHtml();
   const opozSw = document.getElementById('poz-opoz-switch'); if (opozSw) opozSw.classList.toggle('on', _poziOpozOn());
+  document.querySelectorAll('.poz-hist-sort-btn').forEach(b => b.classList.toggle('on', b.dataset.sort === _poziHistSort()));
+  const histLista = document.getElementById('poz-hist-lista'); if (histLista) histLista.innerHTML = _poziHistListaHtml();
 }
 function openPozariSection() {
   _openStubPanel('pozari-panel', 'meni');

@@ -163,13 +163,15 @@ t('_poziPovrsTxt formatira hektare (decimala ispod 100, zaokruženo iznad)', () 
   assert.strictEqual(_poziPovrsTxt(1234), '1.234 ha');
 });
 
-t('_povGodUrl gradi bbox+cijela-godina SQL upit kao query string', () => {
-  const src = "const _POZ_RADIUS_KM = 100;\n" + extractFn('_povGodUrl') + '\nreturn _povGodUrl;';
+t('_povGodUrl gradi kanton-bbox+cijela-godina SQL upit kao query string', () => {
+  const src = "const _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };\n"
+    + extractFn('_povGodUrl') + '\nreturn _povGodUrl;';
   const _povGodUrl = new Function(src)();
-  const url = _povGodUrl({ la: 44.8, lo: 16.0 }, 2026);
+  const url = _povGodUrl(2026);
   assert.ok(url.startsWith('https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql='));
   const sql = decodeURIComponent(url.split('sql=')[1]);
   assert.ok(sql.includes("alert__date >= '2026-01-01'"), 'mora tražiti od 1. januara te godine');
+  assert.ok(sql.includes('latitude >= 44.300'), 'mora koristiti FIKSAN kanton bbox, ne radijus oko ref tačke');
   assert.ok(sql.includes('LIMIT 5000'));
 });
 
@@ -281,6 +283,38 @@ t('_povGodDostupneGodine nikad ne ide ispod bazne 2026. godine', () => {
   assert.deepStrictEqual(_povGodDostupneGodine(2026), [2026]);
   assert.deepStrictEqual(_povGodDostupneGodine(2028), [2026, 2027, 2028]);
   assert.deepStrictEqual(_povGodDostupneGodine(2020), [2026]);
+});
+
+t('_uskUnutar prihvata tačke unutar Unsko-sanskog kantona, odbija van njega', () => {
+  const src = extractFn('_uskUnutar') + '\nreturn _uskUnutar;';
+  const _uskUnutar = new Function('_USK_BBOX', src)({ latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 });
+  assert.strictEqual(_uskUnutar(44.8, 16.0), true, 'Bihać okolina mora biti unutar');
+  assert.strictEqual(_uskUnutar(43.8, 18.4), false, 'Sarajevo mora biti van kantona');
+  assert.strictEqual(_uskUnutar(44.8, 20.0), false, 'daleko istočno mora biti van');
+});
+
+t('_poziHistSpojiIzvore dedupira isti požar viđen u dva izvora (blizu = ista grupa)', () => {
+  const src = dstSrc + '\nconst _POZ_GRUPA_M = 450;\n' + extractFn('_poziHistSpojiIzvore') + '\nreturn _poziHistSpojiIzvore;';
+  const _poziHistSpojiIzvore = new Function(src)();
+  const a = { la: 44.80, lo: 16.00, broj: 3 };
+  const bIsti = { la: 44.8001, lo: 16.0001, broj: 5 }; // ista lokacija, drugi izvor, više detekcija
+  const cDaleko = { la: 44.95, lo: 16.30, broj: 2 };
+  const spojeno = _poziHistSpojiIzvore([[a], [bIsti, cDaleko]]);
+  assert.strictEqual(spojeno.length, 2, 'a i bIsti se moraju spojiti u jednu grupu, cDaleko ostaje zasebna');
+  assert.strictEqual(spojeno[0].broj, 5, 'zadržava se verzija sa VIŠE detekcija (potpunija)');
+});
+
+t('_poziHistSortiraj sortira po blizini/vremenu/jačini', () => {
+  const src = extractFn('_poziHistSortiraj') + '\nreturn _poziHistSortiraj;';
+  const _poziHistSortiraj = new Function(src)();
+  const grupe = [
+    { d: 5000, zadnji: 100, frpMax: 2 },
+    { d: 1000, zadnji: 300, frpMax: 9 },
+    { d: 9000, zadnji: 200, frpMax: 5 }
+  ];
+  assert.deepStrictEqual(_poziHistSortiraj(grupe, 'blizina').map(g => g.d), [1000, 5000, 9000]);
+  assert.deepStrictEqual(_poziHistSortiraj(grupe, 'vrijeme').map(g => g.zadnji), [300, 200, 100]);
+  assert.deepStrictEqual(_poziHistSortiraj(grupe, 'jacina').map(g => g.frpMax), [9, 5, 2]);
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
