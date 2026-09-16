@@ -528,6 +528,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div class="mc-txt"><b>Požari</b><span>FIRMS detekcije, grupisanje, heatmap, vjetar</span></div>
       <div class="mc-badge ready">Osnovno spremno</div>
     </div>
+    <div class="meni-card" onclick="openSjecaSection()">
+      <div class="mc-ico">🪓</div>
+      <div class="mc-txt"><b>Sječa i vjetroizvale</b><span>GFW alarmi smetnje vegetacije (DIST-ALERT)</span></div>
+      <div class="mc-badge ready">Osnovno spremno</div>
+    </div>
     <div class="meni-card" onclick="openPutSection()">
       <div class="mc-ico">🛣</div>
       <div class="mc-txt"><b>Projektovanje šumskog puta</b><span>Trasa preko DEM-a, ograničenje nagiba</span></div>
@@ -644,7 +649,29 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <button class="mf-save" onclick="_poziAdminSacuvajKljuceve()">💾 Sačuvaj ključeve</button>
     </div>
     <div class="stub-section" style="padding:24px 12px 4px;">
-      <p style="font-size:12px;">Površina je gruba procjena iz vrelih piksela (satelitska rezolucija), ne mjerena granica — za to koristi EFFIS opožarene površine iznad. Sentinel-2 dopuna i Sječa/vjetroizvale (GFW integrisani alarmi) dolaze u sljedećoj fazi.</p>
+      <p style="font-size:12px;">Površina je gruba procjena iz vrelih piksela (satelitska rezolucija), ne mjerena granica — za to koristi EFFIS opožarene površine iznad. Sentinel-2 dopuna dolazi u sljedećoj fazi. Sječa/vjetroizvale je sad zaseban meni ("🪓 Sječa i vjetroizvale") jer to nisu požari.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Sječa i vjetroizvale (GFW integrisani alarmi / DIST-ALERT) -->
+<div id="sjeca-panel" class="usf-panel">
+  <div class="up-hdr"><h2>🪓 Sječa i vjetroizvale</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-body" id="sje-panel-body">
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">GFW integrisani alarmi (DIST-ALERT, globalna pokrivenost) — javljaju kad nešto NESTANE iz vegetacije: sječa (prijavljena ili ne), vjetroizvala, klizište, opožarena površina. Ne razlikuje uzrok, samo promjenu. Treba GFW API ključ (isti kao Požari — unesi ga tamo, ispod "Admin: FIRMS/GFW ključevi").</div>
+    <div class="loc-row" style="background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+      <span>Prikaz na karti</span>
+      <div class="loc-switch" id="sje-on-switch" onclick="_sjeToggle(!_sjeOn)"></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <button class="poz-okvir-btn" data-okvir="7d" onclick="_sjePostaviOkvir('7d')">7 dana</button>
+      <button class="poz-okvir-btn" data-okvir="30d" onclick="_sjePostaviOkvir('30d')">30 dana</button>
+      <button class="poz-okvir-btn" data-okvir="90d" onclick="_sjePostaviOkvir('90d')">90 dana</button>
+    </div>
+    <div id="sje-status" style="color:#94a3b8;font-size:12px;margin-bottom:10px;"></div>
+    <div id="sje-lista"></div>
+    <div class="stub-section" style="padding:24px 12px 4px;">
+      <p style="font-size:12px;">Radijus je uže od Požari (50 km) — ovdje je pitanje "šta se promijenilo u mojoj šumi", ne "šta se približava". Alarmi se osvježavaju svakih 2-4 dana (nije uživo kao požari).</p>
     </div>
   </div>
 </div>
@@ -722,9 +749,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('tem-file-input').click()">📂 Izaberi .gpkg fajl</button>
     <div id="tem-status" style="color:#94a3b8;font-size:12px;margin-bottom:14px;min-height:16px;"></div>
     <div id="tem-list"></div>
-    <div class="stub-section" style="padding:20px 12px 4px;">
-      <p style="font-size:12px;">QGIS-style tabela atributa dolazi u sljedećoj fazi.</p>
-    </div>
   </div>
 </div>
 
@@ -821,7 +845,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.15.0';
+const APP_VER = 'v0.16.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -1047,6 +1071,7 @@ map.on('moveend', () => {
 // prvog dana kad se ti slojevi dodaju, ne naknadno).
 map.createPane('tragMsrLines'); map.getPane('tragMsrLines').style.zIndex = 410;
 map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 420;
+map.createPane('sjecaPane');    map.getPane('sjecaPane').style.zIndex    = 430;
 
 let _defaultLayer = TL['⛰ Topo'];
 try {
@@ -4347,6 +4372,218 @@ try { _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1'; } catch(e) {}
 _poziKljucUcitaj();
 
 // =====================================================================
+// SJEČA I VJETROIZVALE — GFW integrisani alarmi (DIST-ALERT). Ovo NISU
+// požari: satelit poredi trenutno stanje vegetacije sa historijskom normom
+// za taj piksel i javi kad nešto NESTANE — sječa (prijavljena ili ne),
+// vjetroizvala, klizište, ili opožarena površina poslije požara. Ne
+// razlikuje uzrok. DIST-ALERT je jedini GFW alarm sa GLOBALNOM pokrivenošću
+// (GLAD-L/GLAD-S2/RADD pokrivaju samo tropske/ekvatorijalne pojase — BiH je
+// na ~44.9°N, van svih njih), zato baš `gfw_integrated_alerts`.
+//
+// Dijeli infrastrukturu sa Požari (isti GFW ključ preko _poziKljucevi.gfw,
+// isti _poziDohvatiJedan/_poziGrupisi/_poziPovrsinaGrupe) — namjerno NIJE
+// dupliran kod, samo drugi dataset/upit/prag grupisanja (30m piksel →
+// mnogo uži prag od 450m kod požara).
+const _SJE_ON_KEY = 'usf_sjeca_on';
+const _SJE_OKVIR_KEY = 'usf_sjeca_okvir';
+const _SJE_CACHE_KEY = 'usf_sjeca_kes';
+const _SJE_RADIUS_KM = 50;
+const _SJE_GRUPA_M = 300;
+const _SJE_OKVIRI = [
+  { id:'7d',  naziv:'7 dana',  dana:7 },
+  { id:'30d', naziv:'30 dana', dana:30 },
+  { id:'90d', naziv:'90 dana', dana:90 }
+];
+function _sjeOkvir() { const v = localStorage.getItem(_SJE_OKVIR_KEY); return _SJE_OKVIRI.some(o => o.id === v) ? v : '30d'; }
+function _sjeOkvirNaziv(id) { return (_SJE_OKVIRI.find(x => x.id === (id || _sjeOkvir())) || {}).naziv || '30 dana'; }
+function _sjePostaviOkvir(id) {
+  if (!_SJE_OKVIRI.some(o => o.id === id)) return;
+  localStorage.setItem(_SJE_OKVIR_KEY, id);
+  if (_sjeOn) _sjeLoad(false);
+  _sjeRenderPanel();
+}
+
+// Bbox oko referentne tačke (isti GET+SQL obrazac kao GFW dodatni izvor za
+// požare) — jednostavnije od poligona, i ne zahtijeva POST podršku u
+// _poziDohvatiJedan koja inače ne postoji.
+function _sjeUrl(ref, dana) {
+  const od = new Date(Date.now() - dana * 86400000).toISOString().slice(0, 10);
+  const dLat = _SJE_RADIUS_KM / 111;
+  const dLon = _SJE_RADIUS_KM / (111 * Math.cos(ref.la * Math.PI / 180));
+  const sql = 'SELECT longitude, latitude, gfw_integrated_alerts__date, gfw_integrated_alerts__confidence FROM results'
+    + " WHERE gfw_integrated_alerts__date >= '" + od + "'"
+    + ' AND latitude >= '  + (ref.la - dLat).toFixed(3) + ' AND latitude <= '  + (ref.la + dLat).toFixed(3)
+    + ' AND longitude >= ' + (ref.lo - dLon).toFixed(3) + ' AND longitude <= ' + (ref.lo + dLon).toFixed(3)
+    + ' ORDER BY gfw_integrated_alerts__date DESC LIMIT 5000';
+  return 'https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/query/json?sql=' + encodeURIComponent(sql);
+}
+// Isti oblik tačke kao požari (la/lo/dt/conf/rez) da se grupisanje/površina dijele.
+function _sjeParse(txt) {
+  let j;
+  try { j = JSON.parse(txt); } catch(e) { return []; }
+  const red = j && Array.isArray(j.data) ? j.data : [];
+  const out = [];
+  red.forEach(r => {
+    const la = parseFloat(r.latitude), lo = parseFloat(r.longitude);
+    if (!isFinite(la) || !isFinite(lo)) return;
+    out.push({ la, lo, dt: String(r.gfw_integrated_alerts__date || '').slice(0, 10) + 'T00:00:00Z',
+      conf: String(r.gfw_integrated_alerts__confidence || '').trim(), sat: 'DIST-ALERT', frp: NaN, noc: false, rez: 30 });
+  });
+  return out;
+}
+// GFW daje "highest"/"high"/"nominal"/"low" — zaseban od _poziPouzdanost jer
+// DIST-ALERT ima drugačije nazive nivoa nego FIRMS.
+function _sjePouzdanost(conf) {
+  const s = String(conf || '').trim().toLowerCase();
+  if (s === 'highest' || s === 'high') return { txt:'visoka', boja:'#b45309', rang:3 };
+  if (s === 'nominal') return { txt:'srednja', boja:'#d97706', rang:2 };
+  if (s === 'low') return { txt:'niska', boja:'#fbbf24', rang:1 };
+  return { txt: s || 'nepoznata', boja:'#d97706', rang:2 };
+}
+
+let _sjePts = [], _sjeEvts = [], _sjeLayer = null, _sjeMeta = null;
+let _sjeOn = false, _sjeBusy = false, _sjeCanvasRenderer = null;
+
+function _sjeSaveCache(pts, okvir) {
+  try { localStorage.setItem(_SJE_CACHE_KEY, JSON.stringify({ ts: Date.now(), okvir, pts: pts.slice(0, 500) })); } catch(e) {}
+}
+function _sjeLoadCache() { try { return JSON.parse(localStorage.getItem(_SJE_CACHE_KEY)); } catch(e) { return null; } }
+function _sjeObnoviIzKesa() {
+  const c = _sjeLoadCache();
+  if (!c || !Array.isArray(c.pts)) return false;
+  const ref = _poziRefTacka();
+  _sjePts = _poziFilterBlizu(c.pts, ref);
+  _sjeMeta = { dohvacenoMs: c.ts || 0, kes: true, okvir: c.okvir || _sjeOkvir(), refGps: ref.gps };
+  _sjeEvts = _poziGrupeBlizu(_poziGrupisi(_sjePts, _SJE_GRUPA_M), ref);
+  _sjeRender();
+  return true;
+}
+async function _sjeLoad(tiho) {
+  if (_sjeBusy) return;
+  const kljuc = (_poziKljucevi.gfw || '').trim();
+  if (!kljuc) { _sjeMeta = { greska: 'nema-kljuca' }; _sjeRenderPanel(); return; }
+  _sjeBusy = true;
+  const el = document.getElementById('sje-status'); if (el) el.textContent = '⏳ Dohvatam alarme…';
+  try {
+    const okvirId = _sjeOkvir();
+    const dana = (_SJE_OKVIRI.find(o => o.id === okvirId) || {}).dana || 30;
+    const ref = _poziRefTacka();
+    const r = await _poziDohvatiJedan('GFW integrisani alarmi', _sjeUrl(ref, dana), 25000,
+      { headers: { 'x-api-key': kljuc }, parser: _sjeParse, provjera: /"data"\s*:/ });
+    if (r.ok) {
+      _sjeSaveCache(r.pts, okvirId);
+      _sjePts = _poziFilterBlizu(r.pts, ref);
+      _sjeMeta = { dohvacenoMs: Date.now(), okvir: okvirId, ukupno: r.pts.length, kes: false, refGps: ref.gps };
+    } else {
+      const c = _sjeLoadCache();
+      const cacheOdgovara = c && c.okvir === okvirId;
+      if (!cacheOdgovara) {
+        _sjeMeta = { greska: r.greska };
+        _sjePts = []; _sjeEvts = [];
+        _sjeRender();
+        if (!tiho) showToast('❌ Sječa/vjetroizvale: ' + r.greska);
+        return;
+      }
+      _sjePts = _poziFilterBlizu(c.pts || [], ref);
+      _sjeMeta = { dohvacenoMs: c.ts, okvir: okvirId, ukupno: (c.pts || []).length, kes: true, refGps: ref.gps };
+    }
+    _sjeEvts = _poziGrupeBlizu(_poziGrupisi(_sjePts, _SJE_GRUPA_M), ref);
+    _sjeRender();
+    if (!tiho) showToast(_sjeSazetak());
+  } catch(e) {
+    _sjeMeta = { greska: e?.message || 'greška' };
+    _sjeRenderPanel();
+  } finally {
+    _sjeBusy = false;
+  }
+}
+function _sjeSazetak() {
+  const m = _sjeMeta || {};
+  if (m.greska === 'nema-kljuca') return 'Treba GFW API ključ (unesi ga u Požari → Admin ključevi).';
+  if (m.greska) return '⚠ ' + m.greska;
+  if (!_sjeEvts.length) return '✓ Nema alarma u krugu ' + _SJE_RADIUS_KM + ' km, zadnjih ' + _sjeOkvirNaziv(m.okvir) + (m.kes ? ' · iz keša' : '');
+  const ukupnoHa = _sjeEvts.reduce((s, g) => s + _poziPovrsinaGrupe(g), 0);
+  return _sjeEvts.length + ' alarma · ~' + _poziPovrsTxt(ukupnoHa) + ' · ' + _sjeOkvirNaziv(m.okvir) + (m.kes ? ' · iz keša' : '');
+}
+function _sjePopupHtml(g, ref) {
+  const pz = _sjePouzdanost(g.conf);
+  const smjer = _azimutSmjer(_bearing(ref.la, ref.lo, g.la, g.lo));
+  const vr = t => isFinite(t) ? new Date(t).toLocaleDateString('bs-BA') : '—';
+  const red = (l, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;font-size:11px;"><span style="color:#94a3b8;">${l}</span><span style="color:#e2e8f0;text-align:right;">${v}</span></div>`;
+  return `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;min-width:215px;">
+    <div style="font-size:14px;font-weight:700;color:#d97706;margin-bottom:6px;">🪓 Alarm smetnje — ${g.broj} detekcija</div>
+    ${red('Udaljenost', `<b style="color:#fbbf24;">${_msrFmt(g.d)}</b> ${smjer}`)}
+    ${red('Prvi put viđen', vr(g.prvi))}
+    ${red('Zadnji put', vr(g.zadnji))}
+    ${red('Pouzdanost', `<span style="color:${pz.boja};">${pz.txt}</span>`)}
+    ${red('Procijenjena površina', _poziPovrsTxt(_poziPovrsinaGrupe(g)))}
+    <div style="font-size:9px;color:#64748b;margin-top:6px;">DIST-ALERT (GFW) — javlja NESTANAK vegetacije: sječa, vjetroizvala, klizište ili opožarena površina. Ne razlikuje uzrok.</div>
+  </div>`;
+}
+function _sjeRender() {
+  if (_sjeLayer) { try { map.removeLayer(_sjeLayer); } catch(e) {} }
+  _sjeLayer = L.layerGroup([], { pane: 'sjecaPane' });
+  const ref = _poziRefTacka();
+  (_sjeEvts || []).forEach(g => {
+    if (!_sjeCanvasRenderer && L.canvas) _sjeCanvasRenderer = L.canvas({ pane: 'sjecaPane', padding: 0.35 });
+    const pz = _sjePouzdanost(g.conf);
+    const mk = L.circleMarker([g.la, g.lo], { renderer: _sjeCanvasRenderer, pane: 'sjecaPane', radius: Math.min(14, 6 + g.broj), color: '#fff', weight: 2, fillColor: pz.boja, fillOpacity: 0.9 });
+    mk.bindPopup(() => _sjePopupHtml(g, ref), { maxWidth: 270 });
+    mk.addTo(_sjeLayer);
+  });
+  if (_sjeOn) _sjeLayer.addTo(map);
+  _sjeRenderPanel();
+}
+function _sjeRedHtml(g, i, ref) {
+  const pz = _sjePouzdanost(g.conf);
+  const smjer = _azimutSmjer(_bearing(ref.la, ref.lo, g.la, g.lo));
+  return `<div onclick="_sjeZoom(${i})" style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #1e293b;cursor:pointer;">
+    <span style="width:9px;height:9px;border-radius:50%;background:${pz.boja};border:1px solid rgba(255,255,255,0.45);flex-shrink:0;"></span>
+    <span style="flex:1;min-width:0;">
+      <span style="font-size:12px;color:#e2e8f0;">${_msrFmt(g.d)} <span style="color:#64748b;">${smjer}</span></span>
+      <div style="font-size:10px;color:#64748b;">${g.broj} detekcija · ~${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div>
+    </span>
+    <span style="font-size:10px;color:#64748b;">${pz.txt}</span>
+  </div>`;
+}
+function _sjeListaHtml() {
+  if (!_sjeOn) return '';
+  const m = _sjeMeta || {};
+  if (m.greska) return `<div style="font-size:11px;color:#f87171;padding:6px 0;line-height:1.5;">${_escHtml(m.greska === 'nema-kljuca' ? 'Treba GFW API ključ (unesi ga u Požari → Admin ključevi).' : m.greska)}</div>`;
+  if (!_sjeEvts.length) return `<div style="font-size:11px;color:#4ade80;padding:6px 0;">✓ Nema alarma u krugu ${_SJE_RADIUS_KM} km, zadnjih ${_sjeOkvirNaziv(m.okvir)}.</div>`;
+  const ref = _poziRefTacka();
+  return _sjeEvts.map((g, i) => _sjeRedHtml(g, i, ref)).join('');
+}
+function _sjeZoom(i) {
+  const g = _sjeEvts[i];
+  if (!g) return;
+  switchMainTab('karta');
+  setTimeout(() => map.setView([g.la, g.lo], Math.max(map.getZoom(), 14)), 80);
+}
+function _sjeToggle(on) {
+  _sjeOn = on;
+  try { localStorage.setItem(_SJE_ON_KEY, on ? '1' : '0'); } catch(e) {}
+  const sw = document.getElementById('sje-on-switch'); if (sw) sw.classList.toggle('on', on);
+  if (!on) { if (_sjeLayer) { try { map.removeLayer(_sjeLayer); } catch(e) {} } _sjeRenderPanel(); return; }
+  if (!_sjeEvts.length) _sjeObnoviIzKesa();
+  if (_sjeLayer) _sjeLayer.addTo(map);
+  _sjeLoad(true);
+}
+function _sjeRenderPanel() {
+  const onOff = document.getElementById('sje-on-switch'); if (onOff) onOff.classList.toggle('on', _sjeOn);
+  document.querySelectorAll('#sjeca-panel .poz-okvir-btn').forEach(b => b.classList.toggle('on', b.dataset.okvir === _sjeOkvir()));
+  const status = document.getElementById('sje-status'); if (status) status.textContent = _sjeSazetak();
+  const lista = document.getElementById('sje-lista'); if (lista) lista.innerHTML = _sjeListaHtml();
+}
+function openSjecaSection() {
+  _openStubPanel('sjeca-panel', 'meni');
+  if (_sjeOn && !_sjeEvts.length) _sjeObnoviIzKesa();
+  _sjeRenderPanel();
+  if (_sjeOn) _sjeLoad(true);
+}
+try { _sjeOn = localStorage.getItem(_SJE_ON_KEY) === '1'; } catch(e) {}
+
+// =====================================================================
 // PROJEKTOVANJE ŠUMSKOG PUTA — glue kod nad static/js/road-design.js (RD*).
 // Jezgro (rdFindRoute i dr.) je preneseno skoro doslovno iz izvorne app —
 // vidi napomenu na vrhu road-design.js. Ovaj blok dodaje: DEM (model terena)
@@ -5681,7 +5918,7 @@ _temRestore();
 // GLAVNA NAVIGACIJA — Karta / Meni / Postavke, i sekcije iz Menija
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['meni-panel','postavke-panel','pozari-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel'];
+const _ALL_PANELS = ['meni-panel','postavke-panel','pozari-panel','sjeca-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
