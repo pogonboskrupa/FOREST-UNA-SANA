@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="max-age=86400">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Una Sana Forest">
+<meta name="theme-color" content="#16213e">
+<title>Una Sana Forest</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- Biblioteke su dio APK-a i web repozitorija: bez mreže prije prve karte. -->
+<script>var _libErrNames = []; function _libErr(n) { _libErrNames.push(n); }</script>
+<link rel="stylesheet" href="static/libs/leaflet.min.css">
+<script src="static/libs/leaflet.min.js" onerror="_libErr('Leaflet')"></script>
+<script src="static/libs/proj4.js" onerror="_libErr('proj4')"></script>
+<script src="static/libs/turf.min.js" onerror="_libErr('Turf')"></script>
+<script src="static/libs/supabase.min.js" onerror="_libErr('Supabase')"></script>
+<script src="static/js/reliable-fetch.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded',function(){
+  if(!_libErrNames.length)return;
+  var critical=_libErrNames.filter(function(n){return n==='Leaflet';});
+  if(critical.length && typeof L === 'undefined') {
+    document.body.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#1B4332;color:#fff;font-family:sans-serif;padding:32px;text-align:center;">'
+      +'<div style="font-size:48px;margin-bottom:16px;">📡</div>'
+      +'<div style="font-size:20px;font-weight:700;margin-bottom:8px;">Nema internet konekcije</div>'
+      +'<div style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:32px;max-width:320px;">Aplikacija se mora pokrenuti <b>jednom sa internetom</b> da bi radila offline. Biblioteke se čuvaju u cache-u i sljedeći put neće trebati internet.</div>'
+      +'<div style="background:rgba(255,255,255,0.08);border-radius:12px;padding:12px 20px;font-size:13px;color:rgba(255,255,255,0.5);">Nedostaje: '+_libErrNames.join(', ')+'</div>'
+      +'<button onclick="location.reload()" style="margin-top:28px;background:#2D6A4F;border:none;border-radius:12px;color:#fff;font-size:15px;padding:14px 32px;cursor:pointer;">Pokušaj ponovo</button>'
+      +'</div>';
+  }
+});
+</script>
+<style>
+html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172a; font-family:'DM Sans',Arial,Roboto,sans-serif; }
+#map { position:fixed; inset:0; background:#ddd; }
+
+/* === GPU COMPOSITING ZA LEAFLET (brže skrolanje i zumiranje) === */
+.leaflet-tile { opacity:1; outline:1px solid transparent; }
+.leaflet-tile-loaded { opacity:1; }
+.leaflet-zoom-animated { will-change: transform; }
+.leaflet-map-pane { will-change: transform; }
+.leaflet-tile-pane { background: #ddd; }
+.leaflet-container { background: #ddd; }
+.leaflet-proxy { will-change: transform; }
+.leaflet-fade-anim .leaflet-tile,.leaflet-fade-anim .leaflet-popup { transition: none !important; }
+
+#top-bar {
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; padding-top:calc(10px + env(safe-area-inset-top));
+  pointer-events:none;
+}
+#top-bar > * { pointer-events:auto; }
+.usf-badge {
+  background:rgba(15,23,42,0.85); color:#e2e8f0; border-radius:10px;
+  padding:6px 12px; font-size:12px; font-weight:600; letter-spacing:0.3px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.35);
+}
+#layer-switch {
+  position:fixed; bottom:24px; right:12px; z-index:500;
+  background:rgba(15,23,42,0.9); border-radius:12px; padding:6px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:4px;
+}
+#layer-switch button {
+  background:transparent; border:1px solid transparent; color:#cbd5e1;
+  border-radius:8px; padding:8px 10px; font-size:13px; text-align:left; cursor:pointer;
+}
+#layer-switch button.active { background:#16213e; border-color:#38bdf8; color:#38bdf8; }
+#offline-banner {
+  position:fixed; top:0; left:0; right:0; z-index:900; display:none;
+  background:#7c2d12; color:#fff; font-size:12px; text-align:center;
+  padding:6px 8px; padding-top:calc(6px + env(safe-area-inset-top));
+}
+</style>
+</head>
+<body>
+
+<div id="offline-banner">📡 Nema internet konekcije — radi se sa keširanim podacima</div>
+
+<div id="map"></div>
+
+<div id="top-bar">
+  <div class="usf-badge" id="ver-badge">Una Sana Forest</div>
+</div>
+
+<div id="layer-switch"></div>
+
+<script>
+// =====================================================================
+// UNA SANA FOREST — verzija na TRI mjesta: ovdje, sw.js APP_VERSION,
+// android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
+// usklađena prije svakog commita.
+// =====================================================================
+const APP_VER = 'v0.1.0';
+document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
+
+// ── Offline detekcija (banner) ──────────────────────────────────────
+function _updOfflineBanner() {
+  document.getElementById('offline-banner').style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online', _updOfflineBanner);
+window.addEventListener('offline', _updOfflineBanner);
+_updOfflineBanner();
+
+// ── Keširani tile layer (retry/timeout/parent-fallback) ─────────────
+// Kopirano iz dokazanog obrasca (US-SUME index.html, makeCachedTileLayer) —
+// razlog svake pojedinačne odluke ovdje je opisan tamo; ponovno pisanje od
+// nule bi ponovo unijelo iste terenske bugove (siva mreža na pločicama,
+// slomljene slike od WMS grešaka, zombi-fetch na brzom pan/zoom-u).
+const TILE_CACHE_NAME = 'usf-tiles-v1';
+function makeCachedTileLayer(cacheName) {
+  cacheName = cacheName || TILE_CACHE_NAME;
+  return L.TileLayer.extend({
+    createTile(coords, done) {
+      const img = document.createElement('img');
+      img.alt = '';
+      const url = this.getTileUrl(coords);
+      img._ctls = new Set();
+
+      const jeSlika = (r) => {
+        try {
+          const ct = (r.headers && r.headers.get) ? (r.headers.get('content-type') || '') : '';
+          return !ct || /^image\//i.test(ct.trim());
+        } catch(e) { return true; }
+      };
+
+      const setSrc = (u) => {
+        if (img._blobUrl) { try { URL.revokeObjectURL(img._blobUrl); } catch(e) {} }
+        img._blobUrl = u;
+        img.src = u;
+      };
+
+      if (!this._hooked) {
+        this._hooked = true;
+        this.on('tileunload', ev => {
+          const el = ev.tile;
+          if (el && el._ctls) { el._ctls.forEach(c => { try { c.abort(); } catch(e) {} }); el._ctls.clear(); }
+          if (el && el._blobUrl) { try { URL.revokeObjectURL(el._blobUrl); } catch(e) {} el._blobUrl = null; }
+        });
+        if (this._map) this._map.on('zoomend moveend', () => this._retryEmpty());
+      }
+
+      const fetchTile = (u, ms) => new Promise(resolve => {
+        const ctl = new AbortController();
+        img._ctls.add(ctl);
+        const t = setTimeout(() => ctl.abort(), ms);
+        const finish = (r) => { clearTimeout(t); img._ctls.delete(ctl); resolve(r); };
+        fetch(u, { mode: 'cors', signal: ctl.signal }).then(finish).catch(() => finish(null));
+      });
+
+      const parentFallback = async () => {
+        if (!('caches' in window)) return false;
+        try {
+          const c = await caches.open(cacheName);
+          const sz = this.getTileSize();
+          for (let dz = 1; dz <= 4; dz++) {
+            const pz = coords.z - dz;
+            if (pz < 0) break;
+            const scale = 1 << dz;
+            const px = Math.floor(coords.x / scale), py = Math.floor(coords.y / scale);
+            let purl;
+            try { purl = this.getTileUrl({ x: px, y: py, z: pz }); } catch(e) { continue; }
+            const m = await c.match(purl);
+            if (!m) continue;
+            const bmp = await createImageBitmap(await m.blob());
+            const cv = document.createElement('canvas');
+            cv.width = sz.x; cv.height = sz.y;
+            const cx = cv.getContext('2d');
+            cx.imageSmoothingEnabled = true;
+            const sub = sz.x / scale;
+            cx.drawImage(bmp, (coords.x - px * scale) * sub, (coords.y - py * scale) * sub, sub, sub, 0, 0, sz.x, sz.y);
+            const blob = await new Promise(res => cv.toBlob(res));
+            if (!blob) continue;
+            const u = URL.createObjectURL(blob);
+            img.onload = () => done(null, img);
+            img.onerror = () => done(null, img);
+            img._empty = true;
+            setSrc(u);
+            return true;
+          }
+        } catch(e) {}
+        return false;
+      };
+
+      const fromNet = async (isRetry) => {
+        let r = await fetchTile(url, 8000);
+        if (!r || !r.ok) {
+          await new Promise(rs => setTimeout(rs, 1200));
+          r = await fetchTile(url, 8000);
+        }
+        if (r && r.ok && jeSlika(r)) {
+          try { const c = await caches.open(cacheName); c.put(url, r.clone()); } catch(e) {}
+          const u = URL.createObjectURL(await r.blob());
+          img.onload = () => { img._empty = false; if (!isRetry) done(null, img); };
+          img.onerror = () => { if (!isRetry) done(null, img); };
+          setSrc(u);
+          return;
+        }
+        if (isRetry) return;
+        if (await parentFallback()) return;
+        img._empty = true;
+        done(null, img);
+      };
+
+      const load = async (isRetry) => {
+        try {
+          if ('caches' in window) {
+            const c = await caches.open(cacheName);
+            const m = await c.match(url);
+            if (m && !jeSlika(m)) { try { await c.delete(url); } catch(e) {} }
+            else if (m) {
+              const u = URL.createObjectURL(await m.blob());
+              img.onload = () => { img._empty = false; if (!isRetry) done(null, img); };
+              img.onerror = () => { try { c.delete(url); } catch(e) {} fromNet(isRetry); };
+              setSrc(u);
+              return;
+            }
+          }
+          await fromNet(isRetry);
+        } catch(e) { fromNet(isRetry); }
+      };
+      img._load = load;
+      load(false);
+      return img;
+    },
+
+    _retryEmpty() {
+      if (this._retryT) clearTimeout(this._retryT);
+      this._retryT = setTimeout(() => {
+        if (!this._map || navigator.onLine === false) return;
+        for (const key in this._tiles) {
+          const t = this._tiles[key];
+          const el = t && t.el;
+          if (!el || !el._empty || !el._load) continue;
+          if (t.coords.z !== this._tileZoom) continue;
+          el._retryN = (el._retryN || 0) + 1;
+          if (el._retryN > 3) continue;
+          el._load(true);
+        }
+      }, 400);
+    },
+
+    _abortLoading() {
+      for (const key in this._tiles) {
+        const t = this._tiles[key];
+        if (t && t.coords.z !== this._tileZoom && t.el && t.el._ctls) {
+          t.el._ctls.forEach(c => { try { c.abort(); } catch(e) {} });
+          t.el._ctls.clear();
+        }
+      }
+    }
+  });
+}
+
+const CachedTopo = makeCachedTileLayer();
+const CachedOsm  = makeCachedTileLayer();
+const CachedSat  = makeCachedTileLayer();
+
+// ── Bazne podloge — samo osnovne (Topo/Satelit/Karta/Google), bez
+// Wayback/Sentinel-2/WorldCover/Konture za sada. ─────────────────────
+const TL = {
+  '⛰ Topo':    new CachedTopo('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxNativeZoom:17,maxZoom:22,subdomains:['a','b','c'],keepBuffer:6,updateWhenZooming:false,updateWhenIdle:true,updateInterval:150}),
+  '🛰 Satelit': new CachedSat('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:19,maxZoom:22,keepBuffer:6,updateWhenZooming:false,updateWhenIdle:true,updateInterval:150}),
+  '🗺 Karta':   new CachedOsm('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxNativeZoom:19,maxZoom:22,keepBuffer:6,updateWhenZooming:false,updateWhenIdle:true,updateInterval:150}),
+  '📡 Google':  new CachedSat('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxNativeZoom:20,maxZoom:22,subdomains:['0','1','2','3'],keepBuffer:6,updateWhenZooming:false,updateWhenIdle:true,updateInterval:150})
+};
+
+// ── Podrazumijevani prikaz: Una-Sana kanton (MGI Zone 6, ista šema kao
+// srodni Dendro Map projekat za isti region). ────────────────────────
+proj4.defs('MGI-ZONE6', '+proj=tmerc +lat_0=0 +lon_0=18 +k=0.9999 +x_0=6500000 +y_0=0 +ellps=bessel +towgs84=682,-203,480,0,0,0,0 +units=m +no_defs');
+function mgiToWgs(y, x) {
+  const [lon, lat] = proj4('MGI-ZONE6', 'EPSG:4326', [y, x]);
+  return [lat, lon];
+}
+function zoomForScale(scale, lat) {
+  return Math.log2(156543.03392 * Math.cos(lat * Math.PI / 180) / (scale * 0.0002646));
+}
+const DEFAULT_VIEW_MGI = { y: 6354662, x: 4972300, scale: 50000 };
+const _defCenter = mgiToWgs(DEFAULT_VIEW_MGI.y, DEFAULT_VIEW_MGI.x);
+const _defZoom   = Math.round(zoomForScale(DEFAULT_VIEW_MGI.scale, _defCenter[0]));
+
+let _initMapCenter = _defCenter, _initMapZoom = _defZoom;
+try {
+  const _lp = JSON.parse(localStorage.getItem('usf_last_pos') || 'null');
+  if (_lp?.la && _lp?.lo && _lp?.z) { _initMapCenter = [_lp.la, _lp.lo]; _initMapZoom = _lp.z; }
+} catch(e) {}
+
+const map = L.map('map', {
+  maxZoom: 22,
+  zoomControl: false,
+  attributionControl: false,
+  // fadeAnimation isključen — sa njim Leaflet postavlja inline opacity na
+  // pločice tokom fade-a; inline nadjačava CSS .leaflet-tile{opacity:1} i
+  // pločice ostanu zaglavljene na opacity 0 (dokazan bug u srodnom projektu).
+  fadeAnimation: false,
+  zoomAnimation: true,
+  zoomAnimationThreshold: 4,
+  markerZoomAnimation: false,
+  inertia: true,
+  inertiaDeceleration: 3000,
+  inertiaMaxSpeed: 4000,
+  worldCopyJump: false,
+  wheelDebounceTime: 20,
+  wheelPxPerZoomLevel: 90,
+  tap: true,
+  tapTolerance: 15,
+  preferCanvas: true
+}).setView(_initMapCenter, _initMapZoom);
+
+map.on('moveend', () => {
+  const c = map.getCenter();
+  localStorage.setItem('usf_last_pos', JSON.stringify({ la: c.lat, lo: c.lng, z: map.getZoom() }));
+});
+
+// Paneovi za buduće slojeve (Požari/Mjerenja/Trag dijele istu kartu — vidi
+// napomenu u planu o proximity fallback klik-testu koji MORA postojati od
+// prvog dana kad se ti slojevi dodaju, ne naknadno).
+map.createPane('tragMsrLines'); map.getPane('tragMsrLines').style.zIndex = 410;
+map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 420;
+
+let _defaultLayer = TL['⛰ Topo'];
+try {
+  const savedLayer = localStorage.getItem('usf_base_layer');
+  if (savedLayer && TL[savedLayer]) _defaultLayer = TL[savedLayer];
+} catch(e) {}
+_defaultLayer.addTo(map);
+
+// ── Prekidač baznih slojeva ──────────────────────────────────────────
+(function buildLayerSwitch() {
+  const box = document.getElementById('layer-switch');
+  let current = Object.keys(TL).find(k => TL[k] === _defaultLayer);
+  Object.keys(TL).forEach(name => {
+    const btn = document.createElement('button');
+    btn.textContent = name;
+    if (name === current) btn.classList.add('active');
+    btn.onclick = () => {
+      if (name === current) return;
+      map.removeLayer(TL[current]);
+      TL[name].addTo(map);
+      current = name;
+      try { localStorage.setItem('usf_base_layer', name); } catch(e) {}
+      box.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.textContent === name));
+    };
+    box.appendChild(btn);
+  });
+})();
+
+// ── Service worker (offline-first) ──────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
