@@ -63,11 +63,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 #top-bar > * { pointer-events:auto; }
 #top-left-stack { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
-.usf-badge {
-  background:rgba(15,23,42,0.85); color:#e2e8f0; border-radius:10px;
-  padding:6px 12px; font-size:12px; font-weight:600; letter-spacing:0.3px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.35);
-}
 #geo-badge {
   background:rgba(15,23,42,0.85); color:#cbd5e1; border-radius:10px;
   padding:5px 10px; font-size:10.5px; font-family:monospace; line-height:1.5;
@@ -383,7 +378,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <div id="top-bar">
   <div id="top-left-stack">
-    <div class="usf-badge" id="ver-badge">Una Sana Forest</div>
     <div id="geo-badge"><span class="elev">↕ — m</span> · MGI5 Y —, X —</div>
   </div>
   <button id="layer-btn" onclick="_toggleLayerSwitch()" title="Izbor karte">🗺</button>
@@ -507,6 +501,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div class="mc-txt"><b>Mjerenja</b><span>Sačuvane udaljenosti, površine, nagibi</span></div>
       <div class="mc-badge ready">Spremno</div>
     </div>
+    <div id="meni-ver-badge" style="text-align:center;color:#475569;font-size:11px;padding:14px 0 4px;"></div>
   </div>
 </div>
 
@@ -740,8 +735,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.11.0';
-document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
+const APP_VER = 'v0.11.1';
+document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
 function _updOfflineBanner() {
