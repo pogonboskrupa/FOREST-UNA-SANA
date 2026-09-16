@@ -88,17 +88,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 #layer-switch button.active { background:#16213e; border-color:#38bdf8; color:#38bdf8; }
 
-/* === Zoom +/- — donji desni ugao (ispod plutajućih alata) === */
-#zoom-ctl {
-  position:fixed; right:12px; bottom:24px; z-index:500;
-  display:flex; flex-direction:column; gap:8px;
-}
-#zoom-ctl button {
-  width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
-  background:rgba(15,23,42,0.9); color:#e2e8f0; font-size:20px; font-weight:700;
-  box-shadow:0 2px 10px rgba(0,0,0,0.4);
-}
-#zoom-ctl button:active { background:rgba(30,41,59,0.95); }
 #offline-banner {
   position:fixed; top:0; left:0; right:0; z-index:900; display:none;
   background:#7c2d12; color:#fff; font-size:12px; text-align:center;
@@ -182,10 +171,15 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 #loc-dist-badge.show { display:block; }
 
-/* === Plutajući alati na karti (Moja lokacija / Tragovi) === */
+/* === Plutajući alati na karti (Zoom / Moja lokacija / Mjerenja / Tragovi) ===
+   Jedna kolona, anchor bottom:76px (dokazano čisti donji tab-bar, vidi
+   #main-tabs) — zoom dugmad su NAMJERNO dio ISTE kolone (ne poseban fiksni
+   blok na bottom:24px) da im visina automatski prati main-tabs safe-area bez
+   ručnog računanja piksela, umjesto da ostanu skrivena/preklopljena ispod
+   njega (prijavljen bug). ─────────────────────────────────────────────── */
 #map-fabs {
   position:fixed; right:12px; bottom:76px; z-index:600;
-  display:flex; flex-direction:column; gap:10px;
+  display:flex; flex-direction:column; gap:10px; align-items:center;
 }
 #map-fabs button {
   width:48px; height:48px; border-radius:50%; border:none; cursor:pointer;
@@ -193,6 +187,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   box-shadow:0 2px 10px rgba(0,0,0,0.4);
 }
 #map-fabs button#ab-loc.active { color:#22c55e; }
+#map-fabs .zoom-grp { display:flex; flex-direction:column; gap:8px; margin-bottom:4px; }
+#map-fabs .zoom-grp button {
+  width:40px; height:40px; font-size:19px; font-weight:700;
+}
+#map-fabs button:active { background:rgba(30,41,59,0.95); }
 #map-fabs button#ab-tragovi.active { color:#f97316; }
 #map-fabs button#ab-msr.active { color:#a78bfa; }
 
@@ -404,13 +403,12 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <div id="layer-switch"></div>
 
-<div id="zoom-ctl">
-  <button onclick="map.zoomIn()" title="Uvećaj">+</button>
-  <button onclick="map.zoomOut()" title="Umanji">−</button>
-</div>
-
-<!-- Plutajući alati na Karti — Moja lokacija / Tragovi (vertikalni stub) -->
+<!-- Plutajući alati na Karti — Zoom / Moja lokacija / Mjerenja / Tragovi (jedna kolona) -->
 <div id="map-fabs">
+  <div class="zoom-grp">
+    <button onclick="map.zoomIn()" title="Uvećaj">+</button>
+    <button onclick="map.zoomOut()" title="Umanji">−</button>
+  </div>
   <button id="ab-loc" onclick="_toggleLocPopup()" title="Moja lokacija">📍</button>
   <button id="ab-msr" onclick="_toggleMsrPanel()" title="Mjerenja">📏</button>
   <button id="ab-tragovi" onclick="openTragoviPanel()" title="Tragovi">🥾</button>
@@ -754,7 +752,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.12.0';
+const APP_VER = 'v0.12.1';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -1249,7 +1247,7 @@ function _locCenterUpdateDist() {
   if (!lastP) return;
   const c = map.getCenter();
   const badge = document.getElementById('loc-dist-badge');
-  if (badge) badge.textContent = '📍 ' + _msrFmt(dst(lastP.la, lastP.lo, c.lat, c.lng)) + ' od tebe';
+  if (badge) badge.textContent = '📍 ' + _msrFmt(dst(lastP.la, lastP.lo, c.lat, c.lng));
 }
 
 let _lastGpsFixTime = 0, _onPLastFixTs = 0, _gpsWatchdogTimer = null, _heartbeatTimer = null, _gpsRestartCount = 0;
