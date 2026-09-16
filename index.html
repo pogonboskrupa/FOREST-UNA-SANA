@@ -853,7 +853,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.16.1';
+const APP_VER = 'v0.16.2';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -1078,6 +1078,7 @@ map.on('moveend', () => {
 // napomenu u planu o proximity fallback klik-testu koji MORA postojati od
 // prvog dana kad se ti slojevi dodaju, ne naknadno).
 map.createPane('tragMsrLines'); map.getPane('tragMsrLines').style.zIndex = 410;
+map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 415;
 map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 420;
 map.createPane('sjecaPane');    map.getPane('sjecaPane').style.zIndex    = 430;
 

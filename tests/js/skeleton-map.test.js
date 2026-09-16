@@ -80,4 +80,19 @@ t('paneovi za buduće Požari/Mjerenja slojeve postoje od prvog dana', () => {
   assert.match(HTML, /createPane\('pozariPane'\)/);
 });
 
+// Regresioni test za bug "Cannot read properties of undefined (reading
+// 'appendChild')" — svaki L.layer koji navodi { pane: 'xxx' } MORA imati
+// odgovarajući map.createPane('xxx'), inače map.getPane() vrati undefined i
+// .appendChild na njemu puca čim se taj sloj doda na kartu (desilo se sa
+// _PoziHeat/demOverlay — pane je korišten a nikad kreiran).
+t('svaki korišteni Leaflet pane je stvarno kreiran (map.createPane)', () => {
+  const LEAFLET_BUILTIN = new Set(['tilePane', 'overlayPane', 'shadowPane', 'markerPane', 'tooltipPane', 'popupPane', 'mapPane']);
+  const created = new Set();
+  for (const m of HTML.matchAll(/createPane\('([^']+)'\)/g)) created.add(m[1]);
+  const used = new Set();
+  for (const m of HTML.matchAll(/pane\s*:\s*['"]([^'"]+)['"]/g)) used.add(m[1]);
+  const missing = [...used].filter(p => !LEAFLET_BUILTIN.has(p) && !created.has(p));
+  assert.deepStrictEqual(missing, [], 'pane(ovi) korišteni ali nikad kreirani: ' + missing.join(', '));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — kostur karte');
