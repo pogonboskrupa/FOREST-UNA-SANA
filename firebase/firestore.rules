@@ -18,9 +18,25 @@ rules_version = '2';
 //
 // Sve kolekcije ove app-e nose prefiks "usf_" da se ne miješaju sa
 // podacima druge aplikacije u istom Firebase projektu.
+//
+// NAPOMENA — dijeljeni projekat: druga aplikacija u ovom istom Firebase
+// projektu je imala pravilo "allow read, write: if true" za BAŠ SVE
+// (/{document=**}). To pravilo je ovdje zadržano NETAKNUTO za nju (nijedna
+// njena kolekcija se ne dira, ne zna se čak ni kako se zovu), ali je
+// suženo da NE pokriva usf_ kolekcije — inače bi "OR" semantika Firestore
+// pravila (bilo koje poklapajuće pravilo koje dozvoljava = dozvoljeno)
+// potpuno poništila admin-only zaštitu ključeva ispod. Provjera je čisto
+// po nazivu prve putanje (prefiks "usf_"), ne zna niti treba znati stvarne
+// nazive kolekcija druge app-e.
 // =====================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Druga aplikacija u istom projektu — netaknuto ponašanje (potpuno
+    // otvoreno), samo isključujući naše usf_ kolekcije (vidi napomenu gore).
+    match /{coll}/{rest=**} {
+      allow read, write: if !coll.matches('^usf_.*');
+    }
 
     function jeAdmin() {
       return request.auth != null &&
@@ -59,7 +75,10 @@ service cloud.firestore {
       allow write: if jeAdmin();
     }
 
-    // Podrazumijevano zabranjeno sve što nije eksplicitno gore.
+    // Sigurnosna mreža (namjerno redundantno sa suženim pravilom druge app-e
+    // gore — OR semantika Firestore pravila znači da "false" ovdje nikad ne
+    // može ništa otvoriti, samo dodatno osigurava da nešto neočekivano ne
+    // ostane bez ijednog pravila).
     match /{document=**} {
       allow read, write: if false;
     }
