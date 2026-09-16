@@ -165,6 +165,23 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #main-tabs .mtab.active { color:#4ade80; }
 #main-tabs .mtab-ico { font-size:20px; line-height:1; }
 
+/* === Centar-tačka + udaljenost od moje lokacije (samo dok je GPS uključen,
+   sakriveno tokom mjerenja — vidi _locCenterRefresh) === */
+#loc-center-dot {
+  display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:14px; height:14px; border-radius:50%; background:#3b82f6; border:2.5px solid #fff;
+  box-shadow:0 0 6px rgba(0,0,0,0.6), 0 0 8px rgba(59,130,246,0.8);
+  z-index:550; pointer-events:none;
+}
+#loc-center-dot.show { display:block; }
+#loc-dist-badge {
+  display:none; position:fixed; left:50%; top:calc(50% + 16px); transform:translateX(-50%);
+  background:rgba(15,23,42,0.85); color:#e2e8f0; font-size:11px; font-weight:600;
+  padding:4px 10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.35);
+  z-index:550; pointer-events:none; white-space:nowrap;
+}
+#loc-dist-badge.show { display:block; }
+
 /* === Plutajući alati na karti (Moja lokacija / Tragovi) === */
 #map-fabs {
   position:fixed; right:12px; bottom:76px; z-index:600;
@@ -375,6 +392,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="offline-banner">📡 Nema internet konekcije — radi se sa keširanim podacima</div>
 
 <div id="map"></div>
+<div id="loc-center-dot"></div>
+<div id="loc-dist-badge"></div>
 
 <div id="top-bar">
   <div id="top-left-stack">
@@ -735,7 +754,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.11.1';
+const APP_VER = 'v0.12.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -1205,6 +1224,32 @@ function stopGPS() {
   _clearRadiusRings(); _radiusOn = false;
   document.getElementById('gps-info').textContent = 'GPS: isključen';
   _updGpsSwitch();
+  _locCenterRefresh();
+}
+
+// ── Centar-tačka + udaljenost od moje lokacije ─────────────────────────
+// Fiksna tačka na SREDINI EKRANA (ne na karti — ne pomjera se sa panom) uz
+// live udaljenost do stvarne GPS pozicije, korisno da forester nacilja
+// lokaciju na karti bez fizičkog hoda do nje. Namjerno NEZAVISNO od Mjerenja
+// (koje ima svoj crosshair kursor za tapkanje tačaka) — prikazuje se ISKLJUČIVO
+// dok je Moja lokacija uključena i mjerenje NIJE aktivno, da se dva vizuelna
+// pomagala ne preklapaju na istom mjestu.
+function _locCenterVisible() { return gpsOn && !!lastP && !_msrOn; }
+function _locCenterRefresh() {
+  const dot = document.getElementById('loc-center-dot');
+  const badge = document.getElementById('loc-dist-badge');
+  if (!dot || !badge) return;
+  const on = _locCenterVisible();
+  dot.classList.toggle('show', on);
+  badge.classList.toggle('show', on);
+  if (on) { map.on('move', _locCenterUpdateDist); _locCenterUpdateDist(); }
+  else map.off('move', _locCenterUpdateDist);
+}
+function _locCenterUpdateDist() {
+  if (!lastP) return;
+  const c = map.getCenter();
+  const badge = document.getElementById('loc-dist-badge');
+  if (badge) badge.textContent = '📍 ' + _msrFmt(dst(lastP.la, lastP.lo, c.lat, c.lng)) + ' od tebe';
 }
 
 let _lastGpsFixTime = 0, _onPLastFixTs = 0, _gpsWatchdogTimer = null, _heartbeatTimer = null, _gpsRestartCount = 0;
@@ -1276,10 +1321,12 @@ function onP(p) {
     map.setView([la,lo], 17);
     if (_compassHeading !== null) _updCompassOnMarker(_compassHeading);
     _drawRadiusRings();
+    _locCenterRefresh();
   } else {
     posMk.setLatLng([la, lo]);
     posCr.setLatLng([la, lo]).setRadius(ac);
     _updateRadiusRings();
+    _locCenterUpdateDist();
   }
 
   // Prati lokaciju dok se snima trag (osim u slobodnom pogledu)
@@ -2404,6 +2451,7 @@ function msrStart() {
   const hint = document.getElementById('msr-hint');
   if (hint) hint.innerHTML = (hints[_msrMode] || 'Klikaj tačke.') + '<br><small style="color:#475569">vuci tačku da pomjeriš · desni klik briši</small>';
   _msrUpdUndoBtn();
+  _locCenterRefresh();
 }
 function _msrSyncRegistry() {
   if (!_mqmId) return;
@@ -2422,6 +2470,7 @@ function msrStop(skipSave) {
   if (_msrPts.length >= 2) { if (hint) hint.innerHTML = 'Vuci tačke za korekciju · <small style="color:#475569">desni klik = obriši tačku</small>'; }
   else if (hint) hint.textContent = 'Pritisni ▶ Počni pa klikaj tačke na karti.';
   _msrUpdUndoBtn();
+  _locCenterRefresh();
   // Auto-sačuvaj ako ima ≥2 tačke i ovo nije edit postojećeg mjerenja —
   // isti obrazac kao Snimi trag (sačuvaj odmah, preimenuj kasnije iz liste).
   if (!skipSave && _msrPts.length >= 2 && !_mqmId) _msrRegAddFromActive();
