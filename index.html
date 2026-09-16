@@ -25,6 +25,7 @@
 <script src="static/libs/firebase/firebase-firestore-compat.js" onerror="_libErr('Firestore')"></script>
 <script src="static/js/reliable-fetch.js"></script>
 <script src="static/js/firebase-init.js"></script>
+<script src="static/js/road-design.js" onerror="_libErr('Projektovanje puta')"></script>
 <script>
 window.addEventListener('DOMContentLoaded',function(){
   if(!_libErrNames.length)return;
@@ -426,7 +427,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="meni-card" onclick="openPutSection()">
       <div class="mc-ico">🛣</div>
       <div class="mc-txt"><b>Projektovanje šumskog puta</b><span>Trasa preko DEM-a, ograničenje nagiba</span></div>
-      <div class="mc-badge">U izradi</div>
+      <div class="mc-badge ready">Osnovno spremno</div>
     </div>
     <div class="meni-card" onclick="openTematskaSection()">
       <div class="mc-ico">📊</div>
@@ -510,20 +511,66 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   </div>
 </div>
 
-<!-- Projektovanje šumskog puta (stub — puna funkcionalnost dolazi u sljedećoj fazi) -->
+<!-- Projektovanje šumskog puta -->
 <div id="put-panel" class="usf-panel">
   <div class="up-hdr"><h2>🛣 Projektovanje šumskog puta</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div class="stub-section">
-      <div class="ss-ico">🛣</div>
-      <h3>Sekcija u izradi</h3>
-      <p>Trasiranje puta preko digitalnog modela terena (Terrarium pločice) dolazi u sljedećoj fazi — potpuno samostalno, bez veze sa konceptom vlaka.</p>
-      <ul class="ss-list">
-        <li>📍 A→B (+opciona via tačka) trasa preko DEM-a</li>
-        <li>⛰ Ograničenje maksimalnog nagiba</li>
-        <li>📐 Šestarski korak, prikaz statistika trase</li>
-        <li>📄 Izvještaj/PDF trase</li>
-      </ul>
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Postavite tačke A i B (klikom na kartu) — algoritam preko modela terena (DEM) predlaže trasu koja nikad ne prelazi maksimalni dozvoljeni nagib (šestarski korak: L = ΔH/nagib).</div>
+
+    <div class="treg-row" style="border-left:3px solid #4ade80;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="color:#e2e8f0;font-size:12.5px;">📍 Tačka A (početak)</b>
+        <button onclick="_rdPickPoint('start')" style="padding:5px 10px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:11px;cursor:pointer;">Klikni na kartu</button>
+      </div>
+      <div id="rd-pt-a-info" style="color:#94a3b8;font-size:11px;margin-top:4px;">Nije postavljena</div>
+    </div>
+
+    <div class="treg-row" style="border-left:3px solid #f87171;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="color:#e2e8f0;font-size:12.5px;">📍 Tačka B (kraj)</b>
+        <button onclick="_rdPickPoint('end')" style="padding:5px 10px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:11px;cursor:pointer;">Klikni na kartu</button>
+      </div>
+      <div id="rd-pt-b-info" style="color:#94a3b8;font-size:11px;margin-top:4px;">Nije postavljena</div>
+    </div>
+
+    <div id="rd-pt-via-add" style="margin-bottom:10px;">
+      <button onclick="_rdPickPoint('via')" style="width:100%;padding:8px;background:#1e293b;border:1px dashed #334155;border-radius:8px;color:#94a3b8;font-size:11.5px;cursor:pointer;">➕ Dodaj međutačku (za duže/složenije trase)</button>
+    </div>
+    <div id="rd-pt-via" class="treg-row" style="border-left:3px solid #fbbf24;display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="color:#e2e8f0;font-size:12.5px;">📍 Međutačka</b>
+        <div style="display:flex;gap:4px;">
+          <button onclick="_rdPickPoint('via')" style="padding:5px 10px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:11px;cursor:pointer;">Klikni</button>
+          <button onclick="_rdRemoveVia()" style="padding:5px 8px;background:#3a1e1e;border:none;border-radius:6px;color:#f87171;font-size:11px;cursor:pointer;">✕</button>
+        </div>
+      </div>
+      <div id="rd-pt-c-info" style="color:#94a3b8;font-size:11px;margin-top:4px;">Nije postavljena</div>
+    </div>
+
+    <div id="rd-preview" style="display:none;background:#111827;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;font-size:12px;grid-template-columns:auto 1fr;gap:4px 8px;color:#e2e8f0;margin-bottom:10px;"></div>
+
+    <div class="treg-meta-edit" style="margin-bottom:10px;">
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">⚙ Parametri trase</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;">
+        <label style="font-size:11px;color:#94a3b8;">Maks. nagib (%)<input id="rd-p-nagibMax" type="number" step="0.5" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
+        <label style="font-size:11px;color:#94a3b8;">Preporučeni nagib (%)<input id="rd-p-nagibPreporuceni" type="number" step="0.5" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
+        <label style="font-size:11px;color:#94a3b8;">Širina puta (m)<input id="rd-p-sirinaPuta" type="number" step="0.1" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
+        <label style="font-size:11px;color:#94a3b8;">Maks. dužina (m)<input id="rd-p-duzinaMax" type="number" step="100" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:11px;margin-top:8px;"><input id="rd-p-bezSerpentina" type="checkbox"> Ne pravi serpentine (zabrani oštre zaokrete)</label>
+    </div>
+
+    <button id="rd-generate-btn" onclick="_rdGenerate()" style="width:100%;padding:11px;background:#059669;border:none;border-radius:10px;color:#fff;font-size:13.5px;font-weight:600;cursor:pointer;opacity:0.5;">🧭 Generiši trasu</button>
+
+    <div id="rd-result" style="display:none;margin-top:10px;"></div>
+
+    <div style="margin-top:16px;">
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">💾 Sačuvane trase <span id="rd-saved-routes-count" style="color:#4ade80;"></span></div>
+      <div id="rd-saved-routes-list"></div>
+    </div>
+
+    <div class="stub-section" style="padding:20px 12px 4px;">
+      <p style="font-size:12px;">Uzdužni profil (grafikon), poprečni nagib/serpentine i izvještaj/PDF dolaze u sljedećoj fazi.</p>
     </div>
   </div>
 </div>
@@ -581,7 +628,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.7.0';
+const APP_VER = 'v0.8.0';
 document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -3715,6 +3762,544 @@ try { _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1'; } catch(e) {}
 _poziKljucUcitaj();
 
 // =====================================================================
+// PROJEKTOVANJE ŠUMSKOG PUTA — glue kod nad static/js/road-design.js (RD*).
+// Jezgro (rdFindRoute i dr.) je preneseno skoro doslovno iz izvorne app —
+// vidi napomenu na vrhu road-design.js. Ovaj blok dodaje: DEM (model terena)
+// preko Terrarium pločica (elevation-tiles-prod, isti free tile servis kao
+// nagib/hilšejd slojevi, bez ključa) sa Open-Meteo fallback-om, i UI (klik na
+// kartu za A/B/(opciona) međutačku, parametri, generisanje, čuvanje trase).
+//
+// NAMJERNO pojednostavljeno u odnosu na izvornu app: DEM keš je ovdje običan
+// bounds-keyed niz u memoriji (bez trajne IndexedDB perzistencije i bez
+// "odjel" konceptA — naša app nema GRANICE.kml/forest-compartment sistem),
+// i nema uzdužnog profila (grafikon) — vidi stub tekst u panelu.
+// =====================================================================
+
+// ─── DEM (model terena) preko Terrarium pločica, Open-Meteo fallback ──────
+const _DEM_RES = 60; // grid rezolucija u metrima
+const _TERR_CACHE = 'usf-terrarium-v1';
+
+function _termLon2x(lon, z) { return (lon + 180) / 360 * Math.pow(2, z); }
+function _termLat2y(lat, z) {
+  const r = lat * Math.PI / 180;
+  return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z);
+}
+
+async function _getTerrariumTile(z, x, y) {
+  const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
+  const sig = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(10000) : undefined;
+  const fetchOpts = sig ? { mode: 'cors', signal: sig } : { mode: 'cors' };
+  let blob = null;
+  if ('caches' in window) {
+    try {
+      const cache = await caches.open(_TERR_CACHE);
+      let resp = await cache.match(url);
+      if (!resp) {
+        resp = await fetch(url, fetchOpts);
+        if (resp?.ok) { cache.put(url, resp.clone()); } else return null;
+      }
+      blob = await resp.blob();
+    } catch(e) { return null; }
+  } else {
+    blob = await fetch(url, fetchOpts).then(r => r.ok ? r.blob() : null).catch(() => null);
+  }
+  if (!blob) return null;
+  if (typeof createImageBitmap !== 'undefined') return createImageBitmap(blob);
+  return new Promise(res => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
+function _terrariumDecodeTile(bitmapOrImg) {
+  const tmp = document.createElement('canvas');
+  tmp.width = tmp.height = 256;
+  const tc = tmp.getContext('2d', { willReadFrequently: true });
+  tc.drawImage(bitmapOrImg, 0, 0, 256, 256);
+  const raw = tc.getImageData(0, 0, 256, 256).data;
+  const elev = new Float32Array(256 * 256);
+  for (let i = 0; i < 256 * 256; i++) elev[i] = raw[i*4]*256 + raw[i*4+1] + raw[i*4+2]/256 - 32768;
+  return elev;
+}
+
+function _demGridBoundsAndStep(bounds, res) {
+  const s = bounds.getSouth(), n = bounds.getNorth();
+  const w = bounds.getWest(), e = bounds.getEast();
+  const degPerM = 1 / 111320;
+  let step = res * degPerM;
+  let rows = Math.ceil((n - s) / step);
+  let cols = Math.ceil((e - w) / step);
+  if (rows > 120 || cols > 120) {
+    const scale = Math.max(rows / 120, cols / 120);
+    step = step * scale;
+    rows = Math.ceil((n - s) / step);
+    cols = Math.ceil((e - w) / step);
+  }
+  return { s, n, w, e, step, rows, cols };
+}
+
+async function _demFetchGridTerrarium(bounds, res) {
+  const { s, n, w, e, step, rows, cols } = _demGridBoundsAndStep(bounds, res);
+  const centerLat = (s + n) / 2;
+  let z = Math.round(Math.log2(156543.03392 * Math.cos(centerLat * Math.PI/180) / res));
+  z = Math.max(8, Math.min(14, z));
+
+  const MAX_TILES_SIDE = 10;
+  let txMin, txMax, tyMin, tyMax;
+  for (;;) {
+    txMin = Math.floor(_termLon2x(w, z));
+    txMax = Math.floor(_termLon2x(e, z));
+    tyMin = Math.floor(_termLat2y(n, z));
+    tyMax = Math.floor(_termLat2y(s, z));
+    if ((txMax - txMin + 1) <= MAX_TILES_SIDE && (tyMax - tyMin + 1) <= MAX_TILES_SIDE) break;
+    z--;
+    if (z < 4) throw new Error('Oblast je prevelika za Terrarium pločice');
+  }
+
+  const tileKeys = [], tilePromises = [];
+  for (let ty = tyMin; ty <= tyMax; ty++) {
+    for (let tx = txMin; tx <= txMax; tx++) {
+      tileKeys.push(tx + ':' + ty);
+      tilePromises.push(_getTerrariumTile(z, tx, ty));
+    }
+  }
+  const tileImgs = await Promise.all(tilePromises);
+  const tileElevs = new Map();
+  tileImgs.forEach((img, i) => tileElevs.set(tileKeys[i], img ? _terrariumDecodeTile(img) : null));
+  if (![...tileElevs.values()].some(v => v !== null)) throw new Error('Terrarium DEM pločice nedostupne za ovu oblast');
+
+  const grid = new Float32Array(rows * cols);
+  for (let r = 0; r < rows; r++) {
+    const lat = s + r * step;
+    const fy = _termLat2y(lat, z);
+    const ty = Math.max(tyMin, Math.min(tyMax, Math.floor(fy)));
+    const py = Math.max(0, Math.min(255, Math.round((fy - ty) * 256)));
+    for (let c = 0; c < cols; c++) {
+      const lon = w + c * step;
+      const fx = _termLon2x(lon, z);
+      const tx = Math.max(txMin, Math.min(txMax, Math.floor(fx)));
+      const px = Math.max(0, Math.min(255, Math.round((fx - tx) * 256)));
+      const tileElev = tileElevs.get(tx + ':' + ty);
+      grid[r * cols + c] = tileElev ? tileElev[py * 256 + px] : NaN;
+    }
+  }
+  if (grid.some(v => Number.isNaN(v))) throw new Error('Nepotpuna Terrarium pokrivenost za ovu oblast');
+  return { grid, rows, cols, south: s, west: w, step, north: n, east: e };
+}
+
+async function _demFetchGridOpenMeteo(bounds, res) {
+  const { s, n, w, e, step, rows, cols } = _demGridBoundsAndStep(bounds, res);
+  const lats = [], lons = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { lats.push((s + r * step).toFixed(5)); lons.push((w + c * step).toFixed(5)); }
+  const batchSize = 100;
+  const elevArr = new Float32Array(rows * cols);
+  for (let i = 0; i < lats.length; i += batchSize) {
+    if (i > 0) await new Promise(res => setTimeout(res, 200));
+    const bLats = lats.slice(i, i + batchSize).join(',');
+    const bLons = lons.slice(i, i + batchSize).join(',');
+    let d;
+    for (let attempt = 0; ; attempt++) {
+      let r;
+      try { r = await _fetchT(`https://api.open-meteo.com/v1/elevation?latitude=${bLats}&longitude=${bLons}`, 15000); }
+      catch(err) { throw new Error('Mrežna greška — provjerite konekciju'); }
+      try { d = await r.json(); } catch(e) { throw new Error('Neispravan odgovor servera'); }
+      if (Array.isArray(d.elevation)) break;
+      const isRateLimit = /minut|limit/i.test(d.reason || '');
+      if (isRateLimit && attempt < 2) { await new Promise(res => setTimeout(res, attempt === 0 ? 3000 : 8000)); continue; }
+      throw new Error('Server nije vratio podatke o terenu' + (d.reason ? (': ' + d.reason) : ''));
+    }
+    for (let j = 0; j < d.elevation.length; j++) elevArr[i + j] = d.elevation[j];
+  }
+  return { grid: elevArr, rows, cols, south: s, west: w, step, north: n, east: e };
+}
+
+async function _demFetchGrid(bounds, res) {
+  try { return await _demFetchGridTerrarium(bounds, res); }
+  catch(err) { console.warn('Terrarium DEM neuspio, prelazim na Open-Meteo:', err.message); return _demFetchGridOpenMeteo(bounds, res); }
+}
+
+function _demBilinearElev(dem, lat, lon) {
+  const r = (lat - dem.south) / dem.step;
+  const c = (lon - dem.west) / dem.step;
+  const r0 = Math.max(0, Math.min(dem.rows - 2, Math.floor(r)));
+  const c0 = Math.max(0, Math.min(dem.cols - 2, Math.floor(c)));
+  const fr = r - r0, fc = c - c0;
+  const v00 = dem.grid[r0 * dem.cols + c0];
+  const v10 = dem.grid[(r0 + 1) * dem.cols + c0];
+  const v01 = dem.grid[r0 * dem.cols + c0 + 1];
+  const v11 = dem.grid[(r0 + 1) * dem.cols + c0 + 1];
+  return v00 * (1 - fr) * (1 - fc) + v10 * fr * (1 - fc) + v01 * (1 - fr) * fc + v11 * fr * fc;
+}
+
+// Jednostavan bounds-keyed keš u memoriji (bez "odjel" koncepta — vidi napomenu
+// na vrhu ove sekcije). Ograničen na zadnjih nekoliko gridova da ne raste beskonačno.
+let _demCache = [];
+async function _demForBounds(bounds) {
+  for (const d of _demCache) {
+    if (d.south <= bounds.getSouth() && d.north >= bounds.getNorth() &&
+        d.west <= bounds.getWest() && d.east >= bounds.getEast()) return d;
+  }
+  return null;
+}
+function _demCacheStore(dem) { _demCache.push(dem); if (_demCache.length > 6) _demCache.shift(); }
+
+// ─── UI: tačke A/B/(via), parametri, generisanje, sačuvane trase ──────────
+let _rdPoints = { start: null, end: null, via: null };  // {lat,lon,elev|null}
+let _rdMarkers = { start: null, end: null, via: null }; // L.circleMarker
+let _rdDem = null;
+let _rdResultPath = null;
+let _rdResultVal = null;
+let _rdResultLayer = null;
+let _rdResultParams = null;
+const _RD_PT_CFG = {
+  start: { label: 'A', color: '#4ade80', infoId: 'rd-pt-a-info' },
+  end:   { label: 'B', color: '#f87171', infoId: 'rd-pt-b-info' },
+  via:   { label: 'M', color: '#fbbf24', infoId: 'rd-pt-c-info' }
+};
+
+function openPutSection() {
+  _openStubPanel('put-panel', 'meni');
+  Object.keys(RD_DEFAULT_PARAMS).forEach(k => {
+    const el = document.getElementById('rd-p-' + k);
+    if (!el) return;
+    const p = rdLoadParams();
+    if (typeof RD_DEFAULT_PARAMS[k] === 'boolean') el.checked = !!p[k];
+    else el.value = p[k];
+  });
+  document.getElementById('rd-pt-via-add').style.display = _rdPoints.via ? 'none' : '';
+  document.getElementById('rd-pt-via').style.display = _rdPoints.via ? 'block' : 'none';
+  _rdRenderPoints();
+  _rdRenderSavedRoutes();
+}
+
+function _rdReadParamsFromForm() {
+  const p = {};
+  Object.keys(RD_DEFAULT_PARAMS).forEach(k => {
+    const el = document.getElementById('rd-p-' + k);
+    if (typeof RD_DEFAULT_PARAMS[k] === 'boolean') { p[k] = el ? el.checked : RD_DEFAULT_PARAMS[k]; return; }
+    const v = el ? parseFloat(el.value) : NaN;
+    p[k] = Number.isFinite(v) ? v : RD_DEFAULT_PARAMS[k];
+  });
+  return p;
+}
+function _rdCollectParams() { const p = _rdReadParamsFromForm(); rdSaveParams(p); return p; }
+
+// Panel je puni-ekran (pokriva kartu) — sakrij ga privremeno da korisnik može
+// kliknuti na kartu, pa ga ponovo prikaži nakon postavljanja tačke.
+function _rdPickPoint(which) {
+  document.getElementById('put-panel').classList.remove('show');
+  const label = which === 'start' ? 'POČETNU tačku (A)' : which === 'end' ? 'ZAVRŠNU tačku (B)' : 'MEĐUTAČKU';
+  showToast('📍 Klikni na kartu: odaberi ' + label);
+  map.getContainer().style.cursor = 'crosshair';
+  const handler = which === 'start' ? _rdOnMapClickStart : which === 'end' ? _rdOnMapClickEnd : _rdOnMapClickVia;
+  map.once('click', handler);
+}
+function _rdOnMapClickStart(e) { _rdSetPoint('start', e.latlng.lat, e.latlng.lng); }
+function _rdOnMapClickEnd(e) { _rdSetPoint('end', e.latlng.lat, e.latlng.lng); }
+function _rdOnMapClickVia(e) { _rdSetPoint('via', e.latlng.lat, e.latlng.lng); }
+
+function _rdSetPoint(which, lat, lon) {
+  const cfg = _RD_PT_CFG[which];
+  _rdPoints[which] = { lat, lon, elev: null };
+  _rdDem = null;
+  if (_rdMarkers[which]) map.removeLayer(_rdMarkers[which]);
+  const mk = L.circleMarker([lat, lon], { radius: 7, color: cfg.color, fillColor: cfg.color, fillOpacity: 1 }).addTo(map);
+  mk.bindTooltip(cfg.label, { permanent: true, direction: 'top', className: 'leaflet-tooltip' });
+  _rdMarkers[which] = mk;
+  map.getContainer().style.cursor = '';
+  document.getElementById('put-panel').classList.add('show');
+  _rdRenderPoints();
+  showToast('✓ Tačka ' + cfg.label + ' postavljena');
+}
+
+function _rdRemoveVia() {
+  if (_rdMarkers.via) { map.removeLayer(_rdMarkers.via); _rdMarkers.via = null; }
+  _rdPoints.via = null;
+  _rdDem = null;
+  document.getElementById('rd-pt-via-add').style.display = '';
+  document.getElementById('rd-pt-via').style.display = 'none';
+  _rdRenderPoints();
+}
+
+function _rdPaintPointInfo(which) {
+  const cfg = _RD_PT_CFG[which];
+  const pt = _rdPoints[which];
+  const infoEl = document.getElementById(cfg.infoId);
+  if (!infoEl) return;
+  if (!pt) { infoEl.textContent = 'Nije postavljena'; return; }
+  const elevTxt = pt.elev != null ? Math.round(pt.elev) + ' m nv' : '(visina: preuzima se pri pregledu)';
+  infoEl.textContent = `${pt.lat.toFixed(6)}, ${pt.lon.toFixed(6)} — ${elevTxt}`;
+}
+
+function _rdRenderPoints() {
+  _rdPaintPointInfo('start');
+  _rdPaintPointInfo('end');
+  if (_rdPoints.via) _rdPaintPointInfo('via');
+  _rdUpdatePreviewAndButton();
+}
+
+let _rdNotReadyReason = 'Postavite obje tačke (A i B)';
+
+async function _rdUpdatePreviewAndButton() {
+  const a = _rdPoints.start, b = _rdPoints.end;
+  const btn = document.getElementById('rd-generate-btn');
+  const prevEl = document.getElementById('rd-preview');
+  if (!a || !b) {
+    _rdNotReadyReason = 'Postavite obje tačke (A i B)';
+    btn.style.opacity = '0.5';
+    prevEl.style.display = 'none';
+    return;
+  }
+  if (_rdDem && a.elev != null && b.elev != null && (!_rdPoints.via || _rdPoints.via.elev != null)) {
+    _rdRenderPreviewStats(a, b);
+    _rdNotReadyReason = null;
+    btn.style.opacity = '1';
+    return;
+  }
+  prevEl.style.display = 'grid';
+  prevEl.innerHTML = '<span style="grid-column:1/3;color:#94a3b8;">⏳ Učitavam model terena…</span>';
+  _rdNotReadyReason = 'Model terena se još učitava — sačekajte par sekundi pa probajte ponovo';
+  btn.style.opacity = '0.5';
+  const viaPt = _rdPoints.via;
+  const boundPts = [[a.lat, a.lon], [b.lat, b.lon]];
+  if (viaPt) boundPts.push([viaPt.lat, viaPt.lon]);
+  const bounds = L.latLngBounds(boundPts).pad(0.3);
+  let dem = null, fetchErr = null;
+  try {
+    dem = await _demForBounds(bounds);
+    if (!dem) { dem = await _demFetchGrid(bounds, _DEM_RES); if (dem) _demCacheStore(dem); }
+  } catch(e) { fetchErr = e; }
+  if (_rdPoints.start !== a || _rdPoints.end !== b) return; // tačke promijenjene u međuvremenu
+  _rdDem = dem;
+  if (!dem) {
+    const reason = fetchErr ? fetchErr.message : 'nije dostupan za ovu oblast';
+    prevEl.innerHTML = `<span style="grid-column:1/3;color:#f87171;">⚠ Model terena nedostupan (${_escHtml(reason)}). Provjerite internet i probajte ponovo.</span>`;
+    _rdNotReadyReason = 'Model terena nedostupan: ' + reason;
+    return;
+  }
+  a.elev = _demBilinearElev(dem, a.lat, a.lon);
+  b.elev = _demBilinearElev(dem, b.lat, b.lon);
+  if (_rdPoints.via) _rdPoints.via.elev = _demBilinearElev(dem, _rdPoints.via.lat, _rdPoints.via.lon);
+  _rdPaintPointInfo('start');
+  _rdPaintPointInfo('end');
+  if (_rdPoints.via) _rdPaintPointInfo('via');
+  _rdRenderPreviewStats(a, b);
+  _rdNotReadyReason = null;
+  btn.style.opacity = '1';
+}
+
+function _rdRenderPreviewStats(a, b) {
+  const prevEl = document.getElementById('rd-preview');
+  const prev = rdPreview(a.lat, a.lon, a.elev, b.lat, b.lon, b.elev);
+  const nagibMax = _rdReadParamsFromForm().nagibMax;
+  prevEl.innerHTML = `
+    <span style="color:#94a3b8;">Udaljenost</span><span>${_msrFmt(prev.distM)}</span>
+    <span style="color:#94a3b8;">Azimut</span><span>${prev.azimuthDeg.toFixed(1)}°</span>
+    <span style="color:#94a3b8;">Visinska razlika</span><span>${prev.deltaH >= 0 ? '+' : ''}${prev.deltaH.toFixed(0)} m</span>
+    <span style="color:#94a3b8;">Nagib prave linije</span><span style="color:${prev.directSlopePct > nagibMax ? '#f87171' : '#4ade80'}">${prev.directSlopePct.toFixed(1)}%${prev.directSlopePct > nagibMax ? ' — potrebna trasa, ne prava linija' : ''}</span>
+  `;
+}
+
+function _rdIterBudget(straightDistM) { return Math.max(6000, Math.min(100000, Math.round(straightDistM * 40))); }
+
+function _rdRouteLeg(dem, aLat, aLon, bLat, bLon, params) {
+  const straightDist = rdHaversine(aLat, aLon, bLat, bLon);
+  return rdFindRoute({
+    startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon,
+    sampleElev: (lat, lon) => _demBilinearElev(dem, lat, lon),
+    params, maxIterations: _rdIterBudget(straightDist)
+  });
+}
+
+function _rdGenerate() {
+  const a = _rdPoints.start, b = _rdPoints.end, via = _rdPoints.via;
+  if (_rdNotReadyReason) { showToast('⚠ ' + _rdNotReadyReason); return; }
+  if (!a || !b || !_rdDem || a.elev == null || b.elev == null) { showToast('⚠ Postavite obje tačke i sačekajte model terena'); return; }
+  if (via && via.elev == null) { showToast('⚠ Sačekajte da se učita visina međutačke'); return; }
+  const params = _rdCollectParams();
+  const dem = _rdDem;
+  showToast('⏳ Tražim optimalnu trasu…');
+  const serpHint = params.bezSerpentina ? ', isključite "Ne pravi serpentine"' : '';
+  setTimeout(() => {
+    let path;
+    if (via) {
+      const leg1 = _rdRouteLeg(dem, a.lat, a.lon, via.lat, via.lon, params);
+      if (!leg1.ok) { showToast('⚠ Nije moguće naći trasu do međutačke — probajte veći maksimalni nagib' + serpHint + ', ili pomjerite međutačku'); return; }
+      const leg2 = _rdRouteLeg(dem, via.lat, via.lon, b.lat, b.lon, params);
+      if (!leg2.ok) { showToast('⚠ Nije moguće naći trasu od međutačke do B — probajte veći maksimalni nagib' + serpHint + ', ili pomjerite međutačku'); return; }
+      path = leg1.path.concat(leg2.path.slice(1));
+    } else {
+      const res = _rdRouteLeg(dem, a.lat, a.lon, b.lat, b.lon, params);
+      if (!res.ok) {
+        showToast(res.reason === 'NO_ROUTE'
+          ? '⚠ Nije moguće naći trasu unutar zadanih parametara — probajte veći maksimalni nagib' + serpHint + ', dodajte međutačku, ili drugu tačku'
+          : '⚠ Model terena ne pokriva odabrane tačke');
+        return;
+      }
+      path = res.path;
+    }
+    _rdResultPath = path;
+    _rdResultVal = rdValidateRoute(path, params);
+    _rdResultParams = params;
+    _rdShowResult();
+  }, 30);
+}
+
+function _rdDiscardResult() {
+  if (_rdResultLayer) { map.removeLayer(_rdResultLayer); _rdResultLayer = null; }
+  _rdResultPath = null;
+  _rdResultVal = null;
+  _rdResultParams = null;
+  const resEl = document.getElementById('rd-result');
+  if (resEl) { resEl.style.display = 'none'; resEl.innerHTML = ''; }
+}
+
+function _rdShowResult() {
+  if (_rdResultLayer) map.removeLayer(_rdResultLayer);
+  const latlngs = _rdResultPath.map(p => [p.lat, p.lon]);
+  _rdResultLayer = L.polyline(latlngs, { color: '#a78bfa', weight: 4, opacity: 0.9, dashArray: '8,6' }).addTo(map);
+
+  const v = _rdResultVal;
+  const nWarn = v.segments.filter(s => s.level === 'warn').length;
+  const nBad = v.segments.filter(s => s.level === 'bad').length;
+  let badgeHtml;
+  if (nBad > 0) badgeHtml = `<div style="background:#3a1e1e;border:1px solid #dc2626;color:#f87171;padding:6px 8px;border-radius:6px;font-size:12px;">🔴 ${nBad} segmenata prelazi maksimalni nagib</div>`;
+  else if (nWarn > 0) badgeHtml = `<div style="background:#3a2e1e;border:1px solid #d97706;color:#fbbf24;padding:6px 8px;border-radius:6px;font-size:12px;">🟠 ${nWarn} segmenata iznad preporučenog (ali unutar maksimalnog) nagiba</div>`;
+  else badgeHtml = `<div style="background:#1e3a2e;border:1px solid #16a34a;color:#4ade80;padding:6px 8px;border-radius:6px;font-size:12px;">✅ Cijela trasa unutar preporučenog nagiba</div>`;
+
+  const first = _rdResultPath[0], last = _rdResultPath[_rdResultPath.length - 1];
+  const azOverall = rdAzimuth(first.lat, first.lon, last.lat, last.lon);
+  const dhOverall = last.elev - first.elev;
+
+  const resEl = document.getElementById('rd-result');
+  resEl.style.display = 'block';
+  resEl.innerHTML = `
+    <div style="background:#111827;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:5px 6px;color:#e2e8f0;margin-bottom:6px;">
+      <span style="color:#94a3b8;">Dužina trase</span><span>${_msrFmt(v.totalDist)}</span>
+      <span style="color:#94a3b8;">Azimut (A→B)</span><span>${azOverall.toFixed(1)}°</span>
+      <span style="color:#94a3b8;">Visinska razlika</span><span>${dhOverall >= 0 ? '+' : ''}${dhOverall.toFixed(0)} m</span>
+      <span style="color:#94a3b8;">Maksimalni nagib</span><span>${v.maxSlopePct.toFixed(1)}%</span>
+      <span style="color:#94a3b8;">Prosječni nagib</span><span>${v.avgSlopePct.toFixed(1)}%</span>
+      <span style="color:#94a3b8;">Broj tačaka trase</span><span>${_rdResultPath.length}</span>
+    </div>
+    ${badgeHtml}
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button onclick="_rdSaveRoute()" style="flex:1;padding:8px;background:#059669;border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">💾 Sačuvaj rutu</button>
+      <button onclick="_rdDiscardResult()" style="padding:8px 12px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:12px;cursor:pointer;">Odbaci</button>
+    </div>
+  `;
+  showToast(`✓ Trasa: ${_msrFmt(v.totalDist)}, max nagib ${v.maxSlopePct.toFixed(1)}%`);
+}
+
+const _RD_ROUTES_KEY = 'usf_sumski_putevi';
+const _RD_ROUTE_DEFAULT_COLOR = '#a78bfa';
+let _rdShownRouteLayers = {};
+
+function _rdGetSavedRoutes() { try { return JSON.parse(localStorage.getItem(_RD_ROUTES_KEY) || '[]'); } catch(e) { return []; } }
+function _rdSetSavedRoutes(list) { try { localStorage.setItem(_RD_ROUTES_KEY, JSON.stringify(list)); } catch(e) {} }
+
+function _rdSaveRoute() {
+  if (!_rdResultPath || !_rdResultVal) return;
+  const routes = _rdGetSavedRoutes();
+  const nm = 'Šumski put ' + (routes.length + 1);
+  const first = _rdResultPath[0], last = _rdResultPath[_rdResultPath.length - 1];
+  routes.push({
+    id: _genUUID(),
+    nm,
+    pts: _rdResultPath.map(p => ({ la: p.lat, lo: p.lon, al: p.elev })),
+    totalDist: _rdResultVal.totalDist,
+    maxSlopePct: _rdResultVal.maxSlopePct,
+    avgSlopePct: _rdResultVal.avgSlopePct,
+    azimuthDeg: rdAzimuth(first.lat, first.lon, last.lat, last.lon),
+    deltaH: last.elev - first.elev,
+    color: _RD_ROUTE_DEFAULT_COLOR,
+    nagibMax: _rdResultParams?.nagibMax ?? RD_DEFAULT_PARAMS.nagibMax,
+    nagibPreporuceni: _rdResultParams?.nagibPreporuceni ?? RD_DEFAULT_PARAMS.nagibPreporuceni,
+    createdAt: new Date().toISOString()
+  });
+  _rdSetSavedRoutes(routes);
+  _rdDiscardResult();
+  _rdRenderSavedRoutes();
+  showToast('✅ Ruta sačuvana: ' + nm);
+}
+
+function _rdRenderSavedRoutes() {
+  const wrap = document.getElementById('rd-saved-routes-list');
+  if (!wrap) return;
+  const routes = _rdGetSavedRoutes();
+  const countEl = document.getElementById('rd-saved-routes-count');
+  if (countEl) countEl.textContent = routes.length ? String(routes.length) : '';
+  if (!routes.length) { wrap.innerHTML = '<div style="font-size:11.5px;color:#64748b;padding:4px 0;">Nema sačuvanih trasa.</div>'; return; }
+  wrap.innerHTML = routes.map(r => {
+    const shown = !!_rdShownRouteLayers[r.id];
+    const col = r.color || _RD_ROUTE_DEFAULT_COLOR;
+    const first = r.pts[0], last = r.pts[r.pts.length - 1];
+    const az = r.azimuthDeg != null ? r.azimuthDeg : rdAzimuth(first.la, first.lo, last.la, last.lo);
+    const dh = r.deltaH != null ? r.deltaH : (last.al - first.al);
+    return `<div class="treg-row" style="border-left:3px solid ${col};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+          <span style="display:flex;align-items:center;gap:6px;min-width:0;">
+            <input type="color" value="${col}" onchange="_rdSetRouteColor('${r.id}',this.value)" title="Boja trase" style="width:20px;height:20px;border:1px solid #334155;border-radius:4px;cursor:pointer;padding:0;background:none;flex-shrink:0;">
+            <span style="color:#e2e8f0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(r.nm)}</span>
+          </span>
+          ${shown ? `<span style="color:${col};white-space:nowrap;font-size:10.5px;">● na karti</span>` : ''}
+        </div>
+        <div style="color:#94a3b8;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${_msrFmt(r.totalDist)} · azimut ${az.toFixed(0)}° · Δh ${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m · maks ${r.maxSlopePct.toFixed(1)}%
+        </div>
+        <div style="display:flex;gap:4px;margin-top:6px;">
+          <button onclick="_rdToggleSavedRouteOnMap('${r.id}')" style="flex:1;padding:5px;background:${shown ? '#7c3aed' : '#374151'};border:none;border-radius:5px;color:#fff;font-size:11px;cursor:pointer;">${shown ? '🗺 Sakrij' : '🗺 Prikaži'}</button>
+          <button onclick="_rdRenameSavedRoute('${r.id}')" style="padding:5px 8px;background:#374151;border:none;border-radius:5px;color:#e2e8f0;font-size:11px;cursor:pointer;">✎</button>
+          <button onclick="_rdDeleteSavedRoute('${r.id}')" style="padding:5px 8px;background:#3a1e1e;border:none;border-radius:5px;color:#f87171;font-size:11px;cursor:pointer;">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function _rdToggleSavedRouteOnMap(id) {
+  if (_rdShownRouteLayers[id]) { map.removeLayer(_rdShownRouteLayers[id]); delete _rdShownRouteLayers[id]; _rdRenderSavedRoutes(); return; }
+  const r = _rdGetSavedRoutes().find(x => x.id === id);
+  if (!r) return;
+  const poly = L.polyline(r.pts.map(p => [p.la, p.lo]), { color: r.color || _RD_ROUTE_DEFAULT_COLOR, weight: 4, dashArray: '8,6' }).addTo(map);
+  _rdShownRouteLayers[id] = poly;
+  map.fitBounds(poly.getBounds(), { padding: [40, 40] });
+  document.getElementById('put-panel').classList.remove('show');
+  showToast('🗺 Prikazano na karti: ' + r.nm);
+  _rdRenderSavedRoutes();
+}
+
+function _rdSetRouteColor(id, col) {
+  const routes = _rdGetSavedRoutes();
+  const r = routes.find(x => x.id === id);
+  if (!r) return;
+  r.color = col;
+  _rdSetSavedRoutes(routes);
+  if (_rdShownRouteLayers[id]) _rdShownRouteLayers[id].setStyle({ color: col });
+  _rdRenderSavedRoutes();
+}
+
+async function _rdRenameSavedRoute(id) {
+  const routes = _rdGetSavedRoutes();
+  const r = routes.find(x => x.id === id);
+  if (!r) return;
+  const nw = await _dlgPrompt('Novi naziv trase:', r.nm, { title: 'Preimenuj trasu' });
+  if (!nw || !nw.trim()) return;
+  r.nm = nw.trim();
+  _rdSetSavedRoutes(routes);
+  _rdRenderSavedRoutes();
+}
+
+async function _rdDeleteSavedRoute(id) {
+  if (!await _dlgConfirm('Trajno obrisati ovu trasu?', { danger: true })) return;
+  if (_rdShownRouteLayers[id]) { map.removeLayer(_rdShownRouteLayers[id]); delete _rdShownRouteLayers[id]; }
+  _rdSetSavedRoutes(_rdGetSavedRoutes().filter(x => x.id !== id));
+  _rdRenderSavedRoutes();
+}
+
+// =====================================================================
 // GLAVNA NAVIGACIJA — Karta / Meni / Postavke, i sekcije iz Menija
 // =====================================================================
 let _activeMainTab = 'karta';
@@ -3732,7 +4317,6 @@ function _openStubPanel(panelId, tabForBack) {
   document.getElementById(panelId).classList.add('show');
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabForBack));
 }
-function openPutSection()         { _openStubPanel('put-panel', 'meni'); }
 function openTematskaSection()    { _openStubPanel('tematska-panel', 'meni'); }
 function openUcitajKartuSection() { _openStubPanel('ucitajkartu-panel', 'meni'); }
 function openUcitajKmlSection()   { _openStubPanel('ucitajkml-panel', 'meni'); }

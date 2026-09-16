@@ -2,7 +2,7 @@
 // Service Worker — UNA SANA FOREST
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '0.7.0';
+const APP_VERSION = '0.8.0';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -23,6 +23,7 @@ const APP_SHELL = [
   './static/libs/firebase/firebase-auth-compat.js',
   './static/libs/firebase/firebase-firestore-compat.js',
   './static/js/firebase-init.js',
+  './static/js/road-design.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
