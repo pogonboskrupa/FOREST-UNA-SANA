@@ -2,7 +2,7 @@
 // Service Worker — UNA SANA FOREST
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '0.19.0';
+const APP_VERSION = '0.20.0';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';

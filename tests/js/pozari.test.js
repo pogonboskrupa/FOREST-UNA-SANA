@@ -165,7 +165,7 @@ t('_poziPovrsTxt formatira hektare (decimala ispod 100, zaokruženo iznad)', () 
 
 t('_povGodUrl gradi kanton-bbox+cijela-godina SQL upit kao query string', () => {
   const src = "const _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };\n"
-    + extractFn('_povGodUrl') + '\nreturn _povGodUrl;';
+    + extractFn('_poziGfwKantonUrl') + '\n' + extractFn('_povGodUrl') + '\nreturn _povGodUrl;';
   const _povGodUrl = new Function(src)();
   const url = _povGodUrl(2026);
   assert.ok(url.startsWith('https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql='));
@@ -173,6 +173,17 @@ t('_povGodUrl gradi kanton-bbox+cijela-godina SQL upit kao query string', () => 
   assert.ok(sql.includes("alert__date >= '2026-01-01'"), 'mora tražiti od 1. januara te godine');
   assert.ok(sql.includes('latitude >= 44.300'), 'mora koristiti FIKSAN kanton bbox, ne radijus oko ref tačke');
   assert.ok(sql.includes('LIMIT 5000'));
+});
+
+t('_poziGfw30Url traži zadnjih 30 dana unutar kanton bbox-a', () => {
+  const src = "const _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };\n"
+    + extractFn('_poziGfwKantonUrl') + '\n' + extractFn('_poziGfw30Url') + '\nreturn _poziGfw30Url;';
+  const _poziGfw30Url = new Function(src)();
+  const url = _poziGfw30Url();
+  const sql = decodeURIComponent(url.split('sql=')[1]);
+  const od = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  assert.ok(sql.includes("alert__date >= '" + od + "'"), 'mora tražiti tačno 30 dana unazad');
+  assert.ok(sql.includes('latitude >= 44.300'), 'mora koristiti kanton bbox');
 });
 
 t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabira površinu', () => {
