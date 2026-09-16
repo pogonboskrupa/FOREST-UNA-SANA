@@ -191,4 +191,45 @@ t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabi
   assert.ok(Math.abs(mjeseci[1].ha - 100) < 0.001);
 });
 
+t('_poziSimEligible: samo požari praćeni 3+ dana', () => {
+  const src = "const _POZ_SIM_MIN_TRAJANJE_MS = 3 * 86400000;\n" + extractFn('_poziSimEligible') + '\nreturn _poziSimEligible;';
+  const _poziSimEligible = new Function(src)();
+  const kratak = { prvi: Date.parse('2026-07-01T00:00:00Z'), zadnji: Date.parse('2026-07-02T00:00:00Z') };
+  const dug = { prvi: Date.parse('2026-07-01T00:00:00Z'), zadnji: Date.parse('2026-07-05T00:00:00Z') };
+  assert.strictEqual(_poziSimEligible(kratak), false);
+  assert.strictEqual(_poziSimEligible(dug), true);
+  assert.strictEqual(_poziSimEligible({ prvi: null, zadnji: null }), false);
+});
+
+t('_poziSimDani vraća distinktne UTC dane hronološki', () => {
+  const src = extractFn('_poziSimDani') + '\nreturn _poziSimDani;';
+  const _poziSimDani = new Function(src)();
+  const g = { pts: [
+    { dt: '2026-07-03T10:00:00Z' },
+    { dt: '2026-07-01T05:00:00Z' },
+    { dt: '2026-07-01T22:00:00Z' }, // isti dan kao gornji — ne smije se duplirati
+    { dt: '2026-07-02T00:00:00Z' }
+  ] };
+  assert.deepStrictEqual(_poziSimDani(g), ['2026-07-01', '2026-07-02', '2026-07-03']);
+});
+
+t('_poziSimPodaciZaDan je kumulativan — dan N sadrži sve detekcije zaključno sa tim danom', () => {
+  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' +
+    extractFn('_poziSimDani') + '\n' + extractFn('_poziSimPodaciZaDan') + '\nreturn _poziSimPodaciZaDan;';
+  const _poziSimPodaciZaDan = new Function(src)();
+  const g = { pts: [
+    { la: 44.80, lo: 16.00, dt: '2026-07-01T05:00:00Z', rez: 375 },
+    { la: 44.85, lo: 16.05, dt: '2026-07-02T05:00:00Z', rez: 375 },
+    { la: 44.90, lo: 16.10, dt: '2026-07-04T05:00:00Z', rez: 375 }
+  ] };
+  const dan0 = _poziSimPodaciZaDan(g, 0);
+  assert.strictEqual(dan0.pts.length, 1);
+  assert.strictEqual(dan0.dan, '2026-07-01');
+  const dan1 = _poziSimPodaciZaDan(g, 1);
+  assert.strictEqual(dan1.pts.length, 2, 'dan 2 mora sadržati i dan 1');
+  const dan2 = _poziSimPodaciZaDan(g, 2);
+  assert.strictEqual(dan2.pts.length, 3, 'zadnji dan mora sadržati sve detekcije');
+  assert.ok(dan2.ha > dan1.ha, 'kumulativna površina mora rasti sa danima');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
