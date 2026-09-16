@@ -153,6 +153,37 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 #map-fabs button#ab-loc.active { color:#22c55e; }
 #map-fabs button#ab-tragovi.active { color:#f97316; }
+#map-fabs button#ab-msr.active { color:#a78bfa; }
+
+/* === Mjerenja — plutajući alatni panel dok je aktivno crtanje === */
+#msr-panel {
+  display:none; position:fixed; bottom:76px; left:12px; right:12px; z-index:650;
+  background:rgba(15,23,42,0.97); border:1.5px solid #1e3a5f; border-radius:14px;
+  padding:12px; box-shadow:0 6px 24px rgba(0,0,0,0.5); max-width:360px; margin:0 auto;
+}
+#msr-panel.show { display:block; }
+#msr-panel .msr-modes { display:flex; gap:6px; margin-bottom:10px; }
+#msr-panel .msr-modes button {
+  flex:1; background:#1e293b; border:1px solid #334155; color:#94a3b8;
+  border-radius:8px; padding:8px 4px; font-size:11px; cursor:pointer;
+}
+#msr-panel .msr-modes button.on { background:#1e3a5f; border-color:#38bdf8; color:#38bdf8; }
+#msr-panel .msr-swatches { display:flex; gap:6px; margin-bottom:10px; }
+.msr-swatch {
+  width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent;
+}
+.msr-swatch.on { border-color:#fff; box-shadow:0 0 0 2px #1e293b; }
+#msr-panel .msr-stats { color:#e2e8f0; font-size:12px; margin-bottom:10px; display:none; }
+#msr-panel .msr-stats.show { display:block; }
+#msr-panel .msr-hint { color:#64748b; font-size:11px; margin-bottom:10px; line-height:1.4; }
+#msr-panel .msr-btns { display:flex; gap:6px; flex-wrap:wrap; }
+#msr-panel .msr-btns button {
+  flex:1; min-width:70px; background:#1e293b; border:1px solid #334155; color:#cbd5e1;
+  border-radius:8px; padding:9px 8px; font-size:12px; font-weight:600; cursor:pointer;
+}
+#msr-panel .msr-btns button.primary { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+#msr-panel .msr-btns button.stop { background:#7f1d1d; border-color:#7f1d1d; color:#fecaca; }
+#msr-panel label.msr-draw-toggle { display:flex; align-items:center; gap:6px; color:#94a3b8; font-size:11px; margin-bottom:8px; }
 
 /* === Puni-ekran paneli (Meni / Postavke / sekcije) === */
 .usf-panel {
@@ -302,7 +333,35 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <!-- Plutajući alati na Karti — Moja lokacija / Tragovi (vertikalni stub) -->
 <div id="map-fabs">
   <button id="ab-loc" onclick="_toggleLocPopup()" title="Moja lokacija">📍</button>
+  <button id="ab-msr" onclick="_toggleMsrPanel()" title="Mjerenja">📏</button>
   <button id="ab-tragovi" onclick="openTragoviPanel()" title="Tragovi">🥾</button>
+</div>
+
+<!-- Mjerenja — plutajući alatni panel -->
+<div id="msr-panel">
+  <div class="msr-modes">
+    <button id="msrm-dist" class="on" onclick="_msrSetMode('dist')">📏 Udaljenost</button>
+    <button id="msrm-area" onclick="_msrSetMode('area')">◻ Površina</button>
+    <button id="msrm-nagib" onclick="_msrSetMode('nagib')">📐 Nagib</button>
+  </div>
+  <div class="msr-swatches" id="msr-swatches"></div>
+  <label class="msr-draw-toggle" id="msr-draw-row">
+    <input type="checkbox" id="msr-draw-chk" onchange="_msrToggleDraw(this.checked)"> Crtaj (dodaj tačke pomjeranjem karte)
+  </label>
+  <div class="msr-stats" id="msr-stats"></div>
+  <div class="msr-hint" id="msr-hint">Pritisni ▶ Počni pa klikaj tačke na karti.</div>
+  <div class="msr-btns">
+    <button class="primary" id="btn-msr-start" onclick="msrToggle()">▶ Počni</button>
+    <button id="btn-msr-undo" style="display:none;" onclick="msrUndo()">↩ Undo</button>
+    <button onclick="msrClear()">🗑 Obriši</button>
+    <button onclick="_toggleMsrPanel()">✕ Zatvori</button>
+  </div>
+</div>
+
+<!-- Mjerenja — lista sačuvanih -->
+<div id="mjerenja-panel" class="usf-panel">
+  <div class="up-hdr"><h2>📏 Mjerenja <span id="msr-saved-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="closeMjerenjaPanel()">✕</button></div>
+  <div class="up-body"><div id="msr-saved-list"></div></div>
 </div>
 
 <!-- Glavna navigacija — Karta / Meni / Postavke -->
@@ -375,6 +434,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="meni-card" onclick="openTragoviPanel()">
       <div class="mc-ico">🥾</div>
       <div class="mc-txt"><b>Tragovi</b><span>Sačuvani GPS tragovi</span></div>
+      <div class="mc-badge ready">Spremno</div>
+    </div>
+    <div class="meni-card" onclick="openMjerenjaPanel()">
+      <div class="mc-ico">📏</div>
+      <div class="mc-txt"><b>Mjerenja</b><span>Sačuvane udaljenosti, površine, nagibi</span></div>
       <div class="mc-badge ready">Spremno</div>
     </div>
   </div>
@@ -492,7 +556,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.3.1';
+const APP_VER = 'v0.4.0';
 document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -1880,10 +1944,463 @@ window.addEventListener('pagehide', () => { _crashSaveTrag(); });
 _tragRegLoad();
 
 // =====================================================================
+// MJERENJA — crtanje linije/poligona, površina/obim/nagib, proximity
+// fallback klik. Dijeli pane 'tragMsrLines' sa tragom — kad Požari tačke
+// (pane 'pozariPane', VIŠI z-index) budu dodane, gornji canvas može
+// "progutati" DOM klik namijenjen linijama ispod (canvas element hvata
+// klik na CIJELOM svom pravougaoniku, ne samo tamo gdje je nešto
+// nacrtano). Zato generic map click handler ispod NE zavisi od Leaflet-ovog
+// vlastitog per-layer click routinga — sam računa udaljenost piksela do
+// linije/unutar poligona, i radi identično bez obzira šta je iznad.
+// =====================================================================
+let _msrOn = false, _msrPts = [], _msrLayer = null, _msrSavedLayer = null;
+let _msrElevCache = {}, _msrColor = '#fbbf24', _msrMode = 'dist';
+const _MSR_REG_KEY = 'usf_mjerenja';
+let _msrRegistry = [];
+const _MSR_COLORS = ['#fbbf24','#38bdf8','#4ade80','#a78bfa','#fb7185','#f97316'];
+
+function _msrRegLoad() {
+  try { const raw = localStorage.getItem(_MSR_REG_KEY); if (raw) _msrRegistry = JSON.parse(raw); } catch(e) { _msrRegistry = []; }
+  _msrRegRender();
+}
+function _msrRegSave() {
+  try { localStorage.setItem(_MSR_REG_KEY, JSON.stringify(_msrRegistry)); return true; }
+  catch(e) { showToast('⚠ Lokalni upis nije uspio — sačuvaj izvoz prije zatvaranja'); return false; }
+}
+
+function _distToSegPx(p, p1, p2) {
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const lenSq = dx*dx + dy*dy;
+  if (lenSq === 0) return Math.hypot(p.x - p1.x, p.y - p1.y);
+  let t = ((p.x - p1.x)*dx + (p.y - p1.y)*dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (p1.x + t*dx), p.y - (p1.y + t*dy));
+}
+function _msrFmt(m) { return m >= 1000 ? (m/1000).toFixed(2) + ' km' : Math.round(m) + ' m'; }
+function _msrHaversine(lat1,lng1,lat2,lng2) {
+  const R=6371000, toR=Math.PI/180;
+  const dlat=(lat2-lat1)*toR, dlng=(lng2-lng1)*toR;
+  const a=Math.sin(dlat/2)**2+Math.cos(lat1*toR)*Math.cos(lat2*toR)*Math.sin(dlng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function _msrPts2Len(pts) { let len = 0; for (let i = 0; i < pts.length - 1; i++) len += _msrHaversine(pts[i].lat, pts[i].lng, pts[i+1].lat, pts[i+1].lng); return len; }
+// Spherical excess — geodetska površina poligona u m². Tačna SAMO za prost
+// (samo-nepresijecajući) poligon.
+function _msrSphericalArea(pts) {
+  const R = 6371000, toR = Math.PI / 180;
+  const n = pts.length;
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const lat1 = pts[i].lat * toR, lng1 = pts[i].lng * toR;
+    const lat2 = pts[j].lat * toR, lng2 = pts[j].lng * toR;
+    area += (lng2 - lng1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+  }
+  return Math.abs(area * R * R / 2);
+}
+// Površina otporna na SAMO-PRESIJECANJE (terenska prijava: "dupli poligoni
+// koji se preklapaju"). Kad korisnik pređe preko već ucrtanog dijela
+// (ispravljanje greške, zaobilaženje prepreke) nastaje samo-presijecajući
+// prsten — naivna shoelace/spherical-excess formula je definisana SAMO za
+// prost poligon. turf.unkinkPolygon razdvoji prsten na mjestu svakog
+// samopresjeka, pa se dijelovi SPAJAJU (turf.union, ne saberu — sabiranje
+// bi dvaput brojalo dio koji se preklapa).
+function _msrPoligonPovrsina(pts) {
+  const fallback = () => _msrSphericalArea(pts);
+  if (typeof turf === 'undefined' || !pts || pts.length < 3) return fallback();
+  try {
+    const ring = pts.map(p => [p.lng, p.lat]);
+    ring.push(ring[0]);
+    const raspareno = turf.unkinkPolygon(turf.polygon([ring]));
+    const feats = raspareno && raspareno.features;
+    if (!feats || !feats.length) return fallback();
+    let unija = feats[0];
+    for (let i = 1; i < feats.length; i++) { try { unija = turf.union(unija, feats[i]) || unija; } catch(e) {} }
+    const a = turf.area(unija);
+    return isFinite(a) && a > 0 ? a : fallback();
+  } catch(e) { return fallback(); }
+}
+function _fetchT(url, ms = 12000, opts = {}) {
+  const sig = (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') ? AbortSignal.timeout(ms) : undefined;
+  return fetch(url, sig ? { ...opts, signal: sig } : opts);
+}
+async function _msrFetchElev(lat, lng) {
+  const key = lat.toFixed(5)+','+lng.toFixed(5);
+  if (_msrElevCache[key] != null) return _msrElevCache[key];
+  try {
+    const r = await _fetchT(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(5)}&longitude=${lng.toFixed(5)}`, 8000);
+    const d = await r.json();
+    const v = d.elevation?.[0];
+    if (v != null) _msrElevCache[key] = v;
+    return v ?? null;
+  } catch { return null; }
+}
+
+function _msrSetMode(m) {
+  _msrMode = m;
+  ['dist','area','nagib'].forEach(k => document.getElementById('msrm-'+k)?.classList.toggle('on', k === m));
+  if (m === 'nagib' && _msrPts.length > 2) { _msrPts = _msrPts.slice(0, 2); _msrRedraw(); _msrUpdPanel(); }
+  const hints = { dist:'Klikaj tačke — mjeri ukupnu udaljenost.', area:'Klikaj ≥3 tačke — poligon se zatvara automatski.', nagib:'Klikni 2 tačke — nagib se računa automatski.' };
+  const hint = document.getElementById('msr-hint');
+  if (hint && !_msrOn) hint.textContent = hints[m];
+  const drawRow = document.getElementById('msr-draw-row');
+  if (drawRow) drawRow.style.display = (m === 'nagib') ? 'none' : '';
+  if (m === 'nagib' && _msrDrawOn) { const chk = document.getElementById('msr-draw-chk'); if (chk) chk.checked = false; _msrToggleDraw(false); }
+}
+function _msrSetColor(c) { _msrColor = c; document.querySelectorAll('.msr-swatch').forEach(s => s.classList.toggle('on', s.dataset.c === c)); _msrRedraw(); }
+function _msrBuildSwatches() {
+  const box = document.getElementById('msr-swatches');
+  if (!box || box.children.length) return;
+  _MSR_COLORS.forEach(c => {
+    const b = document.createElement('div');
+    b.className = 'msr-swatch' + (c === _msrColor ? ' on' : '');
+    b.style.background = c; b.dataset.c = c;
+    b.onclick = () => _msrSetColor(c);
+    box.appendChild(b);
+  });
+}
+
+// ── "Crtaj" — tačke se dodaju automatski dok korisnik pomjera mapu ispod
+// fiksnog crosshair-a, umjesto tapkanja svake tačke pojedinačno. ─────────
+let _msrDrawOn = false, _msrDrawLastPt = null;
+const MSR_DRAW_MIN_M = 4;
+function _msrToggleDraw(on) {
+  _msrDrawOn = !!on; _msrDrawLastPt = null;
+  if (_msrDrawOn) {
+    if (!_msrOn) msrStart();
+    map.on('move', _onMapMoveMsr);
+    const hint = document.getElementById('msr-hint');
+    if (hint) hint.innerHTML = '✍️ Crtaj uključeno — pomjeraj mapu, tačke se dodaju same.<br><small style="color:#475569">Isključi kvačicu za ručno klikanje</small>';
+  } else {
+    map.off('move', _onMapMoveMsr);
+    _msrRedraw();
+  }
+}
+function _onMapMoveMsr() {
+  if (!_msrDrawOn || !_msrOn) return;
+  const c = map.getCenter();
+  if (_msrDrawLastPt) { const d = dst(_msrDrawLastPt.la, _msrDrawLastPt.lo, c.lat, c.lng); if (d < MSR_DRAW_MIN_M) return; }
+  _msrDrawLastPt = { la: c.lat, lo: c.lng };
+  _msrAddPoint(c);
+}
+
+function _msrRedraw() {
+  if (!_msrLayer) return;
+  _msrLayer.clearLayers();
+  const pts = _msrPts;
+  if (!pts.length) return;
+  if (pts.length > 1) {
+    const latlngs = pts.map(p => [p.lat, p.lng]);
+    const drawLL = (pts.length >= 3 && _msrMode === 'area') ? [...latlngs, latlngs[0]] : latlngs;
+    _msrLayer.addLayer(L.polyline(drawLL, { color:'#fff', weight:7, opacity:0.85, lineCap:'round', lineJoin:'round', interactive:false, pane:'tragMsrLines' }));
+    _msrLayer.addLayer(L.polyline(drawLL, { color:_msrColor, weight:4, opacity:1.0, lineCap:'round', lineJoin:'round', interactive:false, pane:'tragMsrLines' }));
+    if (pts.length >= 3 && _msrMode === 'area') {
+      _msrLayer.addLayer(L.polygon(latlngs, { color:'#a78bfa', weight:1.5, dashArray:'4 4', fillColor:'#a78bfa', fillOpacity:0.08, pane:'tragMsrLines' }));
+    }
+  }
+  // Draggable markeri — SAMO van "Crtaj" moda (inače marker po tački zatrpa liniju).
+  if (!_msrDrawOn) {
+    pts.forEach((p, idx) => {
+      const ptColor = idx === 0 ? '#4ade80' : (idx === pts.length-1 ? '#f87171' : _msrColor);
+      const mk = L.marker([p.lat, p.lng], {
+        draggable: true, zIndexOffset: 500,
+        icon: L.divIcon({ className:'', html:`<div style="width:13px;height:13px;border-radius:50%;background:${ptColor};border:2.5px solid #fff;box-shadow:0 0 5px rgba(0,0,0,0.85);box-sizing:border-box;"></div>`, iconSize:[13,13], iconAnchor:[6,6] })
+      });
+      mk.on('dragend', async e => {
+        const ll = e.target.getLatLng();
+        _msrPts[idx] = { lat: ll.lat, lng: ll.lng, elev: null };
+        _msrRedraw(); _msrUpdPanel(); _msrSyncRegistry();
+        const elev = await _msrFetchElev(ll.lat, ll.lng);
+        if (_msrPts[idx]) { _msrPts[idx].elev = elev; _msrRedraw(); _msrUpdPanel(); _msrSyncRegistry(); }
+      });
+      mk.on('contextmenu', e => { L.DomEvent.stopPropagation(e); _msrPts.splice(idx, 1); _msrRedraw(); _msrUpdPanel(); _msrSyncRegistry(); });
+      _msrLayer.addLayer(mk);
+    });
+  }
+}
+
+function _msrUpdPanel() {
+  _msrUpdUndoBtn();
+  const box = document.getElementById('msr-stats');
+  if (!box) return;
+  const pts = _msrPts;
+  if (pts.length < 2) { box.classList.remove('show'); return; }
+  box.classList.add('show');
+  if (_msrMode === 'nagib' && pts.length >= 2) {
+    const a = pts[0], b = pts[pts.length-1];
+    const distM = _msrHaversine(a.lat,a.lng,b.lat,b.lng);
+    const dh = (b.elev != null && a.elev != null) ? b.elev - a.elev : null;
+    const pct = (dh != null && distM > 0) ? (dh/distM*100).toFixed(1) : null;
+    const ang = (dh != null && distM > 0) ? (Math.atan(dh/distM)*180/Math.PI).toFixed(1) : null;
+    box.innerHTML = `📏 ${_msrFmt(distM)}` + (pct!=null?` &nbsp; 📐 ${pct>0?'+':''}${pct}%`:'') + (ang!=null?` &nbsp; 🧭 ${ang}°`:'');
+    return;
+  }
+  let totalDist = 0;
+  for (let i = 0; i < pts.length-1; i++) totalDist += _msrHaversine(pts[i].lat,pts[i].lng,pts[i+1].lat,pts[i+1].lng);
+  let html = `📏 ${_msrFmt(totalDist)}`;
+  if (_msrMode === 'area' && pts.length >= 3) {
+    const areaM2 = _msrPoligonPovrsina(pts);
+    html += ` &nbsp; ◻ ${Math.round(areaM2).toLocaleString('bs')} m² (${(areaM2/10000).toFixed(2)} ha)`;
+  }
+  box.innerHTML = html;
+}
+
+async function _msrAddPoint(latlng) {
+  const pt = { lat: latlng.lat, lng: latlng.lng, elev: null };
+  _msrPts.push(pt);
+  _msrRedraw(); _msrUpdPanel(); _msrSyncRegistry();
+  if (_msrMode === 'nagib' && _msrPts.length === 2) {
+    const elev = await _msrFetchElev(latlng.lat, latlng.lng);
+    pt.elev = elev; _msrRedraw(); _msrUpdPanel();
+    msrStop();
+    return;
+  }
+  const elev = await _msrFetchElev(latlng.lat, latlng.lng);
+  pt.elev = elev; _msrRedraw(); _msrUpdPanel(); _msrSyncRegistry();
+}
+function _msrMapClick(e) { if (_msrOn) _msrAddPoint(e.latlng); }
+function _msrMapDblClick(e) { if (!_msrOn) return; L.DomEvent.stopPropagation(e); msrStop(); }
+
+function msrToggle() { if (_msrOn) msrStop(); else msrStart(); }
+function msrStart() {
+  _msrOn = true;
+  if (!_msrLayer) _msrLayer = L.layerGroup().addTo(map);
+  map.getContainer().style.cursor = 'crosshair';
+  map.on('click', _msrMapClick);
+  map.on('dblclick', _msrMapDblClick);
+  const btn = document.getElementById('btn-msr-start');
+  if (btn) { btn.textContent = '⏹ Završi'; btn.classList.remove('primary'); btn.classList.add('stop'); }
+  const hints = { dist:'Klikaj tačke — mjeri ukupnu udaljenost.', area:'Klikaj ≥3 tačke — poligon se zatvara automatski.', nagib:'Klikni 2 tačke — nagib se računa automatski.' };
+  const hint = document.getElementById('msr-hint');
+  if (hint) hint.innerHTML = (hints[_msrMode] || 'Klikaj tačke.') + '<br><small style="color:#475569">vuci tačku da pomjeriš · desni klik briši</small>';
+  _msrUpdUndoBtn();
+}
+function _msrSyncRegistry() {
+  if (!_mqmId) return;
+  const m = _msrRegistry.find(x => x.id === _mqmId);
+  if (m) { m.pts = _msrPts.slice(); _msrRegSave(); }
+}
+function msrStop(skipSave) {
+  _msrOn = false;
+  map.getContainer().style.cursor = '';
+  map.off('click', _msrMapClick);
+  map.off('dblclick', _msrMapDblClick);
+  if (_msrDrawOn) { const chk = document.getElementById('msr-draw-chk'); if (chk) chk.checked = false; _msrToggleDraw(false); }
+  const btn = document.getElementById('btn-msr-start');
+  if (btn) { btn.textContent = '▶ Počni'; btn.classList.remove('stop'); btn.classList.add('primary'); }
+  const hint = document.getElementById('msr-hint');
+  if (_msrPts.length >= 2) { if (hint) hint.innerHTML = 'Vuci tačke za korekciju · <small style="color:#475569">desni klik = obriši tačku</small>'; }
+  else if (hint) hint.textContent = 'Pritisni ▶ Počni pa klikaj tačke na karti.';
+  _msrUpdUndoBtn();
+  // Auto-sačuvaj ako ima ≥2 tačke i ovo nije edit postojećeg mjerenja —
+  // isti obrazac kao Snimi trag (sačuvaj odmah, preimenuj kasnije iz liste).
+  if (!skipSave && _msrPts.length >= 2 && !_mqmId) _msrRegAddFromActive();
+}
+function msrClear() {
+  msrStop(true);
+  _msrPts = []; _mqmId = null;
+  if (_msrLayer) { _msrLayer.clearLayers(); try { map.removeLayer(_msrLayer); } catch(e) {} _msrLayer = null; }
+  _msrUpdPanel(); _msrDrawAllSaved(); _msrUpdUndoBtn();
+  const hint = document.getElementById('msr-hint');
+  if (hint) hint.textContent = 'Pritisni ▶ Počni pa klikaj tačke na karti.';
+}
+function msrUndo() {
+  if (!_msrPts.length) return;
+  _msrPts.pop();
+  _msrDrawLastPt = _msrPts.length ? { la: _msrPts[_msrPts.length-1].lat, lo: _msrPts[_msrPts.length-1].lng } : null;
+  _msrRedraw(); _msrUpdPanel(); _msrSyncRegistry(); _msrUpdUndoBtn();
+}
+function _msrUpdUndoBtn() { const btn = document.getElementById('btn-msr-undo'); if (btn) btn.style.display = (_msrOn && _msrPts.length) ? '' : 'none'; }
+
+function _toggleMsrPanel() {
+  _msrBuildSwatches();
+  const p = document.getElementById('msr-panel');
+  const opening = !p.classList.contains('show');
+  p.classList.toggle('show', opening);
+  document.getElementById('ab-msr')?.classList.toggle('active', opening || _msrOn);
+  // Zatvaranje panela dok se aktivno mjeri: završi kao "Završi" dugme
+  // (auto-sačuva ≥2 tačke) umjesto da ostavi map click handler zakačen i
+  // crosshair zaglavljen bez ijednog vidljivog dugmeta za nastavak.
+  if (!opening && _msrOn) msrStop();
+}
+
+let _mqmId = null;
+function _msrRegAddFromActive() {
+  const entry = { id: 'mr_' + Date.now(), name: 'Mjerenje ' + fmtDateShort(new Date().toISOString()), date: new Date().toISOString(), pts: _msrPts.slice(), color: _msrColor, mode: _msrMode, fillOpacity: 0.18 };
+  _msrRegistry.unshift(entry);
+  _mqmId = null; // ne edituje se odmah — vidljivo u listi, preimenuj po potrebi
+  _msrRegSave();
+  _msrRegRender();
+  showToast('✅ Mjerenje sačuvano — ' + entry.name);
+  _msrPts = [];
+  if (_msrLayer) { _msrLayer.clearLayers(); try { map.removeLayer(_msrLayer); } catch(e) {} _msrLayer = null; }
+  _msrUpdPanel();
+  _msrDrawAllSaved();
+}
+
+function _msrDrawAllSaved() {
+  if (!window.map) return;
+  if (!_msrSavedLayer) _msrSavedLayer = L.layerGroup().addTo(map);
+  _msrSavedLayer.clearLayers();
+  _msrRegistry.forEach(m => {
+    if (m.id === _mqmId) return;
+    if (!m.pts || m.pts.length < 2) return;
+    const color = m.color || '#fbbf24';
+    const mode = m.mode || 'dist';
+    const latlngs = m.pts.map(p => [p.lat, p.lng]);
+    const drawLL = (mode === 'area' && m.pts.length >= 3) ? [...latlngs, latlngs[0]] : latlngs;
+    const line = L.polyline(drawLL, { color, weight:3, opacity:0.9, pane:'tragMsrLines' });
+    line.bindPopup(() => _msrPopupHtml(m), { maxWidth: 260 });
+    line.addTo(_msrSavedLayer);
+    if (mode === 'area' && m.pts.length >= 3) {
+      L.polygon(latlngs, { color, weight:1, dashArray:'4 4', fillColor:color, fillOpacity:m.fillOpacity ?? 0.18, pane:'tragMsrLines' }).bindPopup(() => _msrPopupHtml(m), { maxWidth:260 }).addTo(_msrSavedLayer);
+    }
+  });
+}
+function _msrPopupHtml(m) {
+  const mode = m.mode || 'dist';
+  let totalDist = 0;
+  for (let i = 0; i < m.pts.length - 1; i++) totalDist += _msrHaversine(m.pts[i].lat, m.pts[i].lng, m.pts[i+1].lat, m.pts[i+1].lng);
+  let html = `<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:4px;">${_escHtml(m.name)}</div>`;
+  html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">${fmtDateShort(m.date)}</div>`;
+  if (mode === 'nagib' && m.pts.length >= 2) {
+    const a = m.pts[0], b = m.pts[m.pts.length-1];
+    const d = _msrHaversine(a.lat,a.lng,b.lat,b.lng);
+    const dh = (a.elev!=null&&b.elev!=null) ? b.elev-a.elev : null;
+    const pct = (dh!=null&&d>0) ? (dh/d*100).toFixed(1) : null;
+    html += `<div style="font-size:13px;color:#374151;">📏 ${_msrFmt(d)}</div>`;
+    if (pct != null) html += `<div style="font-size:13px;color:#374151;">📐 Nagib: ${pct>0?'+':''}${pct}%</div>`;
+  } else if (mode === 'area' && m.pts.length >= 3) {
+    const aM2 = _msrPoligonPovrsina(m.pts);
+    html += `<div style="font-size:13px;color:#374151;">📏 Obim: ${_msrFmt(totalDist)}</div>`;
+    html += `<div style="font-size:13px;color:#374151;">◻ ${Math.round(aM2).toLocaleString('bs')} m² (${(aM2/10000).toFixed(2)} ha)</div>`;
+    const fop = Math.round((m.fillOpacity||0.18)*100);
+    html += `<div style="margin-top:8px;font-size:12px;color:#64748b;">Transparentnost ispune: <span id="mfop-lbl-${m.id}" style="font-weight:700;color:#374151;">${fop}%</span><br><input type="range" min="0" max="100" value="${fop}" style="width:100%;margin-top:4px;" oninput="_msrSetFillOpacity('${m.id}', this.value/100)"></div>`;
+  } else {
+    html += `<div style="font-size:13px;color:#374151;">📏 ${_msrFmt(totalDist)}</div>`;
+  }
+  html += `<div style="margin-top:10px;display:flex;gap:6px;">
+    <button onclick="_msrRegZoom('${m.id}')" style="flex:1;padding:5px 8px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">✏ Edituj</button>
+    <button onclick="_msrRegDeleteConfirm('${m.id}')" style="padding:5px 8px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🗑</button>
+  </div></div>`;
+  return html;
+}
+function _msrSetFillOpacity(id, val) {
+  const m = _msrRegistry.find(x => x.id === id);
+  if (!m) return;
+  m.fillOpacity = parseFloat(val);
+  _msrRegSave();
+  _msrDrawAllSaved();
+  const lbl = document.getElementById('mfop-lbl-' + id);
+  if (lbl) lbl.textContent = Math.round(m.fillOpacity * 100) + '%';
+}
+function _msrRegZoom(id) {
+  const m = _msrRegistry.find(x => x.id === id);
+  if (!m || !m.pts.length) return;
+  map.closePopup();
+  _mqmId = id;
+  if (_msrSavedLayer) _msrSavedLayer.clearLayers();
+  if (!_msrLayer) _msrLayer = L.layerGroup().addTo(map);
+  _msrPts = m.pts.map(p => ({...p}));
+  _msrColor = m.color || '#fbbf24';
+  _msrMode = m.mode || 'dist';
+  _msrSetMode(_msrMode);
+  _msrRedraw(); _msrUpdPanel();
+  map.fitBounds(L.latLngBounds(m.pts.map(p => [p.lat, p.lng])), { padding:[40,40] });
+  closeMjerenjaPanel();
+  _toggleMsrPanel();
+  msrStart();
+}
+async function _msrRegDeleteConfirm(id) {
+  const ok = await _dlgConfirm('Obrisati ovo mjerenje? Ne može se poništiti.', { danger: true, okLabel: 'Obriši' });
+  if (ok) _msrRegDelete(id);
+}
+function _msrRegDelete(id) {
+  _msrRegistry = _msrRegistry.filter(x => x.id !== id);
+  _msrRegSave(); _msrRegRender(); _msrDrawAllSaved();
+  if (_mqmId === id) { _mqmId = null; msrClear(); }
+  map.closePopup();
+}
+async function _msrRegRename(id) {
+  const m = _msrRegistry.find(x => x.id === id);
+  if (!m) return;
+  const val = await _dlgPrompt('Novi naziv mjerenja:', m.name, { title: 'Preimenuj' });
+  if (val === null || !val.trim()) return;
+  m.name = val.trim();
+  _msrRegSave(); _msrRegRender(); _msrDrawAllSaved();
+}
+function _msrRegRender() {
+  const el = document.getElementById('msr-saved-list');
+  const cnt = document.getElementById('msr-saved-count');
+  if (!el) return;
+  if (cnt) cnt.textContent = _msrRegistry.length ? `(${_msrRegistry.length})` : '';
+  if (!_msrRegistry.length) { el.innerHTML = '<div class="treg-empty">Nema sačuvanih mjerenja.<br>Otvori 📏 Mjerenja na karti.</div>'; return; }
+  el.innerHTML = _msrRegistry.map(m => {
+    const lenM = _msrPts2Len(m.pts);
+    return `<div class="treg-row" style="border-left:3px solid ${m.color||'#fbbf24'};">
+      <div class="treg-name" onclick="_msrRegZoom('${m.id}')">${_escHtml(m.name)}</div>
+      <div class="treg-meta">${fmtDateShort(m.date)} · ${_msrFmt(lenM)} · ${m.pts.length} tač.</div>
+      <div class="treg-btns">
+        <button onclick="_msrRegZoom('${m.id}')">✏ Edituj</button>
+        <button onclick="_msrRegRename('${m.id}')">✏ Preimenuj</button>
+        <button class="del-btn" onclick="_msrRegDeleteConfirm('${m.id}')">🗑 Briši</button>
+      </div>
+    </div>`;
+  }).join('');
+  if (window.map && !_mqmId) _msrDrawAllSaved();
+}
+function openMjerenjaPanel() { _ALL_PANELS.forEach(id => document.getElementById(id)?.classList.remove('show')); _msrRegRender(); document.getElementById('mjerenja-panel').classList.add('show'); }
+function closeMjerenjaPanel() { document.getElementById('mjerenja-panel').classList.remove('show'); }
+
+// ── Proximity fallback klik — jedinstven ulaz za sve slojeve koji dijele
+// pane 'tragMsrLines' (i buduće 'pozariPane', viši z-index). Provjerava se
+// SAMO kad nijedan alat nije aktivan (crtanje mjerenja ima svoj map.on
+// click iznad, koji se registruje/deregistruje u msrStart/msrStop). ──────
+const _MSR_HIT_PX = 22;
+function _msrTackaUPoligonu(latlng, pts) {
+  let px, k;
+  try { px = pts.map(p => map.latLngToContainerPoint(L.latLng(p.lat, p.lng))); k = map.latLngToContainerPoint(latlng); } catch(e) { return false; }
+  let unutra = false;
+  for (let i = 0, j = px.length - 1; i < px.length; j = i++) {
+    const presijeca = (px[i].y > k.y) !== (px[j].y > k.y) && k.x < (px[j].x - px[i].x) * (k.y - px[i].y) / (px[j].y - px[i].y) + px[i].x;
+    if (presijeca) unutra = !unutra;
+  }
+  return unutra;
+}
+function _msrHitTest(latlng) {
+  if (!window.map || !Array.isArray(_msrRegistry) || !_msrRegistry.length) return null;
+  let klikPx;
+  try { klikPx = map.latLngToContainerPoint(latlng); } catch(e) { return null; }
+  let naj = null, najD = Infinity;
+  _msrRegistry.forEach(m => {
+    if (m.id === _mqmId) return;
+    if (!m.pts || m.pts.length < 2) return;
+    const zatvoren = (m.mode || 'dist') === 'area' && m.pts.length >= 3;
+    if (zatvoren && _msrTackaUPoligonu(latlng, m.pts)) { if (najD > 0) { naj = m; najD = 0; } return; }
+    let px;
+    try { px = m.pts.map(pt => map.latLngToContainerPoint(L.latLng(pt.lat, pt.lng))); } catch(e) { return; }
+    const zadnji = zatvoren ? px.length : px.length - 1;
+    for (let i = 0; i < zadnji; i++) { const d = _distToSegPx(klikPx, px[i], px[(i + 1) % px.length]); if (d < najD) { najD = d; naj = m; } }
+  });
+  return (naj && najD <= _MSR_HIT_PX) ? naj : null;
+}
+function _msrOpenPopupNa(m, latlng) { if (!m || !window.map) return; try { L.popup({ maxWidth: 260 }).setLatLng(latlng).setContent(_msrPopupHtml(m)).openOn(map); } catch(e) {} }
+
+map.on('click', e => {
+  if (_msrOn) return; // izmjera preuzima klikove kroz vlastiti map.on('click')
+  const mm = _msrHitTest(e.latlng);
+  if (mm) { _msrOpenPopupNa(mm, e.latlng); return; }
+  // Buduće provjere (Požari tačke, uvezeni KML) idu OVDJE, istim redoslijedom
+  // kao pane z-index (niži prvo) — vidi napomenu na vrhu ove sekcije.
+});
+
+_msrRegLoad();
+
+// =====================================================================
 // GLAVNA NAVIGACIJA — Karta / Meni / Postavke, i sekcije iz Menija
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['meni-panel','postavke-panel','pozari-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel'];
+const _ALL_PANELS = ['meni-panel','postavke-panel','pozari-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
