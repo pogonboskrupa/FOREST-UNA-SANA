@@ -19,8 +19,11 @@
 <script src="static/libs/leaflet.min.js" onerror="_libErr('Leaflet')"></script>
 <script src="static/libs/proj4.js" onerror="_libErr('proj4')"></script>
 <script src="static/libs/turf.min.js" onerror="_libErr('Turf')"></script>
-<script src="static/libs/supabase.min.js" onerror="_libErr('Supabase')"></script>
+<script src="static/libs/firebase/firebase-app-compat.js" onerror="_libErr('Firebase')"></script>
+<script src="static/libs/firebase/firebase-auth-compat.js" onerror="_libErr('Firebase Auth')"></script>
+<script src="static/libs/firebase/firebase-firestore-compat.js" onerror="_libErr('Firestore')"></script>
 <script src="static/js/reliable-fetch.js"></script>
+<script src="static/js/firebase-init.js"></script>
 <script>
 window.addEventListener('DOMContentLoaded',function(){
   if(!_libErrNames.length)return;
@@ -382,6 +385,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div class="up-hdr"><h2>⚙ Postavke</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
     <div class="set-row"><span>Verzija aplikacije</span><b id="set-ver-txt" style="color:#4ade80;"></b></div>
+    <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <span>Uređaj ID (za admin pristup)</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <code id="set-uid-txt" style="flex:1;font-size:11px;color:#94a3b8;background:#0f172a;border-radius:8px;padding:8px 10px;word-break:break-all;">nema interneta / Firebase nije podešen</code>
+        <button onclick="_copyUid()">Kopiraj</button>
+      </div>
+    </div>
     <div class="set-row"><span>Ažuriraj aplikaciju</span><button onclick="checkForUpdate()">Provjeri</button></div>
     <div class="set-row"><span>Rad bez ograničenja baterije</span><button onclick="_checkBatteryOptHint()">Podesi</button></div>
     <div class="set-row"><span>Očisti keš karata (Topo/Satelit/Karta)</span><button onclick="clearTileCache()">Očisti</button></div>
@@ -395,7 +405,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="stub-section">
       <div class="ss-ico">🔥</div>
       <h3>Sekcija u izradi</h3>
-      <p>Ova sekcija je namjerno izdvojena kao fokus ove aplikacije i gradi se u sljedećoj fazi razvoja, uz Supabase backend za dijeljeni keš i admin ključeve.</p>
+      <p>Ova sekcija je namjerno izdvojena kao fokus ove aplikacije i gradi se u sljedećoj fazi razvoja, uz Firebase backend za dijeljeni keš i admin ključeve.</p>
       <ul class="ss-list">
         <li>🛰 FIRMS (arhiva + Area API) i Global Forest Watch detekcije</li>
         <li>🌍 EFFIS opožarene površine i indeks opasnosti</li>
@@ -482,7 +492,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.2.0';
+const APP_VER = 'v0.3.0';
 document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -1385,7 +1395,7 @@ function _tragRegAdd(pts) {
   _tragRegAddLayer(t);
   _tragRegSave();
   _tragRegRender();
-  // TODO(zadatak #7 — Supabase backend): sinhronizuj trag na server kad je
+  // TODO(zadatak #7 — Firebase backend): sinhronizuj trag na server kad je
   // backend spreman (offline queue: sačuvaj lokalno odmah, pošalji kad ima veze).
   return t;
 }
@@ -1896,6 +1906,13 @@ function openUcitajKmlSection()   { _openStubPanel('ucitajkml-panel', 'meni'); }
 function _renderPostavke() {
   const el = document.getElementById('set-ver-txt');
   if (el) el.textContent = APP_VER;
+  const uidEl = document.getElementById('set-uid-txt');
+  if (uidEl && typeof fbUid !== 'undefined' && fbUid) uidEl.textContent = fbUid;
+}
+function _copyUid() {
+  const txt = document.getElementById('set-uid-txt')?.textContent || '';
+  if (!txt || txt.includes('nema interneta')) { showToast('⚠ UID još nije dostupan'); return; }
+  navigator.clipboard?.writeText(txt).then(() => showToast('📋 UID kopiran — pošalji administratoru'));
 }
 function checkForUpdate() {
   if (typeof AndroidUpdate !== 'undefined' && AndroidUpdate.checkAndInstall) {

@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// =====================================================================
+// UNA SANA FOREST — Firestore Security Rules
+// ---------------------------------------------------------------------
+// Bez login ekrana: svaki uređaj se prijavljuje ANONIMNO (Firebase
+// Anonymous Auth, vidi static/js/firebase-init.js) i dobija stabilan UID.
+// Čitanje je otvoreno svakom prijavljenom (i anonimnom) korisniku — isti
+// pristup kao "otvoren svakom sa APK-om" (korisnička odluka, nema
+// odobravanja naloga). Upis admin-only podataka (FIRMS/GFW/CDSE ključevi)
+// je ograničen na UID-ove upisane u usf_admins kolekciju.
+//
+// Dodavanje admina (ručno, u Firebase Console → Firestore → usf_admins):
+//   1. Korisnik otvori Postavke u app-i, kopira svoj "Uređaj ID".
+//   2. Ti u Firestore-u napraviš dokument usf_admins/{taj_uid} sa poljem
+//      { active: true }.
+//   3. Taj uređaj sad može pozvati write na usf_pozari_kljucevi.
+//
+// Sve kolekcije ove app-e nose prefiks "usf_" da se ne miješaju sa
+// podacima druge aplikacije u istom Firebase projektu.
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function jeAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usf_admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usf_admins/$(request.auth.uid)).data.active == true;
+    }
+    function jePrijavljen() {
+      return request.auth != null;
+    }
+
+    // Admin allowlist — niko klijentski ne smije pisati (samo ti ručno u Console-u).
+    match /usf_admins/{uid} {
+      allow read: if jePrijavljen();
+      allow write: if false;
+    }
+
+    // Dijeljeni FIRMS/GFW/CDSE ključevi za cijelu firmu — čita svako
+    // prijavljeno (i anonimno), piše samo admin.
+    match /usf_pozari_kljucevi/{doc} {
+      allow read: if jePrijavljen();
+      allow write: if jeAdmin();
+    }
+
+    // Sačuvani tragovi — vlastiti upis (uzorno vezan uz uid), čitanje
+    // dijeljeno (kolege na terenu vide tragove jedni drugih).
+    match /usf_tragovi/{doc} {
+      allow read: if jePrijavljen();
+      allow create: if jePrijavljen() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if jePrijavljen() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Dijeljeni server-side keš detekcija požara (FIRMS/GFW/EFFIS agregacija) —
+    // čita svako prijavljeno, piše samo admin/Cloud Function.
+    match /usf_pozari_kes/{doc} {
+      allow read: if jePrijavljen();
+      allow write: if jeAdmin();
+    }
+
+    // Podrazumijevano zabranjeno sve što nije eksplicitno gore.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

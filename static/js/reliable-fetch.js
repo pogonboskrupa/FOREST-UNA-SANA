@@ -1,13 +1,14 @@
 // Ograničen transport, uključujući čitanje tijela odgovora. Bez automatskog
 // ponavljanja upisa: izgubljen odgovor rješava trajni, idempotentni red.
 
-// Posmatrač kvaliteta veze. Ovo je JEDINO mjesto kroz koje prolazi SVAKI
-// Supabase poziv (klijent je napravljen sa `global:{fetch:reliableFetch}`), pa
-// se stvarno stanje linka mjeri OVDJE — iz saobraćaja koji app ionako pravi.
-// NAMJERNO nema zasebnog "ping" poziva: na terenskoj vezi od ~1.4 KB/s svaki
-// dodatni zahtjev otima propusnost onome što korisnik stvarno čeka (ista pouka
-// kao paralelni FIRMS dohvat, v3.104.1). Posmatrač je opcion i njegova greška
-// se guta — mjerenje ne smije oboriti prenos koji mjeri.
+// Posmatrač kvaliteta veze. Svaki direktan HTTP poziv ove app-e (FIRMS/GFW/
+// EFFIS, buduće Cloud Functions) treba ići kroz ovo umjesto golog fetch() —
+// stvarno stanje linka se mjeri OVDJE, iz saobraćaja koji app ionako pravi.
+// (Firestore SDK ima svoj transport i ovo ga ne obavija — ovo je za NAŠE
+// direktne pozive.) NAMJERNO nema zasebnog "ping" poziva: na terenskoj vezi
+// od ~1.4 KB/s svaki dodatni zahtjev otima propusnost onome što korisnik
+// stvarno čeka. Posmatrač je opcion i njegova greška se guta — mjerenje ne
+// smije oboriti prenos koji mjeri.
 let _netPosmatrac = null;
 function setNetObserver(fn) { _netPosmatrac = typeof fn === 'function' ? fn : null; }
 function _javiPosmatracu(ishod) {

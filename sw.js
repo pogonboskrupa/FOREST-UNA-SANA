@@ -2,7 +2,7 @@
 // Service Worker — UNA SANA FOREST
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -17,7 +17,10 @@ const APP_SHELL = [
   './static/libs/leaflet.min.css',
   './static/libs/proj4.js',
   './static/libs/turf.min.js',
-  './static/libs/supabase.min.js',
+  './static/libs/firebase/firebase-app-compat.js',
+  './static/libs/firebase/firebase-auth-compat.js',
+  './static/libs/firebase/firebase-firestore-compat.js',
+  './static/js/firebase-init.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
@@ -92,7 +95,9 @@ self.addEventListener('fetch', event => {
   }
 
   // API pozivi — nikad ne keširati
-  if (url.includes('supabase.co') || url.includes('firms.modaps.eosdis.nasa.gov') ||
+  if (url.includes('firestore.googleapis.com') || url.includes('firebaseio.com') ||
+      url.includes('identitytoolkit.googleapis.com') ||
+      url.includes('firms.modaps.eosdis.nasa.gov') ||
       url.includes('globalforestwatch.org') || url.includes('effis') ||
       url.includes('elevation-tiles-prod')) {
     return;
