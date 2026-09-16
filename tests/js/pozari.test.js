@@ -95,4 +95,39 @@ t('_poziGrupisi NE spaja detekcije udaljenije od praga (dva odvojena požara)', 
   assert.ok(grupe.every(g => g.broj === 1));
 });
 
+t('_poziParseGfwJson svodi GFW JSON odgovor na isti oblik tačke kao FIRMS CSV', () => {
+  const src = extractFn('_poziParseGfwJson') + '\nreturn _poziParseGfwJson;';
+  const _poziParseGfwJson = new Function(src)();
+  const json = JSON.stringify({ data: [
+    { longitude: 16.0, latitude: 44.8, alert__date: '2026-09-15', alert__time_utc: '01:23:00', confidence__cat: 'high' },
+    { longitude: 16.01, latitude: 44.81, alert__date: '2026-09-15', alert__time_utc: '1405', confidence__cat: 'nominal' }
+  ] });
+  const pts = _poziParseGfwJson(json);
+  assert.strictEqual(pts.length, 2);
+  assert.strictEqual(pts[0].la, 44.8);
+  assert.strictEqual(pts[0].lo, 16.0);
+  assert.strictEqual(pts[0].dt, '2026-09-15T01:23:00Z');
+  assert.strictEqual(pts[0].sat, 'VIIRS (GFW)');
+  assert.ok(Number.isNaN(pts[0].frp), 'GFW ne vraća FRP — mora ostati NaN, ne 0');
+  assert.strictEqual(pts[1].dt, '2026-09-15T14:05:00Z');
+});
+
+t('_poziParseGfwJson vraća prazno za neispravan/nedostajući JSON', () => {
+  const src = extractFn('_poziParseGfwJson') + '\nreturn _poziParseGfwJson;';
+  const _poziParseGfwJson = new Function(src)();
+  assert.deepStrictEqual(_poziParseGfwJson('<html>error</html>'), []);
+  assert.deepStrictEqual(_poziParseGfwJson('{}'), []);
+});
+
+t('_poziGfwUrl gradi bbox oko referentne tačke i SQL upit kao query string', () => {
+  const src = "const _POZ_RADIUS_KM = 100;\n" + extractFn('_poziGfwUrl') + '\nreturn _poziGfwUrl;';
+  const _poziGfwUrl = new Function(src)();
+  const url = _poziGfwUrl('24h', { la: 44.8, lo: 16.0 });
+  assert.ok(url.startsWith('https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql='));
+  const sql = decodeURIComponent(url.split('sql=')[1]);
+  assert.ok(sql.includes('latitude >='), 'mora ograničiti bbox po latitude');
+  assert.ok(sql.includes('longitude >='), 'mora ograničiti bbox po longitude');
+  assert.ok(/LIMIT \d+/.test(sql));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');

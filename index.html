@@ -516,14 +516,37 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <span>🔔 Upozori na nov požar blizu</span>
       <input type="checkbox" id="poz-notif-chk" onchange="_poziNotifToggle(this.checked)">
     </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🛰 Global Forest Watch — dodatni izvor</div>
+      <div class="loc-row">
+        <span>Dopuni FIRMS arhivu GFW detekcijama</span>
+        <div class="loc-switch" id="poz-gfw-switch" onclick="_poziGfwToggle(!_poziGfwOn())"></div>
+      </div>
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Iste NASA detekcije, ali sa GFW servera (treba admin ključ ispod) — koristno kad FIRMS arhiva ne radi ili je tuđi server nedostupan.</div>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
+      <div class="loc-row">
+        <span>Opožarene površine (mjerene granice)</span>
+        <div class="loc-switch" id="poz-effis-ba-switch" onclick="_poziEffisToggle('opozareno',!_poziEffisOn('opozareno'))"></div>
+      </div>
+      <div class="loc-row">
+        <span>Indeks opasnosti od požara (FWI)</span>
+        <div class="loc-switch" id="poz-effis-fwi-switch" onclick="_poziEffisToggle('fwi',!_poziEffisOn('fwi'))"></div>
+      </div>
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">EFFIS opožarene površine stižu sa danima zakašnjenja (mjereno, ne uživo) — dopuna satelitskim tačkastim detekcijama iznad, ne zamjena.</div>
+    </div>
+
     <div class="treg-meta-edit" style="margin-top:14px;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🔑 Admin: FIRMS/GFW ključevi (priprema za Area API — trenutni prikaz koristi besplatnu FIRMS arhivu i ne treba ključ)</div>
-      <input id="poz-key-firms" placeholder="FIRMS MAP_KEY" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
-      <input id="poz-key-gfw" placeholder="GFW API ključ" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🔑 Admin: FIRMS/GFW ključevi</div>
+      <input id="poz-key-firms" placeholder="FIRMS MAP_KEY (opciono)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
+      <input id="poz-key-gfw" placeholder="GFW API ključ (za dodatni izvor)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
       <button class="mf-save" onclick="_poziAdminSacuvajKljuceve()">💾 Sačuvaj ključeve</button>
     </div>
     <div class="stub-section" style="padding:24px 12px 4px;">
-      <p style="font-size:12px;">Global Forest Watch, EFFIS opožarene površine, Sentinel-2 dopuna, projekcija opožarene površine i Sječa/vjetroizvale dolaze u sljedećoj fazi.</p>
+      <p style="font-size:12px;">Sentinel-2 dopuna, projekcija opožarene površine i Sječa/vjetroizvale (GFW integrisani alarmi) dolaze u sljedećoj fazi.</p>
     </div>
   </div>
 </div>
@@ -681,7 +704,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.9.0';
+const APP_VER = 'v0.10.0';
 document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -3179,6 +3202,34 @@ const _POZ_TRAKE = [
   { id:'dalje', naziv:'Preko 40 km', min:40000, max:Infinity, ikona:'⚪' }
 ];
 
+// ── EFFIS (Copernicus/JRC) rasterski slojevi — evropski sistem za šumske
+// požare, besplatno i bez ključa. Dopuna tačkastim satelitskim detekcijama
+// iznad: opozareno = STVARNO izmjerene opožarene granice (kasni danima),
+// fwi = prognoza opasnosti (gdje je danas rizično, ne šta je već gorjelo).
+const _POZ_EFFIS = {
+  opozareno: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
+    layers: 'modis.ba', format: 'image/png', transparent: true, tiled: true,
+    version: '1.1.1', maxZoom: 22, opacity: 0.75, attribution: 'Copernicus EFFIS'
+  }),
+  fwi: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
+    layers: 'ecmwf.fwi', format: 'image/png', transparent: true, tiled: true,
+    version: '1.1.1', maxZoom: 22, opacity: 0.55, attribution: 'Copernicus EFFIS'
+  })
+};
+const _POZ_EFFIS_KEY = 'usf_pozari_effis';
+let _poziEffisState = {};
+try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}'); } catch(e) {}
+Object.keys(_POZ_EFFIS).forEach(k => { if (_poziEffisState[k]) _POZ_EFFIS[k].addTo(map); });
+function _poziEffisOn(key) { return !!_poziEffisState[key]; }
+function _poziEffisToggle(key, on) {
+  if (!_POZ_EFFIS[key]) return;
+  _poziEffisState[key] = !!on;
+  try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
+  if (on) _POZ_EFFIS[key].addTo(map); else map.removeLayer(_POZ_EFFIS[key]);
+  const swId = key === 'opozareno' ? 'poz-effis-ba-switch' : 'poz-effis-fwi-switch';
+  const sw = document.getElementById(swId); if (sw) sw.classList.toggle('on', on);
+}
+
 function _poziParseCsv(txt) {
   const lines = String(txt || '').trim().split(/\r?\n/);
   if (lines.length < 2) return [];
@@ -3311,31 +3362,87 @@ function _poziGreskaTxt(e) {
   if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return 'nema odgovora na vrijeme (veza visi)';
   return e?.message || 'greška';
 }
-async function _poziDohvatiJedan(naziv, url, ms) {
-  const provjera = /latitude/i;
+async function _poziDohvatiJedan(naziv, url, ms, opts) {
+  opts = opts || {};
+  const parser = opts.parser || _poziParseCsv;
+  const provjera = opts.provjera || /latitude/i;
+  const zaglavlja = opts.headers || null;
   const ocijeni = (txt, native, status) => {
-    const pts = _poziParseCsv(txt);
+    const pts = parser(txt);
     if (!pts.length && !provjera.test(txt)) return { ok:false, naziv, greska:'neočekivan odgovor', native:!!native };
     return { ok:true, naziv, pts, native:!!native };
   };
   if (_nativeNetDostupan()) {
     try {
-      const r = await _nativeNetFetch(url, ms || 20000, null, null);
+      const r = await _nativeNetFetch(url, ms || 20000, zaglavlja, null);
       if (r.status && r.status >= 400) return { ok:false, naziv, greska:'HTTP ' + r.status, native:true };
       return ocijeni(r.text, true, r.status);
     } catch(e) { return { ok:false, naziv, greska:_poziGreskaTxt(e), native:true }; }
   }
   try {
-    const r = await _fetchT(url, ms || 15000, { mode:'cors' });
+    // Vlastito zaglavlje (npr. GFW x-api-key) okida CORS preflight — ako ga
+    // server ne odobri, pada i prije samog zahtjeva. U APK-u to nije problem
+    // jer native put uopšte ne ide kroz CORS.
+    const o = { mode:'cors' };
+    if (zaglavlja) o.headers = zaglavlja;
+    const r = await _fetchT(url, ms || 15000, o);
     if (!r.ok) return { ok:false, naziv, greska:'HTTP ' + r.status };
     return ocijeni(await r.text(), false, r.status);
   } catch(e) { return { ok:false, naziv, greska:_poziGreskaTxt(e) }; }
 }
+// GFW: BBOX upit (SQL preko REST-a) oko referentne tačke — mali odgovor,
+// nema opasnosti od gušenja spore veze kao kod cijele-Evrope arhive iznad.
+function _poziGfwUrl(okvir, ref) {
+  const dani = { '24h':1, '48h':2, '7d':7 }[okvir] || 1;
+  const od = new Date(Date.now() - dani * 86400000).toISOString().slice(0, 10);
+  const dLat = _POZ_RADIUS_KM / 111;
+  const dLon = _POZ_RADIUS_KM / (111 * Math.cos(ref.la * Math.PI / 180));
+  const sql = 'SELECT longitude, latitude, alert__date, alert__time_utc, confidence__cat FROM results'
+    + " WHERE alert__date >= '" + od + "'"
+    + ' AND latitude >= '  + (ref.la - dLat).toFixed(3) + ' AND latitude <= '  + (ref.la + dLat).toFixed(3)
+    + ' AND longitude >= ' + (ref.lo - dLon).toFixed(3) + ' AND longitude <= ' + (ref.lo + dLon).toFixed(3)
+    + ' ORDER BY alert__date DESC, alert__time_utc DESC LIMIT 1000';
+  return 'https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql=' + encodeURIComponent(sql);
+}
+// GFW vraća {"data":[{longitude, latitude, alert__date, alert__time_utc,
+// confidence__cat}, ...]} — svede se na ISTI oblik tačke kao FIRMS CSV, da
+// grupisanje/prikaz/keš ne moraju znati odakle je podatak došao.
+function _poziParseGfwJson(txt) {
+  let j;
+  try { j = JSON.parse(txt); } catch(e) { return []; }
+  const red = j && Array.isArray(j.data) ? j.data : [];
+  const out = [];
+  red.forEach(r => {
+    const la = parseFloat(r.latitude), lo = parseFloat(r.longitude);
+    if (!isFinite(la) || !isFinite(lo)) return;
+    const hhmm = String(r.alert__time_utc || '').replace(/[^0-9]/g, '').padStart(4, '0').slice(0, 4);
+    const dat = String(r.alert__date || '').slice(0, 10);
+    out.push({ la, lo, dt: dat + 'T' + hhmm.slice(0, 2) + ':' + hhmm.slice(2, 4) + ':00Z',
+      sat: 'VIIRS (GFW)', conf: String(r.confidence__cat || '').trim(), frp: NaN, noc: false, rez: 375 });
+  });
+  return out;
+}
+const _POZ_GFW_ON_KEY = 'usf_pozari_gfw_on';
+function _poziGfwOn() { try { return localStorage.getItem(_POZ_GFW_ON_KEY) === '1'; } catch(e) { return false; } }
+function _poziGfwToggle(on) {
+  try { localStorage.setItem(_POZ_GFW_ON_KEY, on ? '1' : '0'); } catch(e) {}
+  const sw = document.getElementById('poz-gfw-switch'); if (sw) sw.classList.toggle('on', on);
+  if (_poziOn) _poziLoad(false);
+}
 // BEZ ključa nema izbora nego evropski izvozi — besplatni, bez naloga.
-// Timeout je duži (30s) — ovo su veliki fajlovi za cijelu Evropu.
+// Timeout je duži (30s) — ovo su veliki fajlovi za cijelu Evropu. GFW je
+// DRUGI SERVER za iste NASA detekcije — pita se paralelno (opt-in, treba
+// admin ključ) jer je bbox upit mali, korisno kad FIRMS arhiva ne prolazi.
 async function _poziDohvatiArhive(okvir) {
   const zahtjevi = _POZ_IZVORI.map(izv => ({ naziv:izv.naziv, url:_poziUrl(izv, okvir) }));
-  const rez = await Promise.all(zahtjevi.map(z => _poziDohvatiJedan(z.naziv, z.url, 30000)));
+  const proms = zahtjevi.map(z => _poziDohvatiJedan(z.naziv, z.url, 30000));
+  const gfwKljuc = _poziGfwOn() ? (_poziKljucevi.gfw || '').trim() : '';
+  if (gfwKljuc) {
+    const ref = _poziRefTacka();
+    proms.push(_poziDohvatiJedan('Global Forest Watch', _poziGfwUrl(okvir, ref), 20000,
+      { headers:{ 'x-api-key': gfwKljuc }, parser:_poziParseGfwJson, provjera:/"data"\s*:/ }));
+  }
+  const rez = await Promise.all(proms);
   const uspjeh = rez.filter(r => r.ok);
   const greske = rez.filter(r => !r.ok).map(r => r.naziv + ': ' + r.greska);
   if (!uspjeh.length) return { ok:false, greska: greske.join(' · ') };
@@ -3779,6 +3886,9 @@ function openPozariSection() {
   if (gEl) gEl.value = _poziKljucevi.gfw || '';
   const heatSw = document.getElementById('poz-heat-switch'); if (heatSw) heatSw.classList.toggle('on', _poziHeatOn());
   const notifChk = document.getElementById('poz-notif-chk'); if (notifChk) notifChk.checked = _poziNotifOn();
+  const gfwSw = document.getElementById('poz-gfw-switch'); if (gfwSw) gfwSw.classList.toggle('on', _poziGfwOn());
+  const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));
+  const fwiSw = document.getElementById('poz-effis-fwi-switch'); if (fwiSw) fwiSw.classList.toggle('on', _poziEffisOn('fwi'));
   _poziRenderPanel();
   _poziOsvjeziAkoJeStaro();
   _poziAutoSync();
