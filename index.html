@@ -231,6 +231,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #msr-panel .msr-btns button.primary { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
 #msr-panel .msr-btns button.stop { background:#7f1d1d; border-color:#7f1d1d; color:#fecaca; }
 #msr-panel label.msr-draw-toggle { display:flex; align-items:center; gap:6px; color:#94a3b8; font-size:11px; margin-bottom:8px; }
+/* Dok je mjerenje aktivno, izbor moda/boje/crtanja više nije potreban —
+   panel se smanji na samo status + kontrole, umjesto da ostane pun tokom
+   cijelog premjera (prijavljen bug: panel prevelik dok se mjeri). */
+#msr-panel.active { padding:10px 12px; }
+#msr-panel.active .msr-modes,
+#msr-panel.active .msr-swatches,
+#msr-panel.active label.msr-draw-toggle { display:none; }
 
 /* === Puni-ekran paneli (Meni / Postavke / sekcije) === */
 .usf-panel {
@@ -299,15 +306,24 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .stub-section .ss-list { text-align:left; max-width:300px; margin:16px auto 0; font-size:12px; color:#64748b; }
 .stub-section .ss-list li { margin-bottom:4px; }
 
+/* Šire, niže: 3 prekidača su u jednom horizontalnom redu (bila su 3 odvojena
+   reda) i oba dugmeta dijele jedan red — sažima ~4 reda visine u ~2. */
 #ab-loc-popup {
   display:none; position:fixed; bottom:76px; left:50%; transform:translateX(-50%);
   z-index:650; background:rgba(15,23,42,0.97); border:1.5px solid #1e3a5f;
-  border-radius:14px; padding:12px; min-width:230px; box-shadow:0 6px 24px rgba(0,0,0,0.5);
+  border-radius:14px; padding:10px 14px 12px; width:300px; max-width:92vw;
+  box-shadow:0 6px 24px rgba(0,0,0,0.5);
 }
-#ab-loc-popup .loc-row {
-  display:flex; align-items:center; justify-content:space-between; padding:7px 2px;
-  color:#e2e8f0; font-size:13px;
+#ab-loc-popup .loc-hdr {
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  padding-bottom:8px; margin-bottom:10px; border-bottom:1px solid #1e293b;
 }
+#ab-loc-popup .loc-title { color:#e2e8f0; font-size:13px; font-weight:700; }
+#ab-loc-popup .loc-gps-info { color:#94a3b8; font-size:11px; text-align:right; }
+#ab-loc-popup .loc-toggles { display:flex; justify-content:space-between; gap:4px; margin-bottom:12px; }
+#ab-loc-popup .loc-toggle-item { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+#ab-loc-popup .loc-toggle-item span { color:#94a3b8; font-size:11px; }
+#ab-loc-popup .loc-btn-row { display:flex; gap:6px; }
 .loc-switch {
   width:38px; height:22px; border-radius:11px; background:#334155; position:relative;
   cursor:pointer; transition:background 0.15s; flex-shrink:0;
@@ -319,8 +335,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .loc-switch.on { background:#16a34a; }
 .loc-switch.on::after { transform:translateX(16px); }
 #ab-loc-popup .loc-btn {
-  width:100%; margin-top:6px; padding:9px; border-radius:9px; border:1px solid #fdba74;
-  background:#fff7ed; color:#c2410c; font-size:13px; font-weight:700; cursor:pointer;
+  flex:1; padding:9px 6px; border-radius:9px; border:1px solid #fdba74;
+  background:#fff7ed; color:#c2410c; font-size:12px; font-weight:700; cursor:pointer; text-align:center;
 }
 #ab-loc-popup .loc-btn.recording { background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
 
@@ -349,17 +365,22 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .gstab-m span { display:block; font-size:9px; color:#64748b; text-transform:uppercase; }
 .gstab-m b { display:block; font-size:14px; margin-top:2px; }
 
-/* === Tragovi panel (lista sačuvanih tragova) === */
+/* === Tragovi panel (lista sačuvanih tragova) — plutajuća kartica kao Moja
+   lokacija/Mjerenja, NE puni ekran (prijavljen bug: otvarao je cijeli
+   ekran za, često, svega par tragova). Sopstveni scroll unutar max-height
+   drži je korisnom i kad ima puno sačuvanih tragova. === */
 #tragovi-panel {
-  display:none; position:fixed; inset:0; z-index:800; background:#0f172a;
-  flex-direction:column;
+  display:none; position:fixed; left:12px; right:12px; bottom:76px; z-index:800;
+  background:rgba(15,23,42,0.97); border:1.5px solid #1e3a5f; border-radius:14px;
+  max-width:420px; margin:0 auto; max-height:min(60vh, 480px);
+  box-shadow:0 6px 24px rgba(0,0,0,0.5); flex-direction:column; overflow:hidden;
 }
 #tragovi-panel.show { display:flex; }
 #tragovi-panel .tp-hdr {
-  display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
-  padding-top:calc(14px + env(safe-area-inset-top)); border-bottom:1px solid #1e293b;
+  display:flex; align-items:center; justify-content:space-between; padding:12px 14px;
+  border-bottom:1px solid #1e293b; flex-shrink:0;
 }
-#tragovi-panel .tp-hdr h2 { color:#e2e8f0; font-size:16px; margin:0; }
+#tragovi-panel .tp-hdr h2 { color:#e2e8f0; font-size:14px; margin:0; }
 #tragovi-panel .tp-close { background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer; }
 #tragovi-list { flex:1; overflow-y:auto; padding:10px 12px; }
 .treg-empty { color:#475569; font-size:13px; text-align:center; padding:40px 20px; }
@@ -462,12 +483,19 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <!-- Moja lokacija popup -->
 <div id="ab-loc-popup">
-  <div class="loc-row"><span>GPS</span><div class="loc-switch" id="gps-switch" onclick="toggleGPS()"></div></div>
-  <div class="loc-row"><span>Kompas</span><div class="loc-switch" id="compass-switch" onclick="_togCompassSwitch()"></div></div>
-  <div class="loc-row"><span>Radijus</span><div class="loc-switch" id="radius-switch" onclick="_togRadiusRings()"></div></div>
-  <div class="loc-row" style="color:#94a3b8;font-size:12px;" id="gps-info">GPS: isključen</div>
-  <button class="loc-btn" onclick="_locPopupCentriraj()">🎯 Centriraj kartu</button>
-  <button class="loc-btn" id="ab-loc-trag" onclick="_locPopupSnimiTrag()"><span id="ab-loc-trag-txt">Snimi trag</span></button>
+  <div class="loc-hdr">
+    <span class="loc-title">📍 Moja lokacija</span>
+    <span class="loc-gps-info" id="gps-info">GPS: isključen</span>
+  </div>
+  <div class="loc-toggles">
+    <div class="loc-toggle-item"><span>GPS</span><div class="loc-switch" id="gps-switch" onclick="toggleGPS()"></div></div>
+    <div class="loc-toggle-item"><span>Kompas</span><div class="loc-switch" id="compass-switch" onclick="_togCompassSwitch()"></div></div>
+    <div class="loc-toggle-item"><span>Radijus</span><div class="loc-switch" id="radius-switch" onclick="_togRadiusRings()"></div></div>
+  </div>
+  <div class="loc-btn-row">
+    <button class="loc-btn" onclick="_locPopupCentriraj()">🎯 Centriraj</button>
+    <button class="loc-btn" id="ab-loc-trag" onclick="_locPopupSnimiTrag()"><span id="ab-loc-trag-txt">Snimi trag</span></button>
+  </div>
 </div>
 
 <!-- Traka aktivnog snimanja traga -->
@@ -793,7 +821,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.14.0';
+const APP_VER = 'v0.15.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -2484,6 +2512,7 @@ function msrStart() {
   map.getContainer().style.cursor = 'crosshair';
   map.on('click', _msrMapClick);
   map.on('dblclick', _msrMapDblClick);
+  document.getElementById('msr-panel')?.classList.add('active');
   const btn = document.getElementById('btn-msr-start');
   if (btn) { btn.textContent = '⏹ Završi'; btn.classList.remove('primary'); btn.classList.add('stop'); }
   const hints = { dist:'Klikaj tačke — mjeri ukupnu udaljenost.', area:'Klikaj ≥3 tačke — poligon se zatvara automatski.', nagib:'Klikni 2 tačke — nagib se računa automatski.' };
@@ -2502,6 +2531,7 @@ function msrStop(skipSave) {
   map.getContainer().style.cursor = '';
   map.off('click', _msrMapClick);
   map.off('dblclick', _msrMapDblClick);
+  document.getElementById('msr-panel')?.classList.remove('active');
   if (_msrDrawOn) { const chk = document.getElementById('msr-draw-chk'); if (chk) chk.checked = false; _msrToggleDraw(false); }
   const btn = document.getElementById('btn-msr-start');
   if (btn) { btn.textContent = '▶ Počni'; btn.classList.remove('stop'); btn.classList.add('primary'); }
