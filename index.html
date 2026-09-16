@@ -428,8 +428,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <div class="meni-card" onclick="openUcitajKmlSection()">
       <div class="mc-ico">📥</div>
-      <div class="mc-txt"><b>Učitaj KML</b><span>Uvoz KML/SHP slojeva</span></div>
-      <div class="mc-badge">U izradi</div>
+      <div class="mc-txt"><b>Učitaj KML</b><span>Uvoz KML slojeva (poligon/linija/tačka)</span></div>
+      <div class="mc-badge ready">Spremno</div>
     </div>
     <div class="meni-card" onclick="openTragoviPanel()">
       <div class="mc-ico">🥾</div>
@@ -526,13 +526,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <!-- Učitaj KML (stub) -->
 <div id="ucitajkml-panel" class="usf-panel">
-  <div class="up-hdr"><h2>📥 Učitaj KML</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-hdr"><h2>📥 Učitaj KML <span id="kml-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div class="stub-section">
-      <div class="ss-ico">📥</div>
-      <h3>Sekcija u izradi</h3>
-      <p>Uvoz KML/SHP slojeva sa proximity klik fallback-om (dijeljen canvas pane sa Požari tačkama) dolazi u sljedećoj fazi.</p>
-    </div>
+    <input type="file" id="kml-file-input" accept=".kml" multiple style="display:none;" onchange="_kmlFileChosen(event)">
+    <button class="loc-btn" style="margin-bottom:14px;" onclick="document.getElementById('kml-file-input').click()">📂 Izaberi KML fajl(ove)</button>
+    <div id="kml-list"></div>
   </div>
 </div>
 
@@ -556,7 +554,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.4.0';
+const APP_VER = 'v0.5.0';
 document.getElementById('ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -2390,11 +2388,255 @@ map.on('click', e => {
   if (_msrOn) return; // izmjera preuzima klikove kroz vlastiti map.on('click')
   const mm = _msrHitTest(e.latlng);
   if (mm) { _msrOpenPopupNa(mm, e.latlng); return; }
-  // Buduće provjere (Požari tačke, uvezeni KML) idu OVDJE, istim redoslijedom
-  // kao pane z-index (niži prvo) — vidi napomenu na vrhu ove sekcije.
+  const kl = _kmlHitTest(e.latlng);
+  if (kl) { _kmlOpenPopup(kl, e.latlng); return; }
+  // Buduće provjere (Požari tačke) idu OVDJE, istim redoslijedom kao pane
+  // z-index (niži prvo) — vidi napomenu na vrhu ove sekcije.
 });
 
 _msrRegLoad();
+
+// =====================================================================
+// UČITAJ KML — uvoz KML slojeva (poligon/linija/tačka), lokalna
+// perzistencija (localStorage), proximity fallback klik (dijeli isti
+// generic map.on('click') iznad sa Mjerenjima — vidi napomenu tamo).
+// =====================================================================
+const KCOLS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#8b5cf6','#ec4899'];
+const _LOCAL_KML_KEY = 'usf_kml_layers';
+let kmlLs = [], kmlCI = 0;
+
+function pcsKml(s) {
+  if (!s) return [];
+  return s.trim().split(/\s+/).map(c => { const p = c.split(','); return p.length >= 2 ? [parseFloat(p[1]), parseFloat(p[0])] : null; }).filter(Boolean);
+}
+function _parseKmlExtData(pm) {
+  const ext = {};
+  pm.querySelectorAll('ExtendedData Data, ExtendedData SimpleData').forEach(d => {
+    const key = d.getAttribute('name') || d.getAttribute('key') || '';
+    const val = d.querySelector('value')?.textContent?.trim() || d.textContent?.trim() || '';
+    if (key) ext[key] = val;
+  });
+  return ext;
+}
+function pkml(doc, col, op) {
+  op = op ?? 0.9;
+  const g = L.featureGroup();
+  doc.querySelectorAll('Placemark').forEach(pm => {
+    const name = pm.querySelector('name')?.textContent?.trim() || '';
+    const desc = pm.querySelector('description')?.textContent?.trim() || '';
+    const extData = _parseKmlExtData(pm);
+    pm.querySelectorAll('Polygon').forEach(pg => {
+      const cs = pcsKml(pg.querySelector('outerBoundaryIs coordinates,coordinates')?.textContent);
+      if (cs.length > 2) {
+        // fillOpacity 0.001 (ne 0) — vizuelno nevidljivo, ali fill ostaje
+        // "painted" pa klik unutar poligona radi (Leaflet _containsPoint).
+        const l = L.polygon(cs, { color: col, weight: 2, opacity: op, fillOpacity: 0.001, pane: 'tragMsrLines' });
+        l._kmlIsPolygon = true; l._kmlName = name; l._kmlDesc = desc; l._kmlExtData = extData;
+        if (name) l.bindTooltip(_escHtml(name), { sticky: true });
+        _bindKmlPopup(l);
+        l.addTo(g);
+      }
+    });
+    pm.querySelectorAll('LineString').forEach(ls => {
+      const cs = pcsKml(ls.querySelector('coordinates')?.textContent);
+      if (cs.length > 1) {
+        const l = L.polyline(cs, { color: col, weight: 2, dashArray: '6,4', opacity: op, pane: 'tragMsrLines' });
+        l._kmlName = name; l._kmlDesc = desc; l._kmlExtData = extData;
+        if (name) l.bindTooltip(_escHtml(name), { sticky: true });
+        _bindKmlPopup(l);
+        l.addTo(g);
+      }
+    });
+    pm.querySelectorAll('Point').forEach(pt => {
+      const cs = pcsKml(pt.querySelector('coordinates')?.textContent);
+      if (cs.length > 0) {
+        const m = L.circleMarker(cs[0], { radius: 5, color: col, fillColor: col, opacity: op, fillOpacity: op, pane: 'tragMsrLines' });
+        m._kmlIsPoint = true; m._kmlName = name; m._kmlDesc = desc; m._kmlExtData = extData;
+        if (name) m.bindTooltip(_escHtml(name));
+        _bindKmlPopup(m);
+        m.addTo(g);
+      }
+    });
+  });
+  return g;
+}
+function _bindKmlPopup(layer) {
+  const onClick = e => { L.DomEvent.stopPropagation(e); _kmlOpenPopup(layer, e.latlng); };
+  layer.on('click', onClick);
+  // Tanke/isprekidane linije rijetko pogode prst na terenu — širi nevidljiv
+  // hit-sloj (isti obrazac kao attachPolyClick za trag). Poligoni (fill hit-
+  // test radi kroz cijelu unutrašnjost) i tačke (već imaju radius) to ne trebaju.
+  if (!layer._kmlIsPolygon && !layer._kmlIsPoint && layer.getLatLngs) {
+    const hit = L.polyline(layer.getLatLngs(), { weight: 20, opacity: 0.001, color: '#000', pane: 'tragMsrLines', interactive: true });
+    layer.on('add', () => { try { hit.addTo(map); } catch(e) {} });
+    layer.on('remove', () => { try { map.removeLayer(hit); } catch(e) {} });
+    if (layer._map) { try { hit.addTo(map); } catch(e) {} }
+    hit.on('click', onClick);
+  }
+}
+function _kmlPopupHtml(layer) {
+  const nm = layer._kmlName || '(bez imena)';
+  const desc = layer._kmlDesc || '';
+  const ext = layer._kmlExtData || {};
+  const type = layer._kmlIsPolygon ? 'Poligon' : (layer._kmlIsPoint ? 'Tačka' : 'Linija');
+  const typeIco = layer._kmlIsPolygon ? '▣' : (layer._kmlIsPoint ? '●' : '━');
+  let html = `<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;color:#1e293b;">${typeIco} ${_escHtml(nm)}</div>`;
+  html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${type}</div>`;
+  if (desc) html += `<div style="font-size:12px;color:#374151;margin-top:4px;">${_escHtml(desc)}</div>`;
+  const extKeys = Object.keys(ext);
+  if (extKeys.length) {
+    html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;">` +
+      extKeys.map(k => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;"><span style="color:#94a3b8;">${_escHtml(k)}</span><span style="color:#374151;text-align:right;">${_escHtml(ext[k])}</span></div>`).join('') + `</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+function _kmlOpenPopup(layer, latlng) {
+  L.popup({ maxWidth: 280, minWidth: 180 }).setLatLng(latlng).setContent(_kmlPopupHtml(layer)).openOn(map);
+}
+// Zašto proximity fallback: karta radi u canvas modu (preferCanvas:true).
+// Kad Požari tačke (viši pane) budu dodane, njihov canvas hvata DOM klik na
+// cijelom svom pravougaoniku — layer.on('click') iz _bindKmlPopup gore nikad
+// ne opali. Provjerava se ekranska udaljenost do linije/unutar poligona,
+// nezavisno od toga šta je vizuelno iznad.
+function _kmlRingDistPx(latlngs, cp) {
+  if (!latlngs || !latlngs.length) return Infinity;
+  if (Array.isArray(latlngs[0])) { let m = Infinity; for (const sub of latlngs) m = Math.min(m, _kmlRingDistPx(sub, cp)); return m; }
+  let m = Infinity, prev = null;
+  for (const ll of latlngs) { const p = map.latLngToContainerPoint(ll); if (prev) m = Math.min(m, _distToSegPx(cp, prev, p)); prev = p; }
+  return m;
+}
+function _kmlHitTest(latlng) {
+  if (!map || !kmlLs.length) return null;
+  const lp = map.latLngToLayerPoint(latlng), cp = map.latLngToContainerPoint(latlng);
+  const TOL_LINE = 20, TOL_POINT = 16, TOL_RING = 12;
+  let best = null;
+  for (let i = kmlLs.length - 1; i >= 0; i--) {
+    const k = kmlLs[i];
+    if (!k || !k.grp || k.vis === false || !map.hasLayer(k.grp)) continue;
+    const kids = [];
+    try { k.grp.eachLayer(l => kids.push(l)); } catch(e) { continue; }
+    for (let j = kids.length - 1; j >= 0; j--) {
+      const l = kids[j];
+      if (l._kmlName === undefined) continue;
+      if (l._kmlIsPoint) {
+        try { if (cp.distanceTo(map.latLngToContainerPoint(l.getLatLng())) <= TOL_POINT) return l; } catch(e) {}
+        continue;
+      }
+      if (l._kmlIsPolygon) {
+        let inside = false;
+        try { inside = !!(l._containsPoint && l._containsPoint(lp)); } catch(e) {}
+        if (!inside) { try { if (l.getBounds().pad(0.02).contains(latlng) && _kmlRingDistPx(l.getLatLngs(), cp) <= TOL_RING) inside = true; } catch(e) {} }
+        if (inside && !best) best = l;
+        continue;
+      }
+      try { if (_kmlRingDistPx(l.getLatLngs(), cp) <= TOL_LINE) return l; } catch(e) {}
+    }
+  }
+  return best;
+}
+
+function _kmlFileChosen(e) { [...e.target.files].forEach(_kmlLoadFile); e.target.value = ''; }
+function _kmlLoadFile(file) {
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const col = KCOLS[kmlCI % KCOLS.length]; kmlCI++;
+      const doc = new DOMParser().parseFromString(ev.target.result, 'text/xml');
+      const grp = pkml(doc, col);
+      grp.addTo(map);
+      kmlLs.push({ id: 'kml_' + Date.now() + '_' + kmlCI, name: file.name, grp, col, vis: true });
+      _kmlSaveContent(file.name, ev.target.result, col);
+      _kmlRegRender();
+      try { const b = grp.getBounds(); if (b.isValid()) map.fitBounds(b, { padding: [20,20] }); } catch(x) {}
+      showToast('✅ Učitano: ' + file.name);
+    } catch(x) { showToast('⚠ Greška KML: ' + x.message); }
+  };
+  r.readAsText(file);
+}
+function _kmlSaveContent(name, content, col) {
+  try {
+    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
+    store[name] = { content, col, vis: true };
+    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
+  } catch(e) { showToast('⚠ KML nije sačuvan lokalno (prevelik fajl?)'); }
+}
+function _kmlSaveAll() {
+  try {
+    const store = {};
+    kmlLs.forEach(k => { if (k._content) store[k.name] = { content: k._content, col: k.col, vis: k.vis }; });
+    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
+  } catch(e) {}
+}
+function _kmlRestore() {
+  let store;
+  try { store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}'); } catch(e) { return; }
+  Object.entries(store).forEach(([name, data]) => {
+    try {
+      const col = data.col || KCOLS[kmlCI % KCOLS.length]; kmlCI++;
+      const doc = new DOMParser().parseFromString(data.content, 'text/xml');
+      const grp = pkml(doc, col);
+      if (data.vis !== false) grp.addTo(map);
+      kmlLs.push({ id: 'kml_' + Date.now() + '_' + kmlCI, name, grp, col, vis: data.vis !== false, _content: data.content });
+    } catch(e) {}
+  });
+  _kmlRegRender();
+}
+function _kmlToggle(id) {
+  const k = kmlLs.find(x => x.id === id);
+  if (!k) return;
+  k.vis = !k.vis;
+  if (k.vis) k.grp.addTo(map); else map.removeLayer(k.grp);
+  _kmlSaveAllFromRegistry();
+  _kmlRegRender();
+}
+async function _kmlDeleteConfirm(id) {
+  const ok = await _dlgConfirm('Ukloniti ovaj KML sloj sa karte?', { danger: true, okLabel: 'Ukloni' });
+  if (ok) _kmlDelete(id);
+}
+function _kmlDelete(id) {
+  const k = kmlLs.find(x => x.id === id);
+  if (!k) return;
+  try { map.removeLayer(k.grp); } catch(e) {}
+  kmlLs = kmlLs.filter(x => x.id !== id);
+  try {
+    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
+    delete store[k.name];
+    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
+  } catch(e) {}
+  _kmlRegRender();
+}
+// _content nije uvijek popunjen na sloju kreiranom preko _kmlLoadFile (samo
+// preko _kmlRestore) — pri toggle-u čitamo postojeći localStorage zapis
+// umjesto da zahtijevamo da svaki sloj nosi svoj sirovi tekst u memoriji.
+function _kmlSaveAllFromRegistry() {
+  try {
+    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
+    kmlLs.forEach(k => { if (store[k.name]) store[k.name].vis = k.vis; });
+    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
+  } catch(e) {}
+}
+function _kmlZoom(id) {
+  const k = kmlLs.find(x => x.id === id);
+  if (!k) return;
+  try { const b = k.grp.getBounds(); if (b.isValid()) { map.fitBounds(b, { padding: [30,30] }); switchMainTab('karta'); } } catch(e) {}
+}
+function _kmlRegRender() {
+  const el = document.getElementById('kml-list');
+  const cnt = document.getElementById('kml-count');
+  if (!el) return;
+  if (cnt) cnt.textContent = kmlLs.length ? `(${kmlLs.length})` : '';
+  if (!kmlLs.length) { el.innerHTML = '<div class="treg-empty">Nema učitanih KML slojeva.</div>'; return; }
+  el.innerHTML = kmlLs.map(k => `<div class="treg-row" style="border-left:3px solid ${k.col};">
+    <div class="treg-name" onclick="_kmlZoom('${k.id}')">${_escHtml(k.name)}</div>
+    <div class="treg-btns">
+      <button onclick="_kmlZoom('${k.id}')">🔍 Zoom</button>
+      <button onclick="_kmlToggle('${k.id}')">${k.vis !== false ? '🙈 Sakrij' : '👁 Prikaži'}</button>
+      <button class="del-btn" onclick="_kmlDeleteConfirm('${k.id}')">🗑 Ukloni</button>
+    </div>
+  </div>`).join('');
+}
+_kmlRestore();
 
 // =====================================================================
 // GLAVNA NAVIGACIJA — Karta / Meni / Postavke, i sekcije iz Menija
