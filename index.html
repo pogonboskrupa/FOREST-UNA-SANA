@@ -201,6 +201,18 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .usf-panel .up-close { background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer; }
 .usf-panel .up-body { flex:1; overflow-y:auto; padding:12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
 
+#profil-modal {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.82); z-index:9999;
+  align-items:center; justify-content:center;
+}
+#profil-modal.show { display:flex; }
+#profil-box {
+  background:#0f172a; border:1.5px solid #334155; border-radius:12px;
+  padding:16px; width:440px; max-width:96vw;
+  box-shadow:0 8px 32px rgba(0,0,0,0.8);
+}
+
 .meni-card {
   display:flex; align-items:center; gap:12px; background:#1e293b; border-radius:12px;
   padding:14px; margin-bottom:10px; cursor:pointer; border:1px solid #334155;
@@ -570,7 +582,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
 
     <div class="stub-section" style="padding:20px 12px 4px;">
-      <p style="font-size:12px;">Uzdužni profil (grafikon), poprečni nagib/serpentine i izvještaj/PDF dolaze u sljedećoj fazi.</p>
+      <p style="font-size:12px;">Poprečni nagib/serpentine kao geometrijski elementi i izvještaj/PDF dolaze u sljedećoj fazi.</p>
     </div>
   </div>
 </div>
@@ -622,6 +634,23 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div id="dlg-btns">
     <button id="dlg-cancel" class="dlg-btn-cancel" onclick="_dlgDismiss()">Odustani</button>
     <button id="dlg-ok" class="dlg-btn-ok" onclick="_dlgCommit()">OK</button>
+  </div>
+</div>
+
+<!-- Uzdužni profil (visina) — dijeljen između Projektovanja puta i (buduće) drugih alata -->
+<div id="profil-modal" onclick="if(event.target===this)closeProfilModal()">
+  <div id="profil-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;font-size:13px;color:#94a3b8;font-weight:600;">↕ Profil visina — <span id="profil-nm" style="color:#fbbf24;"></span></h3>
+      <button onclick="closeProfilModal()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+    <svg id="profil-svg" viewBox="0 0 420 200" preserveAspectRatio="none" style="width:100%;height:200px;display:block;border-radius:6px;background:#080e1c;"></svg>
+    <div id="profil-stats" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:12px;font-family:monospace;"></div>
+    <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:#64748b;">
+      <span><span style="display:inline-block;width:18px;height:3px;background:#4ade80;border-radius:2px;vertical-align:middle;margin-right:4px;"></span><span id="profil-leg-ok">&lt;12%</span></span>
+      <span><span style="display:inline-block;width:18px;height:3px;background:#fbbf24;border-radius:2px;vertical-align:middle;margin-right:4px;"></span><span id="profil-leg-warn">12–18%</span></span>
+      <span><span style="display:inline-block;width:18px;height:3px;background:#f87171;border-radius:2px;vertical-align:middle;margin-right:4px;"></span><span id="profil-leg-bad">&gt;18%</span></span>
+    </div>
   </div>
 </div>
 
@@ -3949,6 +3978,82 @@ async function _demForBounds(bounds) {
 }
 function _demCacheStore(dem) { _demCache.push(dem); if (_demCache.length > 6) _demCache.shift(); }
 
+// ─── Uzdužni profil (visina) — SVG grafikon, dijeljen alat (koristi ga
+// Projektovanje šumskog puta niže, sposoban za ponovnu upotrebu i drugdje). ──
+function _renderElevProfile(name, pts, alts, src, extraStatsHtml = '', slopeThresh = null) {
+  if (pts.length < 2 || alts.length !== pts.length) return;
+  const thWarn = slopeThresh?.warn ?? 12, thBad = slopeThresh?.bad ?? 18;
+
+  const cumD = [0];
+  for (let i = 1; i < pts.length; i++) cumD.push(cumD[i-1] + dst(pts[i-1].la, pts[i-1].lo, pts[i].la, pts[i].lo));
+  const totalD = cumD[cumD.length - 1] || 1;
+
+  const minAlt = Math.min(...alts), maxAlt = Math.max(...alts);
+  const altRange = maxAlt - minAlt || 1;
+
+  const W = 420, H = 200, pad = { t: 18, r: 12, b: 28, l: 46 };
+  const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+  const sx = i => pad.l + (cumD[i] / totalD) * pw;
+  const sy = i => pad.t + ph - ((alts[i] - minAlt) / altRange) * ph;
+
+  let segs = '';
+  for (let i = 1; i < pts.length; i++) {
+    const d = dst(pts[i-1].la, pts[i-1].lo, pts[i].la, pts[i].lo);
+    const slope = d > 0.5 ? Math.abs((alts[i] - alts[i-1]) / d * 100) : 0;
+    const col = slope > thBad ? '#f87171' : slope > thWarn ? '#fbbf24' : '#4ade80';
+    segs += `<line x1="${sx(i-1).toFixed(1)}" y1="${sy(i-1).toFixed(1)}" x2="${sx(i).toFixed(1)}" y2="${sy(i).toFixed(1)}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+
+  let grid = '', yLab = '';
+  for (let t = 0; t <= 4; t++) {
+    const frac = t / 4;
+    const yy = (pad.t + ph - frac * ph).toFixed(1);
+    const alt = Math.round(minAlt + frac * altRange);
+    grid += `<line x1="${pad.l}" y1="${yy}" x2="${pad.l+pw}" y2="${yy}" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
+    yLab += `<text x="${pad.l-4}" y="${(+yy+4).toFixed(1)}" text-anchor="end" fill="#475569" font-size="9">${alt}</text>`;
+  }
+  let xLab = '';
+  for (let t = 0; t <= 4; t++) {
+    const xx = (pad.l + t/4*pw).toFixed(1);
+    xLab += `<text x="${xx}" y="${H-6}" text-anchor="middle" fill="#475569" font-size="9">${Math.round(t/4*totalD)}m</text>`;
+  }
+
+  const poly = pts.map((_, i) => `${sx(i).toFixed(1)},${sy(i).toFixed(1)}`).join(' ');
+  const fill = `${pad.l},${pad.t+ph} ` + poly + ` ${sx(pts.length-1).toFixed(1)},${pad.t+ph}`;
+
+  document.getElementById('profil-svg').innerHTML =
+    `${grid}${yLab}${xLab}
+     <text x="10" y="${(H/2).toFixed(0)}" transform="rotate(-90,10,${(H/2).toFixed(0)})" text-anchor="middle" fill="#334155" font-size="9">m n.v.</text>
+     <polygon points="${fill}" fill="rgba(74,222,128,0.06)"/>
+     ${segs}`;
+
+  document.getElementById('profil-nm').textContent = name + (src && src !== 'GPS' ? ' · ' + src : '');
+
+  const slopes = pts.slice(1).map((p, i) => {
+    const d = dst(pts[i].la, pts[i].lo, p.la, p.lo);
+    return d > 0.5 ? Math.abs((alts[i+1] - alts[i]) / d * 100) : 0;
+  });
+  const maxSlope = slopes.length ? Math.max(...slopes) : 0;
+  const avgSlope = slopes.length ? slopes.reduce((s, x) => s + x, 0) / slopes.length : 0;
+  document.getElementById('profil-stats').innerHTML =
+    `<span style="color:#94a3b8">Min: <b style="color:#e2e8f0">${Math.round(minAlt)} m</b></span>` +
+    `<span style="color:#94a3b8">Max: <b style="color:#e2e8f0">${Math.round(maxAlt)} m</b></span>` +
+    `<span style="color:#94a3b8">Razlika: <b style="color:#e2e8f0">${Math.round(maxAlt-minAlt)} m</b></span>` +
+    `<span style="color:#94a3b8">Max nagib: <b style="color:${maxSlope>thBad?'#f87171':maxSlope>thWarn?'#fbbf24':'#4ade80'}">${maxSlope.toFixed(1)}%</b></span>` +
+    `<span style="color:#94a3b8">Prosj. nagib: <b style="color:#e2e8f0">${avgSlope.toFixed(1)}%</b></span>` +
+    extraStatsHtml;
+
+  const legOk = document.getElementById('profil-leg-ok');
+  const legWarn = document.getElementById('profil-leg-warn');
+  const legBad = document.getElementById('profil-leg-bad');
+  if (legOk) legOk.textContent = '<' + thWarn + '%';
+  if (legWarn) legWarn.textContent = thWarn + '–' + thBad + '%';
+  if (legBad) legBad.textContent = '>' + thBad + '%';
+
+  document.getElementById('profil-modal').classList.add('show');
+}
+function closeProfilModal() { document.getElementById('profil-modal').classList.remove('show'); }
+
 // ─── UI: tačke A/B/(via), parametri, generisanje, sačuvane trase ──────────
 let _rdPoints = { start: null, end: null, via: null };  // {lat,lon,elev|null}
 let _rdMarkers = { start: null, end: null, via: null }; // L.circleMarker
@@ -4190,11 +4295,29 @@ function _rdShowResult() {
     </div>
     ${badgeHtml}
     <div style="display:flex;gap:6px;margin-top:8px;">
+      <button onclick="_rdShowProfile()" style="flex:1;padding:8px;background:#1d4ed8;border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">↕ Uzdužni profil</button>
       <button onclick="_rdSaveRoute()" style="flex:1;padding:8px;background:#059669;border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">💾 Sačuvaj rutu</button>
       <button onclick="_rdDiscardResult()" style="padding:8px 12px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:12px;cursor:pointer;">Odbaci</button>
     </div>
   `;
   showToast(`✓ Trasa: ${_msrFmt(v.totalDist)}, max nagib ${v.maxSlopePct.toFixed(1)}%`);
+}
+
+// Boji dionice po STVARNO korištenim pragovima OVE trase (ne generičkim
+// 12/18% koje profil koristi za GPS tragove) — inače put sa npr. nagibMax=8%
+// izgleda kao da profil "griješi" jer legenda ne odgovara stvarnom limitu.
+function _rdRenderProfileWithLimits(name, pts, alts, params) {
+  const nagibMax = params?.nagibMax ?? RD_DEFAULT_PARAMS.nagibMax;
+  const nagibPreporuceni = params?.nagibPreporuceni ?? RD_DEFAULT_PARAMS.nagibPreporuceni;
+  const limitsHtml = `<span style="color:#94a3b8">Ograničenje: <b style="color:#e2e8f0">preporučeno ${nagibPreporuceni}% / max ${nagibMax}%</b></span>`;
+  _renderElevProfile(name, pts, alts, 'DEM model terena', limitsHtml, { warn: nagibPreporuceni, bad: nagibMax });
+}
+
+function _rdShowProfile() {
+  if (!_rdResultPath) return;
+  const pts = _rdResultPath.map(p => ({ la: p.lat, lo: p.lon }));
+  const alts = _rdResultPath.map(p => p.elev);
+  _rdRenderProfileWithLimits('Projektovana trasa (A→B)', pts, alts, _rdResultParams);
 }
 
 const _RD_ROUTES_KEY = 'usf_sumski_putevi';
@@ -4255,11 +4378,20 @@ function _rdRenderSavedRoutes() {
         </div>
         <div style="display:flex;gap:4px;margin-top:6px;">
           <button onclick="_rdToggleSavedRouteOnMap('${r.id}')" style="flex:1;padding:5px;background:${shown ? '#7c3aed' : '#374151'};border:none;border-radius:5px;color:#fff;font-size:11px;cursor:pointer;">${shown ? '🗺 Sakrij' : '🗺 Prikaži'}</button>
+          <button onclick="_rdShowSavedRouteProfile('${r.id}')" style="padding:5px 8px;background:#1d4ed8;border:none;border-radius:5px;color:#fff;font-size:11px;cursor:pointer;" title="Uzdužni profil">↕</button>
           <button onclick="_rdRenameSavedRoute('${r.id}')" style="padding:5px 8px;background:#374151;border:none;border-radius:5px;color:#e2e8f0;font-size:11px;cursor:pointer;">✎</button>
           <button onclick="_rdDeleteSavedRoute('${r.id}')" style="padding:5px 8px;background:#3a1e1e;border:none;border-radius:5px;color:#f87171;font-size:11px;cursor:pointer;">🗑</button>
         </div>
       </div>`;
   }).join('');
+}
+
+function _rdShowSavedRouteProfile(id) {
+  const r = _rdGetSavedRoutes().find(x => x.id === id);
+  if (!r) return;
+  const pts = r.pts.map(p => ({ la: p.la, lo: p.lo }));
+  const alts = r.pts.map(p => p.al);
+  _rdRenderProfileWithLimits(r.nm, pts, alts, { nagibMax: r.nagibMax, nagibPreporuceni: r.nagibPreporuceni });
 }
 
 function _rdToggleSavedRouteOnMap(id) {
