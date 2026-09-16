@@ -643,12 +643,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">📅 Godišnji pregled (GFW, treba admin ključ ispod)</div>
-      <div class="loc-row">
-        <span>Pregled cijele godine (broj požara, površina po mjesecu)</span>
-        <div class="loc-switch" id="poz-god-switch" onclick="_povGodToggle(!_povGodOn())"></div>
-      </div>
-      <div id="poz-god-status" style="font-size:11px;color:#94a3b8;margin:8px 0 4px;"></div>
-      <div id="poz-god-lista"></div>
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:8px;">Počev od 2026. — označi godinu(e) da vidiš sve požare te godine na karti i u listi.</div>
+      <div id="poz-god-body"></div>
     </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
@@ -867,7 +863,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.17.0';
+const APP_VER = 'v0.18.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -3761,70 +3757,153 @@ function _povGodGrupisiPoMjesecu(grupe) {
   return Object.values(bucket).sort((a, b) => a.key.localeCompare(b.key));
 }
 
-const _POV_GOD_ON_KEY = 'usf_pozari_god_on';
-const _POV_GOD_CACHE_KEY = 'usf_pozari_god_kes';
-let _povGodEvts = [], _povGodMeta = null, _povGodBusy = false;
-function _povGodOn() { try { return localStorage.getItem(_POV_GOD_ON_KEY) === '1'; } catch(e) { return false; } }
-function _povGodSaveCache(grupe, godina) {
-  try { localStorage.setItem(_POV_GOD_CACHE_KEY, JSON.stringify({ ts: Date.now(), godina, grupe })); } catch(e) {}
+// Godine se biraju NEZAVISNO jedna od druge (svaka svoj checkbox) — nikad
+// ispod _POV_GOD_BASE_YEAR (aplikacija nema/ne treba historijske podatke
+// prije toga). Kad kalendar pređe u novu godinu, _povGodDostupneGodine()
+// automatski doda novi checkbox — ne treba ručno mijenjati kod.
+const _POV_GOD_BASE_YEAR = 2026;
+const _POV_GOD_GODINE_KEY = 'usf_pozari_god_godine';
+const _POV_GOD_CACHE_PFX = 'usf_pozari_god_kes_';
+let _povGodPodaci = {}; // godina(broj) -> { evts, meta, busy }
+
+function _povGodDostupneGodine(trenutna) {
+  const t = trenutna || new Date().getUTCFullYear();
+  const zadnja = Math.max(_POV_GOD_BASE_YEAR, t);
+  const out = [];
+  for (let g = _POV_GOD_BASE_YEAR; g <= zadnja; g++) out.push(g);
+  return out;
 }
-function _povGodLoadCache() { try { return JSON.parse(localStorage.getItem(_POV_GOD_CACHE_KEY)); } catch(e) { return null; } }
-function _povGodObnoviIzKesa() {
-  const c = _povGodLoadCache();
+// Podrazumijevano (prvi put, ništa sačuvano): tekuća godina je već označena
+// — korisnik ne treba ručno uključivati da vidi požare "ove godine".
+function _povGodOznaceneGodine() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(_POV_GOD_GODINE_KEY) || 'null');
+    if (Array.isArray(saved)) return saved;
+  } catch(e) {}
+  return [new Date().getUTCFullYear()];
+}
+function _povGodSetOznaceneGodine(list) { try { localStorage.setItem(_POV_GOD_GODINE_KEY, JSON.stringify(list)); } catch(e) {} }
+
+function _povGodSaveCache(godina, grupe) {
+  try { localStorage.setItem(_POV_GOD_CACHE_PFX + godina, JSON.stringify({ ts: Date.now(), grupe })); } catch(e) {}
+}
+function _povGodLoadCache(godina) { try { return JSON.parse(localStorage.getItem(_POV_GOD_CACHE_PFX + godina)); } catch(e) { return null; } }
+function _povGodObnoviIzKesa(godina) {
+  const c = _povGodLoadCache(godina);
   if (!c || !Array.isArray(c.grupe)) return false;
-  _povGodEvts = c.grupe;
-  _povGodMeta = { dohvacenoMs: c.ts, kes: true, godina: c.godina };
+  _povGodPodaci[godina] = { evts: c.grupe, meta: { dohvacenoMs: c.ts, kes: true }, busy: false };
   return true;
 }
-function _povGodToggle(on) {
-  try { localStorage.setItem(_POV_GOD_ON_KEY, on ? '1' : '0'); } catch(e) {}
-  const sw = document.getElementById('poz-god-switch'); if (sw) sw.classList.toggle('on', on);
-  if (on) { if (!_povGodEvts.length) _povGodObnoviIzKesa(); _povGodLoad(true); }
-  _poziRenderPanel();
+
+function _povGodToggleGodina(godina, on) {
+  const set = new Set(_povGodOznaceneGodine());
+  if (on) set.add(godina); else set.delete(godina);
+  _povGodSetOznaceneGodine([...set]);
+  if (on) {
+    if (!_povGodPodaci[godina]) _povGodObnoviIzKesa(godina);
+    _povGodLoadGodina(godina, true);
+  }
+  _povGodRenderSve();
 }
-async function _povGodLoad(tiho) {
-  if (_povGodBusy || !_povGodOn()) return;
+async function _povGodLoadGodina(godina, tiho) {
+  const stanje = _povGodPodaci[godina] || (_povGodPodaci[godina] = { evts: [], meta: null, busy: false });
+  if (stanje.busy) return;
   const gfwKljuc = (_poziKljucevi.gfw || '').trim();
-  if (!gfwKljuc) { _povGodMeta = { greska: 'nema-kljuca' }; _poziRenderPanel(); return; }
-  _povGodBusy = true;
-  _poziRenderPanel();
+  if (!gfwKljuc) { stanje.meta = { greska: 'nema-kljuca' }; _povGodRenderSve(); return; }
+  stanje.busy = true;
+  _povGodRenderSve();
   try {
     const ref = _poziRefTacka();
-    const godina = new Date().getUTCFullYear();
-    const r = await _poziDohvatiJedan('GFW cijela godina', _povGodUrl(ref, godina), 35000,
+    const r = await _poziDohvatiJedan('GFW ' + godina + '. godina', _povGodUrl(ref, godina), 35000,
       { headers: { 'x-api-key': gfwKljuc }, parser: _poziParseGfwJson, provjera: /"data"\s*:/ });
     if (!r.ok) {
-      if (!_povGodEvts.length) _povGodMeta = { greska: r.greska };
-      if (!tiho) showToast('❌ Godišnji pregled: ' + r.greska);
+      if (!stanje.evts.length) stanje.meta = { greska: r.greska };
+      if (!tiho) showToast('❌ Požari ' + godina + '. godina: ' + r.greska);
       return;
     }
     const pts = _poziFilterBlizu(r.pts, ref);
     const grupe = _poziGrupeBlizu(_poziGrupisi(pts), ref);
-    _povGodEvts = grupe;
-    _povGodMeta = { dohvacenoMs: Date.now(), godina, ukupno: r.pts.length, kes: false };
-    _povGodSaveCache(grupe, godina);
+    stanje.evts = grupe;
+    stanje.meta = { dohvacenoMs: Date.now(), ukupno: r.pts.length, kes: false };
+    _povGodSaveCache(godina, grupe);
   } catch(e) {
-    if (!_povGodEvts.length) _povGodMeta = { greska: e?.message || 'greška' };
+    if (!stanje.evts.length) stanje.meta = { greska: e?.message || 'greška' };
   } finally {
-    _povGodBusy = false;
-    _poziRenderPanel();
+    stanje.busy = false;
+    _povGodRenderSve();
   }
 }
-function _povGodSazetak() {
-  const m = _povGodMeta || {};
-  if (m.greska === 'nema-kljuca') return 'Treba GFW API ključ (admin, ispod) — besplatna FIRMS arhiva ne pokriva cijelu godinu.';
-  if (m.greska) return '⚠ ' + m.greska;
-  if (_povGodBusy && !_povGodEvts.length) return '⏳ Učitavam godišnji pregled…';
-  if (!_povGodEvts.length) return m.godina ? ('✓ Nema zabilježenih požara u ' + m.godina + '. godini u krugu ' + _POZ_RADIUS_KM + ' km.') : 'Uključi da vidiš pregled cijele godine.';
-  const ukupnoHa = _povGodEvts.reduce((s, g) => s + _poziPovrsinaGrupe(g), 0);
-  return _povGodEvts.length + ' požara u ' + m.godina + '. godini · procijenjeno ' + _poziPovrsTxt(ukupnoHa) + (m.kes ? ' · iz keša' : '');
+
+// Markeri na karti za SVE trenutno označene godine (nezavisno od glavnog
+// "Prikaz na karti" prekidača — ovo je zaseban pregled). Isti icon/popup
+// kao glavni prikaz (_poziIconGrupa/_poziGrupaPopupHtml) radi vizuelne
+// dosljednosti — namjerno preklapanje sa zadnjih 24h/48h/7d je prihvatljivo
+// (isti stvarni požar, viđen iz dva ugla).
+let _povGodLayer = null;
+function _povGodRenderSve() {
+  if (_povGodLayer) { try { map.removeLayer(_povGodLayer); } catch(e) {} _povGodLayer = null; }
+  const ref = _poziRefTacka();
+  const oznacene = _povGodOznaceneGodine().filter(g => _povGodPodaci[g]?.evts?.length);
+  if (oznacene.length) {
+    const grp = L.layerGroup([], { pane: 'pozariPane' });
+    oznacene.forEach(godina => {
+      _povGodPodaci[godina].evts.forEach(g => {
+        const mk = L.marker([g.la, g.lo], { icon: _poziIconGrupa(g), pane: 'pozariPane' });
+        mk.bindPopup(() => _poziGrupaPopupHtml(g, ref), { maxWidth: 290 });
+        mk.addTo(grp);
+      });
+    });
+    _povGodLayer = grp.addTo(map);
+  }
+  _poziRenderPanel();
 }
-function _povGodListaHtml() {
-  if (!_povGodEvts.length) return '';
-  return _povGodGrupisiPoMjesecu(_povGodEvts).map(m => `<div style="display:flex;justify-content:space-between;padding:4px 4px;border-bottom:1px solid #1e293b;font-size:11px;">
-    <span style="color:#94a3b8;">${_povGodMjesecNaziv(m.mjesec)} ${m.godina}</span>
-    <span style="color:#e2e8f0;">${m.broj} · ${_poziPovrsTxt(m.ha)}</span>
-  </div>`).join('');
+function _povGodZoom(godina, i) {
+  const g = _povGodPodaci[godina]?.evts?.[i];
+  if (!g) return;
+  switchMainTab('karta');
+  const zoom = g.spanM > 2000 ? 12 : 13;
+  setTimeout(() => map.setView([g.la, g.lo], Math.max(map.getZoom(), zoom)), 80);
+}
+
+// Checkbox po godini + puna lista požara (ne samo mjesečni zbir) za svaku
+// OZNAČENU godinu — prijavljeni bug je bio da se prikazivao samo mjesečni
+// zbir, ne i stvarni požari, pa je izgledalo kao da nedostaju.
+function _povGodPanelHtml() {
+  const dostupne = _povGodDostupneGodine();
+  const oznaceneSet = new Set(_povGodOznaceneGodine());
+  const checkboxi = dostupne.map(godina => `
+    <label style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:12px;margin:0 12px 6px 0;">
+      <input type="checkbox" ${oznaceneSet.has(godina) ? 'checked' : ''} onchange="_povGodToggleGodina(${godina}, this.checked)"> ${godina}.
+    </label>`).join('');
+  const sekcije = dostupne.filter(g => oznaceneSet.has(g)).sort((a, b) => b - a).map(godina => {
+    const stanje = _povGodPodaci[godina];
+    let telo;
+    if (!stanje) telo = '';
+    else {
+      const m = stanje.meta || {};
+      if (m.greska === 'nema-kljuca') telo = `<div style="font-size:11px;color:#f87171;padding:4px 0;">Treba GFW API ključ (admin, ispod).</div>`;
+      else if (m.greska) telo = `<div style="font-size:11px;color:#f87171;padding:4px 0;">⚠ ${_escHtml(m.greska)}</div>`;
+      else if (stanje.busy && !stanje.evts.length) telo = `<div style="font-size:11px;color:#94a3b8;padding:4px 0;">⏳ Učitavam…</div>`;
+      else if (!stanje.evts.length) telo = `<div style="font-size:11px;color:#4ade80;padding:4px 0;">✓ Nema zabilježenih požara u krugu ${_POZ_RADIUS_KM} km.</div>`;
+      else {
+        const ukupnoHa = stanje.evts.reduce((s, g) => s + _poziPovrsinaGrupe(g), 0);
+        const redovi = stanje.evts.map((g, i) => {
+          const dt = g.zadnji ?? Date.parse(g.dt);
+          const dtTxt = isFinite(dt) ? new Date(dt).toLocaleDateString('bs-BA') : '—';
+          return `<div onclick="_povGodZoom(${godina},${i})" style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid #1e293b;cursor:pointer;font-size:11.5px;">
+            <span style="flex:1;color:#e2e8f0;">${dtTxt} · ${_msrFmt(g.d)}</span>
+            <span style="color:#64748b;">${g.broj} det. · ${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</span>
+          </div>`;
+        }).join('');
+        telo = `<div style="font-size:11px;color:#94a3b8;margin:2px 0 6px;">${stanje.evts.length} požara · procijenjeno ${_poziPovrsTxt(ukupnoHa)}${m.kes ? ' · iz keša' : ''}</div>${redovi}`;
+      }
+    }
+    return `<div style="margin-top:8px;">
+      <div style="font-size:11.5px;font-weight:700;color:#e2e8f0;padding:4px 0;">📅 ${godina}. godina</div>
+      ${telo}
+    </div>`;
+  }).join('');
+  return `<div style="display:flex;flex-wrap:wrap;">${checkboxi}</div>${sekcije}`;
 }
 
 // BEZ ključa nema izbora nego evropski izvozi — besplatni, bez naloga.
@@ -4418,9 +4497,7 @@ function _poziRenderPanel() {
   const status = document.getElementById('poz-status'); if (status) status.style.display = _poziOn ? '' : 'none';
   const lista = document.getElementById('poz-lista'); if (lista) lista.innerHTML = _poziListaHtml();
   const meteo = document.getElementById('poz-meteo'); if (meteo) meteo.innerHTML = _poziOn ? _poziMeteoHtml() : '';
-  const godSw = document.getElementById('poz-god-switch'); if (godSw) godSw.classList.toggle('on', _povGodOn());
-  const godStatus = document.getElementById('poz-god-status'); if (godStatus) godStatus.textContent = _povGodSazetak();
-  const godLista = document.getElementById('poz-god-lista'); if (godLista) godLista.innerHTML = _povGodOn() ? _povGodListaHtml() : '';
+  const godBody = document.getElementById('poz-god-body'); if (godBody) godBody.innerHTML = _povGodPanelHtml();
   const opozSw = document.getElementById('poz-opoz-switch'); if (opozSw) opozSw.classList.toggle('on', _poziOpozOn());
 }
 function openPozariSection() {
@@ -4435,12 +4512,15 @@ function openPozariSection() {
   const gfwSw = document.getElementById('poz-gfw-switch'); if (gfwSw) gfwSw.classList.toggle('on', _poziGfwOn());
   const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));
   const fwiSw = document.getElementById('poz-effis-fwi-switch'); if (fwiSw) fwiSw.classList.toggle('on', _poziEffisOn('fwi'));
-  if (_povGodOn() && !_povGodEvts.length) _povGodObnoviIzKesa();
+  _povGodOznaceneGodine().forEach(godina => {
+    if (!_povGodPodaci[godina]) _povGodObnoviIzKesa(godina);
+  });
   _poziRenderPanel();
   _poziOsvjeziAkoJeStaro();
   _poziAutoSync();
   _poziOpozAzuriraj();
-  if (_povGodOn()) _povGodLoad(true);
+  _povGodRenderSve();
+  _povGodOznaceneGodine().forEach(godina => _povGodLoadGodina(godina, true));
 }
 
 // ── Admin FIRMS/GFW ključevi (Firebase) — priprema za Area API/GFW u

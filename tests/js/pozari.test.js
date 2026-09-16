@@ -275,4 +275,12 @@ t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/
   assert.strictEqual(_poziOpozGeom([]), null);
 });
 
+t('_povGodDostupneGodine nikad ne ide ispod bazne 2026. godine', () => {
+  const src = extractFn('_povGodDostupneGodine') + '\nreturn _povGodDostupneGodine;';
+  const _povGodDostupneGodine = new Function('_POV_GOD_BASE_YEAR', src)(2026);
+  assert.deepStrictEqual(_povGodDostupneGodine(2026), [2026]);
+  assert.deepStrictEqual(_povGodDostupneGodine(2028), [2026, 2027, 2028]);
+  assert.deepStrictEqual(_povGodDostupneGodine(2020), [2026]);
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
