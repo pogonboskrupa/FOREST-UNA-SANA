@@ -512,6 +512,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   #meni-ver-badge { grid-column:1/-1; }
 }
 </style>
+<style>
+#poz-legends { position:fixed; top:8px; right:8px; z-index:790; width:210px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 100px); overflow:auto; background:#0f172a; border:1px solid #475569; border-radius:12px; }
+#poz-legends[hidden] { display:none; }
+#poz-legends #poz-opoz-legend, #poz-legends #poz-god-legend { position:static !important; max-width:none !important; border:0 !important; pointer-events:auto !important; }
+#poz-legend-handle { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; cursor:move; touch-action:none; color:#e2e8f0; font-size:12px; }
+#poz-legend-handle button { min-width:36px; min-height:36px; border:0; border-radius:8px; background:#334155; color:white; cursor:pointer; }
+</style>
 </head>
 <body>
 
@@ -521,6 +528,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="loc-center-dot"></div>
 <div id="loc-dist-badge"></div>
 
+<div id="poz-legends">
+<div id="poz-legend-handle"><span>⠿ Legenda požara</span><button aria-label="Sakrij legendu" onclick="_poziLegendaToggle(false)">✕</button></div>
 <!-- Legenda projekcije opožarene površine (Požari) — vidi _poziOpozAzuriraj -->
 <div id="poz-opoz-legend" style="display:none;position:absolute;right:10px;top:64px;z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:220px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">OPOŽARENO (PROCJENA)</div>
@@ -541,6 +550,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:8px;height:8px;border-radius:50%;background:#f43f5e;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS satelit · 30 dana</span></div>
 </div>
 
+</div>
 <div id="top-bar">
   <div id="top-left-stack">
     <div id="geo-badge"><span class="elev">↕ — m</span> · MGI5 Y —, X —</div>
@@ -741,6 +751,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="pozari-panel" class="usf-panel">
   <div class="up-hdr"><h2>🔥 Požari</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body" id="poz-panel-body">
+    <label class="loc-row"><span>Prikaži legendu</span><input type="checkbox" id="poz-legend-check" checked onchange="_poziLegendaToggle(this.checked)"></label>
     <div class="poz-podtabs">
       <button class="poz-podtab-btn on" data-podtab="pregled" onclick="_poziPodTab('pregled')">📡 Pregled</button>
       <button class="poz-podtab-btn" data-podtab="historija" onclick="_poziPodTab('historija')">📜 Historija</button>
@@ -1023,7 +1034,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.3';
+const APP_VER = 'v1.1.4';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -1262,6 +1273,8 @@ map.on('moveend', () => {
 map.createPane('tragMsrLines'); map.getPane('tragMsrLines').style.zIndex = 410;
 map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 415;
 map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 420;
+map.createPane('pozariRasterPane'); map.getPane('pozariRasterPane').style.zIndex = 405;
+map.getPane('pozariRasterPane').style.pointerEvents = 'none';
 map.createPane('sjecaPane');    map.getPane('sjecaPane').style.zIndex    = 430;
 
 let _defaultLayer = TL['⛰ Topo'];
@@ -3766,16 +3779,16 @@ const _POZ_EFFIS = {
   opozareno: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
     // `modis.ba` više nije objavljen EFFIS sloj, pa je karta ostajala prazna.
     // Sezonski NRT poligoni pokrivaju i požar od prije nekoliko sedmica.
-    layers: 'nrt.ba.poly.season', format: 'image/png', transparent: true, tiled: true,
+    pane:'pozariRasterPane', layers: 'nrt.ba.poly.season', format: 'image/png', transparent: true, tiled: true,
     version: '1.1.1', maxZoom: 22, opacity: 0.78, attribution: 'Copernicus EFFIS'
   }),
   detekcije: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
     // Nezavisan mjesečni prikaz tačaka MODIS/VIIRS, bez FIRMS/GFW ključa.
-    layers: 'modis.hs.month', format: 'image/png', transparent: true, tiled: true,
+    pane:'pozariRasterPane', layers: 'modis.hs.month', format: 'image/png', transparent: true, tiled: true,
     version: '1.1.1', maxZoom: 22, opacity: 0.92, attribution: 'Copernicus EFFIS'
   }),
   fwi: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
-    layers: 'ecmwf.fwi', format: 'image/png', transparent: true, tiled: true,
+    pane:'pozariRasterPane', layers: 'ecmwf.fwi', format: 'image/png', transparent: true, tiled: true,
     version: '1.1.1', maxZoom: 22, opacity: 0.55, attribution: 'Copernicus EFFIS'
   })
 };
@@ -3804,6 +3817,50 @@ function _poziEffisToggle(key, on) {
   _poziLegendeAzuriraj();
 }
 
+function _poziLegendaToggle(on) {
+  document.getElementById('poz-legends').hidden = !on;
+  document.getElementById('poz-legend-check').checked = !!on;
+  try { localStorage.setItem('usf_poz_legenda', on ? '1' : '0'); } catch(e) {}
+}
+(function () {
+  const box = document.getElementById('poz-legends');
+  const handle = document.getElementById('poz-legend-handle');
+  let drag = null;
+  function place(x, y) {
+    const maxX = Math.max(0, innerWidth - box.offsetWidth - 8);
+    const maxY = Math.max(0, innerHeight - box.offsetHeight - 90);
+    box.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
+    box.style.top = Math.max(0, Math.min(y, maxY)) + 'px';
+    box.style.right = 'auto';
+  }
+  try {
+    _poziLegendaToggle(localStorage.getItem('usf_poz_legenda') !== '0');
+    const pos = JSON.parse(localStorage.getItem('usf_poz_legenda_pos') || 'null');
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) place(pos.x, pos.y);
+  } catch(e) {}
+  handle.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;
+    const r = box.getBoundingClientRect();
+    drag = { x:e.clientX-r.left, y:e.clientY-r.top };
+    handle.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  handle.addEventListener('pointermove', e => {
+    if (drag) place(e.clientX-drag.x, e.clientY-drag.y);
+  });
+  function stop() {
+    if (!drag) return;
+    drag = null;
+    const r = box.getBoundingClientRect();
+    try { localStorage.setItem('usf_poz_legenda_pos', JSON.stringify({x:r.left,y:r.top})); } catch(e) {}
+  }
+  handle.addEventListener('pointerup', stop);
+  handle.addEventListener('pointercancel', stop);
+  window.addEventListener('resize', () => {
+    if (box.hidden) return;
+    const r = box.getBoundingClientRect(); place(r.left,r.top);
+  });
+})();
 function _poziLegendeAzuriraj() {
   const legEl = document.getElementById('poz-god-legend');
   if (!legEl) return;
