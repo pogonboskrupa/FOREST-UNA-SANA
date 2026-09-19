@@ -522,7 +522,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 </head>
 <body>
 
-<div id="offline-banner">📡 Nema internet konekcije — radi se sa keširanim podacima</div>
+<div id="offline-banner">📡 Offline — GPS, tragovi i učitane karte rade bez interneta</div>
 
 <div id="map"></div>
 <div id="loc-center-dot"></div>
@@ -940,10 +940,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   </div>
 </div>
 
-<!-- Učitaj kartu (stub) -->
+<!-- Učitaj kartu -->
 <div id="ucitajkartu-panel" class="usf-panel">
   <div class="up-hdr"><h2>🗂 Učitaj kartu <span id="sqlmap-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:10px;">Više offline karata može ostati na uređaju. Aktivna karta se pamti i automatski vraća pri sljedećem pokretanju.</div>
     <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
     <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('sqlmap-file-input').click()">📂 Izaberi MBTiles/SQLite fajl</button>
     <div id="sqlmap-status" style="color:#94a3b8;font-size:12px;margin-bottom:14px;min-height:16px;"></div>
@@ -1034,7 +1035,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.5';
+const APP_VER = 'v1.1.6';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -1604,7 +1605,7 @@ function onP(p) {
   _lastGpsFixTime = Date.now();
   _gpsRestartCount = 0;
   if (_gpsStabCb) { try { _gpsStabCb(la, lo, ac); } catch(e) {} }
-  _addTragPoint(la, lo, ac, al, gpsSpeed);
+  if (typeof AndroidGps === 'undefined') _addTragPoint(la, lo, ac, al, gpsSpeed);
 
   const speedKmh = (gpsSpeed != null && gpsSpeed >= 0) ? ` ${Math.round(gpsSpeed * 3.6)}km/h` : '';
   document.getElementById('gps-info').textContent = `GPS: ±${Math.round(ac)}m${speedKmh}`;
@@ -1884,15 +1885,6 @@ function _addTragPoint(la, lo, ac, al, sp, nowOverride) {
     _updTragStats();
   }
 
-  // Auto-pauza: ako nema stvarnog pomaka >2min, pauziraj automatski
-  if (_tragLastMoveT > 0 && (now - _tragLastMoveT) > _TRAG_AUTOPAUSE_MS) {
-    _tragLastMoveT = 0;
-    _tragPaused = true;
-    _tragLiveClear(); _tragBuf = []; _tragLastT = 0;
-    _updRecBarUI();
-    showToast('⏸ Trag pauziran — dugo mirovanje (2 min)');
-  }
-
   // Živi vrh — linija UVIJEK ide do trenutne pozicije, bez zaostajanja
   if (_tragPts.length > 0) {
     const last = _tragPts[_tragPts.length - 1];
@@ -1903,8 +1895,10 @@ function _addTragPoint(la, lo, ac, al, sp, nowOverride) {
 }
 function _tragLiveClear() { if (_tragLiveSeg) { map.removeLayer(_tragLiveSeg); _tragLiveSeg = null; } }
 
-function fabSnimTrag() {
+async function fabSnimTrag() {
   if (_tragOn) {
+    if (typeof AndroidGps !== 'undefined' && AndroidGps.setPaused) AndroidGps.setPaused(true);
+    if (await _drainNativeGpsBuffer() === false) { showToast('⚠ Trag još nije sigurno spremljen — oslobodi prostor i pokušaj ponovo'); return; }
     _tragOn = false; _tragPaused = false;
     if (_tragLine) { map.removeLayer(_tragLine); _tragLine = null; }
     _tragLiveClear();
@@ -1918,6 +1912,7 @@ function fabSnimTrag() {
       try { simp = _dpSimplifyGeo(pts3d, 0.8); } catch(e) { simp = pts3d; }
       const final = (simp.length >= 2 ? simp : pts3d).map(p => [p.la, p.lo, p.al]);
       const saved = _tragRegAdd(final);
+      if (!saved) { _tragOn = true; _tragPaused = true; _crashSaveTrag(); _updRecBarUI(); return; }
       showToast('✅ Trag sačuvan (' + _tragFmtLen(_tragCalcLen(final)) + ')');
     } else {
       showToast('⚠ Trag nije snimljen — premalo GPS tačaka (GPS signal slab?)');
@@ -1932,7 +1927,9 @@ function fabSnimTrag() {
 function _fabSnimTragBegin() {
   if (!gpsOn) startGPS();
   _recFreeView = false;
-  _tragOn = true; _tragPaused = false; _tragPts = []; _tragBuf = []; _tragLastT = 0;
+  _tragOn = true; _tragPaused = false; _tragPts = []; _tragBuf = []; _tragLastT = Date.now();
+  _nativeReplayLast.trag = _tragLastT;
+  if (!_crashSaveTrag()) { _tragOn = false; showToast('⚠ Nema prostora za sigurno snimanje'); return; }
   if (_tragLine) { map.removeLayer(_tragLine); _tragLine = null; }
   _tragLiveClear();
   _tragLine = L.polyline([], { color:'#f97316', weight:_lineStyle.tragW, opacity:0.85, pane:'tragMsrLines' }).addTo(map);
@@ -1942,9 +1939,12 @@ function _fabSnimTragBegin() {
   _crashStartTimer();  // auto-save svakih 30s
   _bgRecStart('Trag'); // pozadinsko snimanje — nastavi i kad app ode u pozadinu
 }
-function togTragPause() {
+async function togTragPause() {
   if (!_tragOn) return;
+  await _drainNativeGpsBuffer();
   _tragPaused = !_tragPaused;
+  if (typeof AndroidGps !== 'undefined' && AndroidGps.setPaused) AndroidGps.setPaused(_tragPaused);
+  _crashSaveTrag();
   if (_tragPaused) {
     _tragLiveClear(); _tragBuf = []; _tragLastT = 0;
     showToast('⏸ Snimanje traga pauzirano');
@@ -2039,8 +2039,8 @@ function _tragRegAdd(pts) {
   const color = _TRAG_COLORS[_tragRegistry.length % _TRAG_COLORS.length];
   const t = { id, color, pts, visible: true, date: new Date().toISOString(), name: 'Trag ' + fmtDateShort(new Date().toISOString()), uuid: _genUUID() };
   _tragRegistry.unshift(t);
+  if (!_tragRegSave()) { _tragRegistry.shift(); return null; }
   _tragRegAddLayer(t);
-  _tragRegSave();
   _tragRegRender();
   // TODO(zadatak #7 — Firebase backend): sinhronizuj trag na server kad je
   // backend spreman (offline queue: sačuvaj lokalno odmah, pošalji kad ima veze).
@@ -2321,8 +2321,8 @@ function _uglTragOtkazi(id) {
 const _CRASH_TRAG_KEY = 'usf_crash_trag_v1';
 let _crashSaveTimer = null;
 function _crashSaveTrag() {
-  if (!_tragOn || _tragPaused || _tragPts.length < 2) return;
-  try { localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now() })); } catch(e) {}
+  if (!_tragOn) return;
+  try { localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused })); return true; } catch(e) { return false; }
 }
 function _crashStartTimer() { _crashStopTimer(); _crashSaveTimer = setInterval(_crashSaveTrag, 30000); }
 function _crashStopTimer() { if (_crashSaveTimer) { clearInterval(_crashSaveTimer); _crashSaveTimer = null; } }
@@ -2335,13 +2335,14 @@ async function _crashCheck() {
     const snapT = (() => { try { const r = localStorage.getItem(_CRASH_TRAG_KEY); return r ? JSON.parse(r) : null; } catch { return null; } })();
     if (!snapT) return;
     const age = (snap) => { const m = Math.round((Date.now() - snap.ts) / 60000); return m < 60 ? `${m} min` : `${Math.round(m/60)} h`; };
-    const ok = await _dlgConfirm(`⚠ Nađeno nedovršeno snimanje traga:\n\n${snapT.pts.length} tač. (${age(snapT)} ago)\n\nŽeliš li oporaviti?`, { okLabel:'Oporavi', cancelLabel:'Odbaci' });
+    const nativeActive = typeof AndroidGps !== 'undefined' && AndroidGps.isRecording && AndroidGps.isRecording();
+    const ok = nativeActive || await _dlgConfirm(`⚠ Nađeno nedovršeno snimanje traga:\n\n${snapT.pts.length} tač. (${age(snapT)} ago)\n\nŽeliš li oporaviti?`, { okLabel:'Oporavi', cancelLabel:'Odbaci' });
     // Native GPS bafer se mora povući OVDJE, ne samo na visibilitychange — kad
     // OEM battery manager ubije proces, GpsService nastavi pisati fiksove; ovo
     // je hladan start (visibilitychange nikad ne opali za već-vidljivu stranicu).
     let bufPts;
     try { bufPts = _nativeBufUzmi(); } catch(e) { showToast('⚠ Oporavak čeka slobodnu memoriju'); return; }
-    if (!ok) { _crashClearTrag(); _nativeBufPotvrdi(); return; }
+    if (!ok) { if (typeof AndroidGps !== 'undefined') AndroidGps.stopRecording(); _crashClearTrag(); _nativeBufPotvrdi(); return; }
     try {
       _tragPts = snapT.pts;
       if (_tragLine) { map.removeLayer(_tragLine); _tragLine = null; }
@@ -2351,7 +2352,7 @@ async function _crashCheck() {
       const lastPt = _tragPts[_tragPts.length - 1];
       // KLJUČNO: bez ovoga _tragLastT ostaje 0 — prva sljedeća tačka bi
       // računala dtS kao lažnih 1s, pa bi speed-gate SVAKU narednu odbijao.
-      _tragLastT = (lastPt && lastPt[3]) || Date.now();
+      _tragLastT = snapT.lastT || (lastPt && lastPt[3]) || snapT.ts;
       _tragLastMoveT = Date.now();
       document.getElementById('ab-loc-trag')?.classList.add('recording');
       _updTragStats();
@@ -2360,7 +2361,11 @@ async function _crashCheck() {
       const dodatoT = _tragPts.length - prijeDopune;
       _updTragStats();
       showToast(`✅ Oporavljen trag: ${_tragPts.length} tačaka` + (dodatoT ? ` (${dodatoT} iz pozadinskog snimanja)` : '') + ' — snimanje nastavljeno');
-      localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now() }));
+      localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused }));
+      _nativeReplayLast.trag = _tragLastT;
+      _nativeBufPotvrdi();
+      _tragPaused = !!snapT.paused;
+      _crashSaveTrag();
       _crashStartTimer();
       _bgRecStart('Trag');
     } catch(e) { showToast('⚠ Greška pri oporavku traga: ' + e.message); }
@@ -2398,6 +2403,7 @@ function _nativeBufUzmi() {
 }
 function _nativeBufPotvrdi() { try { localStorage.removeItem('usf_native_journal'); } catch(e) {} }
 let _nativeReplayLast = { trag: 0 };
+let _nativeDrainTimer = null;
 async function _drainNativeGpsBuffer() {
   if (typeof AndroidGps === 'undefined' || typeof AndroidGps.readNativeBuffer !== 'function') return;
   if (!_tragOn) return;
@@ -2405,16 +2411,17 @@ async function _drainNativeGpsBuffer() {
   _drainNativeGpsBuffer._busy = true;
   try {
     const pts = _nativeBufUzmi();
-    if (!pts.length) return;
+    if (!pts.length) return true;
     for (const p of pts) {
-      if (p.t > Math.max(_tragLastT, _onPLastFixTs, _nativeReplayLast.trag)) {
+      if (p.t > Math.max(_tragLastT, _nativeReplayLast.trag)) {
         _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t);
         _nativeReplayLast.trag = p.t;
       }
     }
-    localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now() }));
+    localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused }));
     _nativeBufPotvrdi();
-  } catch(e) { showToast('⚠ GPS dopuna čeka sigurno spremanje: ' + e.message); }
+    return true;
+  } catch(e) { showToast('⚠ GPS dopuna čeka sigurno spremanje: ' + e.message); return false; }
   finally { _drainNativeGpsBuffer._busy = false; }
 }
 
@@ -2463,6 +2470,16 @@ async function _checkBatteryOptHint() {
 function _anyRecOn() { return _tragOn; }
 function _bgRecStart(label) {
   _iosBgRecWarn();
+  if (typeof AndroidGps !== 'undefined') {
+    try {
+      AndroidGps.startRecording(label || 'GPS Snimanje');
+      if (AndroidGps.setPaused) AndroidGps.setPaused(_tragPaused);
+      clearInterval(_nativeDrainTimer);
+      _nativeDrainTimer = setInterval(_drainNativeGpsBuffer, 2000);
+      _checkBatteryOptHint();
+    } catch(e) { showToast('⚠ Pozadinsko snimanje nije pokrenuto: ' + e.message); }
+    return;
+  }
   _acquireWakeLock();
   _startBgAudio();
   _startSWHeartbeat();
@@ -2477,6 +2494,7 @@ function _bgRecStart(label) {
 }
 function _bgRecStopIfIdle() {
   if (_anyRecOn()) return;
+  clearInterval(_nativeDrainTimer); _nativeDrainTimer = null;
   _releaseWakeLock(); _stopBgAudio(); _stopSWHeartbeat(); _stopGpsWatchdog();
   const sw = navigator.serviceWorker?.controller;
   if (sw) sw.postMessage({ type:'hide-rec-notification' });
@@ -3373,7 +3391,22 @@ _kmlRestore();
 // =====================================================================
 const _SQLDB_NAME = 'usf_sqlmaps', _SQLDB_STORE = 'maps';
 let _sqlSQL = null, _sqlInitPromise = null;
-let _sqlLayers = []; // {id, name, db, layer, bounds, minzoom, maxzoom, vis, failCount}
+let _sqlLayers = []; // {id, name, db, layer, bounds, thumb, active, vis, failCount}
+const _SQL_ACTIVE_KEY = 'usf_sqlmap_active';
+const _SQL_THUMB = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="132"><rect width="240" height="132" fill="#172b2a"/><path d="M0 105L45 66l28 20 34-50 45 35 26-18 62 44v35H0z" fill="#276749"/><path d="M0 106l52-28 38 15 30-26 36 17 40-23 44 30" fill="none" stroke="#78b893" stroke-width="3" opacity=".8"/><circle cx="174" cy="48" r="13" fill="#f0b429" opacity=".9"/><text x="12" y="24" fill="#d8f3dc" font-family="sans-serif" font-size="13">OFFLINE KARTA</text></svg>');
+function _sqlmapActiveName() { try { return localStorage.getItem(_SQL_ACTIVE_KEY) || ''; } catch(e) { return ''; } }
+function _sqlmapSetActiveName(name) { try { localStorage.setItem(_SQL_ACTIVE_KEY, name || ''); } catch(e) {} }
+function _sqlmapThumb(db, meta) {
+  try {
+    const z = parseInt(meta.minzoom, 10) || 0;
+    const stmt = db.prepare('SELECT tile_data FROM tiles WHERE zoom_level=? ORDER BY tile_column, tile_row LIMIT 1');
+    stmt.bind([z]);
+    if (!stmt.step()) { stmt.free(); return Promise.resolve(_SQL_THUMB); }
+    const bytes = stmt.getAsObject().tile_data; stmt.free();
+    const mime = (meta.format || 'png').toLowerCase().includes('jpg') ? 'image/jpeg' : 'image/png';
+    return new Promise(resolve => { const fr = new FileReader(); fr.onload = () => resolve(fr.result || _SQL_THUMB); fr.onerror = () => resolve(_SQL_THUMB); fr.readAsDataURL(new Blob([bytes], { type:mime })); });
+  } catch(e) { return Promise.resolve(_SQL_THUMB); }
+}
 
 function _sqlEnsureInit() {
   if (_sqlSQL) return Promise.resolve(_sqlSQL);
@@ -3491,7 +3524,9 @@ async function _sqlmapAddLayer(name, db, opts) {
     maxNativeZoom: parseInt(meta.maxzoom, 10) || 19,
     tileSize: 256
   });
-  const rec = { id: 'sqlmap_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name, db, layer, bounds, vis: opts?.vis !== false };
+  const active = (_sqlmapActiveName() === name) || opts?.active === true;
+  const rec = { id: 'sqlmap_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name, db, layer, bounds, thumb: opts?.thumb || _SQL_THUMB, active, vis: opts?.vis !== false };
+  if (active) _sqlLayers.forEach(x => { x.active = false; });
   _sqlLayers.push(rec);
   if (rec.vis) layer.addTo(map);
   return rec;
@@ -3511,10 +3546,12 @@ async function _sqlmapLoadFile(file) {
     setStatus('⏳ Učitavam ' + name + '...');
     const buf = await file.arrayBuffer();
     const db = await _sqlmapOpenDb(buf);
-    const rec = await _sqlmapAddLayer(name, db);
+    const thumb = await _sqlmapThumb(db, _sqlReadMetadata(db));
+    const rec = await _sqlmapAddLayer(name, db, { thumb, active:true });
     // Sačuvaj sirov fajl u IndexedDB TEK poslije uspješnog otvaranja — pokvaren
     // upload se ne smije trajno zaglaviti u "auto-load" listi.
-    await _sqlIdbPut({ name, blob: new Blob([buf]), failCount: 0, addedAt: Date.now() });
+    await _sqlIdbPut({ name, blob: new Blob([buf]), thumb, failCount: 0, addedAt: Date.now() });
+    _sqlmapSetActiveName(name);
     if (rec.bounds) { try { map.fitBounds(rec.bounds, { padding: [20,20] }); } catch(x) {} }
     setStatus('✅ Učitano: ' + name);
     _sqlmapRegRender();
@@ -3532,7 +3569,7 @@ async function _sqlmapRestoreOne(rec) {
   try {
     const buf = await rec.blob.arrayBuffer();
     const db = await _sqlmapOpenDb(buf);
-    await _sqlmapAddLayer(rec.name, db, { vis: rec.vis });
+    await _sqlmapAddLayer(rec.name, db, { vis: rec.vis, thumb: rec.thumb, active: _sqlmapActiveName() === rec.name });
     await _sqlIdbSetFailCount(rec.name, 0); // uspjeh — resetuj brojač
     return true;
   } catch(e) {
@@ -3546,6 +3583,19 @@ async function _sqlmapRestoreAll() {
     if ((rec.failCount || 0) >= 3) continue; // auto-load isključen — čeka ručno otvaranje
     await _sqlmapRestoreOne(rec);
   }
+  const active = _sqlmapActiveName();
+  const chosen = _sqlLayers.find(r => r.name === active) || _sqlLayers[0];
+  if (chosen) { _sqlmapSetActiveName(chosen.name); _sqlmapSelect(chosen.id, false); }
+  _sqlmapRegRender();
+}
+
+function _sqlmapSelect(id, zoom) {
+  const r = _sqlLayers.find(x => x.id === id);
+  if (!r) return;
+  _sqlLayers.forEach(x => { x.active = x.id === id; });
+  _sqlmapSetActiveName(r.name);
+  if (!r.vis) { r.vis = true; r.layer.addTo(map); }
+  if (zoom !== false && r.bounds) { map.fitBounds(r.bounds, { padding: [20,20] }); switchMainTab('karta'); }
   _sqlmapRegRender();
 }
 
@@ -3554,12 +3604,16 @@ function _sqlmapToggle(id) {
   if (!r) return;
   r.vis = !r.vis;
   if (r.vis) r.layer.addTo(map); else map.removeLayer(r.layer);
+  if (r.vis) _sqlmapSelect(id, false);
   _sqlmapRegRender();
 }
 function _sqlmapZoom(id) {
   const r = _sqlLayers.find(x => x.id === id);
   if (!r || !r.bounds) { showToast('⚠ Karta nema definisane granice (metadata.bounds)'); return; }
+  _sqlmapSetActiveName(r.name);
+  _sqlLayers.forEach(x => { x.active = x.id === id; });
   map.fitBounds(r.bounds, { padding: [20,20] });
+  _sqlmapRegRender();
   switchMainTab('karta');
 }
 async function _sqlmapDeleteConfirm(id) {
@@ -3573,6 +3627,10 @@ async function _sqlmapDelete(id) {
   try { r.db.close(); } catch(e) {}
   _sqlLayers = _sqlLayers.filter(x => x.id !== id);
   await _sqlIdbDelete(r.name);
+  if (r.active) {
+    const next = _sqlLayers[0];
+    if (next) _sqlmapSelect(next.id, false); else _sqlmapSetActiveName('');
+  }
   _sqlmapRegRender();
 }
 async function _sqlmapRegRender() {
@@ -3587,21 +3645,23 @@ async function _sqlmapRegRender() {
   const pending = stored.filter(s => !activeNames.has(s.name));
   if (cnt) cnt.textContent = (_sqlLayers.length + pending.length) ? `(${_sqlLayers.length + pending.length})` : '';
   if (!_sqlLayers.length && !pending.length) { el.innerHTML = '<div class="treg-empty">Nema učitanih offline karata.</div>'; return; }
-  let html = _sqlLayers.map(r => `<div class="treg-row">
-    <div class="treg-name" onclick="_sqlmapZoom('${r.id}')">${_escHtml(r.name)}</div>
-    <div class="treg-meta">${r.bounds ? 'granice poznate' : 'bez granica u metapodacima'}</div>
+  let html = _sqlLayers.map(r => `<div class="treg-row" style="display:grid;grid-template-columns:88px 1fr;gap:10px;align-items:center;border-left:3px solid ${r.active ? '#4ade80' : '#334155'};padding:9px;">
+    <img src="${r.thumb || _SQL_THUMB}" alt="Pregled karte" style="width:88px;height:58px;object-fit:cover;border-radius:7px;border:1px solid ${r.active ? '#4ade80' : '#334155'};background:#172b2a;">
+    <div><div class="treg-name" onclick="_sqlmapSelect('${r.id}',true)">${_escHtml(r.name)}</div>
+    <div class="treg-meta">${r.active ? '✓ Aktivna karta · ' : ''}${r.bounds ? 'granice poznate' : 'bez granica u metapodacima'}</div>
     <div class="treg-btns">
-      <button onclick="_sqlmapZoom('${r.id}')">🔍 Zoom</button>
+      <button onclick="_sqlmapSelect('${r.id}',true)">${r.active ? '✓ Aktivna' : '▶ Koristi'}</button>
       <button onclick="_sqlmapToggle('${r.id}')">${r.vis !== false ? '🙈 Sakrij' : '👁 Prikaži'}</button>
       <button class="del-btn" onclick="_sqlmapDeleteConfirm('${r.id}')">🗑 Ukloni</button>
-    </div>
+    </div></div>
   </div>`).join('');
-  html += pending.map(s => `<div class="treg-row">
-    <div class="treg-name">${_escHtml(s.name)}</div>
+  html += pending.map(s => `<div class="treg-row" style="display:grid;grid-template-columns:88px 1fr;gap:10px;align-items:center;border-left:3px solid #334155;padding:9px;">
+    <img src="${s.thumb || _SQL_THUMB}" alt="Pregled karte" style="width:88px;height:58px;object-fit:cover;border-radius:7px;border:1px solid #334155;background:#172b2a;">
+    <div><div class="treg-name">${_escHtml(s.name)}</div>
     <div class="treg-meta">${(s.failCount||0) >= 3 ? '⚠ auto-učitavanje isključeno (3 neuspjela pokušaja) — otvori ručno' : 'učitavanje u toku ili čeka red'}</div>
     <div class="treg-btns">
       <button onclick="_sqlmapRestoreManual('${_escHtml(s.name).replace(/'/g, "\\'")}')">▶ Učitaj</button>
-    </div>
+    </div></div>
   </div>`).join('');
   el.innerHTML = html;
 }
