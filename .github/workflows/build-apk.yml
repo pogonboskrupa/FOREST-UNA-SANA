@@ -5,11 +5,12 @@ on:
     branches:
       - main
       - claude/practical-pasteur-p2npth
+      - codex-forest
 permissions:
   contents: write
 jobs:
   apk:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/practical-pasteur-p2npth'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/practical-pasteur-p2npth' || github.ref == 'refs/heads/codex-forest'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

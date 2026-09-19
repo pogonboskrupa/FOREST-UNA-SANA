@@ -712,7 +712,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <button onclick="_copyUid()">Kopiraj</button>
       </div>
     </div>
-    <div class="set-row"><span>Ažuriraj aplikaciju</span><button onclick="checkForUpdate()">Provjeri</button></div>
+    <div class="set-row"><span><b style="display:block;font-size:13px;">Ažuriraj aplikaciju</b><small style="display:block;color:#80958a;margin-top:3px;">Preuzima novi APK i pokreće instalaciju</small></span><button id="set-update-btn" onclick="checkForUpdate()">Ažuriraj</button></div>
+    <div id="set-update-status" style="display:none;margin:-3px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:rgba(16,32,25,.72);color:#9db0a7;font-size:11px;line-height:1.45;"></div>
     <div class="set-row"><span>Rad bez ograničenja baterije</span><button onclick="_checkBatteryOptHint()">Podesi</button></div>
     <div class="set-row"><span>Očisti keš karata (Topo/Satelit/Karta)</span><button onclick="clearTileCache()">Očisti</button></div>
   </div>
@@ -6531,7 +6532,8 @@ function _copyUid() {
 }
 function checkForUpdate() {
   if (typeof AndroidUpdate !== 'undefined' && AndroidUpdate.checkAndInstall) {
-    showToast('🔎 Provjeravam novu verziju...');
+    _azurirajStatus('🔎 Provjeravam novu verziju...');
+    const btn = document.getElementById('set-update-btn'); if (btn) btn.disabled = true;
     AndroidUpdate.checkAndInstall();
   } else {
     showToast('⚠ Auto-update je dostupan samo u Android aplikaciji');
@@ -6539,7 +6541,14 @@ function checkForUpdate() {
 }
 // AndroidUpdate.checkAndInstall() javlja status pozivom ove globalne funkcije
 // (vidi MainActivity.UpdateBridge.postStatus).
-function _azurirajStatus(msg) { showToast(msg); }
+function _azurirajStatus(msg) {
+  showToast(msg);
+  const status = document.getElementById('set-update-status');
+  if (status) { status.style.display = 'block'; status.textContent = msg; }
+  const radi = /Provjeravam|Preuzimam/i.test(msg);
+  const btn = document.getElementById('set-update-btn');
+  if (btn) { btn.disabled = radi; btn.textContent = radi ? 'Sačekaj…' : 'Ažuriraj'; }
+}
 async function clearTileCache() {
   const ok = await _dlgConfirm('Obrisati keširane pločice karte? Trebaće ponovo internet za prikaz karte dok se ne keširaju iznova.', { danger: true, okLabel: 'Očisti' });
   if (!ok) return;

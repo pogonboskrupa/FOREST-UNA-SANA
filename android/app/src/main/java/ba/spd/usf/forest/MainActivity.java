@@ -70,6 +70,8 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private WebViewAssetLoader assetLoader;
     private BroadcastReceiver recActionReceiver;
+    private volatile File pendingUpdateApk;
+    private volatile boolean updateInProgress = false;
 
     private static final int REQ_FILE = 1;
     private static final int REQ_PERMS = 2;
@@ -515,10 +517,15 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void checkAndInstall() {
+            if (updateInProgress) {
+                postStatus("⬇ Ažuriranje je već u toku…");
+                return;
+            }
+            updateInProgress = true;
             new Thread(() -> {
                 try {
                     org.json.JSONObject rel = dohvatiJson(RELEASES_URL);
-                    if (rel == null) { postStatus("⚠ Ne mogu provjeriti novu verziju (nema interneta?)"); return; }
+                    if (rel == null) { postStatus("⚠ Ne mogu provjeriti novu verziju (nema interneta?)"); updateInProgress = false; return; }
 
                     String tag = rel.optString("tag_name", "");
                     String verNova = tag.startsWith("v") ? tag.substring(1) : tag;
@@ -529,6 +536,7 @@ public class MainActivity extends Activity {
                     } catch (Exception ignored) {}
                     if (verNova.isEmpty() || !jeNovija(verNova, verTrenutna)) {
                         postStatus("✓ Već imaš najnoviju verziju (v" + verTrenutna + ")");
+                        updateInProgress = false;
                         return;
                     }
 
@@ -545,6 +553,7 @@ public class MainActivity extends Activity {
                     }
                     if (apkUrl == null) {
                         postStatus("⚠ Nova verzija v" + verNova + " postoji, ali APK nije pronađen u objavi");
+                        updateInProgress = false;
                         return;
                     }
 
@@ -554,11 +563,16 @@ public class MainActivity extends Activity {
                     File apk = new File(dir, "UnaSanaForest-v" + verNova + ".apk");
                     if (!preuzmiFajl(apkUrl, apk)) {
                         postStatus("⚠ Preuzimanje nije uspjelo — provjeri vezu i pokušaj ponovo");
+                        updateInProgress = false;
                         return;
                     }
+                    pendingUpdateApk = apk;
+                    postStatus("✅ Preuzeto — otvaram instalaciju…");
+                    updateInProgress = false;
                     runOnUiThread(() -> instalirajApk(apk));
                 } catch (Exception e) {
                     postStatus("⚠ Greška pri ažuriranju: " + e.getClass().getSimpleName());
+                    updateInProgress = false;
                 }
             }).start();
         }
@@ -594,12 +608,30 @@ public class MainActivity extends Activity {
                 c.setInstanceFollowRedirects(true);
                 c.setConnectTimeout(20000);
                 c.setReadTimeout(30000);
+                c.setRequestProperty("User-Agent", "UnaSanaForest-Android");
                 int status = c.getResponseCode();
                 if (status != 200) return false;
+                long ukupno = c.getContentLengthLong(), procitano = 0;
+                int zadnjiPostotak = -1;
                 try (InputStream is = c.getInputStream(); FileOutputStream fos = new FileOutputStream(dest)) {
                     byte[] buf = new byte[65536];
                     int n;
-                    while ((n = is.read(buf)) > 0) fos.write(buf, 0, n);
+                    while ((n = is.read(buf)) > 0) {
+                        fos.write(buf, 0, n);
+                        procitano += n;
+                        if (ukupno > 0) {
+                            int pct = (int) ((procitano * 100L) / ukupno);
+                            int korak = (pct / 10) * 10;
+                            if (korak != zadnjiPostotak) {
+                                zadnjiPostotak = korak;
+                                postStatus("⬇ Preuzimam novu verziju… " + Math.min(100, korak) + "%");
+                            }
+                        }
+                    }
+                }
+                if (dest.length() < 1024 * 1024) { dest.delete(); return false; }
+                try (InputStream check = new java.io.FileInputStream(dest)) {
+                    if (check.read() != 'P' || check.read() != 'K') { dest.delete(); return false; }
                 }
                 return true;
             } finally {
@@ -608,9 +640,15 @@ public class MainActivity extends Activity {
         }
 
         private void instalirajApk(File apk) {
+            if (apk == null || !apk.isFile()) {
+                pendingUpdateApk = null;
+                postStatus("⚠ Preuzeti APK više nije dostupan — pokušaj ponovo");
+                return;
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                     && !getPackageManager().canRequestPackageInstalls()) {
-                postStatus("Dozvoli instalaciju iz ovog izvora pa pokušaj ponovo");
+                pendingUpdateApk = apk;
+                postStatus("⚙ Dozvoli instalaciju iz ovog izvora — instalacija će se zatim automatski nastaviti");
                 try {
                     startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                             Uri.parse("package:" + getPackageName())));
@@ -623,6 +661,7 @@ public class MainActivity extends Activity {
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
+            pendingUpdateApk = null;
         }
 
         // Poredi "X.Y.Z" segment po segment (numerički, ne leksikografski).
@@ -943,6 +982,11 @@ public class MainActivity extends Activity {
         super.onResume();
         webView.onResume();
         hideSystemUI();
+        if (pendingUpdateApk != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && getPackageManager().canRequestPackageInstalls()) {
+            File apk = pendingUpdateApk;
+            runOnUiThread(() -> new UpdateBridge().instalirajApk(apk));
+        }
     }
 
     @Override
