@@ -62,11 +62,11 @@ t('APP_VER je definisan i prati v-prefiksovanu shemu', () => {
   assert.match(HTML, /const APP_VER = 'v[0-9]+\.[0-9]+\.[0-9]+'/);
 });
 
-t('verzija je v1.1.4 i rollover koristi jednocifreni patch/minor', () => {
-  assert.ok(HTML.includes("const APP_VER = 'v1.1.4'"));
+t('verzija je v1.1.5 i rollover koristi jednocifreni patch/minor', () => {
+  assert.ok(HTML.includes("const APP_VER = 'v1.1.5'"));
   const src = extractFn('_sljedecaVerzija') + '\nreturn _sljedecaVerzija;';
   const next = new Function(src)();
-  assert.strictEqual(next('v1.1.3'), 'v1.1.4');
+  assert.strictEqual(next('v1.1.4'), 'v1.1.5');
   assert.strictEqual(next('v1.1.9'), 'v1.2.0');
   assert.strictEqual(next('v1.9.9'), 'v2.0.0');
 });

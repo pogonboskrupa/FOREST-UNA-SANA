@@ -138,30 +138,30 @@ t('_poziPixelHa računa poznatu površinu piksela (VIIRS 375m i MODIS 1km)', () 
 });
 
 t('_poziPovrsinaGrupe dedupira detekcije iz ISTOG piksela (više satelita/preleta)', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\nreturn _poziPovrsinaGrupe;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\nreturn _poziPovrsinaGrupe;';
   const _poziPovrsinaGrupe = new Function(src)();
   // Dvije detekcije ~15m razmaknute (isti fizički piksel, viđen 2x) → 1 piksel.
   const isti = { pts: [
     { la: 44.8000, lo: 16.0000, rez: 375 },
     { la: 44.80013, lo: 16.00013, rez: 375 }
   ] };
-  assert.ok(Math.abs(_poziPovrsinaGrupe(isti) - 14.0625) < 0.001, 'blisko = isti piksel, ne smije se duplo brojati');
+  assert.ok(Math.abs(_poziPovrsinaGrupe(isti) - 14.0625 * 0.35) < 0.001, 'blisko = isti piksel, ne smije se duplo brojati');
   // Dvije detekcije daleko razmaknute (različiti pikseli) → 2 piksela.
   const razlicito = { pts: [
     { la: 44.8000, lo: 16.0000, rez: 375 },
     { la: 44.8100, lo: 16.0100, rez: 375 }
   ] };
-  assert.ok(Math.abs(_poziPovrsinaGrupe(razlicito) - 14.0625 * 2) < 0.001, 'daleko = odvojeni pikseli, moraju se sabrati');
+  assert.ok(Math.abs(_poziPovrsinaGrupe(razlicito) - 14.0625 * 2 * 0.35) < 0.001, 'daleko = odvojeni pikseli, moraju se sabrati');
   assert.strictEqual(_poziPovrsinaGrupe({ pts: [] }), 0);
 });
 
 t('_poziPovrsinaJedinstvena ne sabira isti piksel dvaput kroz više požarnih grupa', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n'
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n'
     + extractFn('_poziPovrsinaJedinstvena') + '\nreturn _poziPovrsinaJedinstvena;';
   const fn = new Function(src)();
   const p = { la:44.8000, lo:16.0000, rez:375 };
   const skoroIsti = { la:44.80005, lo:16.00005, rez:375 };
-  assert.ok(Math.abs(fn([{ pts:[p] }, { pts:[skoroIsti] }]) - 14.0625) < 0.001);
+  assert.ok(Math.abs(fn([{ pts:[p] }, { pts:[skoroIsti] }]) - 14.0625 * 0.35) < 0.001);
 });
 
 t('_poziPovrsTxt formatira hektare (decimala ispod 100, zaokruženo iznad)', () => {
@@ -197,7 +197,7 @@ t('_poziGfw30Url traži zadnjih 30 dana unutar kanton bbox-a', () => {
 });
 
 t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabira površinu', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' + extractFn('_povGodGrupisiPoMjesecu') + '\nreturn _povGodGrupisiPoMjesecu;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' + extractFn('_povGodGrupisiPoMjesecu') + '\nreturn _povGodGrupisiPoMjesecu;';
   const _povGodGrupisiPoMjesecu = new Function(src)();
   const grupe = [
     { zadnji: Date.parse('2026-03-15T10:00:00Z'), pts: [{ la: 44.80, lo: 16.00, rez: 375 }] },
@@ -208,10 +208,10 @@ t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabi
   assert.strictEqual(mjeseci.length, 2);
   assert.strictEqual(mjeseci[0].mjesec, 2); // mart = index 2
   assert.strictEqual(mjeseci[0].broj, 2);
-  assert.ok(Math.abs(mjeseci[0].ha - 14.0625 * 2) < 0.001);
+  assert.ok(Math.abs(mjeseci[0].ha - 14.0625 * 2 * 0.35) < 0.001);
   assert.strictEqual(mjeseci[1].mjesec, 6); // juli = index 6
   assert.strictEqual(mjeseci[1].broj, 1);
-  assert.ok(Math.abs(mjeseci[1].ha - 100) < 0.001);
+  assert.ok(Math.abs(mjeseci[1].ha - 100 * 0.35) < 0.001);
 });
 
 t('_poziSimEligible: samo požari praćeni 3+ dana', () => {
@@ -237,7 +237,7 @@ t('_poziSimDani vraća distinktne UTC dane hronološki', () => {
 });
 
 t('_poziSimPodaciZaDan je kumulativan — dan N sadrži sve detekcije zaključno sa tim danom', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' +
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' +
     extractFn('_poziSimDani') + '\n' + extractFn('_poziSimPodaciZaDan') + '\nreturn _poziSimPodaciZaDan;';
   const _poziSimPodaciZaDan = new Function(src)();
   const g = { pts: [
@@ -273,27 +273,28 @@ t('_poziOpozGrupisiPoStarosti raspoređuje tačke po ISTIM bandovima kao markeri
 });
 
 t('_poziOpozBufKm daje veći poluprečnik za MODIS (1km) nego VIIRS (375m)', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
   const _poziOpozBufKm = new Function(src)();
   const viirs = _poziOpozBufKm(375), modis = _poziOpozBufKm(1000);
   assert.ok(modis > viirs);
-  assert.ok(viirs > 0.15 && viirs < 0.3, 'VIIRS poluprečnik van očekivanog opsega: ' + viirs);
+  assert.ok(viirs > 0.10 && viirs < 0.15, 'VIIRS poluprečnik van očekivanog opsega: ' + viirs);
 });
 
 t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {
   const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
   const _poziOpozGeom = new Function('turf', src)(turf);
   // Jedna tačka — mora vratiti buffer poligon (Polygon/MultiPolygon) oko nje.
   const geomJedna = _poziOpozGeom([{ la: 44.8, lo: 16.0, rez: 375 }]);
   assert.ok(geomJedna, 'jedna tačka mora dati geometriju (buffer kruga)');
   assert.match(geomJedna.geometry.type, /Polygon/);
-  // Tri razmaknute tačke — hull (concave/convex) + buffer, i dalje poligon.
+  // Tri razmaknute tačke ostaju zasebni krugovi; praznine se ne popunjavaju hullom.
   const geomTri = _poziOpozGeom([
     { la: 44.80, lo: 16.00, rez: 375 }, { la: 44.81, lo: 16.01, rez: 375 }, { la: 44.80, lo: 16.02, rez: 375 }
   ]);
-  assert.ok(geomTri, 'tri tačke moraju dati geometriju (hull+buffer)');
-  assert.match(geomTri.geometry.type, /Polygon/);
+  assert.ok(geomTri, 'tri tačke moraju dati geometriju zasebnih piksela');
+  if (geomTri.type === 'FeatureCollection') assert.strictEqual(geomTri.features.length, 3);
+  else assert.match(geomTri.geometry.type, /Polygon/);
   // Prazan niz / nepostojeći turf → bez pucanja, vraća null.
   assert.strictEqual(_poziOpozGeom([]), null);
 });
@@ -321,8 +322,9 @@ t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen
   assert.ok(HTML.includes('id="poz-god-izbor"'));
 });
 
-t('EFFIS opožarene plohe su po defaultu uključene, a GFW ključ se čeka prije godišnjeg učitavanja', () => {
-  assert.ok(HTML.includes("_poziEffisState.opozareno = true"));
+t('EFFIS šira procjena se migrira na isključeno, a GFW ključ se čeka prije godišnjeg učitavanja', () => {
+  assert.ok(HTML.includes("_poziEffisState.opozareno = false"));
+  assert.ok(HTML.includes('EFFIS NRT plohe (šira procjena)'));
   assert.ok(HTML.includes("layers: 'nrt.ba.poly.season'"), 'mora koristiti postojeći EFFIS sezonski sloj, ne uklonjeni modis.ba');
   assert.ok(HTML.includes("layers: 'modis.hs.month'"), 'mora imati EFFIS satelitske detekcije za zadnjih 30 dana');
   assert.ok(HTML.includes("_poziEffisState.detekcije = true"), 'satelitske detekcije moraju biti uključene pri prvom ulasku');

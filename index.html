@@ -546,7 +546,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#f97316;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnjih 7 dana</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#eab308;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">tekuća godina</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:14px;height:11px;border-radius:2px;background:#a855f7;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS opožarena ploha</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:14px;height:11px;border-radius:2px;background:#a855f7;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS NRT šira procjena</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:8px;height:8px;border-radius:50%;background:#f43f5e;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS satelit · 30 dana</span></div>
 </div>
 
@@ -803,7 +803,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="poz-section-card" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
       <div class="loc-row">
-        <span>Opožarene površine (mjerene granice)</span>
+        <span>EFFIS NRT plohe (šira procjena)</span>
         <div class="loc-switch" id="poz-effis-ba-switch" onclick="_poziEffisToggle('opozareno',!_poziEffisOn('opozareno'))"></div>
       </div>
       <div class="loc-row">
@@ -814,7 +814,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <span>Indeks opasnosti od požara (FWI)</span>
         <div class="loc-switch" id="poz-effis-fwi-switch" onclick="_poziEffisToggle('fwi',!_poziEffisOn('fwi'))"></div>
       </div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">EFFIS sezonske plohe i mjesečne satelitske detekcije rade bez ključa. Prvi sloj pokazuje područje koje je gorjelo, drugi gdje je satelit vidio aktivnu vatru.</div>
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Preciznija lokalna projekcija je uključena iznad. EFFIS NRT plohe mogu biti znatno šire od stvarne granice, zato su sada opcione; satelitske tačke ostaju uključene.</div>
     </div>
 
     <div class="treg-meta-edit poz-section-card" style="margin-top:14px;">
@@ -1034,7 +1034,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.4';
+const APP_VER = 'v1.1.5';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -3797,10 +3797,15 @@ let _poziEffisState = {};
 try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}'); } catch(e) {}
 // Prvi ulazak: službene opožarene plohe su korisnije od prazne karte kad
 // satelit nije uhvatio svaki prelet. Korisnik ih kasnije može isključiti.
-if (!Object.prototype.hasOwnProperty.call(_poziEffisState, 'opozareno')) {
-  _poziEffisState.opozareno = true;
-  try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
-}
+// NRT poligon je procjena i na terenu se pokazao preširokim. Jednokratna
+// migracija ga isključuje i ostavlja korisniku mogućnost ručnog uključivanja.
+try {
+  if (localStorage.getItem('usf_poz_effis_precizno_v1') !== '1') {
+    _poziEffisState.opozareno = false;
+    localStorage.setItem('usf_poz_effis_precizno_v1', '1');
+    localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
+  }
+} catch(e) {}
 if (!Object.prototype.hasOwnProperty.call(_poziEffisState, 'detekcije')) {
   _poziEffisState.detekcije = true;
   try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
@@ -3967,11 +3972,17 @@ function _poziGrupeBlizu(grupe, ref) { return grupe.map(g => ({ ...g, d: dst(ref
 
 // ── Procjena opožarene površine iz vrelih piksela — NIJE mjerena granica
 // (za to treba EFFIS/Sentinel-2, vidi napomene u panelu), nego gruba procjena:
-// svaki satelitski piksel koji je detektovao vatru pokriva poznatu površinu
-// (VIIRS ≈375m → 14,0625 ha, MODIS ≈1km → 100 ha). Dedup po "ćeliji" veličine
+// Vreli piksel ne znači da je izgorio cijeli piksel. Za satelitske detekcije
+// računamo konzervativnih 35% senzorskog otiska (VIIRS ≈4,9 ha, MODIS ≈35 ha).
+// Dedup po "ćeliji" veličine
 // piksela sprječava da ISTA fizička tačka, viđena više puta (drugi satelit,
 // drugi prelet), bude izbrojana kao više odvojenih hektara.
 function _poziPixelHa(rez) { const m = rez || 375; return (m * m) / 10000; }
+const _POZ_HOTSPOT_FAKTOR = 0.35;
+function _poziProcijenjeniHa(p) {
+  const rez = p?.rez || 375;
+  return _poziPixelHa(rez) * (rez >= 300 ? _POZ_HOTSPOT_FAKTOR : 1);
+}
 function _poziPovrsinaGrupe(g) {
   if (!g?.pts?.length) return 0;
   const cells = new Set();
@@ -3982,7 +3993,7 @@ function _poziPovrsinaGrupe(g) {
     const key = Math.round(p.la / cellDeg) + ':' + Math.round(p.lo / cellDeg) + ':' + rez;
     if (cells.has(key)) return;
     cells.add(key);
-    ha += _poziPixelHa(rez);
+    ha += _poziProcijenjeniHa(p);
   });
   return ha;
 }
@@ -4510,13 +4521,11 @@ function _poziMkStarost(ms) { const h = (Date.now() - ms) / 3600000; if (!isFini
 // ── Projekcija opožarene površine — poligon procijenjen iz vrelih piksela,
 // segmentiran po starosti (ISTE bande kao markeri: _POZ_MK_STAROST), obojen
 // od svježe (svijetlo) do staro (tamno) — vidi legendu "OPOŽARENO (PROCJENA)".
-// NIJE mjerena granica (za to služi EFFIS opožarene površine) — svaka tačka
-// se buffer-uje na poluprečnik svog satelitskog piksela (izveden iz
-// _poziPixelHa), a za ≥3 tačke se prvo pravi hull (concave, convex fallback)
-// da se dobije oblik zahvaćenog područja umjesto gomile odvojenih krugova.
+// NIJE mjerena granica. Svaka tačka se prikazuje zasebnim konzervativnim
+// dijelom senzorskog piksela. Udaljene tačke se ne spajaju hull poligonom,
+// jer bi se tako popunile površine koje možda uopće nisu gorjele.
 function _poziOpozBufKm(rez) {
-  // Poluprečnik kruga iste površine kao piksel: r = sqrt(ha*10000/π) u km.
-  return Math.sqrt(_poziPixelHa(rez) * 10000 / Math.PI) / 1000;
+  return Math.sqrt(_poziProcijenjeniHa({ rez }) * 10000 / Math.PI) / 1000;
 }
 function _poziOpozGrupisiPoStarosti(pts) {
   const bands = {};
@@ -4530,22 +4539,16 @@ function _poziOpozGrupisiPoStarosti(pts) {
 }
 function _poziOpozGeom(pts) {
   if (!pts || !pts.length || typeof turf === 'undefined') return null;
-  const bufKm = _poziOpozBufKm(pts[0].rez);
   try {
-    if (pts.length < 3) {
-      let u = turf.buffer(turf.point([pts[0].lo, pts[0].la]), bufKm, { units: 'kilometers' });
-      for (let i = 1; i < pts.length; i++) {
-        const b = turf.buffer(turf.point([pts[i].lo, pts[i].la]), bufKm, { units: 'kilometers' });
-        try { u = turf.union(u, b) || u; } catch(e) {}
-      }
-      return u;
+    const krugovi = pts.map(p => turf.buffer(
+      turf.point([p.lo, p.la]), _poziOpozBufKm(p.rez), { units: 'kilometers' }
+    ));
+    let u = krugovi[0];
+    for (let i = 1; i < krugovi.length; i++) {
+      try { u = turf.union(u, krugovi[i]) || u; }
+      catch(e) { return turf.featureCollection(krugovi); }
     }
-    const fc = turf.featureCollection(pts.map(p => turf.point([p.lo, p.la])));
-    let hull = null;
-    try { hull = turf.concave(fc, { maxEdge: 1, units: 'kilometers' }); } catch(e) {}
-    if (!hull) { try { hull = turf.convex(fc); } catch(e) {} }
-    if (!hull) return null;
-    return turf.buffer(hull, bufKm, { units: 'kilometers' });
+    return u;
   } catch(e) { return null; }
 }
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
