@@ -47,5 +47,5 @@ jobs:
           tag_name: v1.1.2
           name: FOREST-UNA-SANA v1.1.2
           prerelease: true
-          files: android/app/build/outputs/apk/debug/app/app-debug.apk
+          files: android/app/build/outputs/apk/debug/*.apk
           fail_on_unmatched_files: true
