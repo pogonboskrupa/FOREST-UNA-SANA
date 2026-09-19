@@ -1051,11 +1051,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.8';
+const APP_VER = 'v1.1.9';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
-// Primjeri: 1.1.8 → 1.1.9 → 1.2.0; 1.9.9 → 2.0.0.
+// Primjeri: 1.1.9 → 1.1.9 → 1.2.0; 1.9.9 → 2.0.0.
 function _sljedecaVerzija(verzija) {
   const m = String(verzija || '').replace(/^v/i,'').match(/^(\d+)\.(\d)\.(\d)$/);
   if (!m) return null;
@@ -3412,6 +3412,23 @@ const _SQL_ACTIVE_KEY = 'usf_sqlmap_active';
 const _SQL_THUMB = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="132"><rect width="240" height="132" fill="#172b2a"/><path d="M0 105L45 66l28 20 34-50 45 35 26-18 62 44v35H0z" fill="#276749"/><path d="M0 106l52-28 38 15 30-26 36 17 40-23 44 30" fill="none" stroke="#78b893" stroke-width="3" opacity=".8"/><circle cx="174" cy="48" r="13" fill="#f0b429" opacity=".9"/><text x="12" y="24" fill="#d8f3dc" font-family="sans-serif" font-size="13">OFFLINE KARTA</text></svg>');
 function _sqlmapActiveName() { try { return localStorage.getItem(_SQL_ACTIVE_KEY) || ''; } catch(e) { return ''; } }
 function _sqlmapSetActiveName(name) { try { localStorage.setItem(_SQL_ACTIVE_KEY, name || ''); } catch(e) {} }
+// Brzi modal iza ikone karte mora nuditi i izabranu offline kartu, ne samo
+// mrežne podloge. Ona ostaje poseban Leaflet sloj iznad podloge, ali se u
+// izboru ponaša kao aktivna karta i jednim dodirom vraća na svoje granice.
+function _sqlmapSyncLayerSwitch() {
+  const box = document.getElementById('layer-switch');
+  if (!box) return;
+  box.querySelectorAll('button[data-sqlmap]').forEach(b => b.remove());
+  const r = _sqlLayers.find(x => x.active) || _sqlLayers[0];
+  if (!r) return;
+  const btn = document.createElement('button');
+  btn.dataset.sqlmap = r.id;
+  btn.classList.toggle('active', !!r.active);
+  btn.textContent = '🗂 ' + r.name;
+  btn.title = 'Offline SQLite/MBTiles: ' + r.name;
+  btn.onclick = () => { _closeLayerSwitch(); _sqlmapSelect(r.id, true); };
+  box.appendChild(btn);
+}
 function _sqlmapThumb(db, meta) {
   try {
     const z = parseInt(meta.minzoom, 10) || 0;
@@ -3568,6 +3585,7 @@ async function _sqlmapLoadFile(file) {
     // upload se ne smije trajno zaglaviti u "auto-load" listi.
     await _sqlIdbPut({ name, blob: new Blob([buf]), thumb, failCount: 0, addedAt: Date.now() });
     _sqlmapSetActiveName(name);
+    _sqlmapSelect(rec.id, false);
     if (rec.bounds) { try { map.fitBounds(rec.bounds, { padding: [20,20] }); } catch(x) {} }
     setStatus('✅ Učitano: ' + name);
     _sqlmapRegRender();
@@ -3611,6 +3629,9 @@ function _sqlmapSelect(id, zoom) {
   _sqlLayers.forEach(x => { x.active = x.id === id; });
   _sqlmapSetActiveName(r.name);
   if (!r.vis) { r.vis = true; r.layer.addTo(map); }
+  document.querySelectorAll('#layer-switch button').forEach(b => b.classList.toggle('active', b.dataset.sqlmap === id));
+  const icoBtn = document.getElementById('layer-btn'); if (icoBtn) icoBtn.textContent = '🗂';
+  _sqlmapSyncLayerSwitch();
   if (zoom !== false && r.bounds) { map.fitBounds(r.bounds, { padding: [20,20] }); switchMainTab('karta'); }
   _sqlmapRegRender();
 }
@@ -3647,6 +3668,7 @@ async function _sqlmapDelete(id) {
     const next = _sqlLayers[0];
     if (next) _sqlmapSelect(next.id, false); else _sqlmapSetActiveName('');
   }
+  _sqlmapSyncLayerSwitch();
   _sqlmapRegRender();
 }
 async function _sqlmapRegRender() {

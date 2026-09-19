@@ -52,4 +52,10 @@ t('_sqlParseBounds vraća null kad metadata nema bounds ili je neispravan', () =
   assert.strictEqual(_sqlParseBounds({ bounds: 'nevaljano' }), null);
 });
 
+t('brzi izbor karata uključuje aktivnu SQLite/MBTiles kartu', () => {
+  assert.ok(HTML.includes('function _sqlmapSyncLayerSwitch()'));
+  assert.ok(HTML.includes('data-sqlmap'));
+  assert.ok(HTML.includes("btn.textContent = '🗂 ' + r.name"));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — učitaj karta');
