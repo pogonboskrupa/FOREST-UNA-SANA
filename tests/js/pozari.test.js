@@ -323,6 +323,9 @@ t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen
 
 t('EFFIS opožarene plohe su po defaultu uključene, a GFW ključ se čeka prije godišnjeg učitavanja', () => {
   assert.ok(HTML.includes("_poziEffisState.opozareno = true"));
+  assert.ok(HTML.includes("layers: 'nrt.ba.poly.season'"), 'mora koristiti postojeći EFFIS sezonski sloj, ne uklonjeni modis.ba');
+  assert.ok(HTML.includes("layers: 'modis.hs.month'"), 'mora imati EFFIS satelitske detekcije za zadnjih 30 dana');
+  assert.ok(HTML.includes("_poziEffisState.detekcije = true"), 'satelitske detekcije moraju biti uključene pri prvom ulasku');
   const fn = extractFn('openPozariSection');
   assert.ok(fn.startsWith('async function'), 'otvaranje Požara mora čekati GFW ključ');
   assert.ok(fn.indexOf('await _poziKljucUcitaj()') < fn.indexOf('_povGodLoadGodina'), 'ključ mora doći prije godišnjeg dohvata');

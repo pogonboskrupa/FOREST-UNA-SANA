@@ -522,7 +522,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="loc-dist-badge"></div>
 
 <!-- Legenda projekcije opožarene površine (Požari) — vidi _poziOpozAzuriraj -->
-<div id="poz-opoz-legend" style="display:none;position:absolute;left:10px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:220px;">
+<div id="poz-opoz-legend" style="display:none;position:absolute;right:10px;top:64px;z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:220px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">OPOŽARENO (PROCJENA)</div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#ffedd5;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">≤ 6 h (najnovije viđeno)</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#fdba74;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">6–24 h</span></div>
@@ -531,12 +531,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 </div>
 
 <!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve -->
-<div id="poz-god-legend" style="display:none;position:absolute;right:10px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:180px;">
-  <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">POŽARI — KADA</div>
+<div id="poz-god-legend" style="display:none;position:absolute;right:10px;top:194px;z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:190px;">
+  <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">POŽARI — LEGENDA</div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#dc2626;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnja 24 sata</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#f97316;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnjih 7 dana</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#eab308;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">tekuća godina</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:14px;height:11px;border-radius:2px;background:#a855f7;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS opožarena ploha</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:8px;height:8px;border-radius:50%;background:#f43f5e;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS satelit · 30 dana</span></div>
 </div>
 
 <div id="top-bar">
@@ -794,10 +796,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <div class="loc-switch" id="poz-effis-ba-switch" onclick="_poziEffisToggle('opozareno',!_poziEffisOn('opozareno'))"></div>
       </div>
       <div class="loc-row">
+        <span>Satelitske detekcije (zadnjih 30 dana)</span>
+        <div class="loc-switch" id="poz-effis-det-switch" onclick="_poziEffisToggle('detekcije',!_poziEffisOn('detekcije'))"></div>
+      </div>
+      <div class="loc-row">
         <span>Indeks opasnosti od požara (FWI)</span>
         <div class="loc-switch" id="poz-effis-fwi-switch" onclick="_poziEffisToggle('fwi',!_poziEffisOn('fwi'))"></div>
       </div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">EFFIS opožarene površine stižu sa danima zakašnjenja (mjereno, ne uživo) — dopuna satelitskim tačkastim detekcijama iznad, ne zamjena.</div>
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">EFFIS sezonske plohe i mjesečne satelitske detekcije rade bez ključa. Prvi sloj pokazuje područje koje je gorjelo, drugi gdje je satelit vidio aktivnu vatru.</div>
     </div>
 
     <div class="treg-meta-edit poz-section-card" style="margin-top:14px;">
@@ -1017,7 +1023,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.2';
+const APP_VER = 'v1.1.3';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -3758,8 +3764,15 @@ function _poziPragIzmedju(a, b, prag, prepreke) {
 // fwi = prognoza opasnosti (gdje je danas rizično, ne šta je već gorjelo).
 const _POZ_EFFIS = {
   opozareno: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
-    layers: 'modis.ba', format: 'image/png', transparent: true, tiled: true,
-    version: '1.1.1', maxZoom: 22, opacity: 0.75, attribution: 'Copernicus EFFIS'
+    // `modis.ba` više nije objavljen EFFIS sloj, pa je karta ostajala prazna.
+    // Sezonski NRT poligoni pokrivaju i požar od prije nekoliko sedmica.
+    layers: 'nrt.ba.poly.season', format: 'image/png', transparent: true, tiled: true,
+    version: '1.1.1', maxZoom: 22, opacity: 0.78, attribution: 'Copernicus EFFIS'
+  }),
+  detekcije: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
+    // Nezavisan mjesečni prikaz tačaka MODIS/VIIRS, bez FIRMS/GFW ključa.
+    layers: 'modis.hs.month', format: 'image/png', transparent: true, tiled: true,
+    version: '1.1.1', maxZoom: 22, opacity: 0.92, attribution: 'Copernicus EFFIS'
   }),
   fwi: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
     layers: 'ecmwf.fwi', format: 'image/png', transparent: true, tiled: true,
@@ -3775,6 +3788,10 @@ if (!Object.prototype.hasOwnProperty.call(_poziEffisState, 'opozareno')) {
   _poziEffisState.opozareno = true;
   try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
 }
+if (!Object.prototype.hasOwnProperty.call(_poziEffisState, 'detekcije')) {
+  _poziEffisState.detekcije = true;
+  try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
+}
 Object.keys(_POZ_EFFIS).forEach(k => { if (_poziEffisState[k]) _POZ_EFFIS[k].addTo(map); });
 function _poziEffisOn(key) { return !!_poziEffisState[key]; }
 function _poziEffisToggle(key, on) {
@@ -3782,8 +3799,16 @@ function _poziEffisToggle(key, on) {
   _poziEffisState[key] = !!on;
   try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
   if (on) _POZ_EFFIS[key].addTo(map); else map.removeLayer(_POZ_EFFIS[key]);
-  const swId = key === 'opozareno' ? 'poz-effis-ba-switch' : 'poz-effis-fwi-switch';
+  const swId = key === 'opozareno' ? 'poz-effis-ba-switch' : (key === 'detekcije' ? 'poz-effis-det-switch' : 'poz-effis-fwi-switch');
   const sw = document.getElementById(swId); if (sw) sw.classList.toggle('on', on);
+  _poziLegendeAzuriraj();
+}
+
+function _poziLegendeAzuriraj() {
+  const legEl = document.getElementById('poz-god-legend');
+  if (!legEl) return;
+  const imaGodina = _povGodOznaceneGodine().some(g => _povGodPodaci[g]?.evts?.length);
+  legEl.style.display = imaGodina || _poziEffisOn('opozareno') || _poziEffisOn('detekcije') ? 'block' : 'none';
 }
 
 function _poziParseCsv(txt) {
@@ -4180,8 +4205,7 @@ function _povGodRenderSve() {
   if (_povGodLayer) { try { map.removeLayer(_povGodLayer); } catch(e) {} _povGodLayer = null; }
   const ref = _poziRefTacka();
   const oznacene = _povGodOznaceneGodine().filter(g => _povGodPodaci[g]?.evts?.length);
-  const legEl = document.getElementById('poz-god-legend');
-  if (legEl) legEl.style.display = oznacene.length ? 'block' : 'none';
+  _poziLegendeAzuriraj();
   if (oznacene.length) {
     const grp = L.layerGroup([], { pane: 'pozariPane' });
     oznacene.forEach(godina => {
@@ -4967,7 +4991,9 @@ async function openPozariSection() {
   const notifChk = document.getElementById('poz-notif-chk'); if (notifChk) notifChk.checked = _poziNotifOn();
   const gfwSw = document.getElementById('poz-gfw-switch'); if (gfwSw) gfwSw.classList.toggle('on', _poziGfwOn());
   const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));
+  const detSw = document.getElementById('poz-effis-det-switch'); if (detSw) detSw.classList.toggle('on', _poziEffisOn('detekcije'));
   const fwiSw = document.getElementById('poz-effis-fwi-switch'); if (fwiSw) fwiSw.classList.toggle('on', _poziEffisOn('fwi'));
+  _poziLegendeAzuriraj();
   const trenutnaGodina = new Date().getUTCFullYear();
   const godineZaUcitati = [...new Set([..._povGodOznaceneGodine(), trenutnaGodina])];
   godineZaUcitati.forEach(godina => {
