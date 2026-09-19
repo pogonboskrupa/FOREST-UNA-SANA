@@ -48,7 +48,18 @@ window.addEventListener('DOMContentLoaded',function(){
 });
 </script>
 <style>
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  --bg:#08120e;
+  --surface:#102019;
+  --surface-2:#172a21;
+  --line:rgba(148,163,184,0.17);
+  --text:#ecfdf5;
+  --muted:#94a3b8;
+  --brand:#4ade80;
+  --brand-deep:#166534;
+  --fire:#fb923c;
+}
 html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172a; font-family:'DM Sans',Arial,Roboto,sans-serif; }
 #map { position:fixed; inset:0; background:#ddd; }
 
@@ -147,18 +158,22 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 .dlg-action-btn.danger { color:#dc2626; border-color:#fecaca; background:#fef2f2; }
 
-/* === Glavna navigacija — Karta / Meni / Postavke === */
+/* === Glavna navigacija — četiri terenska radna toka === */
 #main-tabs {
   position:fixed; bottom:0; left:0; right:0; z-index:600;
-  display:flex; background:rgba(15,23,42,0.97); border-top:1px solid #1e293b;
-  padding:4px 4px calc(env(safe-area-inset-bottom,0px) + 4px);
+  display:flex; gap:3px; background:rgba(8,18,14,0.94); border-top:1px solid var(--line);
+  padding:6px 6px calc(env(safe-area-inset-bottom,0px) + 6px);
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  box-shadow:0 -8px 28px rgba(0,0,0,0.24);
 }
 #main-tabs .mtab {
   flex:1; background:none; border:none; display:flex; flex-direction:column;
-  align-items:center; gap:2px; color:#94a3b8; font-size:11px; font-weight:600;
-  padding:6px 2px; cursor:pointer;
+  align-items:center; gap:3px; color:#8da399; font-size:10.5px; font-weight:700;
+  padding:7px 2px 6px; cursor:pointer; border-radius:13px; min-height:46px;
+  transition:background .16s ease,color .16s ease,transform .12s ease;
 }
-#main-tabs .mtab.active { color:#4ade80; }
+#main-tabs .mtab:active { transform:scale(.96); }
+#main-tabs .mtab.active { color:#86efac; background:rgba(34,197,94,0.13); }
 #main-tabs .mtab-ico { font-size:20px; line-height:1; }
 
 /* === Centar-tačka + udaljenost od moje lokacije (samo dok je GPS uključen,
@@ -247,17 +262,23 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 /* === Puni-ekran paneli (Meni / Postavke / sekcije) === */
 .usf-panel {
-  display:none; position:fixed; inset:0; z-index:850; background:#0f172a;
+  display:none; position:fixed; inset:0; z-index:850;
+  background:linear-gradient(180deg,#0d1b15 0%,#08120e 100%);
   flex-direction:column;
 }
 .usf-panel.show { display:flex; }
 .usf-panel .up-hdr {
-  display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
-  padding-top:calc(14px + env(safe-area-inset-top)); border-bottom:1px solid #1e293b; flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between; padding:13px 16px;
+  padding-top:calc(13px + env(safe-area-inset-top)); border-bottom:1px solid var(--line);
+  background:rgba(8,18,14,.86); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  flex-shrink:0;
 }
-.usf-panel .up-hdr h2 { color:#e2e8f0; font-size:16px; margin:0; }
-.usf-panel .up-close { background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer; }
-.usf-panel .up-body { flex:1; overflow-y:auto; padding:12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.usf-panel .up-hdr h2 { color:var(--text); font-size:17px; letter-spacing:-.2px; margin:0; }
+.usf-panel .up-close {
+  width:36px; height:36px; display:grid; place-items:center; background:rgba(148,163,184,.09);
+  border:1px solid var(--line); border-radius:11px; color:#b8c8c0; font-size:18px; cursor:pointer;
+}
+.usf-panel .up-body { flex:1; overflow-y:auto; padding:14px 14px calc(86px + env(safe-area-inset-bottom, 0px)); }
 
 #profil-modal, #tem-table-modal, #poz-sim-modal {
   display:none; position:fixed; inset:0;
@@ -282,13 +303,18 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 
 .meni-card {
-  display:flex; align-items:center; gap:12px; background:#1e293b; border-radius:12px;
-  padding:14px; margin-bottom:10px; cursor:pointer; border:1px solid #334155;
+  display:flex; align-items:center; gap:12px; background:linear-gradient(145deg,rgba(30,55,43,.96),rgba(19,38,30,.96));
+  border-radius:16px; padding:14px; margin-bottom:10px; cursor:pointer; border:1px solid var(--line);
+  box-shadow:0 5px 18px rgba(0,0,0,.14); transition:transform .12s ease,border-color .15s ease;
 }
-.meni-card .mc-ico { font-size:24px; flex-shrink:0; }
+.meni-card:active { transform:scale(.985); border-color:rgba(74,222,128,.45); }
+.meni-card .mc-ico {
+  display:grid; place-items:center; width:42px; height:42px; border-radius:13px;
+  background:rgba(255,255,255,.055); font-size:22px; flex-shrink:0;
+}
 .meni-card .mc-txt { flex:1; }
-.meni-card .mc-txt b { display:block; color:#e2e8f0; font-size:14px; }
-.meni-card .mc-txt span { display:block; color:#64748b; font-size:11px; margin-top:2px; }
+.meni-card .mc-txt b { display:block; color:var(--text); font-size:14px; }
+.meni-card .mc-txt span { display:block; color:#8da399; font-size:11px; margin-top:3px; line-height:1.35; }
 .meni-card .mc-badge {
   font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;
   background:#422006; color:#fbbf24; border-radius:6px; padding:3px 7px; flex-shrink:0;
@@ -296,8 +322,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .meni-card .mc-badge.ready { background:#14532d; color:#4ade80; }
 
 .set-row {
-  display:flex; align-items:center; justify-content:space-between; background:#1e293b;
-  border-radius:12px; padding:14px; margin-bottom:10px; color:#e2e8f0; font-size:13px;
+  display:flex; align-items:center; justify-content:space-between; background:var(--surface-2);
+  border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:10px; color:var(--text); font-size:13px;
 }
 .set-row button {
   background:#0f172a; border:1px solid #334155; color:#cbd5e1; border-radius:8px;
@@ -414,15 +440,62 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .trag-popup-btns button { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:5px 7px; font-size:11px; cursor:pointer; }
 
 /* === Požari === */
-.poz-okvir-btn, .poz-podtab-btn, .poz-hist-sort-btn {
-  flex:1; background:#1e293b; border:1px solid #334155; color:#94a3b8;
-  border-radius:8px; padding:8px 4px; font-size:12px; cursor:pointer;
+.poz-podtabs {
+  position:sticky; top:-14px; z-index:5; display:grid; grid-template-columns:repeat(3,1fr);
+  gap:5px; margin:-2px -2px 14px; padding:8px 2px;
+  background:linear-gradient(180deg,#0d1b15 78%,rgba(13,27,21,0));
 }
-.poz-okvir-btn.on, .poz-podtab-btn.on, .poz-hist-sort-btn.on { background:#7c2d12; border-color:#f97316; color:#fdba74; }
+.poz-okvir-btn, .poz-podtab-btn, .poz-hist-sort-btn {
+  flex:1; background:#172a21; border:1px solid var(--line); color:#9db0a7;
+  border-radius:11px; padding:10px 5px; font-size:12px; font-weight:650; cursor:pointer;
+}
+.poz-okvir-btn.on, .poz-podtab-btn.on, .poz-hist-sort-btn.on {
+  background:linear-gradient(135deg,#7c2d12,#9a3412); border-color:#fb923c; color:#fff7ed;
+  box-shadow:0 4px 14px rgba(249,115,22,.18);
+}
+.loc-row {
+  min-height:42px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 12px; margin-bottom:7px; border-radius:12px;
+  background:rgba(23,42,33,.72); border:1px solid var(--line); color:#d8e8df; font-size:12px;
+}
+.poz-timeframes { display:grid !important; grid-template-columns:repeat(4,1fr); gap:6px !important; }
+.poz-section-card {
+  margin-top:12px !important; padding:13px !important; border:1px solid var(--line) !important;
+  border-radius:15px; background:rgba(16,32,25,.72);
+}
+#poz-panel-body { overscroll-behavior:contain; }
+#poz-status { padding:8px 2px; line-height:1.45; }
+.poz-panel-note { color:#71857b !important; }
 .poz-mk-trokut { transition: filter 0.2s; }
 .poz-mk-trokut.svjez { animation: pozPuls 1.6s ease-in-out infinite; }
 @keyframes pozPuls { 0%,100% { filter: drop-shadow(0 2px 4px #000a) brightness(1); } 50% { filter: drop-shadow(0 2px 8px #f97316) brightness(1.25); } }
 .poz-mk { border-radius:50%; width:12px; height:12px; border:2px solid #fff; box-shadow:0 1px 4px #000; }
+
+.karta-hub-intro { color:#9db0a7; font-size:12px; line-height:1.5; margin:0 2px 14px; }
+.karta-hub-grid { display:grid; gap:10px; }
+.karta-hub-card {
+  background:linear-gradient(145deg,rgba(30,55,43,.95),rgba(16,32,25,.95));
+  border:1px solid var(--line); border-radius:16px; padding:14px;
+}
+.karta-hub-card h3 { margin:0 0 4px; color:var(--text); font-size:14px; }
+.karta-hub-card p { margin:0 0 11px; color:#80958a; font-size:11px; line-height:1.45; }
+.karta-hub-action {
+  width:100%; border:1px solid rgba(74,222,128,.28); border-radius:11px; padding:11px 12px;
+  background:rgba(22,101,52,.24); color:#bbf7d0; font-size:12px; font-weight:700; cursor:pointer;
+}
+#karta-base-list { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
+#karta-base-list button {
+  border:1px solid var(--line); border-radius:10px; padding:10px 7px; background:#102019;
+  color:#9db0a7; font-size:12px; cursor:pointer;
+}
+#karta-base-list button.active { border-color:#4ade80; background:#14532d; color:#dcfce7; }
+
+@media (min-width:700px) {
+  .usf-panel .up-body { width:min(680px,calc(100% - 32px)); margin:0 auto; box-sizing:border-box; }
+  #meni-panel .up-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; }
+  #meni-panel .meni-card { margin-bottom:0; }
+  #meni-ver-badge { grid-column:1/-1; }
+}
 </style>
 </head>
 <body>
@@ -499,9 +572,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div class="up-body"><div id="msr-saved-list"></div></div>
 </div>
 
-<!-- Glavna navigacija — Karta / Meni / Postavke -->
+<!-- Glavna navigacija — mapa, upravljanje kartama, meni i postavke -->
 <div id="main-tabs">
-  <button class="mtab active" data-tab="karta" onclick="switchMainTab('karta')"><span class="mtab-ico">🗺</span>Karta</button>
+  <button class="mtab active" data-tab="karta" onclick="switchMainTab('karta')"><span class="mtab-ico">🧭</span>Mapa</button>
+  <button class="mtab" data-tab="karte" onclick="switchMainTab('karte')"><span class="mtab-ico">🗺</span>Karte</button>
   <button class="mtab" data-tab="meni" onclick="switchMainTab('meni')"><span class="mtab-ico">☰</span>Meni</button>
   <button class="mtab" data-tab="postavke" onclick="switchMainTab('postavke')"><span class="mtab-ico">⚙</span>Postavke</button>
 </div>
@@ -588,7 +662,41 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div class="mc-txt"><b>Mjerenja</b><span>Sačuvane udaljenosti, površine, nagibi</span></div>
       <div class="mc-badge ready">Spremno</div>
     </div>
+    <div class="meni-card" onclick="switchMainTab('postavke')">
+      <div class="mc-ico">⚙</div>
+      <div class="mc-txt"><b>Postavke</b><span>Verzija, ažuriranje, baterija i keš karata</span></div>
+    </div>
     <div id="meni-ver-badge" style="text-align:center;color:#475569;font-size:11px;padding:14px 0 4px;"></div>
+  </div>
+</div>
+
+<!-- Karte — centralno mjesto za podloge i uvoz terenskih podataka -->
+<div id="karte-panel" class="usf-panel">
+  <div class="up-hdr"><h2>🗺 Karte i slojevi</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-body">
+    <p class="karta-hub-intro">Odaberi baznu kartu ili učitaj vlastite offline karte i vektorske slojeve. Učitani podaci ostaju prikazani na glavnoj mapi.</p>
+    <div class="karta-hub-grid">
+      <section class="karta-hub-card">
+        <h3>🌍 Bazna karta</h3>
+        <p>Brzo promijeni podlogu bez vraćanja na mapu.</p>
+        <div id="karta-base-list"></div>
+      </section>
+      <section class="karta-hub-card">
+        <h3>🗂 Offline SQLite / MBTiles</h3>
+        <p>Učitaj velike lokalne karte u formatima .sqlmap, .sqlite, .mbtiles ili .db.</p>
+        <button class="karta-hub-action" onclick="openUcitajKartuSection()">Upravljaj offline kartama</button>
+      </section>
+      <section class="karta-hub-card">
+        <h3>📥 KML / SHP slojevi</h3>
+        <p>Učitaj poligone, linije i tačke. Za SHP označi zajedno .shp, .dbf i .prj fajlove.</p>
+        <button class="karta-hub-action" onclick="openUcitajKmlSection()">Učitaj vektorske slojeve</button>
+      </section>
+      <section class="karta-hub-card">
+        <h3>📊 Tematska GeoPackage karta</h3>
+        <p>Oboji odjele ili odsjeke prema numeričkim atributima iz .gpkg fajla.</p>
+        <button class="karta-hub-action" onclick="openTematskaSection()">Otvori tematske karte</button>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -614,10 +722,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="pozari-panel" class="usf-panel">
   <div class="up-hdr"><h2>🔥 Požari</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body" id="poz-panel-body">
-    <div style="display:flex;gap:6px;margin-bottom:12px;">
-      <button class="poz-podtab-btn on" data-podtab="pregled" onclick="_poziPodTab('pregled')">Pregled</button>
-      <button class="poz-podtab-btn" data-podtab="historija" onclick="_poziPodTab('historija')">📜 Historija požara</button>
-      <button class="poz-podtab-btn" data-podtab="simulacija" onclick="_poziPodTab('simulacija')">🔥 Simulacija</button>
+    <div class="poz-podtabs">
+      <button class="poz-podtab-btn on" data-podtab="pregled" onclick="_poziPodTab('pregled')">📡 Pregled</button>
+      <button class="poz-podtab-btn" data-podtab="historija" onclick="_poziPodTab('historija')">📜 Historija</button>
+      <button class="poz-podtab-btn" data-podtab="simulacija" onclick="_poziPodTab('simulacija')">▶ Simulacija</button>
     </div>
 
     <div id="poz-podtab-pregled">
@@ -625,13 +733,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <span>Prikaz na karti</span>
       <div class="loc-switch" id="poz-on-switch" onclick="_poziToggle(!_poziOn)"></div>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:10px;">
+    <div class="poz-timeframes" style="display:flex;gap:6px;margin-bottom:10px;">
       <button class="poz-okvir-btn" data-okvir="24h" onclick="_poziPostaviOkvir('24h')">24 sata</button>
       <button class="poz-okvir-btn" data-okvir="48h" onclick="_poziPostaviOkvir('48h')">48 sati</button>
       <button class="poz-okvir-btn" data-okvir="7d" onclick="_poziPostaviOkvir('7d')">7 dana</button>
       <button class="poz-okvir-btn" data-okvir="30d" onclick="_poziPostaviOkvir('30d')">30 dana</button>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
+    <div class="poz-panel-note" style="font-size:10px;color:#475569;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
     <label style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:12px;margin:0 0 10px;">
       <input type="checkbox" id="poz-god-trenutna-chk" onchange="_povGodToggleGodina(new Date().getUTCFullYear(), this.checked)"> Tekuća godina na karti (svi požari cijele sezone, kanton)
     </label>
@@ -651,7 +759,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <input type="checkbox" id="poz-notif-chk" onchange="_poziNotifToggle(this.checked)">
     </div>
 
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
+    <div class="poz-section-card" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🛰 Global Forest Watch — dodatni izvor</div>
       <div class="loc-row">
         <span>Dopuni FIRMS arhivu GFW detekcijama</span>
@@ -660,13 +768,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Iste NASA detekcije, ali sa GFW servera (treba admin ključ ispod) — koristno kad FIRMS arhiva ne radi ili je tuđi server nedostupan.</div>
     </div>
 
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
+    <div class="poz-section-card" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">📅 Godišnji pregled na karti (GFW, treba admin ključ ispod)</div>
       <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:8px;">Počev od 2026. — označi godinu(e) da vidiš sve požare te godine na karti (obojeno po legendi "POŽARI — KADA": nedavno/ove godine/prošlih godina). Ova godina je uključena po podrazumijevanom.</div>
       <div id="poz-god-body"></div>
     </div>
 
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
+    <div class="poz-section-card" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
       <div class="loc-row">
         <span>Opožarene površine (mjerene granice)</span>
@@ -679,7 +787,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">EFFIS opožarene površine stižu sa danima zakašnjenja (mjereno, ne uživo) — dopuna satelitskim tačkastim detekcijama iznad, ne zamjena.</div>
     </div>
 
-    <div class="treg-meta-edit" style="margin-top:14px;">
+    <div class="treg-meta-edit poz-section-card" style="margin-top:14px;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🔑 Admin: FIRMS/GFW ključevi</div>
       <input id="poz-key-firms" placeholder="FIRMS MAP_KEY (opciono)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
       <input id="poz-key-gfw" placeholder="GFW API ključ (za dodatni izvor)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
@@ -795,7 +903,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <!-- Tematska karta (stub) -->
 <div id="tematska-panel" class="usf-panel">
-  <div class="up-hdr"><h2>📊 Tematska karta <span id="tem-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-hdr"><h2>📊 Tematska karta <span id="tem-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
     <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Učitajte .gpkg (GeoPackage) sa poligonima — aplikacija automatski prepoznaje numeričke kolone kao teme i boji poligone kvantilnom skalom (5 klasa).</div>
     <input type="file" id="tem-file-input" accept=".gpkg" style="display:none;" onchange="_temFileChosen(event)">
@@ -807,7 +915,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <!-- Učitaj kartu (stub) -->
 <div id="ucitajkartu-panel" class="usf-panel">
-  <div class="up-hdr"><h2>🗂 Učitaj kartu <span id="sqlmap-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-hdr"><h2>🗂 Učitaj kartu <span id="sqlmap-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
     <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
     <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('sqlmap-file-input').click()">📂 Izaberi MBTiles/SQLite fajl</button>
@@ -816,12 +924,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   </div>
 </div>
 
-<!-- Učitaj KML (stub) -->
+<!-- Učitaj KML / SHP -->
 <div id="ucitajkml-panel" class="usf-panel">
-  <div class="up-hdr"><h2>📥 Učitaj KML <span id="kml-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-hdr"><h2>📥 KML / SHP <span id="kml-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
-    <input type="file" id="kml-file-input" accept=".kml" multiple style="display:none;" onchange="_kmlFileChosen(event)">
-    <button class="loc-btn" style="margin-bottom:14px;" onclick="document.getElementById('kml-file-input').click()">📂 Izaberi KML fajl(ove)</button>
+    <div style="font-size:11px;color:#80958a;line-height:1.5;margin-bottom:10px;">KML se bira direktno. Za SHP označi zajedno istoimene <b>.shp</b>, <b>.dbf</b> i <b>.prj</b> fajlove; .prj je potreban za karte u lokalnoj projekciji.</div>
+    <input type="file" id="kml-file-input" accept=".kml,.shp,.dbf,.prj,.shx" multiple style="display:none;" onchange="_vectorFileChosen(event)">
+    <button class="loc-btn" style="margin-bottom:14px;" onclick="document.getElementById('kml-file-input').click()">📂 Izaberi KML ili SHP fajlove</button>
     <div id="kml-list"></div>
   </div>
 </div>
@@ -898,7 +1007,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.20.0';
+const APP_VER = 'v0.21.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -1134,30 +1243,40 @@ try {
 } catch(e) {}
 _defaultLayer.addTo(map);
 
-// ── Prekidač baznih slojeva — mala ikona (#layer-btn) otvara dropdown
-// (#layer-switch) sa listom podloga; bira se klikom, dropdown se zatvara. ──
+// ── Bazni slojevi — koriste ih i brzo dugme na mapi i panel "Karte". ──
 function _layerIcon(name) { return name.split(' ')[0]; }
+let _currentBaseName = Object.keys(TL).find(k => TL[k] === _defaultLayer);
+function _selectBaseLayer(name) {
+  if (!TL[name] || name === _currentBaseName) return;
+  try { map.removeLayer(TL[_currentBaseName]); } catch(e) {}
+  TL[name].addTo(map);
+  _currentBaseName = name;
+  try { localStorage.setItem('usf_base_layer', name); } catch(e) {}
+  document.querySelectorAll('#layer-switch button').forEach(b => b.classList.toggle('active', b.dataset.layer === name));
+  const icoBtn = document.getElementById('layer-btn'); if (icoBtn) icoBtn.textContent = _layerIcon(name);
+  _renderKartaBaseList();
+}
+function _renderKartaBaseList() {
+  const el = document.getElementById('karta-base-list');
+  if (!el) return;
+  el.innerHTML = Object.keys(TL).map(name => `<button class="${name === _currentBaseName ? 'active' : ''}" onclick="_selectBaseLayer('${name.replace(/'/g,"\\'")}')">${name}</button>`).join('');
+}
 (function buildLayerSwitch() {
   const box = document.getElementById('layer-switch');
   const icoBtn = document.getElementById('layer-btn');
-  let current = Object.keys(TL).find(k => TL[k] === _defaultLayer);
-  if (icoBtn) icoBtn.textContent = _layerIcon(current);
+  if (icoBtn) icoBtn.textContent = _layerIcon(_currentBaseName);
   Object.keys(TL).forEach(name => {
     const btn = document.createElement('button');
     btn.textContent = name;
-    if (name === current) btn.classList.add('active');
+    btn.dataset.layer = name;
+    if (name === _currentBaseName) btn.classList.add('active');
     btn.onclick = () => {
       _closeLayerSwitch();
-      if (name === current) return;
-      map.removeLayer(TL[current]);
-      TL[name].addTo(map);
-      current = name;
-      try { localStorage.setItem('usf_base_layer', name); } catch(e) {}
-      box.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.textContent === name));
-      if (icoBtn) icoBtn.textContent = _layerIcon(name);
+      _selectBaseLayer(name);
     };
     box.appendChild(btn);
   });
+  _renderKartaBaseList();
 })();
 function _toggleLayerSwitch() {
   const box = document.getElementById('layer-switch');
@@ -2966,6 +3085,132 @@ function _kmlHitTest(latlng) {
 }
 
 function _kmlFileChosen(e) { [...e.target.files].forEach(_kmlLoadFile); e.target.value = ''; }
+async function _vectorFileChosen(e) {
+  const files = [...e.target.files];
+  e.target.value = '';
+  files.filter(f => /\.kml$/i.test(f.name)).forEach(_kmlLoadFile);
+  const shpFiles = files.filter(f => /\.shp$/i.test(f.name));
+  for (const shpFile of shpFiles) {
+    const base = shpFile.name.replace(/\.shp$/i, '').toLowerCase();
+    const find = ext => files.find(f => f.name.toLowerCase() === base + ext);
+    try {
+      await _shpLoadFiles(shpFile, find('.dbf'), find('.prj'));
+    } catch(err) {
+      showToast('⚠ SHP nije učitan: ' + (err.message || 'nepoznata greška'));
+    }
+  }
+  if (!files.some(f => /\.(kml|shp)$/i.test(f.name))) showToast('⚠ Izaberi .kml ili .shp fajl');
+}
+
+function _shpReadDbf(buf) {
+  if (!buf) return [];
+  const dv = new DataView(buf), bytes = new Uint8Array(buf);
+  const count = dv.getUint32(4, true), headLen = dv.getUint16(8, true), recLen = dv.getUint16(10, true);
+  const fields = [];
+  for (let p = 32; p + 32 <= headLen && bytes[p] !== 0x0d; p += 32) {
+    let name = '';
+    for (let i = 0; i < 11 && bytes[p + i]; i++) name += String.fromCharCode(bytes[p + i]);
+    fields.push({ name:name.trim(), type:String.fromCharCode(bytes[p + 11]), len:bytes[p + 16], dec:bytes[p + 17] });
+  }
+  let decoder;
+  try { decoder = new TextDecoder('windows-1252'); } catch(e) { decoder = new TextDecoder(); }
+  const rows = [];
+  for (let r = 0; r < count; r++) {
+    const start = headLen + r * recLen;
+    if (start + recLen > bytes.length) break;
+    if (bytes[start] === 0x2a) { rows.push({}); continue; }
+    const row = {}; let off = start + 1;
+    fields.forEach(f => {
+      const raw = decoder.decode(bytes.slice(off, off + f.len)).trim(); off += f.len;
+      if (!raw) { row[f.name] = ''; return; }
+      if (f.type === 'N' || f.type === 'F') row[f.name] = Number(raw);
+      else if (f.type === 'L') row[f.name] = /^[YyTt1]/.test(raw);
+      else row[f.name] = raw;
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function _shpParse(buf, project) {
+  const dv = new DataView(buf), out = [];
+  if (dv.byteLength < 100 || dv.getInt32(0, false) !== 9994) throw new Error('neispravan SHP fajl');
+  const point = (x, y) => {
+    const ll = project ? project(x, y) : [x, y];
+    if (!Number.isFinite(ll[0]) || !Number.isFinite(ll[1])) throw new Error('neispravne koordinate');
+    if (!project && (Math.abs(x) > 180 || Math.abs(y) > 90)) throw new Error('nedostaje .prj fajl za projekciju');
+    return [ll[1], ll[0]];
+  };
+  let p = 100;
+  while (p + 12 <= dv.byteLength) {
+    const words = dv.getInt32(p + 4, false), end = Math.min(dv.byteLength, p + 8 + words * 2), o = p + 8;
+    if (end <= o + 4) break;
+    const type = dv.getInt32(o, true);
+    if (type === 0) out.push(null);
+    else if ([1,11,21].includes(type)) out.push({ type:'point', coords:point(dv.getFloat64(o + 4,true), dv.getFloat64(o + 12,true)) });
+    else if ([3,5,13,15,23,25].includes(type)) {
+      const nParts = dv.getInt32(o + 36,true), nPts = dv.getInt32(o + 40,true);
+      const parts = [], idx = [];
+      for (let i=0;i<nParts;i++) idx.push(dv.getInt32(o + 44 + i*4,true));
+      const ptsAt = o + 44 + nParts*4;
+      for (let i=0;i<nParts;i++) {
+        const ring = [], stop = i+1<nParts ? idx[i+1] : nPts;
+        for (let j=idx[i];j<stop;j++) ring.push(point(dv.getFloat64(ptsAt+j*16,true),dv.getFloat64(ptsAt+j*16+8,true)));
+        if (ring.length) parts.push(ring);
+      }
+      out.push({ type:type===5||type===15||type===25?'polygon':'line', parts });
+    } else if ([8,18,28].includes(type)) {
+      const nPts = dv.getInt32(o + 36,true), pts = [];
+      for (let i=0;i<nPts;i++) pts.push(point(dv.getFloat64(o+40+i*16,true),dv.getFloat64(o+48+i*16,true)));
+      out.push({ type:'multipoint', coords:pts });
+    } else out.push(null);
+    p = end;
+  }
+  return out;
+}
+
+function _shpFeatureName(attrs, i) {
+  const keys = Object.keys(attrs || {});
+  const preferred = ['naziv','name','odjel','odsjek','broj','id'];
+  for (const wanted of preferred) {
+    const key = keys.find(k => k.toLowerCase() === wanted);
+    if (key && attrs[key] !== '') return String(attrs[key]);
+  }
+  return 'Objekat ' + (i + 1);
+}
+
+async function _shpLoadFiles(shpFile, dbfFile, prjFile) {
+  const [shpBuf, dbfBuf, prjText] = await Promise.all([
+    shpFile.arrayBuffer(), dbfFile ? dbfFile.arrayBuffer() : Promise.resolve(null), prjFile ? prjFile.text() : Promise.resolve('')
+  ]);
+  let project = null;
+  if (prjText.trim()) {
+    if (typeof proj4 !== 'function') throw new Error('biblioteka za projekcije nije dostupna');
+    project = (x,y) => proj4(prjText, 'EPSG:4326', [x,y]);
+  }
+  const shapes = _shpParse(shpBuf, project), rows = _shpReadDbf(dbfBuf);
+  const col = KCOLS[kmlCI % KCOLS.length]; kmlCI++;
+  const grp = L.featureGroup();
+  shapes.forEach((g,i) => {
+    if (!g) return;
+    const attrs = rows[i] || {}, name = _shpFeatureName(attrs,i), layers = [];
+    if (g.type === 'point') layers.push(L.circleMarker(g.coords,{radius:5,color:col,fillColor:col,fillOpacity:.9,pane:'tragMsrLines'}));
+    else if (g.type === 'multipoint') g.coords.forEach(c => layers.push(L.circleMarker(c,{radius:5,color:col,fillColor:col,fillOpacity:.9,pane:'tragMsrLines'})));
+    else if (g.type === 'line') g.parts.forEach(part => layers.push(L.polyline(part,{color:col,weight:2,opacity:.9,pane:'tragMsrLines'})));
+    else if (g.type === 'polygon') layers.push(L.polygon(g.parts,{color:col,weight:2,opacity:.9,fillOpacity:.08,pane:'tragMsrLines'}));
+    layers.forEach(l => {
+      l._kmlIsPoint = g.type === 'point' || g.type === 'multipoint'; l._kmlIsPolygon = g.type === 'polygon';
+      l._kmlName = name; l._kmlDesc = ''; l._kmlExtData = attrs;
+      l.bindTooltip(_escHtml(name),{sticky:true}); _bindKmlPopup(l); l.addTo(grp);
+    });
+  });
+  if (!grp.getLayers().length) throw new Error('nema podržanih geometrija');
+  grp.addTo(map);
+  kmlLs.push({id:'shp_'+Date.now()+'_'+kmlCI,name:shpFile.name,grp,col,vis:true,_shp:true});
+  _kmlRegRender();
+  try { const b=grp.getBounds(); if(b.isValid()) map.fitBounds(b,{padding:[20,20]}); } catch(e) {}
+  showToast('✅ SHP učitan: ' + shpFile.name);
+}
 function _kmlLoadFile(file) {
   const r = new FileReader();
   r.onload = ev => {
@@ -3020,7 +3265,7 @@ function _kmlToggle(id) {
   _kmlRegRender();
 }
 async function _kmlDeleteConfirm(id) {
-  const ok = await _dlgConfirm('Ukloniti ovaj KML sloj sa karte?', { danger: true, okLabel: 'Ukloni' });
+  const ok = await _dlgConfirm('Ukloniti ovaj vektorski sloj sa karte?', { danger: true, okLabel: 'Ukloni' });
   if (ok) _kmlDelete(id);
 }
 function _kmlDelete(id) {
@@ -3055,7 +3300,7 @@ function _kmlRegRender() {
   const cnt = document.getElementById('kml-count');
   if (!el) return;
   if (cnt) cnt.textContent = kmlLs.length ? `(${kmlLs.length})` : '';
-  if (!kmlLs.length) { el.innerHTML = '<div class="treg-empty">Nema učitanih KML slojeva.</div>'; return; }
+  if (!kmlLs.length) { el.innerHTML = '<div class="treg-empty">Nema učitanih KML/SHP slojeva.</div>'; return; }
   el.innerHTML = kmlLs.map(k => `<div class="treg-row" style="border-left:3px solid ${k.col};">
     <div class="treg-name" onclick="_kmlZoom('${k.id}')">${_escHtml(k.name)}</div>
     <div class="treg-btns">
@@ -4537,7 +4782,7 @@ function _poziNotifProvjeri() {
 // obavještenja su jedini izuzetak (svrha im je da jave dok ne gledaš). ──
 const _POZ_AUTO_MS = 10 * 60 * 1000, _POZ_STALE_MS = 5 * 60 * 1000;
 let _poziNotifTimer = null;
-function _poziAutoTreba() { return _activeMainTab === 'meni' && document.getElementById('pozari-panel')?.classList.contains('show') || _poziNotifOn(); }
+function _poziAutoTreba() { return document.getElementById('pozari-panel')?.classList.contains('show') || _poziNotifOn(); }
 function _poziNotifTimerStart() { _poziNotifTimerStop(); _poziNotifTimer = setInterval(() => { if (!_poziAutoTreba() || !navigator.onLine || _poziBusy || document.hidden) return; _poziLoad(true); }, _POZ_AUTO_MS); }
 function _poziNotifTimerStop() { if (_poziNotifTimer) { clearInterval(_poziNotifTimer); _poziNotifTimer = null; } }
 function _poziAutoSync() { if (_poziAutoTreba()) _poziNotifTimerStart(); else _poziNotifTimerStop(); }
@@ -6250,26 +6495,28 @@ async function _temRestore() {
 _temRestore();
 
 // =====================================================================
-// GLAVNA NAVIGACIJA — Karta / Meni / Postavke, i sekcije iz Menija
+// GLAVNA NAVIGACIJA — Mapa / Karte / Meni / Postavke
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['meni-panel','postavke-panel','pozari-panel','sjeca-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel'];
+const _ALL_PANELS = ['karte-panel','meni-panel','postavke-panel','pozari-panel','sjeca-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   _ALL_PANELS.forEach(id => document.getElementById(id)?.classList.remove('show'));
-  if (tab === 'meni') document.getElementById('meni-panel').classList.add('show');
+  if (tab === 'karte') { document.getElementById('karte-panel').classList.add('show'); _renderKartaBaseList(); }
+  else if (tab === 'meni') document.getElementById('meni-panel').classList.add('show');
   else if (tab === 'postavke') { document.getElementById('postavke-panel').classList.add('show'); _renderPostavke(); }
   // 'karta' — svi paneli sakriveni, mapa i FAB-ovi ispod su već vidljivi
 }
 function _openStubPanel(panelId, tabForBack) {
+  _activeMainTab = tabForBack;
   _ALL_PANELS.forEach(id => document.getElementById(id)?.classList.remove('show'));
   document.getElementById(panelId).classList.add('show');
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabForBack));
 }
-function openTematskaSection()    { _openStubPanel('tematska-panel', 'meni'); _temRegRender(); }
-function openUcitajKartuSection() { _openStubPanel('ucitajkartu-panel', 'meni'); }
-function openUcitajKmlSection()   { _openStubPanel('ucitajkml-panel', 'meni'); }
+function openTematskaSection()    { _openStubPanel('tematska-panel', 'karte'); _temRegRender(); }
+function openUcitajKartuSection() { _openStubPanel('ucitajkartu-panel', 'karte'); }
+function openUcitajKmlSection()   { _openStubPanel('ucitajkml-panel', 'karte'); }
 
 function _renderPostavke() {
   const el = document.getElementById('set-ver-txt');
