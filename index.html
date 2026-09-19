@@ -160,21 +160,26 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 /* === Glavna navigacija — četiri terenska radna toka === */
 #main-tabs {
-  position:fixed; bottom:0; left:0; right:0; z-index:600;
-  display:flex; gap:3px; background:rgba(8,18,14,0.94); border-top:1px solid var(--line);
-  padding:6px 6px calc(env(safe-area-inset-bottom,0px) + 6px);
+  position:fixed; bottom:0; left:0; right:0; z-index:920;
+  display:flex; gap:6px; background:rgba(6,15,11,0.97); border-top:1px solid rgba(74,222,128,.18);
+  padding:7px 8px calc(env(safe-area-inset-bottom,0px) + 7px);
   backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-  box-shadow:0 -8px 28px rgba(0,0,0,0.24);
+  box-shadow:0 -10px 32px rgba(0,0,0,.38);
 }
 #main-tabs .mtab {
-  flex:1; background:none; border:none; display:flex; flex-direction:column;
-  align-items:center; gap:3px; color:#8da399; font-size:10.5px; font-weight:700;
-  padding:7px 2px 6px; cursor:pointer; border-radius:13px; min-height:46px;
-  transition:background .16s ease,color .16s ease,transform .12s ease;
+  flex:1; position:relative; background:rgba(255,255,255,.025); border:1px solid transparent;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  color:#91a69b; font-size:11px; font-weight:750; letter-spacing:.1px;
+  padding:8px 3px 7px; cursor:pointer; border-radius:15px; min-height:52px;
+  transition:background .16s ease,color .16s ease,transform .12s ease,border-color .16s ease,box-shadow .16s ease;
 }
 #main-tabs .mtab:active { transform:scale(.96); }
-#main-tabs .mtab.active { color:#86efac; background:rgba(34,197,94,0.13); }
-#main-tabs .mtab-ico { font-size:20px; line-height:1; }
+#main-tabs .mtab.active {
+  color:#dcfce7; background:linear-gradient(145deg,rgba(22,101,52,.72),rgba(20,83,45,.48));
+  border-color:rgba(74,222,128,.38); box-shadow:inset 0 1px rgba(255,255,255,.06),0 4px 16px rgba(0,0,0,.22);
+}
+#main-tabs .mtab.active::before { content:''; position:absolute; top:4px; width:22px; height:2px; border-radius:2px; background:#4ade80; box-shadow:0 0 8px rgba(74,222,128,.7); }
+#main-tabs .mtab-ico { display:grid; place-items:center; width:27px; height:25px; font-size:21px; line-height:1; }
 
 /* === Centar-tačka + udaljenost od moje lokacije (samo dok je GPS uključen,
    sakriveno tokom mjerenja — vidi _locCenterRefresh) === */
@@ -1011,8 +1016,20 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.21.0';
+const APP_VER = 'v1.1.1';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
+
+// Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
+// Primjeri: 1.1.8 → 1.1.9 → 1.2.0; 1.9.9 → 2.0.0.
+function _sljedecaVerzija(verzija) {
+  const m = String(verzija || '').replace(/^v/i,'').match(/^(\d+)\.(\d)\.(\d)$/);
+  if (!m) return null;
+  let major = Number(m[1]), minor = Number(m[2]), patch = Number(m[3]);
+  if (patch < 9) patch++;
+  else if (minor < 9) { minor++; patch = 0; }
+  else { major++; minor = 0; patch = 0; }
+  return `v${major}.${minor}.${patch}`;
+}
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
 function _updOfflineBanner() {

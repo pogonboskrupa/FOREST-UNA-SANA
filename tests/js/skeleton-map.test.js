@@ -62,6 +62,23 @@ t('APP_VER je definisan i prati v-prefiksovanu shemu', () => {
   assert.match(HTML, /const APP_VER = 'v[0-9]+\.[0-9]+\.[0-9]+'/);
 });
 
+t('verzija je v1.1.1 i rollover koristi jednocifreni patch/minor', () => {
+  assert.ok(HTML.includes("const APP_VER = 'v1.1.1'"));
+  const src = extractFn('_sljedecaVerzija') + '\nreturn _sljedecaVerzija;';
+  const next = new Function(src)();
+  assert.strictEqual(next('v1.1.1'), 'v1.1.2');
+  assert.strictEqual(next('v1.1.9'), 'v1.2.0');
+  assert.strictEqual(next('v1.9.9'), 'v2.0.0');
+});
+
+t('bottom bar ostaje iznad punih radnih panela', () => {
+  const tabs = HTML.match(/#main-tabs\s*\{[^}]+\}/s)?.[0] || '';
+  const panel = HTML.match(/\.usf-panel\s*\{[^}]+\}/s)?.[0] || '';
+  const z = s => Number(s.match(/z-index\s*:\s*(\d+)/)?.[1] || 0);
+  assert.ok(z(tabs) > z(panel), 'bottom bar mora imati viši z-index od .usf-panel');
+  assert.ok(/min-height\s*:\s*52px/.test(HTML), 'dugmad bottom bara moraju imati veću dodirnu površinu');
+});
+
 t('bazni slojevi su ograničeni na osnovne četiri (bez Wayback/Sentinel/WorldCover/Konture)', () => {
   const twStart = HTML.indexOf('const TL = {');
   assert.ok(twStart >= 0, 'TL objekat nije nađen');
