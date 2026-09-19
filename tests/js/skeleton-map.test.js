@@ -62,8 +62,8 @@ t('APP_VER je definisan i prati v-prefiksovanu shemu', () => {
   assert.match(HTML, /const APP_VER = 'v[0-9]+\.[0-9]+\.[0-9]+'/);
 });
 
-t('verzija je v1.1.1 i rollover koristi jednocifreni patch/minor', () => {
-  assert.ok(HTML.includes("const APP_VER = 'v1.1.1'"));
+t('verzija je v1.1.2 i rollover koristi jednocifreni patch/minor', () => {
+  assert.ok(HTML.includes("const APP_VER = 'v1.1.2'"));
   const src = extractFn('_sljedecaVerzija') + '\nreturn _sljedecaVerzija;';
   const next = new Function(src)();
   assert.strictEqual(next('v1.1.1'), 'v1.1.2');
@@ -77,6 +77,13 @@ t('bottom bar ostaje iznad punih radnih panela', () => {
   const z = s => Number(s.match(/z-index\s*:\s*(\d+)/)?.[1] || 0);
   assert.ok(z(tabs) > z(panel), 'bottom bar mora imati viši z-index od .usf-panel');
   assert.ok(/min-height\s*:\s*52px/.test(HTML), 'dugmad bottom bara moraju imati veću dodirnu površinu');
+});
+
+t('radni modali završavaju iznad bottom bara i skrolaju sadržaj', () => {
+  const css = HTML.match(/#profil-modal, #tem-table-modal, #poz-sim-modal\s*\{[^}]+\}/s)?.[0] || '';
+  assert.ok(css.includes('calc(74px + env(safe-area-inset-bottom,0px))'));
+  assert.ok(/z-index\s*:\s*900/.test(css));
+  assert.ok(/overflow\s*:\s*auto/.test(css));
 });
 
 t('bazni slojevi su ograničeni na osnovne četiri (bez Wayback/Sentinel/WorldCover/Konture)', () => {

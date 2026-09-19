@@ -286,25 +286,27 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .usf-panel .up-body { flex:1; overflow-y:auto; padding:14px 14px calc(86px + env(safe-area-inset-bottom, 0px)); }
 
 #profil-modal, #tem-table-modal, #poz-sim-modal {
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,0.82); z-index:9999;
+  display:none; position:fixed;
+  inset:0 0 calc(74px + env(safe-area-inset-bottom,0px)) 0;
+  padding:14px; box-sizing:border-box; overflow:auto;
+  background:rgba(0,0,0,0.82); z-index:900;
   align-items:center; justify-content:center;
 }
 #profil-modal.show, #tem-table-modal.show, #poz-sim-modal.show { display:flex; }
 #profil-box {
   background:#0f172a; border:1.5px solid #334155; border-radius:12px;
   padding:16px; width:440px; max-width:96vw;
-  box-shadow:0 8px 32px rgba(0,0,0,0.8);
+  box-shadow:0 8px 32px rgba(0,0,0,0.8); max-height:100%; overflow:auto;
 }
 #tem-table-box {
   background:#0f172a; border:1.5px solid #334155; border-radius:12px;
   padding:14px; width:720px; max-width:96vw;
-  box-shadow:0 8px 32px rgba(0,0,0,0.8);
+  box-shadow:0 8px 32px rgba(0,0,0,0.8); max-height:100%; overflow:auto;
 }
 #poz-sim-box {
   background:#0f172a; border:1.5px solid #334155; border-radius:12px;
   padding:16px; width:380px; max-width:92vw;
-  box-shadow:0 8px 32px rgba(0,0,0,0.8);
+  box-shadow:0 8px 32px rgba(0,0,0,0.8); max-height:100%; overflow:auto;
 }
 
 .meni-card {
@@ -531,8 +533,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve -->
 <div id="poz-god-legend" style="display:none;position:absolute;right:10px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:180px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">POŽARI — KADA</div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c2410c;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">nedavno (≤ 3 dana)</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#eab308;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">ove godine</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#dc2626;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnja 24 sata</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#f97316;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnjih 7 dana</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#eab308;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">tekuća godina</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
 </div>
 
@@ -755,9 +758,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <div class="poz-panel-note" style="font-size:10px;color:#475569;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
     <div id="poz-god-kpi" class="poz-kpi-grid"></div>
-    <label style="display:flex;align-items:center;gap:7px;color:#cbd5e1;font-size:12px;margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(23,42,33,.72);">
-      <input type="checkbox" id="poz-god-trenutna-chk" onchange="_povGodToggleGodina(new Date().getUTCFullYear(), this.checked)"> Prikaži 2026: površine, satelitske tačke i glavne oznake
-    </label>
+    <div class="poz-section-card" style="margin:0 0 10px !important;">
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">📅 Opožarene plohe po godinama</div>
+      <div id="poz-god-izbor"></div>
+    </div>
     <div id="poz-status" style="color:#94a3b8;font-size:12px;margin-bottom:10px;"></div>
     <div id="poz-meteo"></div>
     <div class="loc-row" style="margin-top:14px;">
@@ -801,9 +805,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <input id="poz-key-firms" placeholder="FIRMS MAP_KEY (opciono)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
       <input id="poz-key-gfw" placeholder="GFW API ključ (za dodatni izvor)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
       <button class="mf-save" onclick="_poziAdminSacuvajKljuceve()">💾 Sačuvaj ključeve</button>
-    </div>
-    <div class="stub-section" style="padding:24px 12px 4px;">
-      <p style="font-size:12px;">Površina je gruba procjena iz vrelih piksela (satelitska rezolucija), ne mjerena granica — za to koristi EFFIS opožarene površine iznad. Sentinel-2 dopuna dolazi u sljedećoj fazi. Sječa/vjetroizvale je sad zaseban meni ("🪓 Sječa i vjetroizvale") jer to nisu požari.</p>
     </div>
     </div>
 
@@ -1016,7 +1017,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.1';
+const APP_VER = 'v1.1.2';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4089,20 +4090,16 @@ function _povGodGrupisiPoMjesecu(grupe) {
   return Object.values(bucket).sort((a, b) => a.key.localeCompare(b.key));
 }
 
-// Godine se biraju NEZAVISNO jedna od druge (svaka svoj checkbox) — nikad
-// ispod _POV_GOD_BASE_YEAR (aplikacija nema/ne treba historijske podatke
-// prije toga). Kad kalendar pređe u novu godinu, _povGodDostupneGodine()
-// automatski doda novi checkbox — ne treba ručno mijenjati kod.
-const _POV_GOD_BASE_YEAR = 2026;
+// Tekuća i četiri prethodne godine; podrazumijevano je uključena samo tekuća.
+const _POV_GOD_BROJ_GODINA = 5;
 const _POV_GOD_GODINE_KEY = 'usf_pozari_god_godine';
 const _POV_GOD_CACHE_PFX = 'usf_pozari_god_kes_';
 let _povGodPodaci = {}; // godina(broj) -> { evts, meta, busy }
 
 function _povGodDostupneGodine(trenutna) {
   const t = trenutna || new Date().getUTCFullYear();
-  const zadnja = Math.max(_POV_GOD_BASE_YEAR, t);
   const out = [];
-  for (let g = _POV_GOD_BASE_YEAR; g <= zadnja; g++) out.push(g);
+  for (let g = t - (_POV_GOD_BROJ_GODINA - 1); g <= t; g++) out.push(g);
   return out;
 }
 // Podrazumijevano (prvi put, ništa sačuvano): tekuća godina je već označena
@@ -4185,11 +4182,12 @@ function _povGodRenderSve() {
       _povGodPodaci[godina].evts.forEach(g => {
         // Procijenjena opožarena površina je ispod tačaka i glavne oznake.
         // Klik na poligon jasno navodi da nije riječ o službenom premjeru.
-        const geom = _poziOpozGeom(g.pts || []);
+        const boja = _povGodBoja(g, godina);
+        const geom = _poziOpozOn() ? _poziOpozGeom(g.pts || []) : null;
         if (geom) {
           try {
             L.geoJSON(geom, { pane:'pozariPane',
-              style:{ color:'#c2410c', weight:1.5, fillColor:'#c2410c', fillOpacity:0.22 } })
+              style:{ color:boja, weight:1.7, fillColor:boja, fillOpacity:0.30 } })
               .bindPopup(() => `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;"><b style="color:#fb923c;">Procijenjena opožarena površina</b><div style="font-size:18px;font-weight:800;margin:5px 0;">${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div><small style="color:#94a3b8;">Iz satelitskih piksela — nije službeno izmjerena granica.</small></div>`)
               .addTo(grp);
           } catch(e) {}
@@ -4224,39 +4222,10 @@ function _povGodZoom(godina, i) {
 function _povGodPanelHtml() {
   const dostupne = _povGodDostupneGodine();
   const oznaceneSet = new Set(_povGodOznaceneGodine());
-  const checkboxi = dostupne.map(godina => `
-    <label style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:12px;margin:0 12px 6px 0;">
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${dostupne.slice().reverse().map(godina => `
+    <label style="display:flex;align-items:center;justify-content:center;gap:5px;color:${oznaceneSet.has(godina)?'#fff7ed':'#94a3b8'};font-size:11px;font-weight:700;padding:9px 4px;border:1px solid ${oznaceneSet.has(godina)?'#fb923c':'#334155'};border-radius:10px;background:${oznaceneSet.has(godina)?'rgba(154,52,18,.45)':'#102019'};cursor:pointer;">
       <input type="checkbox" ${oznaceneSet.has(godina) ? 'checked' : ''} onchange="_povGodToggleGodina(${godina}, this.checked)"> ${godina}.
-    </label>`).join('');
-  const sekcije = dostupne.filter(g => oznaceneSet.has(g)).sort((a, b) => b - a).map(godina => {
-    const stanje = _povGodPodaci[godina];
-    let telo;
-    if (!stanje) telo = '';
-    else {
-      const m = stanje.meta || {};
-      if (m.greska === 'nema-kljuca') telo = `<div style="font-size:11px;color:#f87171;padding:4px 0;">Treba GFW API ključ (admin, ispod).</div>`;
-      else if (m.greska) telo = `<div style="font-size:11px;color:#f87171;padding:4px 0;">⚠ ${_escHtml(m.greska)}</div>`;
-      else if (stanje.busy && !stanje.evts.length) telo = `<div style="font-size:11px;color:#94a3b8;padding:4px 0;">⏳ Učitavam…</div>`;
-      else if (!stanje.evts.length) telo = `<div style="font-size:11px;color:#4ade80;padding:4px 0;">✓ Nema zabilježenih požara u krugu ${_POZ_RADIUS_KM} km.</div>`;
-      else {
-        const ukupnoHa = stanje.evts.reduce((s, g) => s + _poziPovrsinaGrupe(g), 0);
-        const redovi = stanje.evts.map((g, i) => {
-          const dt = g.zadnji ?? Date.parse(g.dt);
-          const dtTxt = isFinite(dt) ? new Date(dt).toLocaleDateString('bs-BA') : '—';
-          return `<div onclick="_povGodZoom(${godina},${i})" style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid #1e293b;cursor:pointer;font-size:11.5px;">
-            <span style="flex:1;color:#e2e8f0;">${dtTxt} · ${_msrFmt(g.d)}</span>
-            <span style="color:#64748b;">${g.broj} det. · ${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</span>
-          </div>`;
-        }).join('');
-        telo = `<div style="font-size:11px;color:#94a3b8;margin:2px 0 6px;">${stanje.evts.length} požara · procijenjeno ${_poziPovrsTxt(ukupnoHa)}${m.kes ? ' · iz keša' : ''}</div>${redovi}`;
-      }
-    }
-    return `<div style="margin-top:8px;">
-      <div style="font-size:11.5px;font-weight:700;color:#e2e8f0;padding:4px 0;">📅 ${godina}. godina</div>
-      ${telo}
-    </div>`;
-  }).join('');
-  return `<div style="display:flex;flex-wrap:wrap;">${checkboxi}</div>${sekcije}`;
+    </label>`).join('')}</div>`;
 }
 
 function _povGodKpiHtml() {
@@ -4495,11 +4464,12 @@ function _poziOpozGeom(pts) {
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
 const _POZ_OPOZ_REDOSLIJED = ['st', 'd3', 'h24', 'h6']; // starije ispod, svježe iznad (kao legenda)
 const _POZ_OPOZ_BOJE = { h6: '#ffedd5', h24: '#fdba74', d3: '#c2410c', st: '#292524' };
-function _poziOpozOn() { try { return localStorage.getItem(_POZ_OPOZ_KEY) === '1'; } catch(e) { return false; } }
+function _poziOpozOn() { try { const v = localStorage.getItem(_POZ_OPOZ_KEY); return v === null ? true : v === '1'; } catch(e) { return true; } }
 function _poziOpozToggle(on) {
   try { localStorage.setItem(_POZ_OPOZ_KEY, on ? '1' : '0'); } catch(e) {}
   const sw = document.getElementById('poz-opoz-switch'); if (sw) sw.classList.toggle('on', on);
   _poziOpozAzuriraj();
+  _povGodRenderSve();
 }
 let _poziOpozLayer = null;
 // Throttlovano (ista logika kao _poziRender poziva ovo) — poligoni se NE
@@ -4546,11 +4516,14 @@ function _poziIconGrupa(g) {
 // godine i prošle godine ne bi mogle razlikovati na karti.
 const _POZ_GOD_BOJA_OVE = '#eab308';
 const _POZ_GOD_BOJA_PROSLE = '#64748b';
+function _povGodBoja(g, godina) {
+  const h = (Date.now() - Number(g?.zadnji ?? Date.parse(g?.dt))) / 3600000;
+  if (isFinite(h) && h <= 24) return '#dc2626';
+  if (isFinite(h) && h <= 168) return '#f97316';
+  return godina < new Date().getUTCFullYear() ? _POZ_GOD_BOJA_PROSLE : _POZ_GOD_BOJA_OVE;
+}
 function _poziIconGodina(g, godina) {
-  const h = (Date.now() - Date.parse(g.dt)) / 3600000;
-  if (isFinite(h) && h <= 72) return _poziIconGrupa(g); // nedavno — nepromijenjeno
-  const trenutna = new Date().getUTCFullYear();
-  const boja = godina < trenutna ? _POZ_GOD_BOJA_PROSLE : _POZ_GOD_BOJA_OVE;
+  const boja = _povGodBoja(g, godina);
   const w = Math.round(Math.min(44, 30 + Math.max(0, g.broj - 2) * 0.7)), hh = Math.round(w * 0.9);
   return L.divIcon({ className:'', iconSize:[w,hh], iconAnchor:[w/2,hh/2],
     html:`<svg width="${w}" height="${hh}" viewBox="0 0 100 90" style="overflow:visible;filter:drop-shadow(0 2px 4px #000a)">
@@ -4967,9 +4940,8 @@ function _poziRenderPanel() {
   document.querySelectorAll('.poz-okvir-btn').forEach(b => b.classList.toggle('on', b.dataset.okvir === _poziOkvir()));
   const status = document.getElementById('poz-status'); if (status) status.style.display = _poziOn ? '' : 'none';
   const meteo = document.getElementById('poz-meteo'); if (meteo) meteo.innerHTML = _poziOn ? _poziMeteoHtml() : '';
-  const godTrenutnaChk = document.getElementById('poz-god-trenutna-chk'); if (godTrenutnaChk) godTrenutnaChk.checked = _povGodOznaceneGodine().includes(new Date().getUTCFullYear());
   const godKpi = document.getElementById('poz-god-kpi'); if (godKpi) godKpi.innerHTML = _povGodKpiHtml();
-  const godBody = document.getElementById('poz-god-body'); if (godBody) godBody.innerHTML = _povGodPanelHtml();
+  const godIzbor = document.getElementById('poz-god-izbor'); if (godIzbor) godIzbor.innerHTML = _povGodPanelHtml();
   const opozSw = document.getElementById('poz-opoz-switch'); if (opozSw) opozSw.classList.toggle('on', _poziOpozOn());
   document.querySelectorAll('.poz-hist-sort-btn').forEach(b => b.classList.toggle('on', b.dataset.sort === _poziHistSort()));
   const histLista = document.getElementById('poz-hist-lista'); if (histLista) histLista.innerHTML = _poziHistListaHtml();
@@ -4988,7 +4960,7 @@ function openPozariSection() {
   const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));
   const fwiSw = document.getElementById('poz-effis-fwi-switch'); if (fwiSw) fwiSw.classList.toggle('on', _poziEffisOn('fwi'));
   const trenutnaGodina = new Date().getUTCFullYear();
-  const godineZaUcitati = [...new Set([..._povGodDostupneGodine(), ..._povGodOznaceneGodine(), trenutnaGodina])];
+  const godineZaUcitati = [...new Set([..._povGodOznaceneGodine(), trenutnaGodina])];
   godineZaUcitati.forEach(godina => {
     if (!_povGodPodaci[godina]) _povGodObnoviIzKesa(godina);
   });

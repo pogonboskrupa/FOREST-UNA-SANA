@@ -298,12 +298,27 @@ t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/
   assert.strictEqual(_poziOpozGeom([]), null);
 });
 
-t('_povGodDostupneGodine nikad ne ide ispod bazne 2026. godine', () => {
+t('_povGodDostupneGodine nudi tekuću i četiri prethodne godine', () => {
   const src = extractFn('_povGodDostupneGodine') + '\nreturn _povGodDostupneGodine;';
-  const _povGodDostupneGodine = new Function('_POV_GOD_BASE_YEAR', src)(2026);
-  assert.deepStrictEqual(_povGodDostupneGodine(2026), [2026]);
-  assert.deepStrictEqual(_povGodDostupneGodine(2028), [2026, 2027, 2028]);
-  assert.deepStrictEqual(_povGodDostupneGodine(2020), [2026]);
+  const fn = new Function('_POV_GOD_BROJ_GODINA', src)(5);
+  assert.deepStrictEqual(fn(2026), [2022, 2023, 2024, 2025, 2026]);
+  assert.deepStrictEqual(fn(2028), [2024, 2025, 2026, 2027, 2028]);
+});
+
+t('_povGodBoja razlikuje svježe, sedmične, tekuće i prošlogodišnje plohe', () => {
+  const src = extractFn('_povGodBoja') + '\nreturn _povGodBoja;';
+  const fn = new Function('_POZ_GOD_BOJA_OVE','_POZ_GOD_BOJA_PROSLE',src)('#eab308','#64748b');
+  const sada = Date.now(), godina = new Date().getUTCFullYear();
+  assert.strictEqual(fn({ zadnji:sada - 2*3600000 }, godina), '#dc2626');
+  assert.strictEqual(fn({ zadnji:sada - 3*86400000 }, godina), '#f97316');
+  assert.strictEqual(fn({ zadnji:sada - 30*86400000 }, godina), '#eab308');
+  assert.strictEqual(fn({ zadnji:Date.UTC(godina-1,5,1) }, godina-1), '#64748b');
+});
+
+t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen', () => {
+  assert.ok(HTML.includes("return v === null ? true : v === '1'"));
+  assert.ok(!HTML.includes('Površina je gruba procjena iz vrelih piksela'));
+  assert.ok(HTML.includes('id="poz-god-izbor"'));
 });
 
 t('_uskUnutar prihvata tačke unutar Unsko-sanskog kantona, odbija van njega', () => {
