@@ -321,6 +321,13 @@ t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen
   assert.ok(HTML.includes('id="poz-god-izbor"'));
 });
 
+t('EFFIS opožarene plohe su po defaultu uključene, a GFW ključ se čeka prije godišnjeg učitavanja', () => {
+  assert.ok(HTML.includes("_poziEffisState.opozareno = true"));
+  const fn = extractFn('openPozariSection');
+  assert.ok(fn.startsWith('async function'), 'otvaranje Požara mora čekati GFW ključ');
+  assert.ok(fn.indexOf('await _poziKljucUcitaj()') < fn.indexOf('_povGodLoadGodina'), 'ključ mora doći prije godišnjeg dohvata');
+});
+
 t('_uskUnutar prihvata tačke unutar Unsko-sanskog kantona, odbija van njega', () => {
   const src = extractFn('_uskUnutar') + '\nreturn _uskUnutar;';
   const _uskUnutar = new Function('_USK_BBOX', src)({ latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 });

@@ -3769,6 +3769,12 @@ const _POZ_EFFIS = {
 const _POZ_EFFIS_KEY = 'usf_pozari_effis';
 let _poziEffisState = {};
 try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}'); } catch(e) {}
+// Prvi ulazak: službene opožarene plohe su korisnije od prazne karte kad
+// satelit nije uhvatio svaki prelet. Korisnik ih kasnije može isključiti.
+if (!Object.prototype.hasOwnProperty.call(_poziEffisState, 'opozareno')) {
+  _poziEffisState.opozareno = true;
+  try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
+}
 Object.keys(_POZ_EFFIS).forEach(k => { if (_poziEffisState[k]) _POZ_EFFIS[k].addTo(map); });
 function _poziEffisOn(key) { return !!_poziEffisState[key]; }
 function _poziEffisToggle(key, on) {
@@ -4947,8 +4953,11 @@ function _poziRenderPanel() {
   const histLista = document.getElementById('poz-hist-lista'); if (histLista) histLista.innerHTML = _poziHistListaHtml();
   const simLista = document.getElementById('poz-sim-lista'); if (simLista) simLista.innerHTML = _poziSimListaHtml();
 }
-function openPozariSection() {
+async function openPozariSection() {
   _openStubPanel('pozari-panel', 'meni');
+  // Godišnji GFW prikaz ne smije krenuti prije dolaska zajedničkog API ključa;
+  // bez ovoga otvaranje panela odmah poslije pokretanja daje lažno praznu godinu.
+  await _poziKljucUcitaj();
   _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1';
   if (_poziOn && !_poziEvts.length) _poziObnoviIzKesa();
   const fEl = document.getElementById('poz-key-firms'), gEl = document.getElementById('poz-key-gfw');
