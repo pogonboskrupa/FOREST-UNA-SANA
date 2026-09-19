@@ -549,6 +549,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:14px;height:11px;border-radius:2px;background:#a855f7;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS NRT šira procjena</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:8px;height:8px;border-radius:50%;background:#f43f5e;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS satelit · 30 dana</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1px solid #64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">satelitska detekcija</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="font-size:14px;color:#fb923c;line-height:12px;">▲</span><span style="font-size:10.5px;color:#cbd5e1;">veći požar · detalji / simulacija</span></div>
 </div>
 
 </div>
@@ -1049,7 +1051,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.7';
+const APP_VER = 'v1.1.8';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4009,14 +4011,27 @@ function _poziFilterZaOkvir(pts, ref, okvir) {
   return sD.filter(p => p.d <= _POZ_RADIUS_KM * 1000).sort((a,b) => a.d - b.d);
 }
 // Isti požar RAZLIČITI sateliti/preleti vide više puta — bez grupisanja
-// "14 detekcija" zvuči kao 14 požara umjesto 1 praćenog. Pohlepan algoritam
-// (namjerno ne DBSCAN): tačka ulazi u prvu postojeću grupu bližu od praga.
+// "14 detekcija" zvuči kao 14 požara umjesto 1 praćenog. Prostorna blizina
+// sama nije dovoljna: ista lokacija može gorjeti ponovo nakon više dana. Zato
+// se grupa smije nastaviti samo preko istog ili narednog UTC dana; prekid od
+// jednog cijelog dana zatvara prethodni požar i počinje novi.
+function _poziDanUTC(p) {
+  const t = Date.parse(p?.dt);
+  return isFinite(t) ? Math.floor(t / 86400000) : null;
+}
+function _poziDaniUzastopni(pts) {
+  const dani = [...new Set((pts || []).map(_poziDanUTC).filter(d => d !== null))].sort((a,b) => a-b);
+  return dani.length > 0 && dani.every((d,i) => i === 0 || d - dani[i-1] <= 1);
+}
 function _poziGrupisi(pts, pragM) {
   const prag = pragM || _POZ_GRUPA_M;
   const prepreke = pragM ? [] : _poziLinijskePrepreke();
   const grupe = [];
-  pts.forEach(p => {
+  [...(pts || [])].sort((a,b) => (Date.parse(a.dt)||0) - (Date.parse(b.dt)||0)).forEach(p => {
+    const dan = _poziDanUTC(p);
     let g = grupe.find(g => g.pts.some(q => {
+      const qDan = _poziDanUTC(q);
+      if (dan === null || qDan === null || dan - qDan < 0 || dan - qDan > 1) return false;
       const pp = _poziPragIzmedju(q, p, prag, prepreke);
       return pp > 0 && dst(q.la, q.lo, p.la, p.lo) <= pp;
     }));
@@ -4089,9 +4104,8 @@ function _poziEvtKljuc(g) { return Math.round(g.la * 100) + '_' + Math.round(g.l
 // — za kratke požare (par sati/1 dan) "kretanje" nema smisla, sve detekcije
 // su praktično isti trenutak. NE izmišlja kretanje između preleta — svaki
 // dan prikazuje TAČNO ono što je satelit tog dana (i ranije) stvarno vidio.
-const _POZ_SIM_MIN_TRAJANJE_MS = 3 * 86400000;
 function _poziSimEligible(g) {
-  return isFinite(g?.prvi) && isFinite(g?.zadnji) && (g.zadnji - g.prvi) >= _POZ_SIM_MIN_TRAJANJE_MS;
+  return (g?.broj || 0) >= 3 && _poziSimDani(g).length >= 3 && _poziDaniUzastopni(g.pts);
 }
 // Distinktni UTC dani u kojima je bilo bar jedna detekcija, hronološki.
 function _poziSimDani(g) {
@@ -4366,9 +4380,8 @@ function _povGodRenderSve() {
         }
         // Svaka stvarna satelitska detekcija ostaje vidljiva po defaultu.
         (g.pts || []).forEach(p => {
-          const st = _poziMkStarost(Date.parse(p.dt));
-          L.circleMarker([p.la,p.lo], { pane:'pozariPane', radius:4.5, color:'#fff', weight:1.5,
-            fillColor:st.fill, fillOpacity:1, opacity:1 })
+          L.circleMarker([p.la,p.lo], { pane:'pozariPane', radius:3.6, color:'#64748b', weight:1,
+            fillColor:'#fff', fillOpacity:1, opacity:1 })
             .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(grp);
         });
         const mk = L.marker([g.la, g.lo], { icon: _poziIconGodina(g, godina), pane: 'pozariPane' });
@@ -4805,21 +4818,15 @@ function _poziRender() {
   const ref = _poziRefTacka();
   (_poziEvts || []).forEach(g => {
     if (!_poziCanvasRenderer && L.canvas) _poziCanvasRenderer = L.canvas({ pane:'pozariPane', padding:0.35 });
-    if (g.broj > 1) {
-      g.pts.forEach(p => {
-        const st = _poziMkStarost(Date.parse(p.dt));
-        L.circleMarker([p.la, p.lo], { renderer:_poziCanvasRenderer, pane:'pozariPane', radius:5, color:'#fff', weight:2, fillColor:st.fill, fillOpacity:1, opacity:1 })
-          .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(_poziLayer);
-      });
+    // Svaka stvarna detekcija je mala bijela tačka. Ona se crta i ispod
+    // glavnog markera, pa se vidi stvarna raspodjela satelitskih očitanja.
+    g.pts.forEach(p => {
+      L.circleMarker([p.la, p.lo], { renderer:_poziCanvasRenderer, pane:'pozariPane', radius:3.8, color:'#64748b', weight:1, fillColor:'#fff', fillOpacity:1, opacity:1 })
+        .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(_poziLayer);
+    });
+    if (g.broj >= 3) {
       const mk = L.marker([g.la, g.lo], { icon:_poziIconGrupa(g), pane:'pozariPane', zIndexOffset:950 });
       mk.bindPopup(() => _poziGrupaPopupHtml(g, ref), { maxWidth:290 });
-      mk.addTo(_poziLayer);
-      g._mk = mk;
-    } else {
-      const p = g.pts[0];
-      const st = _poziMkStarost(Date.parse(p.dt));
-      const mk = L.circleMarker([p.la, p.lo], { renderer:_poziCanvasRenderer, pane:'pozariPane', radius:6, color:'#fff', weight:2, fillColor:st.fill, fillOpacity:1, opacity:1 });
-      mk.bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 });
       mk.addTo(_poziLayer);
       g._mk = mk;
     }

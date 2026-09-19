@@ -62,7 +62,7 @@ t('_poziGrupisi spaja bliske detekcije (isti požar, više satelita) u jednu gru
   const src = dstSrc + '\n' +
     "function _poziLinijskePrepreke(){return [];}\n" +
     "function _poziPragIzmedju(a,b,prag){return prag;}\n" +
-    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziGrupisi') +
+    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziGrupisi') +
     '\nreturn _poziGrupisi;';
   const _poziGrupisi = new Function(src)();
   // Dvije tačke ~50m razmaknute (isti požar, dva satelita) + jedna udaljena
@@ -83,7 +83,7 @@ t('_poziGrupisi NE spaja detekcije udaljenije od praga (dva odvojena požara)', 
   const src = dstSrc + '\n' +
     "function _poziLinijskePrepreke(){return [];}\n" +
     "function _poziPragIzmedju(a,b,prag){return prag;}\n" +
-    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziGrupisi') +
+    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziGrupisi') +
     '\nreturn _poziGrupisi;';
   const _poziGrupisi = new Function(src)();
   const pts = [
@@ -93,6 +93,21 @@ t('_poziGrupisi NE spaja detekcije udaljenije od praga (dva odvojena požara)', 
   const grupe = _poziGrupisi(pts, 450);
   assert.strictEqual(grupe.length, 2);
   assert.ok(grupe.every(g => g.broj === 1));
+});
+
+t('_poziGrupisi prekida požar kad ista lokacija nema uzastopnu dnevnu aktivnost', () => {
+  const src = dstSrc + '\n' +
+    "function _poziLinijskePrepreke(){return [];}\nfunction _poziPragIzmedju(a,b,prag){return prag;}\n" +
+    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziGrupisi') + '\nreturn _poziGrupisi;';
+  const fn = new Function(src)();
+  const samePlace = [
+    { la:44.80, lo:16.00, dt:'2026-09-01T09:00:00Z', sat:'N', conf:'h' },
+    { la:44.8002, lo:16.00, dt:'2026-09-02T10:00:00Z', sat:'N', conf:'h' },
+    { la:44.8001, lo:16.00, dt:'2026-09-05T10:00:00Z', sat:'N', conf:'h' }
+  ];
+  const grupe = fn(samePlace, 450);
+  assert.strictEqual(grupe.length, 2, 'prekid 3 dana mora biti novi požar');
+  assert.deepStrictEqual(grupe.map(g => g.broj).sort(), [1,2]);
 });
 
 t('_poziParseGfwJson svodi GFW JSON odgovor na isti oblik tačke kao FIRMS CSV', () => {
@@ -214,14 +229,15 @@ t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabi
   assert.ok(Math.abs(mjeseci[1].ha - 100 * 0.35) < 0.001);
 });
 
-t('_poziSimEligible: samo požari praćeni 3+ dana', () => {
-  const src = "const _POZ_SIM_MIN_TRAJANJE_MS = 3 * 86400000;\n" + extractFn('_poziSimEligible') + '\nreturn _poziSimEligible;';
+t('_poziSimEligible: samo veći požari praćeni 3 uzastopna dana', () => {
+  const src = extractFn('_poziDanUTC') + '\n' + extractFn('_poziDaniUzastopni') + '\n' + extractFn('_poziSimDani') + '\n' + extractFn('_poziSimEligible') + '\nreturn _poziSimEligible;';
   const _poziSimEligible = new Function(src)();
-  const kratak = { prvi: Date.parse('2026-07-01T00:00:00Z'), zadnji: Date.parse('2026-07-02T00:00:00Z') };
-  const dug = { prvi: Date.parse('2026-07-01T00:00:00Z'), zadnji: Date.parse('2026-07-05T00:00:00Z') };
+  const kratak = { broj:2, pts:[{dt:'2026-07-01T00:00:00Z'},{dt:'2026-07-02T00:00:00Z'}] };
+  const dug = { broj:3, pts:[{dt:'2026-07-01T00:00:00Z'},{dt:'2026-07-02T00:00:00Z'},{dt:'2026-07-03T00:00:00Z'}] };
+  const prekid = { broj:3, pts:[{dt:'2026-07-01T00:00:00Z'},{dt:'2026-07-02T00:00:00Z'},{dt:'2026-07-05T00:00:00Z'}] };
   assert.strictEqual(_poziSimEligible(kratak), false);
   assert.strictEqual(_poziSimEligible(dug), true);
-  assert.strictEqual(_poziSimEligible({ prvi: null, zadnji: null }), false);
+  assert.strictEqual(_poziSimEligible(prekid), false);
 });
 
 t('_poziSimDani vraća distinktne UTC dane hronološki', () => {
