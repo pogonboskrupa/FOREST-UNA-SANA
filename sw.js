@@ -2,7 +2,7 @@
 // Service Worker — UNA SANA FOREST
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '1.1.5';
+const APP_VERSION = '1.1.6';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -74,7 +74,7 @@ function _tileRespond(event, cacheName) {
       try {
         const resp = await fetch(event.request);
         if (resp.ok) {
-          try { cache.put(event.request, resp.clone()); } catch(e) {}
+          try { await cache.put(event.request, resp.clone()); } catch(e) {}
         }
         return resp;
       } catch {
@@ -118,7 +118,7 @@ self.addEventListener('fetch', event => {
         if (cached) return cached;
         try {
           const resp = await fetch(event.request);
-          if (resp.ok) try { cache.put(event.request, resp.clone()); } catch(e) {}
+          if (resp.ok) try { await cache.put(event.request, resp.clone()); } catch(e) {}
           return resp;
         } catch {
           return cached || new Response('', { status: 503 });
@@ -144,7 +144,7 @@ self.addEventListener('fetch', event => {
           }
           return resp;
         })
-        .catch(() => caches.match(event.request))
+        .catch(async () => (await caches.match(event.request)) || (isNav && await caches.match('./index.html')) || new Response('Nije dostupno offline', { status: 503 }))
     );
   }
 });

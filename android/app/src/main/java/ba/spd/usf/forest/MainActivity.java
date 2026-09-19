@@ -148,6 +148,18 @@ public class MainActivity extends Activity {
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
 
+        // Service-worker fetches must resolve packaged assets too, even on a first offline launch.
+        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
+            final WebViewAssetLoader localAssets = assetLoader;
+            androidx.webkit.ServiceWorkerControllerCompat.getInstance().setServiceWorkerClient(
+                new androidx.webkit.ServiceWorkerClientCompat() {
+                    @Override
+                    public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
+                        return localAssets.shouldInterceptRequest(request.getUrl());
+                    }
+                });
+        }
+
         webView.addJavascriptInterface(new DownloadBridge(), "AndroidDownload");
         webView.addJavascriptInterface(new GpsBridge(), "AndroidGps");
         webView.addJavascriptInterface(new ShareBridge(), "AndroidShare");
@@ -179,7 +191,7 @@ public class MainActivity extends Activity {
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 // Reload/navigacija resetuje JS stanje, ali native isRecordingActive bi
                 // bez ovoga ostao zaglavljen na true. Nova stranica = snimanje ne postoji.
-                isRecordingActive = false;
+                isRecordingActive = getSharedPreferences("gps_session", MODE_PRIVATE).getBoolean("active", false);
                 super.onPageStarted(view, url, favicon);
             }
         });
@@ -755,8 +767,8 @@ public class MainActivity extends Activity {
     class GpsBridge {
         @JavascriptInterface
         public void startRecording(String title) {
+            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) throw new SecurityException("Dozvoli preciznu lokaciju");
             isRecordingActive = true;
-            requestBackgroundLocationIfNeeded();
             Intent intent = new Intent(MainActivity.this, GpsService.class);
             intent.putExtra("title", title != null ? title : "GPS Snimanje");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -767,7 +779,24 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean isRecording() {
+            return getSharedPreferences("gps_session", MODE_PRIVATE).getBoolean("active", false);
+        }
+
+        @JavascriptInterface
+        public void setPaused(boolean paused) {
+            synchronized (GpsService.BUFFER_LOCK) {
+                getSharedPreferences("gps_session", MODE_PRIVATE).edit().putBoolean("paused", paused).commit();
+            }
+            Intent intent = new Intent(MainActivity.this, GpsService.class);
+            intent.setAction("setPaused");
+            intent.putExtra("paused", paused);
+            startService(intent);
+        }
+
+        @JavascriptInterface
         public void stopRecording() {
+            getSharedPreferences("gps_session", MODE_PRIVATE).edit().putBoolean("active", false).commit();
             isRecordingActive = false;
             Intent intent = new Intent(MainActivity.this, GpsService.class);
             intent.setAction("stop");
