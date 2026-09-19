@@ -1,0 +1,98 @@
+'use strict';
+// Derivatives in ground metres: x east, y south (Web Mercator tile rows).
+function terrainGradient(east, south) {
+  const slope = Math.atan(Math.hypot(east, south)) * 180 / Math.PI;
+  const aspect = (Math.atan2(-east, south) * 180 / Math.PI + 360) % 360;
+  return { slope, aspect };
+}
+const terrainAspectColors = ['#3b82f6','#06b6d4','#22c55e','#a3e635','#facc15','#f97316','#ef4444','#a855f7'];
+function terrainColor(mode, east, south) {
+  const g = terrainGradient(east, south);
+  if (mode === 'aspect') return g.slope <= 10 ? '#a1a1aa' : terrainAspectColors[Math.floor((g.aspect+22.5)/45)%8];
+  if (mode === 'slope') return g.slope <= 10 ? '#a1a1aa' : g.slope <= 20 ? '#a3e635' : g.slope <= 30 ? '#facc15' : g.slope <= 40 ? '#f97316' : '#dc2626';
+  // Sun from NW, elevation 45 degrees; unit normal (-east,+south,1).
+  const light = Math.max(0, (east*0.5 + south*0.5 + Math.SQRT1_2)/Math.sqrt(1+east*east+south*south));
+  const n = Math.round(35 + 220*light);
+  return '#' + n.toString(16).padStart(2,'0').repeat(3);
+}
+if (typeof module !== 'undefined') module.exports = {terrainGradient,terrainColor};
+if (typeof window !== 'undefined') {
+  const saved = (()=>{try{return JSON.parse(localStorage.getItem('usf_terrain')||'{}');}catch(e){return {};}})();
+  const layers = {}, decoded = new Map();
+  let opacity = Math.max(.15,Math.min(.85,Number(saved.opacity)||.55));
+  document.querySelector('input[aria-label="Prozirnost slojeva terena"]').value=Math.round(opacity*100);
+  map.createPane('terrainShade'); map.getPane('terrainShade').style.zIndex='401';
+  map.createPane('terrainColor'); map.getPane('terrainColor').style.zIndex='402';
+  ['terrainShade','terrainColor'].forEach(p=>map.getPane(p).style.pointerEvents='none');
+  async function dem(z,x,y) {
+    const n=2**z; x=(x%n+n)%n; y=Math.max(0,Math.min(n-1,y));
+    const key=z+'/'+x+'/'+y;
+    if (!decoded.has(key)) {
+      const promise=(async()=>{
+        const bitmap=await _getTerrariumTile(z,x,y);
+        if(!bitmap) throw Error('Nedostaje DEM pločica');
+        const values=_terrariumDecodeTile(bitmap); if(bitmap.close)bitmap.close(); return values;
+      })();
+      decoded.set(key,promise);
+      promise.catch(()=>decoded.delete(key));
+      if(decoded.size>48)decoded.delete(decoded.keys().next().value);
+    }
+    return decoded.get(key);
+  }
+  const TerrainLayer=L.GridLayer.extend({
+    createTile(c,done) {
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+      (async()=>{
+        // Neighbour pixels make central differences continuous at tile boundaries.
+        const [a,w,e,n,s]=await Promise.all([dem(c.z,c.x,c.y),dem(c.z,c.x-1,c.y),dem(c.z,c.x+1,c.y),dem(c.z,c.x,c.y-1),dem(c.z,c.x,c.y+1)]);
+        const ctx=canvas.getContext('2d'), out=ctx.createImageData(256,256);
+        for(let y=0;y<256;y++) {
+          const lat=Math.atan(Math.sinh(Math.PI*(1-2*(c.y+(y+.5)/256)/2**c.z)));
+          const metres=40075016.686*Math.cos(lat)/(256*2**c.z);
+          for(let x=0;x<256;x++) {
+            const dx=((x===255?e[y*256]:a[y*256+x+1])-(x===0?w[y*256+255]:a[y*256+x-1]))/(2*metres);
+            const dy=((y===255?s[x]:a[(y+1)*256+x])-(y===0?n[255*256+x]:a[(y-1)*256+x]))/(2*metres);
+            const color=terrainColor(this.options.mode,dx,dy), i=(y*256+x)*4;
+            out.data[i]=parseInt(color.slice(1,3),16);out.data[i+1]=parseInt(color.slice(3,5),16);out.data[i+2]=parseInt(color.slice(5,7),16);out.data[i+3]=255;
+          }
+        }
+        ctx.putImageData(out,0,0);done(null,canvas);
+      })().catch(err=>{document.getElementById('terrain-status').textContent='Dio terena nije dostupan. Za nepreuzete pločice uključi internet.';done(err,canvas);});
+      return canvas;
+    }
+  });
+  const persist=()=>localStorage.setItem('usf_terrain',JSON.stringify({...saved,opacity}));
+  const legend=()=>{
+    let rows=[];
+    if(saved.slope)rows.push(...[['#a1a1aa','0–10°'],['#a3e635','10–20°'],['#facc15','20–30°'],['#f97316','30–40°'],['#dc2626','preko 40°']]);
+    if(saved.aspect)rows.push(['#a1a1aa','Neutralno ≤10°'],...['Sjever','Sjeveroistok','Istok','Jugoistok','Jug','Jugozapad','Zapad','Sjeverozapad'].map((t,i)=>[terrainAspectColors[i],t]));
+    document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
+  };
+  window._terrainToggle=(mode,on)=>{
+    // Two categorical rasters cannot be read reliably on top of one another.
+    if(on && mode!=='shade') {const other=mode==='slope'?'aspect':'slope';saved[other]=false;if(layers[other])map.removeLayer(layers[other]);document.getElementById('terrain-'+other).checked=false;}
+    saved[mode]=on;
+    if(on){if(!layers[mode])layers[mode]=new TerrainLayer({mode,pane:mode==='shade'?'terrainShade':'terrainColor',opacity,maxNativeZoom:14,maxZoom:22,keepBuffer:1,attribution:'DEM © Mapzen / AWS Terrain Tiles'});layers[mode].addTo(map);}
+    else if(layers[mode])map.removeLayer(layers[mode]);
+    document.getElementById('terrain-'+mode).checked=on;persist();legend();
+  };
+  window._terrainOpacity=value=>{opacity=Number(value)/100;Object.values(layers).forEach(l=>l.setOpacity(opacity));persist();};
+  for(const mode of ['shade','slope','aspect'])if(saved[mode])window._terrainToggle(mode,true);
+  legend();
+  const protoName='🌐 Protomaps';
+  function setup(key) {
+    if(!key || typeof protomapsL==='undefined')return;
+    if(TL[protoName] && map.hasLayer(TL[protoName]))map.removeLayer(TL[protoName]);
+    TL[protoName]=protomapsL.leafletLayer({url:'https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key='+encodeURIComponent(key),flavor:'light',lang:'bs',attribution:'© Protomaps © OpenStreetMap contributors'});
+    _renderKartaBaseList();
+    if(!document.querySelector('#layer-switch [data-layer="'+protoName+'"]')) {
+      const button=document.createElement('button');button.dataset.layer=protoName;button.textContent=protoName;
+      button.onclick=()=>{_closeLayerSwitch();_selectBaseLayer(protoName);};document.getElementById('layer-switch').appendChild(button);
+    }
+    document.getElementById('protomaps-status').textContent='Protomaps je spreman za izbor podloge.';
+  }
+  const key=localStorage.getItem('usf_protomaps_key')||'';
+  document.getElementById('protomaps-key').value=key;setup(key);
+  window._terrainProtomapsSave=()=>{const k=document.getElementById('protomaps-key').value.trim();if(!k){showToast('Unesi Protomaps API ključ');return;}localStorage.setItem('usf_protomaps_key',k);setup(k);if(_currentBaseName===protoName)_currentBaseName='';_selectBaseLayer(protoName);};
+  if(key && localStorage.getItem('usf_base_layer')===protoName)_selectBaseLayer(protoName);
+}

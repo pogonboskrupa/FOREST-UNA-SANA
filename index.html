@@ -23,6 +23,7 @@
 <script>var _libErrNames = []; function _libErr(n) { _libErrNames.push(n); }</script>
 <link rel="stylesheet" href="static/libs/leaflet.min.css">
 <script src="static/libs/leaflet.min.js" onerror="_libErr('Leaflet')"></script>
+<script src="static/libs/protomaps-leaflet.js"></script>
 <script src="static/libs/proj4.js" onerror="_libErr('proj4')"></script>
 <script src="static/libs/turf.min.js" onerror="_libErr('Turf')"></script>
 <script src="static/libs/sql-wasm.js"></script>
@@ -708,6 +709,19 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <h3>🌍 Bazna karta</h3>
         <p>Brzo promijeni podlogu bez vraćanja na mapu.</p>
         <div id="karta-base-list"></div>
+        <label for="protomaps-key">Protomaps API ključ</label>
+        <input id="protomaps-key" type="password" autocomplete="off" placeholder="Unesi svoj Protomaps ključ" style="width:100%;box-sizing:border-box;margin:8px 0;padding:12px;border-radius:10px;">
+        <button class="karta-hub-action" onclick="_terrainProtomapsSave()">Sačuvaj i koristi Protomaps</button>
+        <p id="protomaps-status">Protomaps online podloga zahtijeva vlastiti API ključ.</p>
+      </section>
+      <section class="karta-hub-card">
+        <h3>🏔 Analiza terena</h3>
+        <label style="display:block;padding:10px 0"><input id="terrain-slope" type="checkbox" onchange="_terrainToggle('slope',this.checked)"> Nagib terena (stepeni)</label>
+        <label style="display:block;padding:10px 0"><input id="terrain-aspect" type="checkbox" onchange="_terrainToggle('aspect',this.checked)"> Ekspozicija — strane svijeta</label>
+        <label style="display:block;padding:10px 0"><input id="terrain-shade" type="checkbox" onchange="_terrainToggle('shade',this.checked)"> Hillshade — sjenčenje reljefa</label>
+        <label>Prozirnost dodataka <input type="range" min="15" max="85" value="55" oninput="_terrainOpacity(this.value)" aria-label="Prozirnost slojeva terena"></label>
+        <div id="terrain-legend" style="font-size:12px;line-height:1.8;margin-top:12px;"></div>
+        <p id="terrain-status" role="status">DEM prikaz; pregledane visinske pločice dostupne su i offline. Ekspozicija do 10° je neutralna.</p>
       </section>
       <section class="karta-hub-card">
         <h3>🗂 Offline SQLite / MBTiles</h3>
@@ -1035,7 +1049,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.6';
+const APP_VER = 'v1.1.7';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -6770,5 +6784,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<script src="static/js/terrain-layers.js"></script>
 </body>
 </html>

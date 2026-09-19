@@ -1,0 +1,12 @@
+const assert = require('node:assert/strict');
+const {terrainGradient,terrainColor} = require('../../static/js/terrain-layers.js');
+assert.equal(terrainGradient(0,1).aspect,0);
+assert.equal(terrainGradient(-1,0).aspect,90);
+assert.equal(terrainGradient(0,-1).aspect,180);
+assert.equal(terrainGradient(1,0).aspect,270);
+assert.equal(terrainGradient(1,0).slope,45);
+assert.equal(terrainColor('aspect',0,0),'#a1a1aa');
+assert.equal(terrainColor('aspect',Math.tan(10*Math.PI/180),0),'#a1a1aa');
+assert.notEqual(terrainColor('aspect',Math.tan(10.1*Math.PI/180),0),'#a1a1aa');
+assert.notEqual(terrainColor('shade',1,1),terrainColor('shade',-1,-1));
+console.log('Terrain: cardinal aspects, slope, neutral threshold and hillshade passed');
