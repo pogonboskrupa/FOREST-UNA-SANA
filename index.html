@@ -470,6 +470,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .poz-mk-trokut.svjez { animation: pozPuls 1.6s ease-in-out infinite; }
 @keyframes pozPuls { 0%,100% { filter: drop-shadow(0 2px 4px #000a) brightness(1); } 50% { filter: drop-shadow(0 2px 8px #f97316) brightness(1.25); } }
 .poz-mk { border-radius:50%; width:12px; height:12px; border:2px solid #fff; box-shadow:0 1px 4px #000; }
+.poz-kpi-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:0 0 12px; }
+.poz-kpi-card { min-height:72px; padding:11px; box-sizing:border-box; border:1px solid var(--line); border-radius:14px; background:linear-gradient(145deg,rgba(124,45,18,.28),rgba(16,32,25,.92)); }
+.poz-kpi-label { display:block; color:#94a3b8; font-size:10px; line-height:1.25; margin-bottom:5px; }
+.poz-kpi-value { display:block; color:#fff7ed; font-size:19px; font-weight:800; line-height:1.1; }
+.poz-kpi-sub { display:block; color:#71857b; font-size:9px; margin-top:4px; }
+.poz-hist-year { margin:12px 0 6px; padding:10px 11px; border:1px solid rgba(251,146,60,.28); border-radius:12px; background:rgba(124,45,18,.14); }
+.poz-hist-year strong { color:#fff7ed; font-size:13px; }
+.poz-hist-year span { display:block; color:#94a3b8; font-size:10px; margin-top:3px; }
 
 .karta-hub-intro { color:#9db0a7; font-size:12px; line-height:1.5; margin:0 2px 14px; }
 .karta-hub-grid { display:grid; gap:10px; }
@@ -741,8 +749,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <button class="poz-okvir-btn" data-okvir="30d" onclick="_poziPostaviOkvir('30d')">30 dana</button>
     </div>
     <div class="poz-panel-note" style="font-size:10px;color:#475569;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
-    <label style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:12px;margin:0 0 10px;">
-      <input type="checkbox" id="poz-god-trenutna-chk" onchange="_povGodToggleGodina(new Date().getUTCFullYear(), this.checked)"> Tekuća godina na karti (svi požari cijele sezone, kanton)
+    <div id="poz-god-kpi" class="poz-kpi-grid"></div>
+    <label style="display:flex;align-items:center;gap:7px;color:#cbd5e1;font-size:12px;margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(23,42,33,.72);">
+      <input type="checkbox" id="poz-god-trenutna-chk" onchange="_povGodToggleGodina(new Date().getUTCFullYear(), this.checked)"> Prikaži 2026: površine, satelitske tačke i glavne oznake
     </label>
     <div id="poz-status" style="color:#94a3b8;font-size:12px;margin-bottom:10px;"></div>
     <div id="poz-meteo"></div>
@@ -770,12 +779,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
 
     <div class="poz-section-card" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">📅 Godišnji pregled na karti (GFW, treba admin ključ ispod)</div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:8px;">Počev od 2026. — označi godinu(e) da vidiš sve požare te godine na karti (obojeno po legendi "POŽARI — KADA": nedavno/ove godine/prošlih godina). Ova godina je uključena po podrazumijevanom.</div>
-      <div id="poz-god-body"></div>
-    </div>
-
-    <div class="poz-section-card" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
       <div class="loc-row">
         <span>Opožarene površine (mjerene granice)</span>
@@ -800,7 +803,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
 
     <div id="poz-podtab-historija" style="display:none;">
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:10px;">Svi trenutno dostupni požari (nedavne detekcije + godišnji GFW pregled) unutar Unsko-sanskog kantona — bez obzira na okvir/godine označene u Pregledu.</div>
+      <div style="font-size:10px;color:#71857b;line-height:1.45;margin-bottom:10px;">Kompletna evidencija od 2026. godine, grupisana po godinama. Površine su procijenjene iz jedinstvenih satelitskih piksela i nisu službeno izmjerene granice.</div>
       <div style="display:flex;gap:6px;margin-bottom:10px;">
         <button class="poz-hist-sort-btn" data-sort="blizina" onclick="_poziHistPostaviSort('blizina')">📍 Blizina</button>
         <button class="poz-hist-sort-btn" data-sort="vrijeme" onclick="_poziHistPostaviSort('vrijeme')">🕒 Vrijeme</button>
@@ -3877,6 +3880,11 @@ function _poziPovrsinaGrupe(g) {
   });
   return ha;
 }
+// Godišnji zbir mora brojati isti satelitski piksel samo jednom, čak i kad
+// se pojavi u više grupa/preleta. Zato se sve tačke sabiraju kao jedna cjelina.
+function _poziPovrsinaJedinstvena(grupe) {
+  return _poziPovrsinaGrupe({ pts:(grupe || []).flatMap(g => g.pts || []) });
+}
 function _poziPovrsTxt(ha) {
   if (!isFinite(ha) || ha <= 0) return '0 ha';
   return ha >= 100 ? Math.round(ha).toLocaleString('bs') + ' ha' : ha.toFixed(1) + ' ha';
@@ -4030,9 +4038,10 @@ function _poziGfwToggle(on) {
 function _povGodMjesecNaziv(m) { return ['Januar','Februar','Mart','April','Maj','Juni','Juli','August','Septembar','Oktobar','Novembar','Decembar'][m] || ''; }
 // Zajednički GFW bbox+SQL upit ograničen na cijeli kanton — dijele ga
 // godišnji pregled (od 1. januara) i "30 dana" okvir (od danas-30).
-function _poziGfwKantonUrl(odISODate) {
+function _poziGfwKantonUrl(odISODate, doISODate) {
   const sql = 'SELECT longitude, latitude, alert__date, alert__time_utc, confidence__cat FROM results'
     + " WHERE alert__date >= '" + odISODate + "'"
+    + (doISODate ? " AND alert__date <= '" + doISODate + "'" : '')
     + ' AND latitude >= '  + _USK_BBOX.latMin.toFixed(3) + ' AND latitude <= '  + _USK_BBOX.latMax.toFixed(3)
     + ' AND longitude >= ' + _USK_BBOX.lonMin.toFixed(3) + ' AND longitude <= ' + _USK_BBOX.lonMax.toFixed(3)
     + ' ORDER BY alert__date DESC, alert__time_utc DESC LIMIT 5000';
@@ -4040,7 +4049,7 @@ function _poziGfwKantonUrl(odISODate) {
 }
 function _povGodUrl(godina) {
   const g = godina || new Date().getUTCFullYear();
-  return _poziGfwKantonUrl(g + '-01-01');
+  return _poziGfwKantonUrl(g + '-01-01', g + '-12-31');
 }
 // "30 dana" okvir — FIRMS besplatna arhiva ide samo do 7 dana unazad, pa
 // ovo mora ići preko GFW-a (treba admin ključ), isti kanton bbox kao gore.
@@ -4157,6 +4166,24 @@ function _povGodRenderSve() {
     const grp = L.layerGroup([], { pane: 'pozariPane' });
     oznacene.forEach(godina => {
       _povGodPodaci[godina].evts.forEach(g => {
+        // Procijenjena opožarena površina je ispod tačaka i glavne oznake.
+        // Klik na poligon jasno navodi da nije riječ o službenom premjeru.
+        const geom = _poziOpozGeom(g.pts || []);
+        if (geom) {
+          try {
+            L.geoJSON(geom, { pane:'pozariPane',
+              style:{ color:'#c2410c', weight:1.5, fillColor:'#c2410c', fillOpacity:0.22 } })
+              .bindPopup(() => `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;"><b style="color:#fb923c;">Procijenjena opožarena površina</b><div style="font-size:18px;font-weight:800;margin:5px 0;">${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div><small style="color:#94a3b8;">Iz satelitskih piksela — nije službeno izmjerena granica.</small></div>`)
+              .addTo(grp);
+          } catch(e) {}
+        }
+        // Svaka stvarna satelitska detekcija ostaje vidljiva po defaultu.
+        (g.pts || []).forEach(p => {
+          const st = _poziMkStarost(Date.parse(p.dt));
+          L.circleMarker([p.la,p.lo], { pane:'pozariPane', radius:4.5, color:'#fff', weight:1.5,
+            fillColor:st.fill, fillOpacity:1, opacity:1 })
+            .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(grp);
+        });
         const mk = L.marker([g.la, g.lo], { icon: _poziIconGodina(g, godina), pane: 'pozariPane' });
         mk.bindPopup(() => _poziGrupaPopupHtml(g, ref), { maxWidth: 290 });
         mk.addTo(grp);
@@ -4213,6 +4240,25 @@ function _povGodPanelHtml() {
     </div>`;
   }).join('');
   return `<div style="display:flex;flex-wrap:wrap;">${checkboxi}</div>${sekcije}`;
+}
+
+function _povGodKpiHtml() {
+  const godina = new Date().getUTCFullYear();
+  const stanje = _povGodPodaci[godina];
+  const kartica = (label, value, sub) => `<div class="poz-kpi-card"><span class="poz-kpi-label">${label}</span><span class="poz-kpi-value">${value}</span>${sub ? `<span class="poz-kpi-sub">${sub}</span>` : ''}</div>`;
+  if (!stanje || (stanje.busy && !stanje.evts.length)) return kartica('Opožareno ' + godina + '.', 'Učitavam…', 'GFW godišnji podaci') + kartica('Satelitske detekcije', '—', 'VIIRS tačke');
+  if (stanje.meta?.greska) {
+    const poruka = stanje.meta.greska === 'nema-kljuca' ? 'Treba GFW ključ' : 'Podaci nedostupni';
+    return kartica('Opožareno ' + godina + '.', '—', poruka) + kartica('Satelitske detekcije', '—', poruka);
+  }
+  const evts = stanje.evts || [];
+  const det = evts.reduce((s,g) => s + (g.pts?.length || g.broj || 0), 0);
+  const ha = _poziPovrsinaJedinstvena(evts);
+  const zadnje = stanje.meta?.dohvacenoMs ? _poziStarost(stanje.meta.dohvacenoMs) : 'nije ažurirano';
+  return kartica('Opožareno ' + godina + '.', _poziPovrsTxt(ha), 'procjena iz jedinstvenih piksela')
+    + kartica('Požari', String(evts.length), 'grupisani događaji')
+    + kartica('Satelitske detekcije', String(det), 'pojedinačne tačke')
+    + kartica('Ažurirano', zadnje, stanje.meta?.kes ? 'podaci iz keša' : 'GFW podaci');
 }
 
 // BEZ ključa nema izbora nego evropski izvozi — besplatni, bez naloga.
@@ -4842,8 +4888,7 @@ function _poziHistSortiraj(grupe, sort) {
 let _poziHistLista = [];
 function _poziHistIzracunaj() {
   const ref = _poziRefTacka();
-  const trenutna = new Date().getUTCFullYear();
-  const godisnje = (_povGodPodaci[trenutna] && _povGodPodaci[trenutna].evts) || [];
+  const godisnje = _povGodDostupneGodine().flatMap(g => (_povGodPodaci[g] && _povGodPodaci[g].evts) || []);
   const spojeno = _poziHistSpojiIzvore([_poziEvts, godisnje]);
   const kanton = _poziHistFiltrirajKanton(spojeno);
   return _poziHistSortiraj(_poziGrupeBlizu(kanton, ref), _poziHistSort());
@@ -4874,7 +4919,20 @@ function _poziHistListaHtml() {
   _poziHistLista = _poziHistIzracunaj();
   if (!_poziHistLista.length) return `<div style="font-size:11px;color:#4ade80;padding:6px 0;">✓ Nema zabilježenih požara u Unsko-sanskom kantonu (od trenutno učitanih izvora).</div>`;
   const ref = _poziRefTacka();
-  return _poziHistLista.map((g, i) => _poziHistRedHtml(g, i, ref)).join('');
+  const poGodini = {};
+  _poziHistLista.forEach((g, i) => {
+    const t = g.zadnji ?? Date.parse(g.dt);
+    const godina = isFinite(t) ? new Date(t).getUTCFullYear() : new Date().getUTCFullYear();
+    (poGodini[godina] = poGodini[godina] || []).push({ g, i });
+  });
+  return Object.keys(poGodini).map(Number).sort((a,b) => b-a).map(godina => {
+    const redovi = poGodini[godina];
+    const grupe = redovi.map(x => x.g);
+    const ha = _poziPovrsinaJedinstvena(grupe);
+    const det = grupe.reduce((s,g) => s + (g.pts?.length || g.broj || 0), 0);
+    return `<div class="poz-hist-year"><strong>📅 ${godina}. godina</strong><span>${grupe.length} požara · ${det} detekcija · procijenjeno ${_poziPovrsTxt(ha)}</span></div>`
+      + redovi.map(x => _poziHistRedHtml(x.g, x.i, ref)).join('');
+  }).join('');
 }
 function _poziPodTab(tab) {
   document.querySelectorAll('.poz-podtab-btn').forEach(b => b.classList.toggle('on', b.dataset.podtab === tab));
@@ -4893,6 +4951,7 @@ function _poziRenderPanel() {
   const status = document.getElementById('poz-status'); if (status) status.style.display = _poziOn ? '' : 'none';
   const meteo = document.getElementById('poz-meteo'); if (meteo) meteo.innerHTML = _poziOn ? _poziMeteoHtml() : '';
   const godTrenutnaChk = document.getElementById('poz-god-trenutna-chk'); if (godTrenutnaChk) godTrenutnaChk.checked = _povGodOznaceneGodine().includes(new Date().getUTCFullYear());
+  const godKpi = document.getElementById('poz-god-kpi'); if (godKpi) godKpi.innerHTML = _povGodKpiHtml();
   const godBody = document.getElementById('poz-god-body'); if (godBody) godBody.innerHTML = _povGodPanelHtml();
   const opozSw = document.getElementById('poz-opoz-switch'); if (opozSw) opozSw.classList.toggle('on', _poziOpozOn());
   document.querySelectorAll('.poz-hist-sort-btn').forEach(b => b.classList.toggle('on', b.dataset.sort === _poziHistSort()));
@@ -4911,7 +4970,9 @@ function openPozariSection() {
   const gfwSw = document.getElementById('poz-gfw-switch'); if (gfwSw) gfwSw.classList.toggle('on', _poziGfwOn());
   const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));
   const fwiSw = document.getElementById('poz-effis-fwi-switch'); if (fwiSw) fwiSw.classList.toggle('on', _poziEffisOn('fwi'));
-  _povGodOznaceneGodine().forEach(godina => {
+  const trenutnaGodina = new Date().getUTCFullYear();
+  const godineZaUcitati = [...new Set([..._povGodDostupneGodine(), ..._povGodOznaceneGodine(), trenutnaGodina])];
+  godineZaUcitati.forEach(godina => {
     if (!_povGodPodaci[godina]) _povGodObnoviIzKesa(godina);
   });
   _poziRenderPanel();
@@ -4919,7 +4980,7 @@ function openPozariSection() {
   _poziAutoSync();
   _poziOpozAzuriraj();
   _povGodRenderSve();
-  _povGodOznaceneGodine().forEach(godina => _povGodLoadGodina(godina, true));
+  godineZaUcitati.forEach(godina => _povGodLoadGodina(godina, true));
 }
 
 // ── Admin FIRMS/GFW ključevi (Firebase) — priprema za Area API/GFW u

@@ -155,6 +155,15 @@ t('_poziPovrsinaGrupe dedupira detekcije iz ISTOG piksela (više satelita/prelet
   assert.strictEqual(_poziPovrsinaGrupe({ pts: [] }), 0);
 });
 
+t('_poziPovrsinaJedinstvena ne sabira isti piksel dvaput kroz više požarnih grupa', () => {
+  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n'
+    + extractFn('_poziPovrsinaJedinstvena') + '\nreturn _poziPovrsinaJedinstvena;';
+  const fn = new Function(src)();
+  const p = { la:44.8000, lo:16.0000, rez:375 };
+  const skoroIsti = { la:44.80005, lo:16.00005, rez:375 };
+  assert.ok(Math.abs(fn([{ pts:[p] }, { pts:[skoroIsti] }]) - 14.0625) < 0.001);
+});
+
 t('_poziPovrsTxt formatira hektare (decimala ispod 100, zaokruženo iznad)', () => {
   const src = extractFn('_poziPovrsTxt') + '\nreturn _poziPovrsTxt;';
   const _poziPovrsTxt = new Function(src)();
@@ -171,6 +180,7 @@ t('_povGodUrl gradi kanton-bbox+cijela-godina SQL upit kao query string', () => 
   assert.ok(url.startsWith('https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql='));
   const sql = decodeURIComponent(url.split('sql=')[1]);
   assert.ok(sql.includes("alert__date >= '2026-01-01'"), 'mora tražiti od 1. januara te godine');
+  assert.ok(sql.includes("alert__date <= '2026-12-31'"), 'mora završiti 31. decembra iste godine');
   assert.ok(sql.includes('latitude >= 44.300'), 'mora koristiti FIKSAN kanton bbox, ne radijus oko ref tačke');
   assert.ok(sql.includes('LIMIT 5000'));
 });
@@ -326,6 +336,12 @@ t('_poziHistSortiraj sortira po blizini/vremenu/jačini', () => {
   assert.deepStrictEqual(_poziHistSortiraj(grupe, 'blizina').map(g => g.d), [1000, 5000, 9000]);
   assert.deepStrictEqual(_poziHistSortiraj(grupe, 'vrijeme').map(g => g.zadnji), [300, 200, 100]);
   assert.deepStrictEqual(_poziHistSortiraj(grupe, 'jacina').map(g => g.frpMax), [9, 5, 2]);
+});
+
+t('Pregled ima godišnje KPI kartice, a godišnja lista je samo u Historiji', () => {
+  assert.ok(HTML.includes('id="poz-god-kpi"'), 'nedostaje godišnji KPI blok');
+  assert.ok(HTML.includes('Kompletna evidencija od 2026. godine'), 'Historija mora sadržati godišnju evidenciju');
+  assert.ok(!HTML.includes('id="poz-god-body"'), 'stara godišnja lista ne smije ostati u Pregledu');
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
