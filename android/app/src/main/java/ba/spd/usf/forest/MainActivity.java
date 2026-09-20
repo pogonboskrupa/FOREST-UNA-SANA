@@ -421,6 +421,21 @@ public class MainActivity extends Activity {
                 return !mbtilesFile(id).exists() || mbtilesFile(id).delete();
             } catch (Exception e) { return false; }
         }
+
+        @JavascriptInterface
+        public String getTile(String id, int z, int x, int xyzY) {
+            try {
+                int tmsY = (int) (Math.pow(2, z) - 1 - xyzY);
+                try (Cursor c = openMbtiles(id).rawQuery(
+                        "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
+                        new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(tmsY)})) {
+                    if (c.moveToFirst()) {
+                        return Base64.encodeToString(c.getBlob(0), Base64.NO_WRAP);
+                    }
+                }
+            } catch (Exception ignored) {}
+            return "";
+        }
     }
 
     private void importOfflineMap(Uri uri) {

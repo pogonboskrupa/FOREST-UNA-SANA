@@ -1133,7 +1133,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.3.0';
+const APP_VER = 'v1.3.1';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -3578,15 +3578,39 @@ function _nativeSqlmapRecords() {
     return Array.isArray(rows) ? rows : [];
   } catch(e) { return []; }
 }
+const _NativeSqlCanvasLayer = L.GridLayer.extend({
+  createTile(coords, done) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const finish = () => { try { done(null, canvas); } catch(e) {} };
+    setTimeout(() => {
+      try {
+        if (!_nativeSqlmapAvailable() || typeof AndroidMbtiles.getTile !== 'function') { finish(); return; }
+        const b64 = AndroidMbtiles.getTile(this.options.nativeId, coords.z, coords.x, coords.y);
+        if (!b64) { finish(); return; }
+        const img = new Image();
+        img.onload = () => {
+          try { canvas.getContext('2d', { alpha:true }).drawImage(img, 0, 0, 256, 256); } catch(e) {}
+          finish();
+        };
+        img.onerror = finish;
+        const fmt = String(this.options.format || 'png').toLowerCase();
+        img.src = 'data:' + (fmt.includes('jpg') || fmt.includes('jpeg') ? 'image/jpeg' : 'image/png') + ';base64,' + b64;
+      } catch(e) { finish(); }
+    }, 0);
+    return canvas;
+  }
+});
 function _nativeSqlmapAdd(info) {
   if (!info?.id || !info?.name) return null;
   const existing = _sqlLayers.find(x => x.nativeId === info.id);
   if (existing) return existing;
   const meta = { bounds: info.bounds || '' };
   const bounds = _sqlParseBounds(meta);
-  const layer = L.tileLayer('https://appassets.androidplatform.net/mbtiles/' + encodeURIComponent(info.id) + '/{z}/{x}/{y}', {
+  const layer = new _NativeSqlCanvasLayer({
     pane:'offlineBasePane', minZoom:Number(info.minzoom)||0, maxZoom:Number(info.maxzoom)||19,
-    maxNativeZoom:Number(info.maxzoom)||19, tileSize:256, updateWhenIdle:false, keepBuffer:3
+    maxNativeZoom:Number(info.maxzoom)||19, tileSize:256, updateWhenIdle:false, keepBuffer:3,
+    nativeId:info.id, format:info.format || 'png'
   });
   const active = _sqlmapActiveName() === info.name;
   const rec = { id:'native_' + info.id, nativeId:info.id, native:true, name:info.name,

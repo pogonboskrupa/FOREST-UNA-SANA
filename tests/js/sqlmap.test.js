@@ -96,10 +96,12 @@ t('ručni izbor lijeno otvara spremljenu kartu i odmah je aktivira', () => {
   assert.ok(HTML.includes('Ostale velike baze ostaju u IndexedDB'));
 });
 
-t('APK koristi nativni MBTiles put bez kopiranja cijele baze u JavaScript RAM', () => {
+t('APK koristi nativni MBTiles canvas bez kopiranja cijele baze u JavaScript RAM', () => {
   assert.ok(HTML.includes("typeof AndroidMbtiles !== 'undefined'"));
   assert.ok(HTML.includes('AndroidMbtiles.listMaps()'));
-  assert.ok(HTML.includes("appassets.androidplatform.net/mbtiles/"));
+  assert.ok(HTML.includes('const _NativeSqlCanvasLayer = L.GridLayer.extend'));
+  assert.ok(HTML.includes('AndroidMbtiles.getTile(this.options.nativeId'));
+  assert.ok(HTML.includes("canvas.getContext('2d'"));
   const restore = extractFn('_sqlmapRestoreAll');
   assert.ok(restore.includes('const nativeRecords = _nativeSqlmapRecords()'));
   assert.ok(restore.includes('if (nativeTarget)'));
