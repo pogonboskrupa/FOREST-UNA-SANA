@@ -1,0 +1,45 @@
+name: Build APK v1.2.1
+
+on:
+  push:
+    branches: [apk-build-v1]
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Primijeni odobrenu build-zakrpu
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/pogonboskrupa/FOREST-UNA-SANA/issues/2 | jq -r .body | sed '1d;$d' > /tmp/v121.sh
+          bash /tmp/v121.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.4'
+      - name: Izgradi APK
+        run: gradle -p android --no-daemon assembleDebug
+      - name: Provjeri APK
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FOREST-UNA-SANA-v1.2.1
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.2.1
+          name: FOREST-UNA-SANA v1.2.1
+          prerelease: true
+          files: android/app/build/outputs/apk/debug/*.apk
