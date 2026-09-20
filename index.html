@@ -1133,7 +1133,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.3.1';
+const APP_VER = 'v1.3.2';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4170,23 +4170,19 @@ const _POZ_EFFIS = {
 const _POZ_EFFIS_KEY = 'usf_pozari_effis';
 let _poziEffisState = {};
 try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}'); } catch(e) {}
-// EFFIS WMS je odvojen raster, ne lokalna projekcija iz detekcija. Njegovi
-// crveni sezonski poligoni su na karti ličili na našu plohu i stvarali zabunu.
-// Zato ih ova migracija isključuje; korisnik ih može ručno vratiti naprednim
-// prekidačem kad želi uporediti službeni evropski raster.
+// EFFIS WMS je odvojen raster, ne lokalna projekcija iz detekcija. Provider
+// njegove poligone/tačke isporučuje u crvenoj paleti koju ne možemo pouzdano
+// prebojiti bez gubitka podataka. Zato je potpuno isključen po defaultu:
+// oker na karti uvijek znači našu lokalnu procjenu opožarene površine.
 try {
-  if (localStorage.getItem('usf_poz_effis_oker_v2') !== '1') {
+  if (localStorage.getItem('usf_poz_effis_oker_v3') !== '1') {
     _poziEffisState.opozareno = false;
     _poziEffisState.detekcije = false;
     _poziEffisState.fwi = false;
-    localStorage.setItem('usf_poz_effis_oker_v2', '1');
+    localStorage.setItem('usf_poz_effis_oker_v3', '1');
     localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
   }
 } catch(e) {}
-if (!Object.prototype.hasOwnProperty.call(_poziEffisState, 'detekcije')) {
-  _poziEffisState.detekcije = true;
-  try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
-}
 function _poziEffisOn(key) { return !!_poziEffisState[key]; }
 function _poziEffisSyncMap() {
   Object.keys(_POZ_EFFIS).forEach(k => {
