@@ -27,6 +27,17 @@ console.log('Požari — CSV parsiranje, pouzdanost, grupisanje detekcija:');
 
 const dstSrc = extractFn('dst');
 
+t('modularni FIRMS stil i odvojeni oker poligoni', () => {
+  const src = extractFn('_poziPouzdanost') + '\n' + extractFn('_poziTackaStil') + '\nreturn _poziTackaStil;';
+  const fn = new Function(src)();
+  assert.strictEqual(fn({ conf:'h' }).fillColor, '#f97316');
+  assert.strictEqual(fn({ conf:'n' }).fillColor, '#f59e0b');
+  assert.strictEqual(fn({ conf:'l' }).fillColor, '#fde047');
+  assert.ok(HTML.includes('Lokalna oker opožarena ploha'));
+  assert.ok(HTML.includes('EFFIS NRT — crveni referentni raster'));
+  assert.ok(!/_POZ_OPOZ_BOJE\s*=\s*\{[^}]*#(?:dc2626|ef4444)/i.test(HTML));
+});
+
 t('_poziParseCsv čita FIRMS VIIRS CSV zaglavlje i redove', () => {
   const src = extractFn('_poziParseCsv') + '\nreturn _poziParseCsv;';
   const _poziParseCsv = new Function(src)();

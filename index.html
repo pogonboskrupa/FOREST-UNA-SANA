@@ -849,9 +849,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="poz-section-card" style="margin:0 0 10px !important;">
       <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">Prikaz na karti</div>
       <div class="poz-layer-grid">
-        <label class="loc-row"><span>Bijele tačke</span><input id="poz-layer-points" type="checkbox" onchange="_poziSlojToggle('tacke',this.checked)"></label>
-        <label class="loc-row"><span>Glavne oznake</span><input id="poz-layer-main" type="checkbox" onchange="_poziSlojToggle('oznake',this.checked)"></label>
-        <label class="loc-row"><span>Opožarena ploha</span><input id="poz-layer-area" type="checkbox" onchange="_poziOpozToggle(this.checked)"></label>
+        <label class="loc-row"><span>Aktivni požari — FIRMS tačke</span><input id="poz-layer-points" type="checkbox" onchange="_poziSlojToggle('tacke',this.checked)"></label>
+        <label class="loc-row"><span>Grupne oznake požara</span><input id="poz-layer-main" type="checkbox" onchange="_poziSlojToggle('oznake',this.checked)"></label>
+        <label class="loc-row"><span>Lokalna oker opožarena ploha</span><input id="poz-layer-area" type="checkbox" onchange="_poziOpozToggle(this.checked)"></label>
         <label class="loc-row"><span>Legenda</span><input type="checkbox" id="poz-legend-check" checked onchange="_poziLegendaToggle(this.checked)"></label>
       </div>
     </div>
@@ -893,7 +893,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
       <div class="loc-row">
-        <span>EFFIS NRT plohe (šira procjena)</span>
+        <span>EFFIS NRT — crveni referentni raster</span>
         <div class="loc-switch" id="poz-effis-ba-switch" onclick="_poziEffisToggle('opozareno',!_poziEffisOn('opozareno'))"></div>
       </div>
       <div class="loc-row">
@@ -904,7 +904,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <span>Indeks opasnosti od požara (FWI)</span>
         <div class="loc-switch" id="poz-effis-fwi-switch" onclick="_poziEffisToggle('fwi',!_poziEffisOn('fwi'))"></div>
       </div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Preciznija lokalna projekcija je uključena iznad. EFFIS NRT plohe mogu biti znatno šire od stvarne granice, zato su sada opcione; satelitske tačke ostaju uključene.</div>
+      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Lokalna procjena iznad je oker i uključena po defaultu. EFFIS NRT je gotova crvena WMS slika koju nije moguće pouzdano prebojiti; služi samo kao opcionalna šira referenca.</div>
     </div>
 
     <div class="treg-meta-edit" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
@@ -1133,7 +1133,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.3.5';
+const APP_VER = 'v1.3.6';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4194,6 +4194,7 @@ function _poziEffisSyncMap() {
 function _poziEffisToggle(key, on) {
   if (!_POZ_EFFIS[key]) return;
   _poziEffisState[key] = !!on;
+  if (key === 'opozareno' && on) showToast('EFFIS NRT je crveni referentni raster; lokalna procjena ostaje oker.');
   try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
   _poziEffisSyncMap();
   const swId = key === 'opozareno' ? 'poz-effis-ba-switch' : (key === 'detekcije' ? 'poz-effis-det-switch' : 'poz-effis-fwi-switch');
@@ -4262,6 +4263,7 @@ function _poziParseCsv(txt) {
   if (iLa < 0 || iLo < 0) return [];
   const iDat = ix('acq_date'), iVri = ix('acq_time'), iSat = ix('satellite');
   const iConf = ix('confidence'), iFrp = ix('frp'), iDn = ix('daynight'), iInst = ix('instrument');
+  const iBright = ix('bright_ti4') >= 0 ? ix('bright_ti4') : ix('brightness');
   const out = [];
   for (let i = 1; i < lines.length; i++) {
     const c = lines[i].split(',');
@@ -4276,6 +4278,7 @@ function _poziParseCsv(txt) {
       sat: iSat >= 0 ? String(c[iSat]).trim() : '',
       conf: iConf >= 0 ? String(c[iConf]).trim() : '',
       frp: iFrp >= 0 ? parseFloat(c[iFrp]) : NaN,
+      brightness: iBright >= 0 ? parseFloat(c[iBright]) : NaN,
       noc: iDn >= 0 ? String(c[iDn]).trim().toUpperCase() === 'N' : false,
       rez: inst === 'MODIS' ? 1000 : 375
     });
@@ -4295,6 +4298,12 @@ function _poziPouzdanost(conf) {
     return { txt:'niska ('+n+'%)', boja:'#facc15', rang:1 };
   }
   return { txt:'nepoznata', boja:'#f97316', rang:2 };
+}
+// Modularni stil aktivnih FIRMS/GFW tačaka; lokalni poligoni koriste zasebnu oker paletu.
+function _poziTackaStil(p) {
+  const rang = _poziPouzdanost(p?.conf).rang;
+  const fillColor = rang >= 3 ? '#f97316' : (rang === 2 ? '#f59e0b' : '#fde047');
+  return { radius:rang >= 3 ? 5 : 4.2, color:'#0f172a', weight:1.3, fillColor, fillOpacity:0.96, opacity:1 };
 }
 // Referentna tačka za "blizu mene": GPS ako ga ima, inače centar karte.
 function _poziRefTacka() {
@@ -4730,10 +4739,9 @@ function _povGodRenderSve() {
               .addTo(grp);
           } catch(e) {}
         }
-        // Svaka stvarna satelitska detekcija ostaje vidljiva po defaultu.
+        // Svaka stvarna satelitska detekcija ostaje vidljiva po defaultu i stilizovana je prema pouzdanosti.
         if (_poziSlojOn('tacke')) (g.pts || []).forEach(p => {
-          L.circleMarker([p.la,p.lo], { pane:'pozariDetectionsPane', radius:4.2, color:'#0f172a', weight:1.3,
-            fillColor:'#fff', fillOpacity:1, opacity:1 })
+          L.circleMarker([p.la,p.lo], { ..._poziTackaStil(p), pane:'pozariDetectionsPane' })
             .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(grp);
         });
         // Glavna oznaka samo za veći požar; pojedinačne detekcije su već bijele tačke.
@@ -5210,6 +5218,7 @@ function _poziPopupHtml(p, ref) {
     ${red('Udaljenost', `<b style="color:#fbbf24;">${_msrFmt(dst(ref.la,ref.lo,p.la,p.lo))}</b> ${smjer}`)}
     ${red('Vrijeme (lok.)', vrijeme + (p.noc ? ' 🌙' : ' ☀'))}
     ${red('Pouzdanost', `<span style="color:${pz.boja};">${pz.txt}</span>`)}
+    ${isFinite(p.brightness) ? red('Temperatura / brightness', p.brightness.toFixed(1) + ' K') : ''}
     ${isFinite(p.frp) ? red('Snaga (FRP)', p.frp.toFixed(1) + ' MW') : ''}
     ${p.sat ? red('Satelit', _poziSatelit(p.sat)) : ''}
   </div>`;
@@ -5220,10 +5229,9 @@ function _poziRender() {
   const ref = _poziRefTacka();
   (_poziEvts || []).forEach(g => {
     if (!_poziCanvasRenderer && L.canvas) _poziCanvasRenderer = L.canvas({ pane:'pozariDetectionsPane', padding:0.35 });
-    // Svaka stvarna detekcija je mala bijela tačka. Ona se crta i ispod
-    // glavnog markera, pa se vidi stvarna raspodjela satelitskih očitanja.
+    // Svaka stvarna detekcija ima FIRMS stil prema pouzdanosti i ostaje vidljiva ispod grupne oznake.
     if (_poziSlojOn('tacke')) g.pts.forEach(p => {
-      L.circleMarker([p.la, p.lo], { renderer:_poziCanvasRenderer, pane:'pozariDetectionsPane', radius:4.4, color:'#0f172a', weight:1.3, fillColor:'#fff', fillOpacity:1, opacity:1 })
+      L.circleMarker([p.la, p.lo], { ..._poziTackaStil(p), renderer:_poziCanvasRenderer, pane:'pozariDetectionsPane' })
         .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(_poziLayer);
     });
     if (_poziSlojOn('oznake') && g.broj >= 3) {
