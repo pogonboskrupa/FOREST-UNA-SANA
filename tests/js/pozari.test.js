@@ -342,12 +342,12 @@ t('_povGodDostupneGodine nudi tekuću i četiri prethodne godine', () => {
 
 t('_povGodBoja razlikuje svježe, sedmične, tekuće i prošlogodišnje plohe', () => {
   const src = extractFn('_povGodBoja') + '\nreturn _povGodBoja;';
-  const fn = new Function('_POZ_GOD_BOJA_OVE','_POZ_GOD_BOJA_PROSLE',src)('#eab308','#64748b');
+  const fn = new Function('_POZ_GOD_BOJA_OVE','_POZ_GOD_BOJA_PROSLE',src)('#b9781d','#95611d');
   const sada = Date.now(), godina = new Date().getUTCFullYear();
-  assert.strictEqual(fn({ zadnji:sada - 2*3600000 }, godina), '#dc2626');
-  assert.strictEqual(fn({ zadnji:sada - 3*86400000 }, godina), '#f97316');
-  assert.strictEqual(fn({ zadnji:sada - 30*86400000 }, godina), '#eab308');
-  assert.strictEqual(fn({ zadnji:Date.UTC(godina-1,5,1) }, godina-1), '#64748b');
+  assert.strictEqual(fn({ zadnji:sada - 2*3600000 }, godina), '#d99a32');
+  assert.strictEqual(fn({ zadnji:sada - 3*86400000 }, godina), '#c98527');
+  assert.strictEqual(fn({ zadnji:sada - 30*86400000 }, godina), '#b9781d');
+  assert.strictEqual(fn({ zadnji:Date.UTC(godina-1,5,1) }, godina-1), '#95611d');
 });
 
 t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen', () => {
