@@ -5079,9 +5079,9 @@ const _POZ_GOD_BOJA_OVE = '#b9781d';
 const _POZ_GOD_BOJA_PROSLE = '#95611d';
 function _povGodBoja(g, godina) {
   const h = (Date.now() - Number(g?.zadnji ?? Date.parse(g?.dt))) / 3600000;
-  if (isFinite(h) && h <= 24) return _POZ_GOD_BOJA_24H;
-  if (isFinite(h) && h <= 168) return _POZ_GOD_BOJA_7D;
-  return godina < new Date().getUTCFullYear() ? _POZ_GOD_BOJA_PROSLE : _POZ_GOD_BOJA_OVE;
+  if (isFinite(h) && h <= 24) return '#d99a32';
+  if (isFinite(h) && h <= 168) return '#c98527';
+  return godina < new Date().getUTCFullYear() ? '#95611d' : '#b9781d';
 }
 function _poziIconGodina(g, godina) {
   const boja = _povGodBoja(g, godina);
