@@ -421,4 +421,29 @@ t('legenda i simulacija ne prekrivaju kontrole karte', () => {
   assert.ok(HTML.includes("pane:'pozariPane', radius: 5"), 'simulacijske tačke moraju biti iznad plohe');
 });
 
+t('operativni pregled i četiri glavna kartografska prekidača postoje', () => {
+  assert.ok(HTML.includes('id="poz-operativni"'));
+  ['poz-layer-points','poz-layer-main','poz-layer-area','poz-legend-check'].forEach(id => assert.ok(HTML.includes(`id="${id}"`), id));
+  assert.ok(HTML.includes('function _poziOperativniHtml()'));
+});
+
+t('status izvora razlikuje online, offline i keširane podatke', () => {
+  assert.ok(HTML.includes('id="poz-source-status"'));
+  assert.ok(HTML.includes('function _poziSourceStatusHtml()'));
+  assert.ok(HTML.includes("m.kes?' · keš':''"));
+});
+
+t('modal grupe nudi cijeli požar i simulaciju, a historija šest filtera', () => {
+  assert.ok(HTML.includes('function _poziPrikaziCijeli(kljuc)'));
+  assert.ok(HTML.includes('▶ Simulacija'));
+  ['poz-hist-year','poz-hist-month','poz-hist-dept','poz-hist-area','poz-hist-conf','poz-hist-state'].forEach(id => assert.ok(HTML.includes(`id="${id}"`), id));
+  assert.ok(HTML.includes('function _poziHistPrimijeniFilter(grupe)'));
+});
+
+t('strožije grupisanje koristi uži prostorni i centralni prag', () => {
+  assert.ok(HTML.includes('const _POZ_GRUPA_M   = 350'));
+  assert.ok(HTML.includes('const _POZ_GRUPA_CENTAR_FAKTOR = 1.25'));
+  assert.ok(HTML.includes("x.vrsta === 'voda'"));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
