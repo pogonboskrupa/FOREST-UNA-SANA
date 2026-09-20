@@ -369,7 +369,7 @@ t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen
 
 t('EFFIS šira procjena se migrira na isključeno, a GFW ključ se čeka prije godišnjeg učitavanja', () => {
   assert.ok(HTML.includes("_poziEffisState.opozareno = false"));
-  assert.ok(HTML.includes('EFFIS NRT plohe (šira procjena)'));
+  assert.ok(HTML.includes('EFFIS NRT — crveni referentni raster'));
   assert.ok(HTML.includes("layers: 'nrt.ba.poly.season'"), 'mora koristiti postojeći EFFIS sezonski sloj, ne uklonjeni modis.ba');
   assert.ok(HTML.includes("layers: 'modis.hs.month'"), 'mora imati EFFIS satelitske detekcije za zadnjih 30 dana');
   assert.ok(HTML.includes("usf_poz_effis_oker_v4"), 'EFFIS raster se mora isključiti pri migraciji na oker lokalnu projekciju');
