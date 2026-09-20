@@ -4985,15 +4985,15 @@ function _poziMkStarost(ms) { const h = (Date.now() - ms) / 3600000; if (!isFini
 // Kod Firemap događaja poznat je samo obuhvat (ha), ne tačna granica.
   // Zato ga prikazujemo konzervativnije: rub procjene uvlačimo za 150 m.
   // Male pojedinačne satelitske detekcije ostaju vidljive s najmanje 20 m.
-const _POZ_OPOZ_UNUTRASNJI_ODMAK_M = 150;
 function _poziOpozBufKm(podatak) {
+  const unutrasnjiOdmakM = 150;
   const p = typeof podatak === 'object' ? podatak : { rez:podatak };
   const poznataHa = Number(p?.areaHa);
   // Firemapov obuhvat je već površina događaja — ekvivalentni krug je samo
   // prikaz geometrije dok ne postoji službeni poligon granice.
   if (isFinite(poznataHa) && poznataHa > 0) {
     const rKm = Math.sqrt(poznataHa * 10000 / Math.PI) / 1000;
-    return Math.max(0.02, rKm - _POZ_OPOZ_UNUTRASNJI_ODMAK_M / 1000);
+    return Math.max(0.02, rKm - unutrasnjiOdmakM / 1000);
   }
   const rez = Number(p?.rez) || 375;
   const frp = Number(p?.frp);
