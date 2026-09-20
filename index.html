@@ -485,9 +485,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 /* === Požari === */
 .poz-podtabs {
-  position:sticky; top:-14px; z-index:5; display:grid; grid-template-columns:repeat(3,1fr);
-  gap:5px; margin:-2px -2px 14px; padding:8px 2px;
-  background:linear-gradient(180deg,#0d1b15 78%,rgba(13,27,21,0));
+  position:sticky; top:-14px; z-index:20; display:grid; grid-template-columns:repeat(3,1fr);
+  gap:5px; margin:-14px -14px 14px; padding:14px 14px 10px;
+  background:#0d1b15; border-bottom:1px solid rgba(148,163,184,.12);
+  box-shadow:0 8px 14px rgba(8,18,14,.82);
 }
 .poz-okvir-btn, .poz-podtab-btn, .poz-hist-sort-btn {
   flex:1; background:#172a21; border:1px solid var(--line); color:#9db0a7;
@@ -1133,7 +1134,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.3.7';
+const APP_VER = 'v1.3.8';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4175,11 +4176,11 @@ try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}')
 // prebojiti bez gubitka podataka. Zato je potpuno isključen po defaultu:
 // oker na karti uvijek znači našu lokalnu procjenu opožarene površine.
 try {
-  if (localStorage.getItem('usf_poz_effis_oker_v4') !== '1') {
+  if (localStorage.getItem('usf_poz_effis_oker_v5') !== '1') {
     _poziEffisState.opozareno = false;
     _poziEffisState.detekcije = false;
     _poziEffisState.fwi = false;
-    localStorage.setItem('usf_poz_effis_oker_v4', '1');
+    localStorage.setItem('usf_poz_effis_oker_v5', '1');
     localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
   }
 } catch(e) {}
@@ -5454,6 +5455,8 @@ function _poziSourceStatusHtml() {
   };
   const firmsRadi = ima(/VIIRS|MODIS/i);
   const firmsGreska = imaGresku(/VIIRS|MODIS|FIRMS/i);
+  const firmsStatus = m.okvir === '30d' ? oznaka('nije dostupno za 30 dana','poz-source-off')
+    : statusPodatkovnogIzvora(true,firmsRadi,firmsGreska);
   const gfwUkljucen = _poziGfwOn() || m.okvir === '30d';
   const gfwRadi = ima(/Global Forest Watch|GFW/i);
   const gfwGreska = imaGresku(/Global Forest Watch|GFW/i);
@@ -5473,7 +5476,7 @@ function _poziSourceStatusHtml() {
     </div>
     <div class="poz-source-grid">
       <div class="poz-source-row"><span>Veza</span>${navigator.onLine?oznaka('● online','poz-source-ok'):oznaka('● offline','poz-source-warn')}</div>
-      <div class="poz-source-row"><span>NASA FIRMS</span>${statusPodatkovnogIzvora(true,firmsRadi,firmsGreska)}</div>
+      <div class="poz-source-row"><span>NASA FIRMS</span>${firmsStatus}</div>
       <div class="poz-source-row"><span>Global Forest Watch</span>${statusPodatkovnogIzvora(gfwUkljucen,gfwRadi,gfwGreska)}</div>
       <div class="poz-source-row"><span>Copernicus EFFIS</span>${effisStatus}</div>
       <div class="poz-source-row"><span>Podaci</span><span class="${m.kes?'poz-source-warn':'poz-source-ok'}">${porijeklo} · ${age}</span></div>
@@ -5679,7 +5682,7 @@ async function openPozariSection() {
   const fEl = document.getElementById('poz-key-firms'), gEl = document.getElementById('poz-key-gfw');
   if (fEl) fEl.value = _poziKljucevi.firms || '';
   if (gEl) gEl.value = _poziKljucevi.gfw || '';
-  const heatSw = document.getElementById('poz-heat-switch'); if (heatSw) heatSw.classList.toggle('on', _poziHeatOn());
+  const heatSw = document.getElementById('poz-heat-switch'); if (heatSw) { const imaHeat = (_poziPts || []).length > 0; heatSw.classList.toggle('on', imaHeat && _poziHeatOn()); heatSw.style.opacity = imaHeat ? '1' : '.38'; heatSw.title = imaHeat ? '' : 'Nema učitanih detekcija za heatmap'; }
   const notifChk = document.getElementById('poz-notif-chk'); if (notifChk) notifChk.checked = _poziNotifOn();
   const gfwSw = document.getElementById('poz-gfw-switch'); if (gfwSw) gfwSw.classList.toggle('on', _poziGfwOn());
   const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));

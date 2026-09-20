@@ -372,7 +372,7 @@ t('EFFIS šira procjena se migrira na isključeno, a GFW ključ se čeka prije g
   assert.ok(HTML.includes('EFFIS NRT — crveni referentni raster'));
   assert.ok(HTML.includes("layers: 'nrt.ba.poly.season'"), 'mora koristiti postojeći EFFIS sezonski sloj, ne uklonjeni modis.ba');
   assert.ok(HTML.includes("layers: 'modis.hs.month'"), 'mora imati EFFIS satelitske detekcije za zadnjih 30 dana');
-  assert.ok(HTML.includes("usf_poz_effis_oker_v4"), 'EFFIS raster se mora isključiti pri migraciji na oker lokalnu projekciju');
+  assert.ok(HTML.includes("usf_poz_effis_oker_v5"), 'EFFIS raster se mora isključiti pri migraciji na oker lokalnu projekciju');
   const fn = extractFn('openPozariSection');
   assert.ok(fn.startsWith('async function'), 'otvaranje Požara mora čekati GFW ključ');
   assert.ok(fn.indexOf('await _poziKljucUcitaj()') < fn.indexOf('_povGodLoadGodina'), 'ključ mora doći prije godišnjeg dohvata');
@@ -428,6 +428,11 @@ t('Pregled ima godišnje KPI kartice, a godišnja lista je samo u Historiji', ()
   assert.ok(!HTML.includes('id="poz-god-body"'), 'stara godišnja lista ne smije ostati u Pregledu');
 });
 
+t('sticky podtabovi imaju neprozirnu pozadinu i ne prekrivaju izbor godina', () => {
+  assert.match(HTML, /\.poz-podtabs\s*\{[^}]*z-index:20[^}]*background:#0d1b15/s);
+  assert.ok(!HTML.includes('background:linear-gradient(180deg,#0d1b15 78%,rgba(13,27,21,0))'));
+});
+
 t('legenda i simulacija ne prekrivaju kontrole karte', () => {
   assert.ok(HTML.includes("const minY = Math.max(58"), 'pomjerena legenda mora ostati ispod gornjih dugmadi');
   assert.match(HTML, /#poz-legends \{[^}]*z-index:490/, 'izbor karte mora ostati iznad legende');
@@ -446,6 +451,9 @@ t('status izvora razlikuje uživo, keš, grešku, isključeno i WMS stanje', () 
   ['podaci iz keša','odgovor primljen','greška dohvata','nema u kešu','WMS sloj(a) uključeno','↻ Osvježi'].forEach(x => assert.ok(HTML.includes(x), x));
   assert.ok(HTML.includes("m.okvir === '30d'"));
   assert.ok(HTML.includes('tačaka ·'));
+  assert.ok(HTML.includes('nije dostupno za 30 dana'));
+  assert.ok(HTML.includes("usf_poz_effis_oker_v5"));
+  assert.ok(HTML.includes("heatSw.style.opacity = imaHeat ? '1' : '.38'"));
 });
 
 t('modal grupe nudi cijeli požar i simulaciju, a historija šest filtera', () => {
@@ -469,7 +477,7 @@ t('tačke detekcije imaju poseban gornji pane i migracija ih vraća na vidljivo'
 });
 
 t('crveni EFFIS raster je isključen po defaultu, lokalna ploha ostaje oker', () => {
-  assert.ok(HTML.includes("usf_poz_effis_oker_v4"));
+  assert.ok(HTML.includes("usf_poz_effis_oker_v5"));
   assert.ok(HTML.includes('_poziEffisState.opozareno = false'));
   assert.ok(HTML.includes('_poziEffisState.detekcije = false'));
   assert.ok(!HTML.includes("hasOwnProperty.call(_poziEffisState, 'detekcije')"));
