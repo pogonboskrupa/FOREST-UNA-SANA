@@ -1133,7 +1133,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.3.6';
+const APP_VER = 'v1.3.7';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4838,7 +4838,7 @@ function _poziSaveCache(pts, izvori, okvir) {
   try {
     localStorage.setItem(_POZ_CACHE_KEY, JSON.stringify({
       ts: Date.now(), izvori, okvir,
-      pts: _poziFilterZaOkvir(pts, _poziRefTacka(), okvir).slice(0, 500).map(p => ({ la:p.la, lo:p.lo, dt:p.dt, sat:p.sat, conf:p.conf, frp:p.frp, noc:p.noc, rez:p.rez, areaHa:p.areaHa, ageH:p.ageH, fireId:p.fireId, fireStatus:p.fireStatus }))
+      pts: _poziFilterZaOkvir(pts, _poziRefTacka(), okvir).slice(0, 500).map(p => ({ la:p.la, lo:p.lo, dt:p.dt, sat:p.sat, conf:p.conf, frp:p.frp, brightness:p.brightness, noc:p.noc, rez:p.rez, areaHa:p.areaHa, ageH:p.ageH, fireId:p.fireId, fireStatus:p.fireStatus }))
     }));
   } catch(e) {}
 }
@@ -5438,24 +5438,48 @@ function _poziOperativniHtml() {
   </div>`;
 }
 function _poziSourceStatusHtml() {
-  const m = _poziMeta || {}, aktivni = new Set(m.izvori || []), greske = m.greske || [];
-  const stanje = (naziv, ukljucen, radi) => {
-    if (!ukljucen) return `<span class="poz-source-off">isključeno</span>`;
-    if (radi) return `<span class="poz-source-ok">● radi</span>`;
-    const err = greske.some(x => String(x).toLowerCase().includes(naziv.toLowerCase()));
-    return `<span class="${err?'poz-source-bad':'poz-source-warn'}">${err?'● greška':'● čeka podatke'}</span>`;
+  const m = _poziMeta || {};
+  const aktivni = new Set(m.izvori || []);
+  const greske = (m.greske || (m.greska ? [m.greska] : [])).map(String);
+  const ima = rx => [...aktivni].some(x => rx.test(String(x)));
+  const imaGresku = rx => greske.some(x => rx.test(x));
+  const oznaka = (txt, cls) => `<span class="${cls}">${txt}</span>`;
+  const statusPodatkovnogIzvora = (ukljucen, radi, greska) => {
+    if (!ukljucen) return oznaka('isključeno','poz-source-off');
+    if (m.kes) return radi ? oznaka('● podaci iz keša','poz-source-warn') : oznaka('nema u kešu','poz-source-off');
+    if (radi) return oznaka('● odgovor primljen','poz-source-ok');
+    if (greska) return oznaka('● greška dohvata','poz-source-bad');
+    if (_poziBusy) return oznaka('● učitavanje…','poz-source-warn');
+    return oznaka('bez podataka','poz-source-off');
   };
-  const firmsRadi = [...aktivni].some(x => /VIIRS|MODIS/.test(x));
-  const gfwRadi = [...aktivni].some(x => /Global Forest Watch|GFW/.test(x));
+  const firmsRadi = ima(/VIIRS|MODIS/i);
+  const firmsGreska = imaGresku(/VIIRS|MODIS|FIRMS/i);
+  const gfwUkljucen = _poziGfwOn() || m.okvir === '30d';
+  const gfwRadi = ima(/Global Forest Watch|GFW/i);
+  const gfwGreska = imaGresku(/Global Forest Watch|GFW/i);
+  const effisBroj = Object.values(_poziEffisState).filter(Boolean).length;
+  const effisStatus = !effisBroj ? oznaka('isključeno','poz-source-off')
+    : !navigator.onLine ? oznaka(effisBroj + ' sloj(a) · offline','poz-source-warn')
+    : oznaka(effisBroj + ' WMS sloj(a) uključeno','poz-source-ok');
   const age = m.dohvacenoMs ? _poziStarost(m.dohvacenoMs) : 'nije ažurirano';
+  const porijeklo = m.kes ? 'keš' : (m.dohvacenoMs ? 'uživo' : '—');
+  const ukupno = Number.isFinite(Number(m.ukupno)) ? Number(m.ukupno) : (_poziPts || []).length;
+  const period = _poziOkvirNaziv(m.okvir || _poziOkvir());
+  const detalji = greske.length ? `<details style="margin-top:7px;"><summary style="cursor:pointer;color:#fbbf24;font-size:10px;">Detalji grešaka (${greske.length})</summary><div style="margin-top:6px;color:#94a3b8;font-size:9px;line-height:1.45;word-break:break-word;">${greske.map(_escHtml).join('<br>')}</div></details>` : '';
   return `<div class="poz-section-card" style="margin:0 0 10px !important;">
-    <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;"><span style="font-size:11px;color:#94a3b8;">Status podataka</span><span style="font-size:10px;color:${navigator.onLine?'#4ade80':'#fbbf24'};">${navigator.onLine?'online':'offline'}</span></div>
-    <div class="poz-source-grid">
-      <div class="poz-source-row"><span>NASA FIRMS</span>${stanje('VIIRS',true,firmsRadi)}</div>
-      <div class="poz-source-row"><span>Global Forest Watch</span>${stanje('GFW',_poziGfwOn(),gfwRadi)}</div>
-      <div class="poz-source-row"><span>Copernicus EFFIS</span>${stanje('EFFIS',Object.values(_poziEffisState).some(Boolean),Object.values(_poziEffisState).some(Boolean) && navigator.onLine)}</div>
-      <div class="poz-source-row"><span>Posljednje osvježavanje</span><span class="${m.kes?'poz-source-warn':'poz-source-ok'}">${age}${m.kes?' · keš':''}</span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+      <span style="font-size:11px;color:#94a3b8;">Status podataka · ${period}</span>
+      <button onclick="_poziLoad(false)" ${_poziBusy?'disabled':''} style="border:1px solid #334155;border-radius:7px;padding:5px 8px;background:#0f172a;color:#cbd5e1;font-size:9px;">${_poziBusy?'Učitavanje…':'↻ Osvježi'}</button>
     </div>
+    <div class="poz-source-grid">
+      <div class="poz-source-row"><span>Veza</span>${navigator.onLine?oznaka('● online','poz-source-ok'):oznaka('● offline','poz-source-warn')}</div>
+      <div class="poz-source-row"><span>NASA FIRMS</span>${statusPodatkovnogIzvora(true,firmsRadi,firmsGreska)}</div>
+      <div class="poz-source-row"><span>Global Forest Watch</span>${statusPodatkovnogIzvora(gfwUkljucen,gfwRadi,gfwGreska)}</div>
+      <div class="poz-source-row"><span>Copernicus EFFIS</span>${effisStatus}</div>
+      <div class="poz-source-row"><span>Podaci</span><span class="${m.kes?'poz-source-warn':'poz-source-ok'}">${porijeklo} · ${age}</span></div>
+      <div class="poz-source-row"><span>Učitano</span><span class="poz-source-ok">${ukupno} tačaka · ${(_poziEvts||[]).length} požara</span></div>
+    </div>
+    ${detalji}
   </div>`;
 }
 function _poziMeteoHtml() {

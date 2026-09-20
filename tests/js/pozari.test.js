@@ -440,10 +440,12 @@ t('operativni pregled i četiri glavna kartografska prekidača postoje', () => {
   assert.ok(HTML.includes('function _poziOperativniHtml()'));
 });
 
-t('status izvora razlikuje online, offline i keširane podatke', () => {
+t('status izvora razlikuje uživo, keš, grešku, isključeno i WMS stanje', () => {
   assert.ok(HTML.includes('id="poz-source-status"'));
   assert.ok(HTML.includes('function _poziSourceStatusHtml()'));
-  assert.ok(HTML.includes("m.kes?' · keš':''"));
+  ['podaci iz keša','odgovor primljen','greška dohvata','nema u kešu','WMS sloj(a) uključeno','↻ Osvježi'].forEach(x => assert.ok(HTML.includes(x), x));
+  assert.ok(HTML.includes("m.okvir === '30d'"));
+  assert.ok(HTML.includes('tačaka ·'));
 });
 
 t('modal grupe nudi cijeli požar i simulaciju, a historija šest filtera', () => {
