@@ -589,10 +589,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <!-- Legenda projekcije opožarene površine (Požari) — vidi _poziOpozAzuriraj -->
 <div id="poz-opoz-legend" style="display:none;position:absolute;right:10px;top:64px;z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:220px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">OPOŽARENO (PROCJENA)</div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#fff3c4;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">≤ 6 h (najnovije viđeno)</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#f2d184;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">6–24 h</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#d6a84b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">1–3 dana</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#9b742c;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">starije od 3 dana</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#f6c667;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">≤ 6 h (najnovije viđeno)</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#e6aa42;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">6–24 h</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c98527;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">1–3 dana</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#95611d;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">starije od 3 dana</span></div>
 </div>
 
 <!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve -->
@@ -1133,7 +1133,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.2.7';
+const APP_VER = 'v1.2.8';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4085,14 +4085,16 @@ const _POZ_EFFIS = {
 const _POZ_EFFIS_KEY = 'usf_pozari_effis';
 let _poziEffisState = {};
 try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}'); } catch(e) {}
-// Prvi ulazak: službene opožarene plohe su korisnije od prazne karte kad
-// satelit nije uhvatio svaki prelet. Korisnik ih kasnije može isključiti.
-// NRT poligon je procjena i na terenu se pokazao preširokim. Jednokratna
-// migracija ga isključuje i ostavlja korisniku mogućnost ručnog uključivanja.
+// EFFIS WMS je odvojen raster, ne lokalna projekcija iz detekcija. Njegovi
+// crveni sezonski poligoni su na karti ličili na našu plohu i stvarali zabunu.
+// Zato ih ova migracija isključuje; korisnik ih može ručno vratiti naprednim
+// prekidačem kad želi uporediti službeni evropski raster.
 try {
-  if (localStorage.getItem('usf_poz_effis_precizno_v1') !== '1') {
+  if (localStorage.getItem('usf_poz_effis_oker_v2') !== '1') {
     _poziEffisState.opozareno = false;
-    localStorage.setItem('usf_poz_effis_precizno_v1', '1');
+    _poziEffisState.detekcije = false;
+    _poziEffisState.fwi = false;
+    localStorage.setItem('usf_poz_effis_oker_v2', '1');
     localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
   }
 } catch(e) {}
@@ -4608,12 +4610,12 @@ function _povGodRenderSve() {
         // Procijenjena opožarena površina je ispod tačaka i glavne oznake.
         // Klik na poligon jasno navodi da nije riječ o službenom premjeru.
         const boja = _povGodBoja(g, godina);
-        const bojaPlohe = godina < new Date().getUTCFullYear() ? '#b78a35' : '#e2b957';
+        const bojaPlohe = godina < new Date().getUTCFullYear() ? '#a97425' : '#d99a32';
         const geom = _poziOpozOn() ? _poziOpozGeom(g.pts || []) : null;
         if (geom) {
           try {
             L.geoJSON(geom, { pane:'pozariProjectionPane',
-              style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.32 } })
+              style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.42 } })
               .bindPopup(() => `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;"><b style="color:#fb923c;">Procijenjena opožarena površina</b><div style="font-size:18px;font-weight:800;margin:5px 0;">${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div><small style="color:#94a3b8;">Iz satelitskih piksela — nije službeno izmjerena granica.</small></div>`)
               .addTo(grp);
           } catch(e) {}
@@ -4856,9 +4858,8 @@ function _poziMkStarost(ms) { const h = (Date.now() - ms) / 3600000; if (!isFini
 // jer bi se tako popunile površine koje možda uopće nisu gorjele.
 function _poziOpozBufKm(rez) {
   const procijenjeniRadijusKm = Math.sqrt(_poziSiroviHa({ rez }) * 10000 / Math.PI) / 1000;
-  // Dodatna terenska kalibracija: ranije umanjenje od 150 m nije bilo dovoljno.
-  // Ukupno oduzimamo 300 m, a mali minimum zadržava vidljivu plohu detekcije.
-  return Math.max(0.0125, procijenjeniRadijusKm - 0.300);
+  // Terenska kalibracija: projekcija je za oko 150 m prelazila opaženi rub.
+  return Math.max(0.025, procijenjeniRadijusKm - 0.150);
 }
 function _poziOpozGrupisiPoStarosti(pts) {
   const bands = {};
@@ -4886,7 +4887,7 @@ function _poziOpozGeom(pts) {
 }
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
 const _POZ_OPOZ_REDOSLIJED = ['st', 'd3', 'h24', 'h6']; // starije ispod, svježe iznad (kao legenda)
-const _POZ_OPOZ_BOJE = { h6: '#fff3c4', h24: '#f2d184', d3: '#d6a84b', st: '#9b742c' };
+const _POZ_OPOZ_BOJE = { h6: '#f6c667', h24: '#e6aa42', d3: '#c98527', st: '#95611d' };
 function _poziOpozOn() { try { const v = localStorage.getItem(_POZ_OPOZ_KEY); return v === null ? true : v === '1'; } catch(e) { return true; } }
 function _poziOpozToggle(on) {
   try { localStorage.setItem(_POZ_OPOZ_KEY, on ? '1' : '0'); } catch(e) {}
@@ -4913,7 +4914,7 @@ function _poziOpozAzuriraj() {
       if (!geom) return;
       try {
         L.geoJSON(geom, { pane: 'pozariProjectionPane',
-          style: { color: _POZ_OPOZ_BOJE[id], weight: 1.5, fillColor: _POZ_OPOZ_BOJE[id], fillOpacity: 0.3 } }).addTo(grp);
+          style: { color: _POZ_OPOZ_BOJE[id], weight: 1.6, fillColor: _POZ_OPOZ_BOJE[id], fillOpacity: 0.42 } }).addTo(grp);
       } catch(e) {}
     });
   });
