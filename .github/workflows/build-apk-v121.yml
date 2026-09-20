@@ -1,4 +1,4 @@
-name: Build APK v1.2.2
+name: Build APK v1.2.3
 
 on:
   push:
@@ -6,19 +6,14 @@ on:
 
 permissions:
   contents: write
-  issues: read
 
 jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Učitaj odobreni izvor v1.2.2
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/pogonboskrupa/FOREST-UNA-SANA/issues/2 | jq -r .body | sed '1d;$d' > /tmp/v122.sh
-          bash /tmp/v122.sh
+        with:
+          ref: codex-forest
       - name: JavaScript testovi
         run: for f in tests/js/*.test.js; do node "$f"; done
       - uses: actions/setup-java@v4
@@ -31,19 +26,24 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.4'
+      - name: Pripremi verziju i assets
+        run: |
+          sed -i -E 's/versionCode [0-9]+/versionCode 10113/' android/app/build.gradle
+          sed -i -E 's/versionName "[^"]+"/versionName "1.2.3"/' android/app/build.gradle
+          bash android/copy-assets.sh
       - name: Izgradi APK
         run: gradle -p android --no-daemon assembleDebug
       - name: Provjeri APK
         run: test -s android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: FOREST-UNA-SANA-v1.2.2
+          name: FOREST-UNA-SANA-v1.2.3
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.2
-          name: FOREST-UNA-SANA v1.2.2
+          tag_name: v1.2.3
+          name: FOREST-UNA-SANA v1.2.3
           prerelease: true
           files: android/app/build/outputs/apk/debug/*.apk
           fail_on_unmatched_files: true
