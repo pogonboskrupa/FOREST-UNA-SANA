@@ -62,8 +62,8 @@ t('APP_VER je definisan i prati v-prefiksovanu shemu', () => {
   assert.match(HTML, /const APP_VER = 'v[0-9]+\.[0-9]+\.[0-9]+'/);
 });
 
-t('verzija je v1.2.6 i rollover koristi jednocifreni patch/minor', () => {
-  assert.ok(HTML.includes("const APP_VER = 'v1.2.6'"));
+t('verzija je v1.2.7 i rollover koristi jednocifreni patch/minor', () => {
+  assert.ok(HTML.includes("const APP_VER = 'v1.2.7'"));
   const src = extractFn('_sljedecaVerzija') + '\nreturn _sljedecaVerzija;';
   const next = new Function(src)();
   assert.strictEqual(next('v1.2.0'), 'v1.2.1');
@@ -102,6 +102,7 @@ t('bazni slojevi su ograničeni na osnovne četiri (bez Wayback/Sentinel/WorldCo
 t('paneovi za buduće Požari/Mjerenja slojeve postoje od prvog dana', () => {
   assert.match(HTML, /createPane\('tragMsrLines'\)/);
   assert.match(HTML, /createPane\('pozariPane'\)/);
+  assert.match(HTML, /createPane\('pozariDetectionsPane'\)/);
 });
 
 // Regresioni test za bug "Cannot read properties of undefined (reading
