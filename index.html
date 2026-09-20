@@ -598,9 +598,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve -->
 <div id="poz-god-legend" style="display:none;position:absolute;right:10px;top:194px;z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:190px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">POŽARI — LEGENDA</div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#dc2626;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnja 24 sata</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#f97316;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnjih 7 dana</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#eab308;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">tekuća godina</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#d99a32;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnja 24 sata</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c98527;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnjih 7 dana</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#b9781d;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">tekuća godina</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:14px;height:11px;border-radius:2px;background:#a855f7;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS NRT šira procjena</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:8px;height:8px;border-radius:50%;background:#f43f5e;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS satelit · 30 dana</span></div>
@@ -5071,12 +5071,16 @@ function _poziIconGrupa(g) {
 // PROŠLIH GODINA (vidi legendu #poz-god-legend). Bez ovoga bi sve starije
 // od 3 dana palo u istu tamnu "st" boju iz _POZ_MK_STAROST, pa se ove
 // godine i prošle godine ne bi mogle razlikovati na karti.
-const _POZ_GOD_BOJA_OVE = '#eab308';
-const _POZ_GOD_BOJA_PROSLE = '#64748b';
+// Jedinstvena oker paleta: godišnji sloj je iznad ostalih požarnih slojeva,
+ // pa ne smije vraćati crvenu/narandžastu boju za svježe događaje.
+const _POZ_GOD_BOJA_24H = '#d99a32';
+const _POZ_GOD_BOJA_7D = '#c98527';
+const _POZ_GOD_BOJA_OVE = '#b9781d';
+const _POZ_GOD_BOJA_PROSLE = '#95611d';
 function _povGodBoja(g, godina) {
   const h = (Date.now() - Number(g?.zadnji ?? Date.parse(g?.dt))) / 3600000;
-  if (isFinite(h) && h <= 24) return '#dc2626';
-  if (isFinite(h) && h <= 168) return '#f97316';
+  if (isFinite(h) && h <= 24) return _POZ_GOD_BOJA_24H;
+  if (isFinite(h) && h <= 168) return _POZ_GOD_BOJA_7D;
   return godina < new Date().getUTCFullYear() ? _POZ_GOD_BOJA_PROSLE : _POZ_GOD_BOJA_OVE;
 }
 function _poziIconGodina(g, godina) {
