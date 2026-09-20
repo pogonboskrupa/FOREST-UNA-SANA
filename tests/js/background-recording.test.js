@@ -42,5 +42,10 @@ function fn(name) {
   for (const match of html.matchAll(/<script\b[^>]*src="([^"?]+)"/g)) {
     if (!match[1].startsWith('http')) assert.ok(fs.statSync(path.join(root, match[1])).size > 0);
   }
+  assert.ok(html.includes('([la, lo, al, t, ac]) => ({ la, lo, al, t, ac })'),
+    'završno spremanje traga mora sačuvati vrijeme i tačnost GPS tačaka');
+  assert.ok(html.includes('p.t, p.ac]'), 'registru traga se predaju vrijeme i tačnost');
+  assert.match(fn('_tragToKml'), /Number\.isFinite\(p\[2\]\)/,
+    'KML izvoz mora koristiti snimljenu nadmorsku visinu');
   console.log('Background recording: empty-session recovery, gap replay, dedup, quota retention and bundled scripts passed');
 })().catch(e => { console.error(e); process.exitCode=1; });

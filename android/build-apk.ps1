@@ -3,8 +3,8 @@
 # Ili iz android/ foldera:         powershell -ExecutionPolicy Bypass -File build-apk.ps1
 
 param(
-    [ValidateSet("main")]
-    [string]$Branch  = "main",
+    [ValidateSet("codex-forest", "apk-build-v1")]
+    [string]$Branch  = "codex-forest",
     [ValidateSet("debug", "release")]
     [string]$BuildType = "debug"   # "debug" ili "release"
 )

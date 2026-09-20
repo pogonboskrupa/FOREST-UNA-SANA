@@ -530,14 +530,15 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void checkAndInstall() {
             if (updateInProgress) {
-                postStatus("⬇ Ažuriranje je već u toku…");
+                postUpdate("downloading", "Ažuriranje je već u toku…", -1, 0, 0);
                 return;
             }
             updateInProgress = true;
+            postUpdate("checking", "Provjeravam novu verziju…", -1, 0, 0);
             new Thread(() -> {
                 try {
                     org.json.JSONObject rel = dohvatiJson(RELEASES_URL);
-                    if (rel == null) { postStatus("⚠ Ne mogu provjeriti novu verziju (nema interneta?)"); updateInProgress = false; return; }
+                    if (rel == null) { postUpdate("error", "Ne mogu provjeriti novu verziju — provjeri internet", -1, 0, 0); updateInProgress = false; return; }
 
                     String tag = rel.optString("tag_name", "");
                     String verNova = tag.startsWith("v") ? tag.substring(1) : tag;
@@ -547,7 +548,7 @@ public class MainActivity extends Activity {
                                 .getPackageInfo(getPackageName(), 0).versionName;
                     } catch (Exception ignored) {}
                     if (verNova.isEmpty() || !jeNovija(verNova, verTrenutna)) {
-                        postStatus("✓ Već imaš najnoviju verziju (v" + verTrenutna + ")");
+                        postUpdate("latest", "Već imaš najnoviju verziju (v" + verTrenutna + ")", 100, 0, 0);
                         updateInProgress = false;
                         return;
                     }
@@ -564,26 +565,30 @@ public class MainActivity extends Activity {
                         }
                     }
                     if (apkUrl == null) {
-                        postStatus("⚠ Nova verzija v" + verNova + " postoji, ali APK nije pronađen u objavi");
+                        postUpdate("error", "Verzija v" + verNova + " postoji, ali APK nije pronađen u objavi", -1, 0, 0);
                         updateInProgress = false;
                         return;
                     }
 
-                    postStatus("⬇ Preuzimam verziju v" + verNova + "…");
+                    postUpdate("downloading", "Preuzimam verziju v" + verNova + "…", 0, 0, 0);
                     File dir = new File(getCacheDir(), "update");
                     if (!dir.exists()) dir.mkdirs();
                     File apk = new File(dir, "UnaSanaForest-v" + verNova + ".apk");
-                    if (!preuzmiFajl(apkUrl, apk)) {
-                        postStatus("⚠ Preuzimanje nije uspjelo — provjeri vezu i pokušaj ponovo");
+                    File part = new File(dir, apk.getName() + ".part");
+                    if (part.exists()) part.delete();
+                    if (!preuzmiFajl(apkUrl, part, verNova)) {
+                        postUpdate("error", "Preuzimanje nije uspjelo — provjeri vezu i pokušaj ponovo", -1, 0, 0);
                         updateInProgress = false;
                         return;
                     }
+                    if (apk.exists() && !apk.delete()) throw new IOException("old_apk_delete");
+                    if (!part.renameTo(apk)) throw new IOException("apk_finalize");
                     pendingUpdateApk = apk;
-                    postStatus("✅ Preuzeto — otvaram instalaciju…");
+                    postUpdate("ready", "APK je preuzet — otvaram instalaciju…", 100, apk.length(), apk.length());
                     updateInProgress = false;
                     runOnUiThread(() -> instalirajApk(apk));
                 } catch (Exception e) {
-                    postStatus("⚠ Greška pri ažuriranju: " + e.getClass().getSimpleName());
+                    postUpdate("error", "Greška pri ažuriranju: " + e.getClass().getSimpleName(), -1, 0, 0);
                     updateInProgress = false;
                 }
             }).start();
@@ -613,7 +618,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        private boolean preuzmiFajl(String urlStr, File dest) throws IOException {
+        private boolean preuzmiFajl(String urlStr, File dest, String verzija) throws IOException {
             URL u = new URL(urlStr);
             HttpURLConnection c = (HttpURLConnection) u.openConnection();
             try {
@@ -625,6 +630,7 @@ public class MainActivity extends Activity {
                 if (status != 200) return false;
                 long ukupno = c.getContentLengthLong(), procitano = 0;
                 int zadnjiPostotak = -1;
+                long zadnjaObjava = 0;
                 try (InputStream is = c.getInputStream(); FileOutputStream fos = new FileOutputStream(dest)) {
                     byte[] buf = new byte[65536];
                     int n;
@@ -633,17 +639,26 @@ public class MainActivity extends Activity {
                         procitano += n;
                         if (ukupno > 0) {
                             int pct = (int) ((procitano * 100L) / ukupno);
-                            int korak = (pct / 10) * 10;
-                            if (korak != zadnjiPostotak) {
-                                zadnjiPostotak = korak;
-                                postStatus("⬇ Preuzimam novu verziju… " + Math.min(100, korak) + "%");
+                            long sada = System.currentTimeMillis();
+                            if (pct != zadnjiPostotak && (sada - zadnjaObjava >= 180 || pct >= 100)) {
+                                zadnjiPostotak = pct;
+                                zadnjaObjava = sada;
+                                postUpdate("downloading", "Preuzimam verziju v" + verzija + "…", Math.min(100, pct), procitano, ukupno);
                             }
+                        } else if (System.currentTimeMillis() - zadnjaObjava >= 500) {
+                            zadnjaObjava = System.currentTimeMillis();
+                            postUpdate("downloading", "Preuzimam verziju v" + verzija + "…", -1, procitano, 0);
                         }
                     }
                 }
                 if (dest.length() < 1024 * 1024) { dest.delete(); return false; }
                 try (InputStream check = new java.io.FileInputStream(dest)) {
                     if (check.read() != 'P' || check.read() != 'K') { dest.delete(); return false; }
+                }
+                android.content.pm.PackageInfo info = getPackageManager().getPackageArchiveInfo(dest.getAbsolutePath(), 0);
+                if (info == null || !getPackageName().equals(info.packageName)) {
+                    dest.delete();
+                    return false;
                 }
                 return true;
             } finally {
@@ -654,13 +669,13 @@ public class MainActivity extends Activity {
         private void instalirajApk(File apk) {
             if (apk == null || !apk.isFile()) {
                 pendingUpdateApk = null;
-                postStatus("⚠ Preuzeti APK više nije dostupan — pokušaj ponovo");
+                postUpdate("error", "Preuzeti APK više nije dostupan — pokušaj ponovo", -1, 0, 0);
                 return;
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                     && !getPackageManager().canRequestPackageInstalls()) {
                 pendingUpdateApk = apk;
-                postStatus("⚙ Dozvoli instalaciju iz ovog izvora — instalacija će se zatim automatski nastaviti");
+                postUpdate("permission", "Dozvoli instalaciju iz ovog izvora; zatim se vrati u aplikaciju", 100, apk.length(), apk.length());
                 try {
                     startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                             Uri.parse("package:" + getPackageName())));
@@ -672,8 +687,13 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-            pendingUpdateApk = null;
+            try {
+                postUpdate("installing", "Potvrdi instalaciju na Android ekranu", 100, apk.length(), apk.length());
+                startActivity(intent);
+                pendingUpdateApk = null;
+            } catch (Exception e) {
+                postUpdate("error", "Android ne može otvoriti instalaciju APK-a", -1, 0, 0);
+            }
         }
 
         // Poredi "X.Y.Z" segment po segment (numerički, ne leksikografski).
@@ -693,11 +713,12 @@ public class MainActivity extends Activity {
             catch (Exception e) { return 0; }
         }
 
-        private void postStatus(String msg) {
+        private void postUpdate(String phase, String msg, int progress, long downloaded, long total) {
             runOnUiThread(() -> {
                 if (webView == null) return;
                 webView.evaluateJavascript(
-                        "if(typeof _azurirajStatus==='function')_azurirajStatus(" + jsStr(msg) + ")", null);
+                        "if(typeof _azurirajStatus==='function')_azurirajStatus(" + jsStr(msg) + "," +
+                                progress + "," + jsStr(phase) + "," + downloaded + "," + total + ")", null);
             });
         }
 
@@ -937,6 +958,8 @@ public class MainActivity extends Activity {
         }
         if (needRequest) {
             ActivityCompat.requestPermissions(this, perms, REQ_PERMS);
+        } else {
+            requestBackgroundLocationIfNeeded();
         }
     }
 
@@ -944,6 +967,9 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode,
             @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQ_PERMS) {
+            boolean fineGranted = ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED;
             for (int i = 0; i < permissions.length; i++) {
                 if (permissions[i].equals(Manifest.permission.ACCESS_FINE_LOCATION)
                         && grantResults[i] != PackageManager.PERMISSION_GRANTED) {
@@ -952,6 +978,7 @@ public class MainActivity extends Activity {
                             Toast.LENGTH_LONG).show();
                 }
             }
+            if (fineGranted) requestBackgroundLocationIfNeeded();
         }
     }
 
