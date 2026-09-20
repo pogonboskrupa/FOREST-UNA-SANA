@@ -1133,7 +1133,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.3.2';
+const APP_VER = 'v1.3.3';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4384,9 +4384,12 @@ function _poziSiroviHa(p) {
   return _poziPixelHa(rez) * (rez >= 300 ? _POZ_HOTSPOT_FAKTOR : 1);
 }
 function _poziProcijenjeniHa(p) {
+  // Firemap FireDB već daje procijenjeni obuhvat događaja u hektarima.
+  // Ne zamjenjuj ga površinom senzorskog piksela.
+  if (isFinite(Number(p?.areaHa)) && Number(p.areaHa) > 0) return Number(p.areaHa);
   // Broj hektara mora odgovarati istoj kalibrisanoj kružnoj plohi koja se
   // zaista crta na karti, a ne većem nekorigovanom senzorskom otisku.
-  const rM = _poziOpozBufKm(p?.rez || 375) * 1000;
+  const rM = _poziOpozBufKm(p) * 1000;
   return Math.PI * rM * rM / 10000;
 }
 function _poziPovrsinaGrupe(g) {
@@ -4544,6 +4547,32 @@ function _poziParseGfwJson(txt) {
     const dat = String(r.alert__date || '').slice(0, 10);
     out.push({ la, lo, dt: dat + 'T' + hhmm.slice(0, 2) + ':' + hhmm.slice(2, 4) + ':00Z',
       sat: 'VIIRS (GFW)', conf: String(r.confidence__cat || '').trim(), frp: NaN, noc: false, rez: 375 });
+  });
+  return out;
+}
+// Firemap.live / FireDB: evropski aktivni požari sa procijenjenim obuhvatom
+// (size_ha). To nije zamjena za FIRMS tačke, nego nezavisna dopuna: kad
+// FireDB zna površinu, ona ima prednost nad geometrijom jednog vrelog piksela.
+function _poziFiremapUrl() {
+  const bbox = _USK_BBOX.lonMin + ',' + _USK_BBOX.latMin + ',' + _USK_BBOX.lonMax + ',' + _USK_BBOX.latMax;
+  return 'https://geo.firemap.live/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature'
+    + '&typeName=FireDB%3Amodis_ba_pt_7day&outputFormat=application%2Fjson'
+    + '&CQL_FILTER=' + encodeURIComponent('BBOX(geom,' + bbox + ')');
+}
+function _poziParseFiremapJson(txt) {
+  let j; try { j = JSON.parse(txt); } catch(e) { return []; }
+  const out = [];
+  (j?.features || []).forEach(f => {
+    const p = f?.properties || {}, c = f?.geometry?.coordinates || [];
+    const lo = Number(c[0] ?? p.longitude), la = Number(c[1] ?? p.latitude);
+    if (!isFinite(la) || !isFinite(lo)) return;
+    const ha = Number(p.size_ha);
+    const ageH = Number(p.lastupdate_hours);
+    const zadnje = Date.parse(p.datetimenow || p.last_update_boundary || p.ignition_date || '');
+    const dt = isFinite(zadnje) ? new Date(zadnje).toISOString() : new Date().toISOString();
+    out.push({ la, lo, dt, sat:'Firemap.live', conf:'high', frp:NaN, noc:false, rez:375,
+      areaHa:isFinite(ha) && ha > 0 ? ha : null, ageH:isFinite(ageH) ? ageH : null, fireId:String(p.fire_id_source || f.id || ''),
+      fireStatus:String(p.fire_status || '') });
   });
   return out;
 }
@@ -4781,12 +4810,19 @@ async function _poziDohvatiArhive(okvir) {
     proms.push(_poziDohvatiJedan('Global Forest Watch', _poziGfwUrl(okvir, ref), 20000,
       { headers:{ 'x-api-key': gfwKljuc }, parser:_poziParseGfwJson, provjera:/"data"\s*:/ }));
   }
+  // Firemap.live FireDB dodaje status i procijenjeni obuhvat aktivnog požara.
+  // Ne ruši glavni prikaz ako njihov server privremeno nije dostupan.
+  proms.push(_poziDohvatiJedan('Firemap.live (FireDB)', _poziFiremapUrl(), 20000,
+    { parser:_poziParseFiremapJson, provjera:/"features"\s*:/ }));
   const rez = await Promise.all(proms);
   const uspjeh = rez.filter(r => r.ok);
   const greske = rez.filter(r => !r.ok).map(r => r.naziv + ': ' + r.greska);
   if (!uspjeh.length) return { ok:false, greska: greske.join(' · ') };
+  const maxFiremapAgeH = { '24h':24, '48h':48, '7d':168 }[okvir] || 168;
   const pts = [];
-  uspjeh.forEach(u => pts.push(...u.pts));
+  uspjeh.forEach(u => pts.push(...(u.naziv.startsWith('Firemap.live')
+    ? u.pts.filter(p => !isFinite(p.ageH) || p.ageH <= maxFiremapAgeH)
+    : u.pts)));
   return { ok:true, pts, izvori: uspjeh.map(u => u.naziv), djelomicno: greske.length > 0, greske };
 }
 
@@ -4794,7 +4830,7 @@ function _poziSaveCache(pts, izvori, okvir) {
   try {
     localStorage.setItem(_POZ_CACHE_KEY, JSON.stringify({
       ts: Date.now(), izvori, okvir,
-      pts: _poziFilterZaOkvir(pts, _poziRefTacka(), okvir).slice(0, 500).map(p => ({ la:p.la, lo:p.lo, dt:p.dt, sat:p.sat, conf:p.conf, frp:p.frp, noc:p.noc, rez:p.rez }))
+      pts: _poziFilterZaOkvir(pts, _poziRefTacka(), okvir).slice(0, 500).map(p => ({ la:p.la, lo:p.lo, dt:p.dt, sat:p.sat, conf:p.conf, frp:p.frp, noc:p.noc, rez:p.rez, areaHa:p.areaHa, ageH:p.ageH, fireId:p.fireId, fireStatus:p.fireStatus }))
     }));
   } catch(e) {}
 }
@@ -4937,10 +4973,26 @@ function _poziMkStarost(ms) { const h = (Date.now() - ms) / 3600000; if (!isFini
 // NIJE mjerena granica. Svaka tačka se prikazuje zasebnim konzervativnim
 // dijelom senzorskog piksela. Udaljene tačke se ne spajaju hull poligonom,
 // jer bi se tako popunile površine koje možda uopće nisu gorjele.
-function _poziOpozBufKm(rez) {
-  const procijenjeniRadijusKm = Math.sqrt(_poziSiroviHa({ rez }) * 10000 / Math.PI) / 1000;
-  // Terenska kalibracija: projekcija je za oko 150 m prelazila opaženi rub.
-  return Math.max(0.025, procijenjeniRadijusKm - 0.150);
+function _poziOpozBufKm(podatak) {
+  const p = typeof podatak === 'object' ? podatak : { rez:podatak };
+  const poznataHa = Number(p?.areaHa);
+  // Firemapov obuhvat je već površina događaja — ekvivalentni krug je samo
+  // prikaz geometrije dok ne postoji službeni poligon granice.
+  if (isFinite(poznataHa) && poznataHa > 0) return Math.max(0.02, Math.sqrt(poznataHa * 10000 / Math.PI) / 1000);
+  const rez = Number(p?.rez) || 375;
+  const frp = Number(p?.frp);
+  const conf = String(p?.conf || '').trim().toLowerCase();
+  const confN = conf === '' ? NaN : Number(conf);
+  const pouz = conf === 'h' || conf === 'high' || confN >= 80 ? 3
+    : (conf === 'l' || conf === 'low' || (isFinite(confN) && confN < 50) ? 1 : 2);
+  // Pikselska rezolucija je područje pretrage satelita, ne obuhvat požara.
+  // Zato MODIS 1 km više nikad ne znači automatski krug od 350–400 m.
+  const osnovaM = rez >= 900 ? 52 : 30;
+  const jacina = isFinite(frp)
+    ? Math.min(1.7, 0.55 + Math.log1p(Math.max(0, frp)) / Math.log(41))
+    : (pouz >= 3 ? 0.95 : pouz === 2 ? 0.75 : 0.55);
+  const maxM = rez >= 900 ? 100 : 70;
+  return Math.max(0.02, Math.min(maxM, osnovaM * jacina) / 1000);
 }
 function _poziOpozGrupisiPoStarosti(pts) {
   const bands = {};
@@ -4956,7 +5008,7 @@ function _poziOpozGeom(pts) {
   if (!pts || !pts.length || typeof turf === 'undefined') return null;
   try {
     const krugovi = pts.map(p => turf.buffer(
-      turf.point([p.lo, p.la]), _poziOpozBufKm(p.rez), { units: 'kilometers' }
+      turf.point([p.lo, p.la]), _poziOpozBufKm(p), { units: 'kilometers' }
     ));
     let u = krugovi[0];
     for (let i = 1; i < krugovi.length; i++) {

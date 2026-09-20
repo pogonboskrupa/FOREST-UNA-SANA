@@ -174,7 +174,7 @@ t('_poziPovrsinaGrupe dedupira detekcije iz ISTOG piksela (više satelita/prelet
     { la: 44.8000, lo: 16.0000, rez: 375 },
     { la: 44.80013, lo: 16.00013, rez: 375 }
   ] };
-  const jednaViirs = Math.PI * 25 * 25 / 10000;
+  const jednaViirs = Math.PI * 22.5 * 22.5 / 10000;
   assert.ok(Math.abs(_poziPovrsinaGrupe(isti) - jednaViirs) < 0.001, 'blisko = isti piksel, ne smije se duplo brojati');
   // Dvije detekcije daleko razmaknute (različiti pikseli) → 2 piksela.
   const razlicito = { pts: [
@@ -191,7 +191,7 @@ t('_poziPovrsinaJedinstvena ne sabira isti piksel dvaput kroz više požarnih gr
   const fn = new Function(src)();
   const p = { la:44.8000, lo:16.0000, rez:375 };
   const skoroIsti = { la:44.80005, lo:16.00005, rez:375 };
-  assert.ok(Math.abs(fn([{ pts:[p] }, { pts:[skoroIsti] }]) - Math.PI * 25 * 25 / 10000) < 0.001);
+  assert.ok(Math.abs(fn([{ pts:[p] }, { pts:[skoroIsti] }]) - Math.PI * 22.5 * 22.5 / 10000) < 0.001);
 });
 
 t('_poziPovrsTxt formatira hektare (decimala ispod 100, zaokruženo iznad)', () => {
@@ -238,10 +238,10 @@ t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabi
   assert.strictEqual(mjeseci.length, 2);
   assert.strictEqual(mjeseci[0].mjesec, 2); // mart = index 2
   assert.strictEqual(mjeseci[0].broj, 2);
-  assert.ok(Math.abs(mjeseci[0].ha - 2 * Math.PI * 25 * 25 / 10000) < 0.001);
+  assert.ok(Math.abs(mjeseci[0].ha - 2 * Math.PI * 22.5 * 22.5 / 10000) < 0.001);
   assert.strictEqual(mjeseci[1].mjesec, 6); // juli = index 6
   assert.strictEqual(mjeseci[1].broj, 1);
-  assert.ok(mjeseci[1].ha > 10 && mjeseci[1].ha < 11);
+  assert.ok(mjeseci[1].ha > 0.45 && mjeseci[1].ha < 0.5);
 });
 
 t('_poziSimEligible: samo veći požari praćeni 3 uzastopna dana', () => {
@@ -303,13 +303,15 @@ t('_poziOpozGrupisiPoStarosti raspoređuje tačke po ISTIM bandovima kao markeri
   assert.strictEqual(bands.d3, undefined);
 });
 
-t('_poziOpozBufKm smanjuje projekciju za 150m i zadržava mali minimum', () => {
+t('_poziOpozBufKm koristi jačinu i rezoluciju bez automatskog pojasa od 400m', () => {
   const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
   const _poziOpozBufKm = new Function(src)();
   const viirs = _poziOpozBufKm(375), modis = _poziOpozBufKm(1000);
   assert.ok(modis > viirs);
-  assert.strictEqual(viirs, 0.025, 'VIIRS treba ostati na minimalnom radijusu od 25m');
-  assert.ok(modis > 0.17 && modis < 0.20, 'MODIS korigovani poluprečnik van očekivanog opsega: ' + modis);
+  assert.ok(viirs >= 0.02 && viirs <= 0.07, 'VIIRS radijus mora biti mali: ' + viirs);
+  assert.ok(modis >= 0.02 && modis <= 0.10, 'MODIS ne smije automatski dati 350–400m pojas: ' + modis);
+  const izFiremapa = _poziOpozBufKm({ rez:375, areaHa:1 });
+  assert.ok(izFiremapa > 0.05 && izFiremapa < 0.06, '1 ha iz Firemapa mora dati približno 56m radijus');
 });
 
 t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {
@@ -459,6 +461,14 @@ t('crveni EFFIS raster je isključen po defaultu, lokalna ploha ostaje oker', ()
   assert.ok(HTML.includes('_poziEffisState.detekcije = false'));
   assert.ok(!HTML.includes("hasOwnProperty.call(_poziEffisState, 'detekcije')"));
   assert.ok(HTML.includes("const _POZ_OPOZ_BOJE = { h6: '#f6c667', h24: '#e6aa42', d3: '#c98527', st: '#95611d' }"));
+});
+
+t('Firemap.live je dopunski izvor sa obuhvatom size_ha', () => {
+  assert.ok(HTML.includes('function _poziFiremapUrl()'));
+  assert.ok(HTML.includes('FireDB%3Amodis_ba_pt_7day'));
+  assert.ok(HTML.includes('function _poziParseFiremapJson(txt)'));
+  assert.ok(HTML.includes('areaHa:isFinite(ha) && ha > 0 ? ha : null'));
+  assert.ok(HTML.includes("'Firemap.live (FireDB)'"));
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
