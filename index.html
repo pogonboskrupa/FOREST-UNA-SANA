@@ -1133,7 +1133,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.2.9';
+const APP_VER = 'v1.3.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -3510,10 +3510,9 @@ _kmlRestore();
 // DNA, obrnuto od Leaflet-ovog XYZ odozgo — konverzija u createTile ispod
 // je OBAVEZNA, inače je karta vertikalno izvrnuta).
 //
-// Sirovi fajl (može biti stotine MB) se čuva CIJEL u IndexedDB — nema OPFS
-// streaming (v1, jednostavnije); ako fajl preveliki bude usporavao na
-// stvarnom terenskom uređaju, sljedeći korak je OPFS bez promjene javnog
-// API-ja ovih funkcija.
+// U APK-u se novi fajl jednom kopira u privatno Android spremište i SQLite ga
+// poslije otvara direktno: startup ne kopira cijelu bazu u JS/WASM memoriju.
+// IndexedDB/sql.js ostaje kompatibilni put za web i ranije uvezene karte.
 //
 // Crash-safe auto-load: SVAKI pokušaj auto-učitavanja pri pokretanju upiše
 // failCount++ u IndexedDB PRIJE nego što stvarno počne (ne poslije) — ako
@@ -3567,6 +3566,55 @@ function _sqlmapThumb(db, meta) {
     const mime = (meta.format || 'png').toLowerCase().includes('jpg') ? 'image/jpeg' : 'image/png';
     return new Promise(resolve => { const fr = new FileReader(); fr.onload = () => resolve(fr.result || _SQL_THUMB); fr.onerror = () => resolve(_SQL_THUMB); fr.readAsDataURL(new Blob([bytes], { type:mime })); });
   } catch(e) { return Promise.resolve(_SQL_THUMB); }
+}
+
+function _nativeSqlmapAvailable() {
+  return typeof AndroidMbtiles !== 'undefined' && AndroidMbtiles && typeof AndroidMbtiles.listMaps === 'function';
+}
+function _nativeSqlmapRecords() {
+  if (!_nativeSqlmapAvailable()) return [];
+  try {
+    const rows = JSON.parse(AndroidMbtiles.listMaps() || '[]');
+    return Array.isArray(rows) ? rows : [];
+  } catch(e) { return []; }
+}
+function _nativeSqlmapAdd(info) {
+  if (!info?.id || !info?.name) return null;
+  const existing = _sqlLayers.find(x => x.nativeId === info.id);
+  if (existing) return existing;
+  const meta = { bounds: info.bounds || '' };
+  const bounds = _sqlParseBounds(meta);
+  const layer = L.tileLayer('https://appassets.androidplatform.net/mbtiles/' + encodeURIComponent(info.id) + '/{z}/{x}/{y}', {
+    pane:'offlineBasePane', minZoom:Number(info.minzoom)||0, maxZoom:Number(info.maxzoom)||19,
+    maxNativeZoom:Number(info.maxzoom)||19, tileSize:256, updateWhenIdle:false, keepBuffer:3
+  });
+  const active = _sqlmapActiveName() === info.name;
+  const rec = { id:'native_' + info.id, nativeId:info.id, native:true, name:info.name,
+    db:null, layer, bounds, thumb:_SQL_THUMB, active, vis:active };
+  if (active) _sqlLayers.forEach(x => { x.active = false; });
+  _sqlLayers.push(rec);
+  if (active) layer.addTo(map);
+  return rec;
+}
+function _nativeSqlmapImported(ok, b64) {
+  let payload = '';
+  try { payload = decodeURIComponent(escape(atob(b64 || ''))); } catch(e) {}
+  if (!ok) {
+    _baseLoadStatus('');
+    showToast('⚠ Karta nije uvezena' + (payload ? ': ' + payload : ''));
+    return;
+  }
+  try {
+    const info = JSON.parse(payload);
+    const rec = _nativeSqlmapAdd(info);
+    if (!rec) throw new Error('Neispravni podaci karte');
+    _sqlmapSetActiveName(rec.name);
+    _sqlmapSelect(rec.id, false);
+    if (rec.bounds) map.fitBounds(rec.bounds, { padding:[20,20] });
+    _baseLoadStatus('');
+    showToast('✅ Karta spremljena za instantno otvaranje: ' + rec.name);
+    _sqlmapRegRender();
+  } catch(e) { showToast('⚠ Karta nije otvorena: ' + e.message); }
 }
 
 function _sqlEnsureInit() {
@@ -3740,13 +3788,24 @@ async function _sqlmapRestoreOne(rec) {
   }
 }
 async function _sqlmapRestoreAll() {
+  const choice = _baseChoiceRead();
+  const nativeRecords = _nativeSqlmapRecords();
+  nativeRecords.forEach(_nativeSqlmapAdd);
+  if (choice.type === 'offline') {
+    const nativeTarget = _sqlLayers.find(r => r.native && r.name === choice.name);
+    if (nativeTarget) {
+      _sqlmapSelect(nativeTarget.id, false);
+      _baseLoadStatus('');
+      _sqlmapRegRender();
+      return;
+    }
+  }
   let records;
   try { records = await _sqlIdbGetAll(); } catch(e) {
     _baseLoadStatus('');
     if (_baseChoiceRead().type === 'offline') _sqlmapFallbackOnline('Offline spremište nije dostupno');
     return;
   }
-  const choice = _baseChoiceRead();
   if (choice.type === 'offline') {
     const target = records.find(r => r.name === choice.name);
     if (!target) _sqlmapFallbackOnline('Posljednja offline karta više ne postoji');
@@ -3828,9 +3887,11 @@ async function _sqlmapDelete(id) {
   const r = _sqlLayers.find(x => x.id === id);
   if (!r) return;
   try { map.removeLayer(r.layer); } catch(e) {}
-  try { r.db.close(); } catch(e) {}
+  try { if (r.db) r.db.close(); } catch(e) {}
   _sqlLayers = _sqlLayers.filter(x => x.id !== id);
-  await _sqlIdbDelete(r.name);
+  if (r.native && _nativeSqlmapAvailable() && typeof AndroidMbtiles.deleteMap === 'function') {
+    try { AndroidMbtiles.deleteMap(r.nativeId); } catch(e) {}
+  } else await _sqlIdbDelete(r.name);
   if (r.active) {
     const next = _sqlLayers[0];
     if (next) _sqlmapSelect(next.id, false);

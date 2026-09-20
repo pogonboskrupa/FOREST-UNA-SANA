@@ -43,6 +43,9 @@ import androidx.webkit.WebViewAssetLoader;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.provider.OpenableColumns;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -52,6 +55,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
 
@@ -72,6 +83,8 @@ public class MainActivity extends Activity {
     private BroadcastReceiver recActionReceiver;
     private volatile File pendingUpdateApk;
     private volatile boolean updateInProgress = false;
+    private boolean pendingOfflineMapImport = false;
+    private final Map<String, SQLiteDatabase> mbtilesDatabases = new ConcurrentHashMap<>();
 
     private static final int REQ_FILE = 1;
     private static final int REQ_PERMS = 2;
@@ -166,11 +179,14 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new NetBridge(), "AndroidNet");
         webView.addJavascriptInterface(new AppNotifBridge(), "AndroidNotif");
         webView.addJavascriptInterface(new UpdateBridge(), "AndroidUpdate");
+        webView.addJavascriptInterface(new MbtilesBridge(), "AndroidMbtiles");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view,
                     WebResourceRequest request) {
+                WebResourceResponse tile = interceptMbtilesTile(request.getUrl());
+                if (tile != null) return tile;
                 return assetLoader.shouldInterceptRequest(request.getUrl());
             }
 
@@ -245,7 +261,17 @@ public class MainActivity extends Activity {
                     fileCallback.onReceiveValue(null);
                 }
                 fileCallback = filePathCallback;
-                Intent intent = fileChooserParams.createIntent();
+                pendingOfflineMapImport = isOfflineMapChooser(fileChooserParams);
+                Intent intent;
+                if (pendingOfflineMapImport) {
+                    intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                } else {
+                    intent = fileChooserParams.createIntent();
+                }
                 try {
                     startActivityForResult(intent, REQ_FILE);
                 } catch (Exception e) {
@@ -284,6 +310,142 @@ public class MainActivity extends Activity {
         });
 
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+    }
+
+    private boolean isOfflineMapChooser(WebChromeClient.FileChooserParams params) {
+        String[] types = params.getAcceptTypes();
+        if (types == null) return false;
+        for (String type : types) {
+            String s = type == null ? "" : type.toLowerCase();
+            if (s.contains("mbtiles") || s.contains("sqlite") || s.contains("sqlmap")
+                    || s.contains(".db")) return true;
+        }
+        return false;
+    }
+
+    private File mbtilesDir() {
+        File dir = new File(getFilesDir(), "offline_maps");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private File mbtilesFile(String id) {
+        return new File(mbtilesDir(), id + ".sqlite");
+    }
+
+    private String displayName(Uri uri) {
+        String name = "offline.mbtiles";
+        try (Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int col = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (col >= 0) name = c.getString(col);
+            }
+        } catch (Exception ignored) {}
+        return name == null || name.trim().isEmpty() ? "offline.mbtiles" : name;
+    }
+
+    private JSONObject readMbtilesInfo(String id, String name) throws Exception {
+        SQLiteDatabase db = openMbtiles(id);
+        JSONObject meta = new JSONObject();
+        try (Cursor c = db.rawQuery("SELECT name,value FROM metadata", null)) {
+            while (c.moveToNext()) meta.put(c.getString(0), c.getString(1));
+        } catch (Exception ignored) {}
+        JSONObject out = new JSONObject();
+        out.put("id", id);
+        out.put("name", name);
+        out.put("minzoom", meta.optInt("minzoom", 0));
+        out.put("maxzoom", meta.optInt("maxzoom", 19));
+        out.put("format", meta.optString("format", "png"));
+        out.put("bounds", meta.optString("bounds", ""));
+        out.put("native", true);
+        return out;
+    }
+
+    private SQLiteDatabase openMbtiles(String id) throws Exception {
+        SQLiteDatabase cached = mbtilesDatabases.get(id);
+        if (cached != null && cached.isOpen()) return cached;
+        File file = mbtilesFile(id);
+        if (!file.isFile()) throw new IOException("Karta nije pronađena");
+        SQLiteDatabase opened = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null,
+                SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
+        mbtilesDatabases.put(id, opened);
+        return opened;
+    }
+
+    private WebResourceResponse interceptMbtilesTile(Uri uri) {
+        try {
+            if (!"appassets.androidplatform.net".equals(uri.getHost())) return null;
+            String path = uri.getPath();
+            if (path == null || !path.startsWith("/mbtiles/")) return null;
+            String[] p = path.substring("/mbtiles/".length()).split("/");
+            if (p.length != 4) return new WebResourceResponse("image/png", null,
+                    new java.io.ByteArrayInputStream(new byte[0]));
+            String id = URLDecoder.decode(p[0], StandardCharsets.UTF_8.name());
+            int z = Integer.parseInt(p[1]), x = Integer.parseInt(p[2]), xyzY = Integer.parseInt(p[3]);
+            int tmsY = (int) (Math.pow(2, z) - 1 - xyzY);
+            byte[] bytes = null;
+            try (Cursor c = openMbtiles(id).rawQuery(
+                    "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
+                    new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(tmsY)})) {
+                if (c.moveToFirst()) bytes = c.getBlob(0);
+            }
+            if (bytes == null) bytes = new byte[0];
+            return new WebResourceResponse("image/*", null,
+                    new java.io.ByteArrayInputStream(bytes));
+        } catch (Exception e) {
+            return new WebResourceResponse("image/png", null,
+                    new java.io.ByteArrayInputStream(new byte[0]));
+        }
+    }
+
+    class MbtilesBridge {
+        @JavascriptInterface
+        public String listMaps() {
+            JSONArray out = new JSONArray();
+            try {
+                android.content.SharedPreferences prefs = getSharedPreferences("native_mbtiles", MODE_PRIVATE);
+                for (Map.Entry<String, ?> e : prefs.getAll().entrySet()) {
+                    String id = e.getKey(), name = String.valueOf(e.getValue());
+                    if (mbtilesFile(id).isFile()) out.put(readMbtilesInfo(id, name));
+                }
+            } catch (Exception ignored) {}
+            return out.toString();
+        }
+
+        @JavascriptInterface
+        public boolean deleteMap(String id) {
+            try {
+                SQLiteDatabase db = mbtilesDatabases.remove(id);
+                if (db != null) db.close();
+                getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().remove(id).apply();
+                return !mbtilesFile(id).exists() || mbtilesFile(id).delete();
+            } catch (Exception e) { return false; }
+        }
+    }
+
+    private void importOfflineMap(Uri uri) {
+        final String name = displayName(uri);
+        final String id = UUID.randomUUID().toString();
+        new Thread(() -> {
+            File target = mbtilesFile(id);
+            try (InputStream in = getContentResolver().openInputStream(uri);
+                 OutputStream out = new FileOutputStream(target)) {
+                if (in == null) throw new IOException("Fajl nije dostupan");
+                byte[] buf = new byte[1024 * 1024];
+                int n;
+                while ((n = in.read(buf)) >= 0) out.write(buf, 0, n);
+                JSONObject info = readMbtilesInfo(id, name);
+                getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().putString(id, name).apply();
+                String encoded = Base64.encodeToString(info.toString().getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+                runOnUiThread(() -> webView.evaluateJavascript(
+                        "_nativeSqlmapImported(true,'" + encoded + "')", null));
+            } catch (Exception e) {
+                if (target.exists()) target.delete();
+                String msg = Base64.encodeToString(String.valueOf(e.getMessage()).getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+                runOnUiThread(() -> webView.evaluateJavascript(
+                        "_nativeSqlmapImported(false,'" + msg + "')", null));
+            }
+        }, "mbtiles-import").start();
     }
 
     class DownloadBridge {
@@ -997,8 +1159,15 @@ public class MainActivity extends Activity {
                     results = new Uri[]{Uri.parse(data.getDataString())};
                 }
             }
-            fileCallback.onReceiveValue(results);
+            if (pendingOfflineMapImport && results != null && results.length > 0) {
+                fileCallback.onReceiveValue(null);
+                webView.evaluateJavascript("_baseLoadStatus('⏳ Kopiram offline kartu u brzo spremište…')", null);
+                importOfflineMap(results[0]);
+            } else {
+                fileCallback.onReceiveValue(results);
+            }
             fileCallback = null;
+            pendingOfflineMapImport = false;
         }
     }
 

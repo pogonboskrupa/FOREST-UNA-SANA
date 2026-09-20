@@ -96,4 +96,14 @@ t('ručni izbor lijeno otvara spremljenu kartu i odmah je aktivira', () => {
   assert.ok(HTML.includes('Ostale velike baze ostaju u IndexedDB'));
 });
 
+t('APK koristi nativni MBTiles put bez kopiranja cijele baze u JavaScript RAM', () => {
+  assert.ok(HTML.includes("typeof AndroidMbtiles !== 'undefined'"));
+  assert.ok(HTML.includes('AndroidMbtiles.listMaps()'));
+  assert.ok(HTML.includes("appassets.androidplatform.net/mbtiles/"));
+  const restore = extractFn('_sqlmapRestoreAll');
+  assert.ok(restore.includes('const nativeRecords = _nativeSqlmapRecords()'));
+  assert.ok(restore.includes('if (nativeTarget)'));
+  assert.ok(restore.indexOf('if (nativeTarget)') < restore.indexOf('await _sqlIdbGetAll()'));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — učitaj karta');
