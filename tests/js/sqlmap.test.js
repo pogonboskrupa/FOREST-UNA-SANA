@@ -58,4 +58,42 @@ t('brzi izbor karata uključuje aktivnu SQLite/MBTiles kartu', () => {
   assert.ok(HTML.includes("btn.textContent = '🗂 ' + r.name"));
 });
 
+t('jedinstveni izbor bazne karte migrira stare online/offline postavke', () => {
+  const makeStorage = initial => {
+    const data = { ...initial };
+    return { data, getItem:k => Object.prototype.hasOwnProperty.call(data,k) ? data[k] : null,
+      setItem:(k,v) => { data[k]=String(v); }, removeItem:k => { delete data[k]; } };
+  };
+  const src = "const _BASE_CHOICE_KEY='usf_base_choice_v1';\n" + extractFn('_baseChoiceRead') + '\n' + extractFn('_baseChoiceWrite') + '\nreturn {_baseChoiceRead,_baseChoiceWrite};';
+  let storage = makeStorage({ usf_base_layer:'🌐 Protomaps' });
+  let api = new Function('localStorage', src)(storage);
+  assert.deepStrictEqual(api._baseChoiceRead(), { type:'online', name:'🌐 Protomaps', lastOnline:'🌐 Protomaps' });
+  storage = makeStorage({ usf_base_layer:'🌐 Protomaps', usf_sqlmap_active:'teren.mbtiles' });
+  api = new Function('localStorage', src)(storage);
+  assert.deepStrictEqual(api._baseChoiceRead(), { type:'offline', name:'teren.mbtiles', lastOnline:'🌐 Protomaps' });
+});
+
+t('offline izbor čuva posljednju online podlogu za siguran fallback', () => {
+  const data = { usf_base_choice_v1:JSON.stringify({type:'online',name:'🛰 Satelit',lastOnline:'🛰 Satelit'}) };
+  const storage = { getItem:k => data[k] ?? null, setItem:(k,v) => { data[k]=String(v); }, removeItem:k => { delete data[k]; } };
+  const src = "const _BASE_CHOICE_KEY='usf_base_choice_v1';\n" + extractFn('_baseChoiceRead') + '\n' + extractFn('_baseChoiceWrite') + '\nreturn {_baseChoiceRead,_baseChoiceWrite};';
+  const api = new Function('localStorage', src)(storage);
+  assert.deepStrictEqual(api._baseChoiceWrite('offline','teren.mbtiles'), {type:'offline',name:'teren.mbtiles',lastOnline:'🛰 Satelit'});
+});
+
+t('startup vraća samo izabranu offline kartu i ne bira prvu nasumično', () => {
+  const restore = extractFn('_sqlmapRestoreAll');
+  assert.ok(restore.includes("records.find(r => r.name === choice.name)"));
+  assert.ok(!restore.includes('|| _sqlLayers[0]'));
+  assert.ok(!restore.includes('for (const rec of records)'));
+  assert.ok(HTML.includes("_baseStartupChoice.type === 'offline'"));
+  assert.ok(HTML.includes("_baseLoadStatus('⏳ Učitavam ' + target.name"));
+});
+
+t('ručni izbor lijeno otvara spremljenu kartu i odmah je aktivira', () => {
+  const restore = extractFn('_sqlmapRestoreManual');
+  assert.ok(restore.includes('_sqlmapSelect(restored.id, true)'));
+  assert.ok(HTML.includes('Ostale velike baze ostaju u IndexedDB'));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — učitaj karta');

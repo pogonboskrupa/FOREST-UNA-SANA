@@ -100,5 +100,6 @@ if (typeof window !== 'undefined') {
   const key=localStorage.getItem('usf_protomaps_key')||'';
   document.getElementById('protomaps-key').value=key;setup(key);
   window._terrainProtomapsSave=()=>{const k=document.getElementById('protomaps-key').value.trim();if(!k){showToast('Unesi Protomaps API ključ');return;}localStorage.setItem('usf_protomaps_key',k);setup(k);if(_currentBaseName===protoName)_currentBaseName='';_selectBaseLayer(protoName);};
-  if(key && localStorage.getItem('usf_base_layer')===protoName)_selectBaseLayer(protoName);
+  const startupChoice=typeof _baseChoiceRead==='function'?_baseChoiceRead():null;
+  if(key && startupChoice?.type==='online' && startupChoice.name===protoName)_selectBaseLayer(protoName);
 }
