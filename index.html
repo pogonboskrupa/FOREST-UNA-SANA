@@ -1134,7 +1134,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.3.8';
+const APP_VER = 'v1.3.9';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4176,11 +4176,11 @@ try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}')
 // prebojiti bez gubitka podataka. Zato je potpuno isključen po defaultu:
 // oker na karti uvijek znači našu lokalnu procjenu opožarene površine.
 try {
-  if (localStorage.getItem('usf_poz_effis_oker_v5') !== '1') {
+  if (localStorage.getItem('usf_poz_effis_oker_v6') !== '1') {
     _poziEffisState.opozareno = false;
     _poziEffisState.detekcije = false;
     _poziEffisState.fwi = false;
-    localStorage.setItem('usf_poz_effis_oker_v5', '1');
+    localStorage.setItem('usf_poz_effis_oker_v6', '1');
     localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
   }
 } catch(e) {}
@@ -4982,12 +4982,19 @@ function _poziMkStarost(ms) { const h = (Date.now() - ms) / 3600000; if (!isFini
 // NIJE mjerena granica. Svaka tačka se prikazuje zasebnim konzervativnim
 // dijelom senzorskog piksela. Udaljene tačke se ne spajaju hull poligonom,
 // jer bi se tako popunile površine koje možda uopće nisu gorjele.
+// Kod Firemap događaja poznat je samo obuhvat (ha), ne tačna granica.
+  // Zato ga prikazujemo konzervativnije: rub procjene uvlačimo za 150 m.
+  // Male pojedinačne satelitske detekcije ostaju vidljive s najmanje 20 m.
+const _POZ_OPOZ_UNUTRASNJI_ODMAK_M = 150;
 function _poziOpozBufKm(podatak) {
   const p = typeof podatak === 'object' ? podatak : { rez:podatak };
   const poznataHa = Number(p?.areaHa);
   // Firemapov obuhvat je već površina događaja — ekvivalentni krug je samo
   // prikaz geometrije dok ne postoji službeni poligon granice.
-  if (isFinite(poznataHa) && poznataHa > 0) return Math.max(0.02, Math.sqrt(poznataHa * 10000 / Math.PI) / 1000);
+  if (isFinite(poznataHa) && poznataHa > 0) {
+    const rKm = Math.sqrt(poznataHa * 10000 / Math.PI) / 1000;
+    return Math.max(0.02, rKm - _POZ_OPOZ_UNUTRASNJI_ODMAK_M / 1000);
+  }
   const rez = Number(p?.rez) || 375;
   const frp = Number(p?.frp);
   const conf = String(p?.conf || '').trim().toLowerCase();
