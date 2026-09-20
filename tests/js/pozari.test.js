@@ -322,7 +322,9 @@ t('_poziOpozBufKm koristi jačinu i rezoluciju bez automatskog pojasa od 400m', 
   assert.ok(viirs >= 0.02 && viirs <= 0.07, 'VIIRS radijus mora biti mali: ' + viirs);
   assert.ok(modis >= 0.02 && modis <= 0.10, 'MODIS ne smije automatski dati 350–400m pojas: ' + modis);
   const izFiremapa = _poziOpozBufKm({ rez:375, areaHa:1 });
-  assert.ok(izFiremapa > 0.05 && izFiremapa < 0.06, '1 ha iz Firemapa mora dati približno 56m radijus');
+  assert.equal(izFiremapa, 0.02, 'mali Firemap obuhvat ostaje vidljiv na minimalnih 20m');
+  const siriFiremap = _poziOpozBufKm({ rez:375, areaHa:100 });
+  assert.ok(siriFiremap > 0.41 && siriFiremap < 0.42, 'poznati Firemap obuhvat mora imati unutrašnji odmak od 150m');
 });
 
 t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {
