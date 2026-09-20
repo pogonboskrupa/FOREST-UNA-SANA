@@ -534,10 +534,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <!-- Legenda projekcije opožarene površine (Požari) — vidi _poziOpozAzuriraj -->
 <div id="poz-opoz-legend" style="display:none;position:absolute;right:10px;top:64px;z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:220px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">OPOŽARENO (PROCJENA)</div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#ffedd5;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">≤ 6 h (najnovije viđeno)</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#fdba74;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">6–24 h</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c2410c;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">1–3 dana</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#292524;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">starije od 3 dana</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#fff3c4;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">≤ 6 h (najnovije viđeno)</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#f2d184;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">6–24 h</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#d6a84b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">1–3 dana</span></div>
+  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#9b742c;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">starije od 3 dana</span></div>
 </div>
 
 <!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve -->
@@ -776,7 +776,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
     <div id="poz-podtab-pregled">
     <div class="loc-row" style="background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
-      <span>Prikaz na karti</span>
+      <span>Prikaz požara na karti</span>
       <div class="loc-switch" id="poz-on-switch" onclick="_poziToggle(!_poziOn)"></div>
     </div>
     <div class="poz-timeframes" style="display:flex;gap:6px;margin-bottom:10px;">
@@ -1051,7 +1051,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.1.9';
+const APP_VER = 'v1.2.2';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -1287,10 +1287,15 @@ map.on('moveend', () => {
 // Paneovi za buduće slojeve (Požari/Mjerenja/Trag dijele istu kartu — vidi
 // napomenu u planu o proximity fallback klik-testu koji MORA postojati od
 // prvog dana kad se ti slojevi dodaju, ne naknadno).
+map.createPane('offlineBasePane'); map.getPane('offlineBasePane').style.zIndex = 210;
 map.createPane('tragMsrLines'); map.getPane('tragMsrLines').style.zIndex = 410;
-map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 415;
-map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 420;
-map.createPane('pozariRasterPane'); map.getPane('pozariRasterPane').style.zIndex = 405;
+map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 330;
+map.createPane('pozariRasterPane'); map.getPane('pozariRasterPane').style.zIndex = 430;
+map.createPane('pozariProjectionPane'); map.getPane('pozariProjectionPane').style.zIndex = 440;
+map.getPane('pozariProjectionPane').style.pointerEvents = 'none';
+map.createPane('pozariHeatPane'); map.getPane('pozariHeatPane').style.zIndex = 445;
+map.getPane('pozariHeatPane').style.pointerEvents = 'none';
+map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 450;
 map.getPane('pozariRasterPane').style.pointerEvents = 'none';
 map.createPane('sjecaPane');    map.getPane('sjecaPane').style.zIndex    = 430;
 
@@ -1305,7 +1310,9 @@ _defaultLayer.addTo(map);
 function _layerIcon(name) { return name.split(' ')[0]; }
 let _currentBaseName = Object.keys(TL).find(k => TL[k] === _defaultLayer);
 function _selectBaseLayer(name) {
-  if (!TL[name] || name === _currentBaseName) return;
+  if (!TL[name]) return;
+  if (name === _currentBaseName && map.hasLayer(TL[name]) && !(typeof _sqlmapHasActive === 'function' && _sqlmapHasActive())) return;
+  if (typeof _sqlmapDeactivateForBase === 'function') _sqlmapDeactivateForBase();
   try { map.removeLayer(TL[_currentBaseName]); } catch(e) {}
   TL[name].addTo(map);
   _currentBaseName = name;
@@ -3552,6 +3559,7 @@ async function _sqlmapAddLayer(name, db, opts) {
   const bounds = _sqlParseBounds(meta);
   const layer = new _SqlTileLayer({
     db, format: meta.format || 'png',
+    pane: 'offlineBasePane',
     minZoom: parseInt(meta.minzoom, 10) || 0,
     maxZoom: parseInt(meta.maxzoom, 10) || 19,
     maxNativeZoom: parseInt(meta.maxzoom, 10) || 19,
@@ -3561,7 +3569,7 @@ async function _sqlmapAddLayer(name, db, opts) {
   const rec = { id: 'sqlmap_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name, db, layer, bounds, thumb: opts?.thumb || _SQL_THUMB, active, vis: opts?.vis !== false };
   if (active) _sqlLayers.forEach(x => { x.active = false; });
   _sqlLayers.push(rec);
-  if (rec.vis) layer.addTo(map);
+  if (rec.vis && active) layer.addTo(map);
   return rec;
 }
 
@@ -3626,9 +3634,15 @@ async function _sqlmapRestoreAll() {
 function _sqlmapSelect(id, zoom) {
   const r = _sqlLayers.find(x => x.id === id);
   if (!r) return;
-  _sqlLayers.forEach(x => { x.active = x.id === id; });
+  Object.values(TL).forEach(layer => { try { if (map.hasLayer(layer)) map.removeLayer(layer); } catch(e) {} });
+  _sqlLayers.forEach(x => {
+    x.active = x.id === id;
+    x.vis = x.id === id;
+    if (x.id !== id) { try { if (map.hasLayer(x.layer)) map.removeLayer(x.layer); } catch(e) {} }
+  });
   _sqlmapSetActiveName(r.name);
-  if (!r.vis) { r.vis = true; r.layer.addTo(map); }
+  r.vis = true;
+  if (!map.hasLayer(r.layer)) r.layer.addTo(map);
   document.querySelectorAll('#layer-switch button').forEach(b => b.classList.toggle('active', b.dataset.sqlmap === id));
   const icoBtn = document.getElementById('layer-btn'); if (icoBtn) icoBtn.textContent = '🗂';
   _sqlmapSyncLayerSwitch();
@@ -3639,19 +3653,28 @@ function _sqlmapSelect(id, zoom) {
 function _sqlmapToggle(id) {
   const r = _sqlLayers.find(x => x.id === id);
   if (!r) return;
-  r.vis = !r.vis;
-  if (r.vis) r.layer.addTo(map); else map.removeLayer(r.layer);
-  if (r.vis) _sqlmapSelect(id, false);
+  if (r.vis && r.active) {
+    r.vis = false; r.active = false; map.removeLayer(r.layer); _sqlmapSetActiveName('');
+  } else _sqlmapSelect(id, false);
   _sqlmapRegRender();
 }
 function _sqlmapZoom(id) {
   const r = _sqlLayers.find(x => x.id === id);
   if (!r || !r.bounds) { showToast('⚠ Karta nema definisane granice (metadata.bounds)'); return; }
-  _sqlmapSetActiveName(r.name);
-  _sqlLayers.forEach(x => { x.active = x.id === id; });
+  _sqlmapSelect(id, false);
   map.fitBounds(r.bounds, { padding: [20,20] });
   _sqlmapRegRender();
   switchMainTab('karta');
+}
+function _sqlmapHasActive() { return _sqlLayers.some(x => x.active && x.vis && map.hasLayer(x.layer)); }
+function _sqlmapDeactivateForBase() {
+  _sqlLayers.forEach(x => {
+    x.active = false; x.vis = false;
+    try { if (map.hasLayer(x.layer)) map.removeLayer(x.layer); } catch(e) {}
+  });
+  _sqlmapSetActiveName('');
+  _sqlmapSyncLayerSwitch();
+  _sqlmapRegRender();
 }
 async function _sqlmapDeleteConfirm(id) {
   const ok = await _dlgConfirm('Ukloniti ovu offline kartu sa uređaja? Fajl se trajno briše.', { danger: true, okLabel: 'Ukloni' });
@@ -3777,7 +3800,6 @@ const _POZ_NOTIF_KEY  = 'usf_pozari_notif';
 const _POZ_NOTIF_KM   = 'usf_pozari_notif_km';
 const _POZ_NOTIF_SEEN = 'usf_pozari_notif_seen';
 const _POZ_HEAT_KEY   = 'usf_pozari_heat';
-
 // v3.110.0 (US-SUME): suženo sa 150 na 100 km — šire od bilo koje šumarije
 // i dalje, ali bez detekcija toliko daleko da su samo šum.
 const _POZ_RADIUS_KM = 100;
@@ -3908,13 +3930,19 @@ if (!Object.prototype.hasOwnProperty.call(_poziEffisState, 'detekcije')) {
   _poziEffisState.detekcije = true;
   try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
 }
-Object.keys(_POZ_EFFIS).forEach(k => { if (_poziEffisState[k]) _POZ_EFFIS[k].addTo(map); });
 function _poziEffisOn(key) { return !!_poziEffisState[key]; }
+function _poziEffisSyncMap() {
+  Object.keys(_POZ_EFFIS).forEach(k => {
+    const treba = _poziOn && _poziEffisState[k];
+    if (treba && !map.hasLayer(_POZ_EFFIS[k])) _POZ_EFFIS[k].addTo(map);
+    if (!treba && map.hasLayer(_POZ_EFFIS[k])) map.removeLayer(_POZ_EFFIS[k]);
+  });
+}
 function _poziEffisToggle(key, on) {
   if (!_POZ_EFFIS[key]) return;
   _poziEffisState[key] = !!on;
   try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
-  if (on) _POZ_EFFIS[key].addTo(map); else map.removeLayer(_POZ_EFFIS[key]);
+  _poziEffisSyncMap();
   const swId = key === 'opozareno' ? 'poz-effis-ba-switch' : (key === 'detekcije' ? 'poz-effis-det-switch' : 'poz-effis-fwi-switch');
   const sw = document.getElementById(swId); if (sw) sw.classList.toggle('on', on);
   _poziLegendeAzuriraj();
@@ -3968,7 +3996,7 @@ function _poziLegendeAzuriraj() {
   const legEl = document.getElementById('poz-god-legend');
   if (!legEl) return;
   const imaGodina = _povGodOznaceneGodine().some(g => _povGodPodaci[g]?.evts?.length);
-  legEl.style.display = imaGodina || _poziEffisOn('opozareno') || _poziEffisOn('detekcije') ? 'block' : 'none';
+  legEl.style.display = _poziOn && (imaGodina || _poziEffisOn('opozareno') || _poziEffisOn('detekcije')) ? 'block' : 'none';
 }
 
 function _poziParseCsv(txt) {
@@ -4117,9 +4145,13 @@ function _poziPovrsTxt(ha) {
   if (!isFinite(ha) || ha <= 0) return '0 ha';
   return ha >= 100 ? Math.round(ha).toLocaleString('bs') + ' ha' : ha.toFixed(1) + ' ha';
 }
-// Ključ grupe stabilan preko dva učitavanja — zaokruženo na ~1km da malo
-// pomjeranje centroida ne izgleda kao "nov požar".
-function _poziEvtKljuc(g) { return Math.round(g.la * 100) + '_' + Math.round(g.lo * 100); }
+// Ključ grupe uključuje početni dan: ista lokacija može gorjeti ponovo nakon
+// nekoliko dana i tada mora ostati drugi požar, ne stara obavijest/grupa.
+function _poziEvtKljuc(g) {
+  const t = isFinite(g?.prvi) ? g.prvi : Date.parse(g?.dt);
+  const dan = isFinite(t) ? new Date(t).toISOString().slice(0, 10).replaceAll('-', '') : 'bezdatuma';
+  return Math.round(g.la * 100) + '_' + Math.round(g.lo * 100) + '_' + dan;
+}
 
 // ── Simulacija kretanja požara — kumulativni prikaz stvarnih satelitskih
 // detekcija dan-po-dan. Namjerno SAMO za veće/duže požare (≥3 dana praćenja)
@@ -4373,8 +4405,7 @@ async function _povGodLoadGodina(godina, tiho) {
   }
 }
 
-// Markeri na karti za SVE trenutno označene godine (nezavisno od glavnog
-// "Prikaz na karti" prekidača — ovo je zaseban pregled). Isti icon/popup
+// Markeri za označene godine poštuju glavni "Prikaz na karti" prekidač. Isti icon/popup
 // kao glavni prikaz (_poziIconGrupa/_poziGrupaPopupHtml) radi vizuelne
 // dosljednosti — namjerno preklapanje sa zadnjih 24h/48h/7d je prihvatljivo
 // (isti stvarni požar, viđen iz dva ugla).
@@ -4384,18 +4415,19 @@ function _povGodRenderSve() {
   const ref = _poziRefTacka();
   const oznacene = _povGodOznaceneGodine().filter(g => _povGodPodaci[g]?.evts?.length);
   _poziLegendeAzuriraj();
-  if (oznacene.length) {
+  if (_poziOn && oznacene.length) {
     const grp = L.layerGroup([], { pane: 'pozariPane' });
     oznacene.forEach(godina => {
       _povGodPodaci[godina].evts.forEach(g => {
         // Procijenjena opožarena površina je ispod tačaka i glavne oznake.
         // Klik na poligon jasno navodi da nije riječ o službenom premjeru.
         const boja = _povGodBoja(g, godina);
+        const bojaPlohe = godina < new Date().getUTCFullYear() ? '#b78a35' : '#e2b957';
         const geom = _poziOpozOn() ? _poziOpozGeom(g.pts || []) : null;
         if (geom) {
           try {
-            L.geoJSON(geom, { pane:'pozariPane',
-              style:{ color:boja, weight:1.7, fillColor:boja, fillOpacity:0.30 } })
+            L.geoJSON(geom, { pane:'pozariProjectionPane',
+              style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.32 } })
               .bindPopup(() => `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;"><b style="color:#fb923c;">Procijenjena opožarena površina</b><div style="font-size:18px;font-weight:800;margin:5px 0;">${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div><small style="color:#94a3b8;">Iz satelitskih piksela — nije službeno izmjerena granica.</small></div>`)
               .addTo(grp);
           } catch(e) {}
@@ -4406,9 +4438,12 @@ function _povGodRenderSve() {
             fillColor:'#fff', fillOpacity:1, opacity:1 })
             .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(grp);
         });
-        const mk = L.marker([g.la, g.lo], { icon: _poziIconGodina(g, godina), pane: 'pozariPane' });
-        mk.bindPopup(() => _poziGrupaPopupHtml(g, ref), { maxWidth: 290 });
-        mk.addTo(grp);
+        // Glavna oznaka samo za veći požar; pojedinačne detekcije su već bijele tačke.
+        if ((g.broj || 0) >= 3) {
+          const mk = L.marker([g.la, g.lo], { icon: _poziIconGodina(g, godina), pane: 'pozariPane' });
+          mk.bindPopup(() => _poziGrupaPopupHtml(g, ref), { maxWidth: 290 });
+          mk.addTo(grp);
+        }
       });
     });
     _povGodLayer = grp.addTo(map);
@@ -4662,7 +4697,7 @@ function _poziOpozGeom(pts) {
 }
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
 const _POZ_OPOZ_REDOSLIJED = ['st', 'd3', 'h24', 'h6']; // starije ispod, svježe iznad (kao legenda)
-const _POZ_OPOZ_BOJE = { h6: '#ffedd5', h24: '#fdba74', d3: '#c2410c', st: '#292524' };
+const _POZ_OPOZ_BOJE = { h6: '#fff3c4', h24: '#f2d184', d3: '#d6a84b', st: '#9b742c' };
 function _poziOpozOn() { try { const v = localStorage.getItem(_POZ_OPOZ_KEY); return v === null ? true : v === '1'; } catch(e) { return true; } }
 function _poziOpozToggle(on) {
   try { localStorage.setItem(_POZ_OPOZ_KEY, on ? '1' : '0'); } catch(e) {}
@@ -4688,7 +4723,7 @@ function _poziOpozAzuriraj() {
       const geom = _poziOpozGeom(pts);
       if (!geom) return;
       try {
-        L.geoJSON(geom, { pane: 'pozariPane',
+        L.geoJSON(geom, { pane: 'pozariProjectionPane',
           style: { color: _POZ_OPOZ_BOJE[id], weight: 1.5, fillColor: _POZ_OPOZ_BOJE[id], fillOpacity: 0.3 } }).addTo(grp);
       } catch(e) {}
     });
@@ -4856,7 +4891,7 @@ function _poziRender() {
   if (_poziOn) _poziLayer.addTo(map);
   if (_poziHeatLayer) { try { map.removeLayer(_poziHeatLayer); } catch(e) {} }
   if (_poziOn && _poziHeatOn() && (_poziPts || []).length) {
-    if (!_poziHeatLayer) _poziHeatLayer = new _PoziHeat([], { pane:'demOverlay', gradient:{ 0.3:'#fed7aa', 0.6:'#fdba74', 0.85:'#fb923c', 1:'#f97316' } });
+    if (!_poziHeatLayer) _poziHeatLayer = new _PoziHeat([], { pane:'pozariHeatPane', gradient:{ 0.3:'#fff3c4', 0.6:'#f2d184', 0.85:'#d6a84b', 1:'#9b742c' } });
     _poziHeatLayer.setLatLngs(_poziPts.map(p => [p.la, p.lo]));
     _poziHeatLayer.addTo(map);
   }
@@ -4947,20 +4982,22 @@ function _poziSimRenderControls(podaci) {
 }
 
 function _poziToggle(on) {
-  _poziOn = on;
-  try { localStorage.setItem(_POZ_ON_KEY, on ? '1' : '0'); } catch(e) {}
-  if (!on) {
-    if (_poziLayer) { try { map.removeLayer(_poziLayer); } catch(e) {} }
-    if (_poziHeatLayer) { try { map.removeLayer(_poziHeatLayer); } catch(e) {} }
-    _poziOpozAzuriraj();
-    _poziAutoSync();
+  _poziOn = !!on;
+  try { localStorage.setItem(_POZ_ON_KEY, _poziOn ? '1' : '0'); } catch(e) {}
+  _poziAutoSync();
+  _poziEffisSyncMap();
+  if (!_poziOn) {
+    [_poziLayer, _poziHeatLayer, _poziOpozLayer, _povGodLayer].forEach(layer => { try { if (layer && map.hasLayer(layer)) map.removeLayer(layer); } catch(e) {} });
+    const opozLegenda = document.getElementById('poz-opoz-legend'); if (opozLegenda) opozLegenda.style.display = 'none';
     _poziStatusSet('—');
+    _poziLegendeAzuriraj();
+    _poziRenderPanel();
     return;
   }
-  _poziAutoSync();
   if (!_poziEvts.length) _poziObnoviIzKesa();
   if (_poziLayer) _poziLayer.addTo(map);
   _poziOpozAzuriraj();
+  _povGodRenderSve();
   if (!(typeof lastP !== 'undefined' && lastP && isFinite(lastP.la))) _poziCekajGps();
   const svjeze = _poziMeta?.dohvacenoMs && Date.now() - _poziMeta.dohvacenoMs < 5 * 60 * 1000;
   if (!svjeze || !_poziEvts.length) _poziLoad(false);
@@ -5052,10 +5089,25 @@ function _poziHistPostaviSort(s) {
   try { localStorage.setItem(_POZ_HIST_SORT_KEY, s); } catch(e) {}
   _poziRenderPanel();
 }
+function _poziVrijemeGranice(g) {
+  const vremena = (g?.pts || []).map(p => Date.parse(p?.dt)).filter(isFinite);
+  const prvi = isFinite(g?.prvi) ? g.prvi : (vremena.length ? Math.min(...vremena) : Date.parse(g?.dt));
+  const zadnji = isFinite(g?.zadnji) ? g.zadnji : (vremena.length ? Math.max(...vremena) : Date.parse(g?.dt));
+  return { prvi, zadnji };
+}
+// Dva izvora mogu opisivati isti požar, ali ih ne smijemo spojiti samo zato
+// što su prostorno blizu: moraju se dodirivati u vremenu (isti/naredni dan).
+function _poziIstiDogadjaj(a, b) {
+  if (dst(a.la, a.lo, b.la, b.lo) > _POZ_GRUPA_M) return false;
+  const A = _poziVrijemeGranice(a), B = _poziVrijemeGranice(b);
+  if (!isFinite(A.prvi) || !isFinite(A.zadnji) || !isFinite(B.prvi) || !isFinite(B.zadnji)) return false;
+  const dan = 86400000;
+  return A.prvi <= B.zadnji + dan && B.prvi <= A.zadnji + dan;
+}
 function _poziHistSpojiIzvore(liste) {
   const spojeno = [];
   (liste || []).forEach(lista => (lista || []).forEach(g => {
-    const post = spojeno.find(s => dst(s.la, s.lo, g.la, g.lo) <= _POZ_GRUPA_M);
+    const post = spojeno.find(s => _poziIstiDogadjaj(s, g));
     if (!post) { spojeno.push({ ...g }); return; }
     if ((g.broj || 0) > (post.broj || 0)) Object.assign(post, g);
   }));
@@ -5145,7 +5197,7 @@ async function openPozariSection() {
   // Godišnji GFW prikaz ne smije krenuti prije dolaska zajedničkog API ključa;
   // bez ovoga otvaranje panela odmah poslije pokretanja daje lažno praznu godinu.
   await _poziKljucUcitaj();
-  _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1';
+  try { _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1'; } catch(e) {}
   if (_poziOn && !_poziEvts.length) _poziObnoviIzKesa();
   const fEl = document.getElementById('poz-key-firms'), gEl = document.getElementById('poz-key-gfw');
   if (fEl) fEl.value = _poziKljucevi.firms || '';
@@ -5157,6 +5209,7 @@ async function openPozariSection() {
   const detSw = document.getElementById('poz-effis-det-switch'); if (detSw) detSw.classList.toggle('on', _poziEffisOn('detekcije'));
   const fwiSw = document.getElementById('poz-effis-fwi-switch'); if (fwiSw) fwiSw.classList.toggle('on', _poziEffisOn('fwi'));
   _poziLegendeAzuriraj();
+  _poziEffisSyncMap();
   const trenutnaGodina = new Date().getUTCFullYear();
   const godineZaUcitati = [...new Set([..._povGodOznaceneGodine(), trenutnaGodina])];
   godineZaUcitati.forEach(godina => {
@@ -5195,10 +5248,14 @@ async function _poziAdminSacuvajKljuceve() {
   }
 }
 
-// Vrati sa keširanim stanjem prekidača — sloj se NE pokreće automatski
-// (opt-in, korisnička odluka), samo pripremi UI da odmah pokaže tačno stanje.
 try { _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1'; } catch(e) {}
 _poziKljucUcitaj();
+setTimeout(() => {
+  if (_poziOn) _poziObnoviIzKesa();
+  _poziAutoSync();
+  _poziEffisSyncMap();
+  if (_poziOn) _poziLoad(true);
+}, 0);
 
 // =====================================================================
 // SJEČA I VJETROIZVALE — GFW integrisani alarmi (DIST-ALERT). Ovo NISU

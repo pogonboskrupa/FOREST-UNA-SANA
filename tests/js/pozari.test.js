@@ -357,15 +357,27 @@ t('_uskUnutar prihvata tačke unutar Unsko-sanskog kantona, odbija van njega', (
   assert.strictEqual(_uskUnutar(44.8, 20.0), false, 'daleko istočno mora biti van');
 });
 
-t('_poziHistSpojiIzvore dedupira isti požar viđen u dva izvora (blizu = ista grupa)', () => {
-  const src = dstSrc + '\nconst _POZ_GRUPA_M = 450;\n' + extractFn('_poziHistSpojiIzvore') + '\nreturn _poziHistSpojiIzvore;';
+t('_poziHistSpojiIzvore spaja samo prostorno i vremenski isti požar', () => {
+  const src = dstSrc + '\nconst _POZ_GRUPA_M = 450;\n' + extractFn('_poziVrijemeGranice') + '\n' + extractFn('_poziIstiDogadjaj') + '\n' + extractFn('_poziHistSpojiIzvore') + '\nreturn _poziHistSpojiIzvore;';
   const _poziHistSpojiIzvore = new Function(src)();
-  const a = { la: 44.80, lo: 16.00, broj: 3 };
-  const bIsti = { la: 44.8001, lo: 16.0001, broj: 5 }; // ista lokacija, drugi izvor, više detekcija
-  const cDaleko = { la: 44.95, lo: 16.30, broj: 2 };
-  const spojeno = _poziHistSpojiIzvore([[a], [bIsti, cDaleko]]);
-  assert.strictEqual(spojeno.length, 2, 'a i bIsti se moraju spojiti u jednu grupu, cDaleko ostaje zasebna');
+  const a = { la: 44.80, lo: 16.00, broj: 3, prvi: Date.parse('2026-09-01T10:00:00Z'), zadnji: Date.parse('2026-09-02T10:00:00Z') };
+  const bIsti = { la: 44.8001, lo: 16.0001, broj: 5, prvi: Date.parse('2026-09-02T12:00:00Z'), zadnji: Date.parse('2026-09-03T10:00:00Z') };
+  const istiMjestoKasnije = { la: 44.8001, lo: 16.0001, broj: 2, prvi: Date.parse('2026-09-12T10:00:00Z'), zadnji: Date.parse('2026-09-12T10:00:00Z') };
+  const cDaleko = { la: 44.95, lo: 16.30, broj: 2, prvi: a.prvi, zadnji: a.zadnji };
+  const spojeno = _poziHistSpojiIzvore([[a], [bIsti, istiMjestoKasnije, cDaleko]]);
+  assert.strictEqual(spojeno.length, 3, 'ponovni požar na istoj lokaciji nakon prekida mora ostati zaseban');
   assert.strictEqual(spojeno[0].broj, 5, 'zadržava se verzija sa VIŠE detekcija (potpunija)');
+});
+
+t('glavni prekidač potpuno skriva sve slojeve požara', () => {
+  assert.ok(!HTML.includes('const _POZ_ALWAYS_ON'), 'ne smije postojati prisilno uključivanje požara');
+  const auto = extractFn('_poziAutoTreba');
+  assert.ok(!auto.includes('_POZ_ALWAYS_ON'));
+  const toggle = extractFn('_poziToggle');
+  assert.ok(toggle.includes('_poziOn = !!on'));
+  assert.ok(toggle.includes('_poziEffisSyncMap()'), 'EFFIS slojevi moraju pratiti glavni prekidač');
+  assert.ok(toggle.includes('_povGodLayer'), 'godišnji sloj mora se ukloniti pri gašenju');
+  assert.ok(HTML.includes('if (_poziOn) _poziObnoviIzKesa();'));
 });
 
 t('_poziHistSortiraj sortira po blizini/vremenu/jačini', () => {

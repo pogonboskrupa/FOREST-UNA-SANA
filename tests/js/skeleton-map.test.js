@@ -62,12 +62,12 @@ t('APP_VER je definisan i prati v-prefiksovanu shemu', () => {
   assert.match(HTML, /const APP_VER = 'v[0-9]+\.[0-9]+\.[0-9]+'/);
 });
 
-t('verzija je v1.1.9 i rollover koristi jednocifreni patch/minor', () => {
-  assert.ok(HTML.includes("const APP_VER = 'v1.1.9'"));
+t('verzija je v1.2.2 i rollover koristi jednocifreni patch/minor', () => {
+  assert.ok(HTML.includes("const APP_VER = 'v1.2.2'"));
   const src = extractFn('_sljedecaVerzija') + '\nreturn _sljedecaVerzija;';
   const next = new Function(src)();
-  assert.strictEqual(next('v1.1.8'), 'v1.1.9');
-  assert.strictEqual(next('v1.1.9'), 'v1.2.0');
+  assert.strictEqual(next('v1.2.0'), 'v1.2.1');
+  assert.strictEqual(next('v1.2.9'), 'v1.3.0');
   assert.strictEqual(next('v1.9.9'), 'v2.0.0');
 });
 
@@ -121,8 +121,13 @@ t('svaki korišteni Leaflet pane je stvarno kreiran (map.createPane)', () => {
 
 t('EFFIS raster ima vlastiti pane iznad naknadno učitane SQLite karte', () => {
   assert.ok(HTML.includes("map.createPane('pozariRasterPane')"));
-  assert.ok(HTML.includes("getPane('pozariRasterPane').style.zIndex = 405"));
+  assert.ok(HTML.includes("getPane('pozariRasterPane').style.zIndex = 430"));
   assert.strictEqual((HTML.match(/pane:'pozariRasterPane', layers:/g) || []).length, 3);
+});
+t('SQLite/MBTiles je bazna karta, teren i požari su slojevi iznad nje', () => {
+  assert.ok(HTML.includes("pane: 'offlineBasePane'"));
+  assert.ok(HTML.includes('Object.values(TL).forEach(layer =>'));
+  assert.ok(HTML.includes("pane:'pozariHeatPane'"));
 });
 t('legenda ima checkbox, zatvaranje i pomjeranje dodirom', () => {
   assert.ok(HTML.includes('id="poz-legend-check"'));

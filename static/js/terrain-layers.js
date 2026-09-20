@@ -21,8 +21,8 @@ if (typeof window !== 'undefined') {
   const layers = {}, decoded = new Map();
   let opacity = Math.max(.15,Math.min(.85,Number(saved.opacity)||.55));
   document.querySelector('input[aria-label="Prozirnost slojeva terena"]').value=Math.round(opacity*100);
-  map.createPane('terrainShade'); map.getPane('terrainShade').style.zIndex='401';
-  map.createPane('terrainColor'); map.getPane('terrainColor').style.zIndex='402';
+  map.createPane('terrainShade'); map.getPane('terrainShade').style.zIndex='320';
+  map.createPane('terrainColor'); map.getPane('terrainColor').style.zIndex='330';
   ['terrainShade','terrainColor'].forEach(p=>map.getPane(p).style.pointerEvents='none');
   async function dem(z,x,y) {
     const n=2**z; x=(x%n+n)%n; y=Math.max(0,Math.min(n-1,y));
@@ -83,7 +83,7 @@ if (typeof window !== 'undefined') {
   function setup(key) {
     if(!key || typeof protomapsL==='undefined')return;
     if(TL[protoName] && map.hasLayer(TL[protoName]))map.removeLayer(TL[protoName]);
-    TL[protoName]=protomapsL.leafletLayer({url:'https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key='+encodeURIComponent(key),flavor:'light',lang:'bs',attribution:'© Protomaps © OpenStreetMap contributors'});
+    TL[protoName]=protomapsL.leafletLayer({pane:'tilePane',url:'https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key='+encodeURIComponent(key),flavor:'light',lang:'bs',attribution:'© Protomaps © OpenStreetMap contributors'});
     _renderKartaBaseList();
     if(!document.querySelector('#layer-switch [data-layer="'+protoName+'"]')) {
       const button=document.createElement('button');button.dataset.layer=protoName;button.textContent=protoName;
