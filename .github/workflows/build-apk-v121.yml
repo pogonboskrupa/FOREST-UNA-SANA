@@ -1,4 +1,4 @@
-name: Build APK v1.2.1
+name: Build APK v1.2.2
 
 on:
   push:
@@ -13,12 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Primijeni odobrenu build-zakrpu
+      - name: Učitaj odobreni izvor v1.2.2
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/pogonboskrupa/FOREST-UNA-SANA/issues/2 | jq -r .body | sed '1d;$d' > /tmp/v121.sh
-          bash /tmp/v121.sh
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/pogonboskrupa/FOREST-UNA-SANA/issues/2 | jq -r .body | sed '1d;$d' > /tmp/v122.sh
+          bash /tmp/v122.sh
+      - name: JavaScript testovi
+        run: for f in tests/js/*.test.js; do node "$f"; done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -35,11 +37,13 @@ jobs:
         run: test -s android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: FOREST-UNA-SANA-v1.2.1
+          name: FOREST-UNA-SANA-v1.2.2
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.1
-          name: FOREST-UNA-SANA v1.2.1
+          tag_name: v1.2.2
+          name: FOREST-UNA-SANA v1.2.2
           prerelease: true
           files: android/app/build/outputs/apk/debug/*.apk
+          fail_on_unmatched_files: true
