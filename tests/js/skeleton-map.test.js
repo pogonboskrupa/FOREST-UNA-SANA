@@ -62,8 +62,8 @@ t('APP_VER je definisan i prati v-prefiksovanu shemu', () => {
   assert.match(HTML, /const APP_VER = 'v[0-9]+\.[0-9]+\.[0-9]+'/);
 });
 
-t('verzija je v1.2.2 i rollover koristi jednocifreni patch/minor', () => {
-  assert.ok(HTML.includes("const APP_VER = 'v1.2.2'"));
+t('verzija je v1.2.3 i rollover koristi jednocifreni patch/minor', () => {
+  assert.ok(HTML.includes("const APP_VER = 'v1.2.3'"));
   const src = extractFn('_sljedecaVerzija') + '\nreturn _sljedecaVerzija;';
   const next = new Function(src)();
   assert.strictEqual(next('v1.2.0'), 'v1.2.1');
@@ -128,6 +128,12 @@ t('SQLite/MBTiles je bazna karta, teren i požari su slojevi iznad nje', () => {
   assert.ok(HTML.includes("pane: 'offlineBasePane'"));
   assert.ok(HTML.includes('Object.values(TL).forEach(layer =>'));
   assert.ok(HTML.includes("pane:'pozariHeatPane'"));
+});
+t('Protomaps API ključ nalazi se u Postavkama, ne u kartama', () => {
+  const karte = HTML.match(/<div id="karte-panel"[\s\S]*?<div id="postavke-panel"/)?.[0] || '';
+  const postavke = HTML.match(/<div id="postavke-panel"[\s\S]*?<div id="pozari-panel"/)?.[0] || '';
+  assert.ok(!karte.includes('id="protomaps-key"'));
+  assert.ok(postavke.includes('id="protomaps-key"'));
 });
 t('legenda ima checkbox, zatvaranje i pomjeranje dodirom', () => {
   assert.ok(HTML.includes('id="poz-legend-check"'));

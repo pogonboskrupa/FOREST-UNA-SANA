@@ -711,10 +711,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <h3>🌍 Bazna karta</h3>
         <p>Brzo promijeni podlogu bez vraćanja na mapu.</p>
         <div id="karta-base-list"></div>
-        <label for="protomaps-key">Protomaps API ključ</label>
-        <input id="protomaps-key" type="password" autocomplete="off" placeholder="Unesi svoj Protomaps ključ" style="width:100%;box-sizing:border-box;margin:8px 0;padding:12px;border-radius:10px;">
-        <button class="karta-hub-action" onclick="_terrainProtomapsSave()">Sačuvaj i koristi Protomaps</button>
-        <p id="protomaps-status">Protomaps online podloga zahtijeva vlastiti API ključ.</p>
+        <p id="protomaps-status">Protomaps ključ podešava se u Postavkama.</p>
       </section>
       <section class="karta-hub-card">
         <h3>🏔 Analiza terena</h3>
@@ -758,6 +755,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <div class="set-row"><span><b style="display:block;font-size:13px;">Ažuriraj aplikaciju</b><small style="display:block;color:#80958a;margin-top:3px;">Preuzima novi APK i pokreće instalaciju</small></span><button id="set-update-btn" onclick="checkForUpdate()">Ažuriraj</button></div>
     <div id="set-update-status" style="display:none;margin:-3px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:rgba(16,32,25,.72);color:#9db0a7;font-size:11px;line-height:1.45;"></div>
+    <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <label for="protomaps-key"><b style="display:block;font-size:13px;">Protomaps API ključ</b><small style="display:block;color:#80958a;margin-top:3px;">Omogućava Protomaps online podlogu u izboru karata</small></label>
+      <input id="protomaps-key" type="password" autocomplete="off" placeholder="Unesi svoj Protomaps ključ" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;">
+      <button onclick="_terrainProtomapsSave()">Sačuvaj i koristi Protomaps</button>
+    </div>
     <div class="set-row"><span>Rad bez ograničenja baterije</span><button onclick="_checkBatteryOptHint()">Podesi</button></div>
     <div class="set-row"><span>Očisti keš karata (Topo/Satelit/Karta)</span><button onclick="clearTileCache()">Očisti</button></div>
   </div>
@@ -1051,7 +1053,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v1.2.2';
+const APP_VER = 'v1.2.3';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
@@ -4669,7 +4671,10 @@ function _poziMkStarost(ms) { const h = (Date.now() - ms) / 3600000; if (!isFini
 // dijelom senzorskog piksela. Udaljene tačke se ne spajaju hull poligonom,
 // jer bi se tako popunile površine koje možda uopće nisu gorjele.
 function _poziOpozBufKm(rez) {
-  return Math.sqrt(_poziProcijenjeniHa({ rez }) * 10000 / Math.PI) / 1000;
+  const procijenjeniRadijusKm = Math.sqrt(_poziProcijenjeniHa({ rez }) * 10000 / Math.PI) / 1000;
+  // Terenska kalibracija: stara projekcija prelazila je opaženi rub oko 150 m.
+  // Minimalnih 25 m zadržava vidljivost pojedinačne detekcije bez lažne velike plohe.
+  return Math.max(0.025, procijenjeniRadijusKm - 0.150);
 }
 function _poziOpozGrupisiPoStarosti(pts) {
   const bands = {};

@@ -288,12 +288,13 @@ t('_poziOpozGrupisiPoStarosti raspoređuje tačke po ISTIM bandovima kao markeri
   assert.strictEqual(bands.d3, undefined);
 });
 
-t('_poziOpozBufKm daje veći poluprečnik za MODIS (1km) nego VIIRS (375m)', () => {
+t('_poziOpozBufKm smanjuje projekciju za 150m i zadržava mali minimum', () => {
   const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
   const _poziOpozBufKm = new Function(src)();
   const viirs = _poziOpozBufKm(375), modis = _poziOpozBufKm(1000);
   assert.ok(modis > viirs);
-  assert.ok(viirs > 0.10 && viirs < 0.15, 'VIIRS poluprečnik van očekivanog opsega: ' + viirs);
+  assert.strictEqual(viirs, 0.025, 'VIIRS treba ostati na minimalnom radijusu od 25m');
+  assert.ok(modis > 0.17 && modis < 0.20, 'MODIS korigovani poluprečnik van očekivanog opsega: ' + modis);
 });
 
 t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {

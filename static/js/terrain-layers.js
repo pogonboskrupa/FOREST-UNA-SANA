@@ -9,7 +9,12 @@ const terrainAspectColors = ['#3b82f6','#06b6d4','#22c55e','#a3e635','#facc15','
 function terrainColor(mode, east, south) {
   const g = terrainGradient(east, south);
   if (mode === 'aspect') return g.slope <= 10 ? '#a1a1aa' : terrainAspectColors[Math.floor((g.aspect+22.5)/45)%8];
-  if (mode === 'slope') return g.slope <= 10 ? '#a1a1aa' : g.slope <= 20 ? '#a3e635' : g.slope <= 30 ? '#facc15' : g.slope <= 40 ? '#f97316' : '#dc2626';
+  if (mode === 'slope') {
+    if (g.slope <= 30) return null;
+    const t=Math.max(0,Math.min(1,(g.slope-30)/30));
+    const from=[254,202,202],to=[185,28,28];
+    return '#'+from.map((v,i)=>Math.round(v+(to[i]-v)*t).toString(16).padStart(2,'0')).join('');
+  }
   // Sun from NW, elevation 45 degrees; unit normal (-east,+south,1).
   const light = Math.max(0, (east*0.5 + south*0.5 + Math.SQRT1_2)/Math.sqrt(1+east*east+south*south));
   const n = Math.round(35 + 220*light);
@@ -53,6 +58,7 @@ if (typeof window !== 'undefined') {
             const dx=((x===255?e[y*256]:a[y*256+x+1])-(x===0?w[y*256+255]:a[y*256+x-1]))/(2*metres);
             const dy=((y===255?s[x]:a[(y+1)*256+x])-(y===0?n[255*256+x]:a[(y-1)*256+x]))/(2*metres);
             const color=terrainColor(this.options.mode,dx,dy), i=(y*256+x)*4;
+            if(!color){out.data[i+3]=0;continue;}
             out.data[i]=parseInt(color.slice(1,3),16);out.data[i+1]=parseInt(color.slice(3,5),16);out.data[i+2]=parseInt(color.slice(5,7),16);out.data[i+3]=255;
           }
         }
@@ -64,7 +70,7 @@ if (typeof window !== 'undefined') {
   const persist=()=>localStorage.setItem('usf_terrain',JSON.stringify({...saved,opacity}));
   const legend=()=>{
     let rows=[];
-    if(saved.slope)rows.push(...[['#a1a1aa','0–10°'],['#a3e635','10–20°'],['#facc15','20–30°'],['#f97316','30–40°'],['#dc2626','preko 40°']]);
+    if(saved.slope)rows.push(...[['transparent','≤30° bez boje'],['#f9b4b4','30–40°'],['#e86d6d','40–50°'],['#b91c1c','≥60°']]);
     if(saved.aspect)rows.push(['#a1a1aa','Neutralno ≤10°'],...['Sjever','Sjeveroistok','Istok','Jugoistok','Jug','Jugozapad','Zapad','Sjeverozapad'].map((t,i)=>[terrainAspectColors[i],t]));
     document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
   };
