@@ -107,6 +107,8 @@ if (typeof window !== 'undefined') {
 // Offline SQLite/MBTiles UI — aktivna karta je već vidljiva; drugi prekidač
 // zato nije Sakrij nego Zoom. Veže se poslije glavnog runtime-a.
 (function _usfOfflineMapUiFix() {
+  // Node testovi učitavaju isti fajl bez DOM-a; UI patch je samo za WebView.
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
   const apply = () => {
     const previous = window._sqlmapRegRender;
     if (typeof previous !== 'function' || previous.__usfZoomFix) return false;
