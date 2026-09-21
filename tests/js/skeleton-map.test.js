@@ -62,6 +62,30 @@ t('APP_VER je definisan i prati v-prefiksovanu shemu', () => {
   assert.match(HTML, /const APP_VER = 'v[0-9]+\.[0-9]+\.[0-9]+'/);
 });
 
+t('verzija je v1.3.9 i rollover koristi jednocifreni patch/minor', () => {
+  assert.ok(HTML.includes("const APP_VER = 'v1.3.9'"));
+  const src = extractFn('_sljedecaVerzija') + '\nreturn _sljedecaVerzija;';
+  const next = new Function(src)();
+  assert.strictEqual(next('v1.2.0'), 'v1.2.1');
+  assert.strictEqual(next('v1.2.9'), 'v1.3.0');
+  assert.strictEqual(next('v1.9.9'), 'v2.0.0');
+});
+
+t('bottom bar ostaje iznad punih radnih panela', () => {
+  const tabs = HTML.match(/#main-tabs\s*\{[^}]+\}/s)?.[0] || '';
+  const panel = HTML.match(/\.usf-panel\s*\{[^}]+\}/s)?.[0] || '';
+  const z = s => Number(s.match(/z-index\s*:\s*(\d+)/)?.[1] || 0);
+  assert.ok(z(tabs) > z(panel), 'bottom bar mora imati viši z-index od .usf-panel');
+  assert.ok(/min-height\s*:\s*52px/.test(HTML), 'dugmad bottom bara moraju imati veću dodirnu površinu');
+});
+
+t('radni modali završavaju iznad bottom bara i skrolaju sadržaj', () => {
+  const css = HTML.match(/#profil-modal, #tem-table-modal, #poz-sim-modal\s*\{[^}]+\}/s)?.[0] || '';
+  assert.ok(css.includes('calc(74px + env(safe-area-inset-bottom,0px))'));
+  assert.ok(/z-index\s*:\s*900/.test(css));
+  assert.ok(/overflow\s*:\s*auto/.test(css));
+});
+
 t('bazni slojevi su ograničeni na osnovne četiri (bez Wayback/Sentinel/WorldCover/Konture)', () => {
   const twStart = HTML.indexOf('const TL = {');
   assert.ok(twStart >= 0, 'TL objekat nije nađen');
@@ -78,6 +102,7 @@ t('bazni slojevi su ograničeni na osnovne četiri (bez Wayback/Sentinel/WorldCo
 t('paneovi za buduće Požari/Mjerenja slojeve postoje od prvog dana', () => {
   assert.match(HTML, /createPane\('tragMsrLines'\)/);
   assert.match(HTML, /createPane\('pozariPane'\)/);
+  assert.match(HTML, /createPane\('pozariDetectionsPane'\)/);
 });
 
 // Regresioni test za bug "Cannot read properties of undefined (reading
@@ -95,4 +120,26 @@ t('svaki korišteni Leaflet pane je stvarno kreiran (map.createPane)', () => {
   assert.deepStrictEqual(missing, [], 'pane(ovi) korišteni ali nikad kreirani: ' + missing.join(', '));
 });
 
+t('EFFIS raster ima vlastiti pane iznad naknadno učitane SQLite karte', () => {
+  assert.ok(HTML.includes("map.createPane('pozariRasterPane')"));
+  assert.ok(HTML.includes("getPane('pozariRasterPane').style.zIndex = 430"));
+  assert.strictEqual((HTML.match(/pane:'pozariRasterPane', layers:/g) || []).length, 3);
+});
+t('SQLite/MBTiles je bazna karta, teren i požari su slojevi iznad nje', () => {
+  assert.ok(HTML.includes("pane: 'offlineBasePane'"));
+  assert.ok(HTML.includes('Object.values(TL).forEach(layer =>'));
+  assert.ok(HTML.includes("pane:'pozariHeatPane'"));
+});
+t('Protomaps API ključ nalazi se u Postavkama, ne u kartama', () => {
+  const karte = HTML.match(/<div id="karte-panel"[\s\S]*?<div id="postavke-panel"/)?.[0] || '';
+  const postavke = HTML.match(/<div id="postavke-panel"[\s\S]*?<div id="pozari-panel"/)?.[0] || '';
+  assert.ok(!karte.includes('id="protomaps-key"'));
+  assert.ok(postavke.includes('id="protomaps-key"'));
+});
+t('legenda ima checkbox, zatvaranje i pomjeranje dodirom', () => {
+  assert.ok(HTML.includes('id="poz-legend-check"'));
+  assert.ok(HTML.includes('onclick="_poziLegendaToggle(false)"'));
+  assert.ok(HTML.includes("handle.setPointerCapture(e.pointerId)"));
+  assert.ok(HTML.includes("usf_poz_legenda_pos"));
+});
 console.log('\n' + pass + ' prošlo, 0 palo — kostur karte');

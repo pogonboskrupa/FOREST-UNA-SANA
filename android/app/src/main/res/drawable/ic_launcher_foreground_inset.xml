@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Xiaomi/Android adaptive mask reže rubove izvornog 432×432 artworka.
+     Umetak od 14dp ostavlja cijeli kompas, planine i vatru u sigurnoj zoni. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@mipmap/ic_launcher_foreground"
+    android:insetLeft="14dp"
+    android:insetTop="14dp"
+    android:insetRight="14dp"
+    android:insetBottom="14dp" />

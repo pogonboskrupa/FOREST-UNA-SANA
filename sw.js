@@ -2,13 +2,15 @@
 // Service Worker — UNA SANA FOREST
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '0.20.0';
+const APP_VERSION = '1.4.2';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
 
 // App shell koji se uvijek precachira
 const APP_SHELL = [
+  './static/libs/protomaps-leaflet.js',
+  './static/js/terrain-layers.js',
   './',
   './index.html',
   './static/js/offline-layer.js',
@@ -74,7 +76,7 @@ function _tileRespond(event, cacheName) {
       try {
         const resp = await fetch(event.request);
         if (resp.ok) {
-          try { cache.put(event.request, resp.clone()); } catch(e) {}
+          try { await cache.put(event.request, resp.clone()); } catch(e) {}
         }
         return resp;
       } catch {
@@ -118,7 +120,7 @@ self.addEventListener('fetch', event => {
         if (cached) return cached;
         try {
           const resp = await fetch(event.request);
-          if (resp.ok) try { cache.put(event.request, resp.clone()); } catch(e) {}
+          if (resp.ok) try { await cache.put(event.request, resp.clone()); } catch(e) {}
           return resp;
         } catch {
           return cached || new Response('', { status: 503 });
@@ -138,13 +140,13 @@ self.addEventListener('fetch', event => {
     const req = isNav ? new Request(event.request, { cache: 'no-store' }) : event.request;
     event.respondWith(
       fetch(req)
-        .then(resp => {
+        .then(async resp => {
           if (resp.ok) {
-            try { const rc = resp.clone(); caches.open(APP_CACHE).then(c => c.put(event.request, rc)); } catch(e) {}
+            try { const rc = resp.clone(); const c = await caches.open(APP_CACHE); await c.put(event.request, rc); } catch(e) {}
           }
           return resp;
         })
-        .catch(() => caches.match(event.request))
+        .catch(async () => (await caches.match(event.request)) || (isNav && await caches.match('./index.html')) || new Response('Nije dostupno offline', { status: 503 }))
     );
   }
 });
@@ -187,7 +189,7 @@ self.addEventListener('message', event => {
   // Pokaži notifikaciju snimanja + uzmi Web Lock (Foreground Service ekvivalent)
   if (event.data?.type === 'show-rec-notification') {
     const { nm, dist } = event.data;
-    self.registration.showNotification('🔴 GPS Snimanje — ' + (nm || 'trag'), {
+    event.waitUntil(self.registration.showNotification('🔴 GPS Snimanje — ' + (nm || 'trag'), {
       body: dist ? `Snimljeno: ${dist}` : 'Snimanje traga u toku...',
       icon: './icon-192.png',
       badge: './icon-192.png',
@@ -198,14 +200,14 @@ self.addEventListener('message', event => {
         { action: 'pause',  title: '⏸ Pauza' },
         { action: 'stop',   title: '⏹ Stop'  }
       ]
-    });
+    }));
     _startRecLock();
     return;
   }
   // Zatvori notifikaciju i otpusti Web Lock
   if (event.data?.type === 'hide-rec-notification') {
-    self.registration.getNotifications({ tag: 'gps-recording' })
-      .then(ns => ns.forEach(n => n.close()));
+    event.waitUntil(self.registration.getNotifications({ tag: 'gps-recording' })
+      .then(ns => ns.forEach(n => n.close())));
     _stopRecLock();
     return;
   }
@@ -213,7 +215,7 @@ self.addEventListener('message', event => {
   // terenu i telefon mu je u džepu — obavještenje ne smije samo proći i nestati.
   if (event.data?.type === 'show-pozar-notification') {
     const { naslov, tijelo, la, lo } = event.data;
-    self.registration.showNotification(naslov || '🔥 Nov požar u blizini', {
+    event.waitUntil(self.registration.showNotification(naslov || '🔥 Nov požar u blizini', {
       body: tijelo,
       icon: './icon-192.png',
       badge: './icon-192.png',
@@ -221,7 +223,7 @@ self.addEventListener('message', event => {
       data: { la, lo },
       requireInteraction: true,
       vibrate: [300, 120, 300]
-    });
+    }));
     return;
   }
 });
@@ -231,24 +233,24 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   const data = event.notification.data;
   if (event.action === 'stop' || event.action === 'pause') {
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then(clients => {
         clients.forEach(c => c.postMessage({ type: 'rec-action', action: event.action }));
-        if (clients.length === 0) self.clients.openWindow('./');
-      });
+        if (clients.length === 0) return self.clients.openWindow('./');
+      }));
   } else if (data?.la && data?.lo) {
-    self.clients.matchAll({ type: 'window' }).then(clients => {
+    event.waitUntil(self.clients.matchAll({ type: 'window' }).then(clients => {
       if (clients.length > 0) {
-        clients[0].focus();
         clients[0].postMessage({ type: 'pan-to', la: data.la, lo: data.lo });
+        return clients[0].focus();
       } else {
-        self.clients.openWindow('./');
+        return self.clients.openWindow('./');
       }
-    });
+    }));
   } else {
-    self.clients.matchAll({ type: 'window' }).then(clients => {
-      if (clients.length > 0) clients[0].focus();
-      else self.clients.openWindow('./');
-    });
+    event.waitUntil(self.clients.matchAll({ type: 'window' }).then(clients => {
+      if (clients.length > 0) return clients[0].focus();
+      return self.clients.openWindow('./');
+    }));
   }
 });

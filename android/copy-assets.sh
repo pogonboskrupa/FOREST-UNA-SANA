@@ -2,7 +2,7 @@
 # Kopira web fajlove u android/app/src/main/assets/
 # Pokrenuti iz korijenskog direktorija projekta: bash android/copy-assets.sh
 
-set -e
+set -euo pipefail
 
 ASSETS_DIR="android/app/src/main/assets"
 
@@ -27,3 +27,8 @@ cp -r static/* "$ASSETS_DIR/static/" 2>/dev/null || true
 
 echo "Assets kopirani u $ASSETS_DIR/"
 echo "Ukupna velicina: $(du -sh $ASSETS_DIR | cut -f1)"
+
+# Fail the build instead of shipping an APK that needs the network to boot.
+for asset in index.html static/libs/leaflet.min.js static/libs/leaflet.min.css static/libs/proj4.js static/libs/turf.min.js static/libs/sql-wasm.js static/libs/sql-wasm.wasm static/js/firebase-init.js static/js/road-design.js; do
+  test -s "$ASSETS_DIR/$asset" || { echo "Missing offline asset: $asset" >&2; exit 1; }
+done

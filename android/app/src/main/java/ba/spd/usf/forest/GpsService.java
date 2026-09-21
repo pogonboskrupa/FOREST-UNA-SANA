@@ -45,6 +45,8 @@ public class GpsService extends Service {
     // visibilitychange) povuče sve što je native sloj prikupio u međuvremenu i
     // popuni prazninu u tragu.
     public static final Object BUFFER_LOCK = NativeGpsBuffer.LOCK;
+    private boolean paused;
+    private android.content.SharedPreferences state() { return getSharedPreferences("gps_session", MODE_PRIVATE); }
     private LocationManager locationManager;
     private LocationListener locationListener;
 
@@ -56,6 +58,8 @@ public class GpsService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        paused = state().getBoolean("paused", false);
+        if (intent == null && !state().getBoolean("active", false)) { stopSelf(); return START_NOT_STICKY; }
         if (intent == null) {
             // START_STICKY restart od sistema (proces ubijen pa vraćen) — intent
             // je null. Bez ponovnog startForeground() + wake lock-a servis bi se
@@ -69,6 +73,7 @@ public class GpsService extends Service {
 
         String action = intent.getAction();
         if ("stop".equals(action)) {
+            state().edit().putBoolean("active", false).putBoolean("paused", false).commit();
             sendBroadcastToWeb("stop");
             releaseWakeLock();
             stopNativeLocationUpdates();
@@ -77,8 +82,10 @@ public class GpsService extends Service {
             return START_NOT_STICKY;
         }
 
-        if ("pause".equals(action)) {
-            sendBroadcastToWeb("pause");
+        if ("setPaused".equals(action)) {
+            paused = intent.getBooleanExtra("paused", false);
+            state().edit().putBoolean("paused", paused).commit();
+            updateNotification("GPS Snimanje", paused ? "Pauzirano — otvori aplikaciju za nastavak" : "Snimanje traga aktivno");
             return START_STICKY;
         }
 
@@ -95,6 +102,7 @@ public class GpsService extends Service {
         String title = intent.getStringExtra("title");
         if (title == null) title = "GPS Snimanje";
 
+        state().edit().putBoolean("active", true).commit();
         acquireWakeLock();
         showForegroundNotification(title, "Snimanje traga aktivno");
         // Ovo je stvarni početak NOVE sesije snimanja (poziv iz MainActivity) —
@@ -114,7 +122,9 @@ public class GpsService extends Service {
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                appendToBuffer(location);
+                synchronized (BUFFER_LOCK) {
+                    if (!state().getBoolean("paused", false)) appendToBuffer(location);
+                }
             }
             @Override
             public void onStatusChanged(String provider, int status, Bundle extras) {}
@@ -130,7 +140,7 @@ public class GpsService extends Service {
             // GPS fiksovima u baferu prave cik-cak liniju koju JS filteri po
             // tačnosti ne mogu pouzdano uhvatiti. Na terenu (šuma) network
             // provider ionako nema šta ponuditi.
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            {
                 locationManager.requestLocationUpdates(
                         LocationManager.GPS_PROVIDER, 2000L, 0f, locationListener);
             }
@@ -196,24 +206,13 @@ public class GpsService extends Service {
         PendingIntent pendingOpen = PendingIntent.getActivity(this, 0, openApp,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        Intent pauseIntent = new Intent(this, GpsService.class);
-        pauseIntent.setAction("pause");
-        PendingIntent pendingPause = PendingIntent.getService(this, 2, pauseIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        Intent stopIntent = new Intent(this, GpsService.class);
-        stopIntent.setAction("stop");
-        PendingIntent pendingStop = PendingIntent.getService(this, 1, stopIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
                 .setContentIntent(pendingOpen)
-                .addAction(android.R.drawable.ic_media_pause, "Pauza", pendingPause)
-                .addAction(android.R.drawable.ic_delete, "Stop", pendingStop)
+                .addAction(android.R.drawable.ic_menu_edit, "Otvori snimanje", pendingOpen)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
     }

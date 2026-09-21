@@ -1,101 +1,63 @@
-name: WebView provjera i APK
+name: Build APK
+
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - claude/practical-pasteur-p2npth
+    branches: [codex-forest, apk-build-v1]
+
 permissions:
   contents: write
+
 jobs:
   apk:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/practical-pasteur-p2npth'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: JavaScript testovi
+        run: for f in tests/js/*.test.js; do node "$f"; done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      # Testovi idu PRIJE Android SDK setupa: oni ne trebaju ni SDK ni Gradle, a
-      # ako setup-android ikad padne, ovaj korak se ne smije preskočiti — CI mora
-      # da pokaže da li kod uopšte valja i bez uspješno postavljenog SDK-a.
-      - name: Lokalni JavaScript testovi
-        run: |
-          if compgen -G "tests/js/*.test.js" > /dev/null; then
-            for f in tests/js/*.test.js; do node "$f" || exit 1; done
-          else
-            echo "Nema testova još — preskačem (dodati u tests/js/*.test.js)"
-          fi
       - uses: android-actions/setup-android@v3
         with:
-          # Podrazumijevano instalira 'tools platform-tools', a legacy 'tools'
-          # paket je uklonjen iz Google repozitorija — sdkmanager tad pada sa
-          # "Failed to find package 'tools'" i cijeli build stane prije ijednog
-          # koraka koji je stvarno naš.
           packages: 'platform-tools'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.4'
-      - name: Assets i WebView debug APK
+      - name: Pripremi verziju i assets
+        shell: bash
         run: |
+          set -euo pipefail
+          # APK_RELEASE_VERSION=1.4.2
+          # UI/runtime oznaka i servisni keš se održavaju zasebno dok se
+          # veliki index.html migrira u modularne skripte.
+          WEB_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"
+          APP_VERSION="$(sed -n 's/^[[:space:]]*# APK_RELEASE_VERSION=//p' .github/workflows/build-apk.yml)"
+          test -n "$WEB_VERSION" && test -n "$APP_VERSION"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$APP_VERSION"
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+          sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/" android/app/build.gradle
+          sed -i -E "s/versionName \"[^\"]+\"/versionName \"${APP_VERSION}\"/" android/app/build.gradle
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
           bash android/copy-assets.sh
-          gradle -p android --no-daemon assembleDebug
-      - name: Provjeri sadržaj APK-a (index.html) i ispiši veličinu
-        # copy-assets.sh kopira opcione fajlove sa "|| true" (ne ruši build ako
-        # fajl nedostaje) — to znači da APK može biti "uspješno" izgrađen a da mu
-        # ipak fali ključni sadržaj. Provjera raspakuje STVARNI APK i gleda šta
-        # je unutra, ne pretpostavlja na osnovu toga da je gradle vratio exit 0.
-        run: |
-          APK_PATH=$(find android/app/build/outputs/apk/debug -name '*.apk' | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "GRESKA: APK fajl nije pronađen u outputs/apk/debug/"
-            exit 1
-          fi
-          echo "APK fajl: $APK_PATH"
-          echo "Veličina APK fajla (kompresovan): $(du -h "$APK_PATH" | cut -f1)"
-
-          rm -rf /tmp/apk-check
-          mkdir -p /tmp/apk-check
-          unzip -q "$APK_PATH" -d /tmp/apk-check
-          echo "Veličina raspakovanog APK-a: $(du -sh /tmp/apk-check | cut -f1)"
-
-          if [ ! -s "/tmp/apk-check/assets/index.html" ]; then
-            echo "GRESKA: assets/index.html nedostaje ili je prazan — build se prekida,"
-            echo "artefakt se NE objavljuje (bolje bez APK-a nego sa tiho nepotpunim)."
-            exit 1
-          fi
-          echo "OK: assets/index.html ($(du -h "/tmp/apk-check/assets/index.html" | cut -f1))"
+          grep -q "versionName \"${APP_VERSION}\"" android/app/build.gradle
+      - name: Izgradi APK
+        run: gradle -p android --no-daemon assembleDebug
+      - name: Provjeri APK
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: UNA-SANA-FOREST-debug-${{ github.sha }}
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: FOREST-UNA-SANA-v${{ env.APP_VERSION }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-      # Actions artifact (gore) traži GitHub login za preuzimanje i ističe za
-      # 90 dana. GitHub Release asset je JAVNO dostupan preko stabilnog URL-a bez
-      # prijave — to omogućava "Ažuriraj aplikaciju" u Meniju (UpdateBridge u
-      # MainActivity.java) da automatski nađe najnoviju verziju i preuzme APK.
-      - name: Izvuci versionName iz build.gradle
-        id: verzija
-        run: |
-          V=$(grep -oP 'versionName\s+"\K[^"]+' android/app/build.gradle)
-          if [ -z "$V" ]; then echo "GRESKA: versionName nije pronađen"; exit 1; fi
-          echo "verzija=$V" >> "$GITHUB_OUTPUT"
-      - name: Objavi/ažuriraj GitHub Release sa APK-om (za auto-update u app-u)
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.verzija.outputs.verzija }}
-          name: v${{ steps.verzija.outputs.verzija }} (debug)
+          tag_name: v${{ env.APP_VERSION }}
+          name: FOREST-UNA-SANA v${{ env.APP_VERSION }}
           prerelease: true
           files: android/app/build/outputs/apk/debug/*.apk
-          # Ako glob gore ne pogodi nijedan fajl, akcija MORA pasti — bolje nego
-          # tiho objaviti release bez APK-a, što bi auto-update pronašao ali ne
-          # mogao skinuti.
           fail_on_unmatched_files: true
-          # softprops/action-gh-release je idempotentan po tag_name-u — isti
-          # versionName u više commit-ova samo AŽURIRA postojeći release/asset.

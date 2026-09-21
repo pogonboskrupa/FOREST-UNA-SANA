@@ -27,6 +27,17 @@ console.log('Požari — CSV parsiranje, pouzdanost, grupisanje detekcija:');
 
 const dstSrc = extractFn('dst');
 
+t('modularni FIRMS stil i odvojeni oker poligoni', () => {
+  const src = extractFn('_poziPouzdanost') + '\n' + extractFn('_poziTackaStil') + '\nreturn _poziTackaStil;';
+  const fn = new Function(src)();
+  assert.strictEqual(fn({ conf:'h' }).fillColor, '#f97316');
+  assert.strictEqual(fn({ conf:'n' }).fillColor, '#f59e0b');
+  assert.strictEqual(fn({ conf:'l' }).fillColor, '#fde047');
+  assert.ok(HTML.includes('Lokalna oker opožarena ploha'));
+  assert.ok(HTML.includes('EFFIS NRT — crveni referentni raster'));
+  assert.ok(!/_POZ_OPOZ_BOJE\s*=\s*\{[^}]*#(?:dc2626|ef4444)/i.test(HTML));
+});
+
 t('_poziParseCsv čita FIRMS VIIRS CSV zaglavlje i redove', () => {
   const src = extractFn('_poziParseCsv') + '\nreturn _poziParseCsv;';
   const _poziParseCsv = new Function(src)();
@@ -62,7 +73,7 @@ t('_poziGrupisi spaja bliske detekcije (isti požar, više satelita) u jednu gru
   const src = dstSrc + '\n' +
     "function _poziLinijskePrepreke(){return [];}\n" +
     "function _poziPragIzmedju(a,b,prag){return prag;}\n" +
-    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziGrupisi') +
+    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziGrupisi') +
     '\nreturn _poziGrupisi;';
   const _poziGrupisi = new Function(src)();
   // Dvije tačke ~50m razmaknute (isti požar, dva satelita) + jedna udaljena
@@ -83,7 +94,7 @@ t('_poziGrupisi NE spaja detekcije udaljenije od praga (dva odvojena požara)', 
   const src = dstSrc + '\n' +
     "function _poziLinijskePrepreke(){return [];}\n" +
     "function _poziPragIzmedju(a,b,prag){return prag;}\n" +
-    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziGrupisi') +
+    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziGrupisi') +
     '\nreturn _poziGrupisi;';
   const _poziGrupisi = new Function(src)();
   const pts = [
@@ -93,6 +104,35 @@ t('_poziGrupisi NE spaja detekcije udaljenije od praga (dva odvojena požara)', 
   const grupe = _poziGrupisi(pts, 450);
   assert.strictEqual(grupe.length, 2);
   assert.ok(grupe.every(g => g.broj === 1));
+});
+
+t('_poziGrupisi prekida požar kad ista lokacija nema uzastopnu dnevnu aktivnost', () => {
+  const src = dstSrc + '\n' +
+    "function _poziLinijskePrepreke(){return [];}\nfunction _poziPragIzmedju(a,b,prag){return prag;}\n" +
+    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziGrupisi') + '\nreturn _poziGrupisi;';
+  const fn = new Function(src)();
+  const samePlace = [
+    { la:44.80, lo:16.00, dt:'2026-09-01T09:00:00Z', sat:'N', conf:'h' },
+    { la:44.8002, lo:16.00, dt:'2026-09-02T10:00:00Z', sat:'N', conf:'h' },
+    { la:44.8001, lo:16.00, dt:'2026-09-05T10:00:00Z', sat:'N', conf:'h' }
+  ];
+  const grupe = fn(samePlace, 450);
+  assert.strictEqual(grupe.length, 2, 'prekid 3 dana mora biti novi požar');
+  assert.deepStrictEqual(grupe.map(g => g.broj).sort(), [1,2]);
+});
+
+t('_poziGrupisi ne spaja lanac udaljenih požara preko rubnih tačaka', () => {
+  const src = dstSrc + '\n' +
+    "function _poziLinijskePrepreke(){return [];}\nfunction _poziPragIzmedju(a,b,prag){return prag;}\n" +
+    extractFn('_poziSatelit') + '\n' + extractFn('_poziPouzdanost') + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziGrupisi') + '\nreturn _poziGrupisi;';
+  const fn = new Function(src)();
+  // Svaka susjedna tačka je unutar 450 m, ali krajevi predstavljaju odvojena
+  // žarišta. Bez kontrole centra svih pet bi završilo u jednoj grupi.
+  const pts = [0, 0.0035, 0.0070, 0.0105, 0.0140].map((d, i) => ({
+    la:44.8, lo:16+d, dt:'2026-09-15T0' + i + ':00:00Z', sat:'N', conf:'h'
+  }));
+  const grupe = fn(pts, 450);
+  assert.ok(grupe.length >= 2, 'lanac duži od dozvoljenog raspona mora se razdvojiti');
 });
 
 t('_poziParseGfwJson svodi GFW JSON odgovor na isti oblik tačke kao FIRMS CSV', () => {
@@ -138,21 +178,31 @@ t('_poziPixelHa računa poznatu površinu piksela (VIIRS 375m i MODIS 1km)', () 
 });
 
 t('_poziPovrsinaGrupe dedupira detekcije iz ISTOG piksela (više satelita/preleta)', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\nreturn _poziPovrsinaGrupe;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\nreturn _poziPovrsinaGrupe;';
   const _poziPovrsinaGrupe = new Function(src)();
   // Dvije detekcije ~15m razmaknute (isti fizički piksel, viđen 2x) → 1 piksel.
   const isti = { pts: [
     { la: 44.8000, lo: 16.0000, rez: 375 },
     { la: 44.80013, lo: 16.00013, rez: 375 }
   ] };
-  assert.ok(Math.abs(_poziPovrsinaGrupe(isti) - 14.0625) < 0.001, 'blisko = isti piksel, ne smije se duplo brojati');
+  const jednaViirs = Math.PI * 22.5 * 22.5 / 10000;
+  assert.ok(Math.abs(_poziPovrsinaGrupe(isti) - jednaViirs) < 0.001, 'blisko = isti piksel, ne smije se duplo brojati');
   // Dvije detekcije daleko razmaknute (različiti pikseli) → 2 piksela.
   const razlicito = { pts: [
     { la: 44.8000, lo: 16.0000, rez: 375 },
     { la: 44.8100, lo: 16.0100, rez: 375 }
   ] };
-  assert.ok(Math.abs(_poziPovrsinaGrupe(razlicito) - 14.0625 * 2) < 0.001, 'daleko = odvojeni pikseli, moraju se sabrati');
+  assert.ok(Math.abs(_poziPovrsinaGrupe(razlicito) - jednaViirs * 2) < 0.001, 'daleko = odvojeni pikseli, moraju se sabrati');
   assert.strictEqual(_poziPovrsinaGrupe({ pts: [] }), 0);
+});
+
+t('_poziPovrsinaJedinstvena ne sabira isti piksel dvaput kroz više požarnih grupa', () => {
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n'
+    + extractFn('_poziPovrsinaJedinstvena') + '\nreturn _poziPovrsinaJedinstvena;';
+  const fn = new Function(src)();
+  const p = { la:44.8000, lo:16.0000, rez:375 };
+  const skoroIsti = { la:44.80005, lo:16.00005, rez:375 };
+  assert.ok(Math.abs(fn([{ pts:[p] }, { pts:[skoroIsti] }]) - Math.PI * 22.5 * 22.5 / 10000) < 0.001);
 });
 
 t('_poziPovrsTxt formatira hektare (decimala ispod 100, zaokruženo iznad)', () => {
@@ -171,6 +221,7 @@ t('_povGodUrl gradi kanton-bbox+cijela-godina SQL upit kao query string', () => 
   assert.ok(url.startsWith('https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql='));
   const sql = decodeURIComponent(url.split('sql=')[1]);
   assert.ok(sql.includes("alert__date >= '2026-01-01'"), 'mora tražiti od 1. januara te godine');
+  assert.ok(sql.includes("alert__date <= '2026-12-31'"), 'mora završiti 31. decembra iste godine');
   assert.ok(sql.includes('latitude >= 44.300'), 'mora koristiti FIKSAN kanton bbox, ne radijus oko ref tačke');
   assert.ok(sql.includes('LIMIT 5000'));
 });
@@ -187,7 +238,7 @@ t('_poziGfw30Url traži zadnjih 30 dana unutar kanton bbox-a', () => {
 });
 
 t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabira površinu', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' + extractFn('_povGodGrupisiPoMjesecu') + '\nreturn _povGodGrupisiPoMjesecu;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' + extractFn('_povGodGrupisiPoMjesecu') + '\nreturn _povGodGrupisiPoMjesecu;';
   const _povGodGrupisiPoMjesecu = new Function(src)();
   const grupe = [
     { zadnji: Date.parse('2026-03-15T10:00:00Z'), pts: [{ la: 44.80, lo: 16.00, rez: 375 }] },
@@ -198,20 +249,21 @@ t('_povGodGrupisiPoMjesecu raspoređuje grupe po mjesecu zadnje detekcije i sabi
   assert.strictEqual(mjeseci.length, 2);
   assert.strictEqual(mjeseci[0].mjesec, 2); // mart = index 2
   assert.strictEqual(mjeseci[0].broj, 2);
-  assert.ok(Math.abs(mjeseci[0].ha - 14.0625 * 2) < 0.001);
+  assert.ok(Math.abs(mjeseci[0].ha - 2 * Math.PI * 22.5 * 22.5 / 10000) < 0.001);
   assert.strictEqual(mjeseci[1].mjesec, 6); // juli = index 6
   assert.strictEqual(mjeseci[1].broj, 1);
-  assert.ok(Math.abs(mjeseci[1].ha - 100) < 0.001);
+  assert.ok(mjeseci[1].ha > 0.45 && mjeseci[1].ha < 0.5);
 });
 
-t('_poziSimEligible: samo požari praćeni 3+ dana', () => {
-  const src = "const _POZ_SIM_MIN_TRAJANJE_MS = 3 * 86400000;\n" + extractFn('_poziSimEligible') + '\nreturn _poziSimEligible;';
+t('_poziSimEligible: samo veći požari praćeni 3 uzastopna dana', () => {
+  const src = extractFn('_poziDanUTC') + '\n' + extractFn('_poziDaniUzastopni') + '\n' + extractFn('_poziSimDani') + '\n' + extractFn('_poziSimEligible') + '\nreturn _poziSimEligible;';
   const _poziSimEligible = new Function(src)();
-  const kratak = { prvi: Date.parse('2026-07-01T00:00:00Z'), zadnji: Date.parse('2026-07-02T00:00:00Z') };
-  const dug = { prvi: Date.parse('2026-07-01T00:00:00Z'), zadnji: Date.parse('2026-07-05T00:00:00Z') };
+  const kratak = { broj:2, pts:[{dt:'2026-07-01T00:00:00Z'},{dt:'2026-07-02T00:00:00Z'}] };
+  const dug = { broj:3, pts:[{dt:'2026-07-01T00:00:00Z'},{dt:'2026-07-02T00:00:00Z'},{dt:'2026-07-03T00:00:00Z'}] };
+  const prekid = { broj:3, pts:[{dt:'2026-07-01T00:00:00Z'},{dt:'2026-07-02T00:00:00Z'},{dt:'2026-07-05T00:00:00Z'}] };
   assert.strictEqual(_poziSimEligible(kratak), false);
   assert.strictEqual(_poziSimEligible(dug), true);
-  assert.strictEqual(_poziSimEligible({ prvi: null, zadnji: null }), false);
+  assert.strictEqual(_poziSimEligible(prekid), false);
 });
 
 t('_poziSimDani vraća distinktne UTC dane hronološki', () => {
@@ -227,7 +279,7 @@ t('_poziSimDani vraća distinktne UTC dane hronološki', () => {
 });
 
 t('_poziSimPodaciZaDan je kumulativan — dan N sadrži sve detekcije zaključno sa tim danom', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' +
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziProcijenjeniHa') + '\n' + extractFn('_poziPovrsinaGrupe') + '\n' +
     extractFn('_poziSimDani') + '\n' + extractFn('_poziSimPodaciZaDan') + '\nreturn _poziSimPodaciZaDan;';
   const _poziSimPodaciZaDan = new Function(src)();
   const g = { pts: [
@@ -262,38 +314,70 @@ t('_poziOpozGrupisiPoStarosti raspoređuje tačke po ISTIM bandovima kao markeri
   assert.strictEqual(bands.d3, undefined);
 });
 
-t('_poziOpozBufKm daje veći poluprečnik za MODIS (1km) nego VIIRS (375m)', () => {
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
+t('_poziOpozBufKm koristi jačinu i rezoluciju bez automatskog pojasa od 400m', () => {
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
   const _poziOpozBufKm = new Function(src)();
   const viirs = _poziOpozBufKm(375), modis = _poziOpozBufKm(1000);
   assert.ok(modis > viirs);
-  assert.ok(viirs > 0.15 && viirs < 0.3, 'VIIRS poluprečnik van očekivanog opsega: ' + viirs);
+  assert.ok(viirs >= 0.02 && viirs <= 0.07, 'VIIRS radijus mora biti mali: ' + viirs);
+  assert.ok(modis >= 0.02 && modis <= 0.10, 'MODIS ne smije automatski dati 350–400m pojas: ' + modis);
+  const izFiremapa = _poziOpozBufKm({ rez:375, areaHa:1 });
+  assert.equal(izFiremapa, 0.02, 'mali Firemap obuhvat ostaje vidljiv na minimalnih 20m');
+  const siriFiremap = _poziOpozBufKm({ rez:375, areaHa:100 });
+  assert.ok(siriFiremap > 0.41 && siriFiremap < 0.42, 'poznati Firemap obuhvat mora imati unutrašnji odmak od 150m');
 });
 
 t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {
   const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
-  const src = extractFn('_poziPixelHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
   const _poziOpozGeom = new Function('turf', src)(turf);
   // Jedna tačka — mora vratiti buffer poligon (Polygon/MultiPolygon) oko nje.
   const geomJedna = _poziOpozGeom([{ la: 44.8, lo: 16.0, rez: 375 }]);
   assert.ok(geomJedna, 'jedna tačka mora dati geometriju (buffer kruga)');
   assert.match(geomJedna.geometry.type, /Polygon/);
-  // Tri razmaknute tačke — hull (concave/convex) + buffer, i dalje poligon.
+  // Tri razmaknute tačke ostaju zasebni krugovi; praznine se ne popunjavaju hullom.
   const geomTri = _poziOpozGeom([
     { la: 44.80, lo: 16.00, rez: 375 }, { la: 44.81, lo: 16.01, rez: 375 }, { la: 44.80, lo: 16.02, rez: 375 }
   ]);
-  assert.ok(geomTri, 'tri tačke moraju dati geometriju (hull+buffer)');
-  assert.match(geomTri.geometry.type, /Polygon/);
+  assert.ok(geomTri, 'tri tačke moraju dati geometriju zasebnih piksela');
+  if (geomTri.type === 'FeatureCollection') assert.strictEqual(geomTri.features.length, 3);
+  else assert.match(geomTri.geometry.type, /Polygon/);
   // Prazan niz / nepostojeći turf → bez pucanja, vraća null.
   assert.strictEqual(_poziOpozGeom([]), null);
 });
 
-t('_povGodDostupneGodine nikad ne ide ispod bazne 2026. godine', () => {
+t('_povGodDostupneGodine nudi tekuću i četiri prethodne godine', () => {
   const src = extractFn('_povGodDostupneGodine') + '\nreturn _povGodDostupneGodine;';
-  const _povGodDostupneGodine = new Function('_POV_GOD_BASE_YEAR', src)(2026);
-  assert.deepStrictEqual(_povGodDostupneGodine(2026), [2026]);
-  assert.deepStrictEqual(_povGodDostupneGodine(2028), [2026, 2027, 2028]);
-  assert.deepStrictEqual(_povGodDostupneGodine(2020), [2026]);
+  const fn = new Function('_POV_GOD_BROJ_GODINA', src)(5);
+  assert.deepStrictEqual(fn(2026), [2022, 2023, 2024, 2025, 2026]);
+  assert.deepStrictEqual(fn(2028), [2024, 2025, 2026, 2027, 2028]);
+});
+
+t('_povGodBoja razlikuje svježe, sedmične, tekuće i prošlogodišnje plohe', () => {
+  const src = extractFn('_povGodBoja') + '\nreturn _povGodBoja;';
+  const fn = new Function('_POZ_GOD_BOJA_OVE','_POZ_GOD_BOJA_PROSLE',src)('#b9781d','#95611d');
+  const sada = Date.now(), godina = new Date().getUTCFullYear();
+  assert.strictEqual(fn({ zadnji:sada - 2*3600000 }, godina), '#d99a32');
+  assert.strictEqual(fn({ zadnji:sada - 3*86400000 }, godina), '#c98527');
+  assert.strictEqual(fn({ zadnji:sada - 30*86400000 }, godina), '#b9781d');
+  assert.strictEqual(fn({ zadnji:Date.UTC(godina-1,5,1) }, godina-1), '#95611d');
+});
+
+t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen', () => {
+  assert.ok(HTML.includes("return v === null ? true : v === '1'"));
+  assert.ok(!HTML.includes('Površina je gruba procjena iz vrelih piksela'));
+  assert.ok(HTML.includes('id="poz-god-izbor"'));
+});
+
+t('EFFIS šira procjena se migrira na isključeno, a GFW ključ se čeka prije godišnjeg učitavanja', () => {
+  assert.ok(HTML.includes("_poziEffisState.opozareno = false"));
+  assert.ok(HTML.includes('EFFIS NRT — crveni referentni raster'));
+  assert.ok(HTML.includes("layers: 'nrt.ba.poly.season'"), 'mora koristiti postojeći EFFIS sezonski sloj, ne uklonjeni modis.ba');
+  assert.ok(HTML.includes("layers: 'modis.hs.month'"), 'mora imati EFFIS satelitske detekcije za zadnjih 30 dana');
+  assert.ok(HTML.includes("usf_poz_effis_oker_v6"), 'EFFIS raster se mora isključiti pri migraciji na oker lokalnu projekciju');
+  const fn = extractFn('openPozariSection');
+  assert.ok(fn.startsWith('async function'), 'otvaranje Požara mora čekati GFW ključ');
+  assert.ok(fn.indexOf('await _poziKljucUcitaj()') < fn.indexOf('_povGodLoadGodina'), 'ključ mora doći prije godišnjeg dohvata');
 });
 
 t('_uskUnutar prihvata tačke unutar Unsko-sanskog kantona, odbija van njega', () => {
@@ -304,15 +388,27 @@ t('_uskUnutar prihvata tačke unutar Unsko-sanskog kantona, odbija van njega', (
   assert.strictEqual(_uskUnutar(44.8, 20.0), false, 'daleko istočno mora biti van');
 });
 
-t('_poziHistSpojiIzvore dedupira isti požar viđen u dva izvora (blizu = ista grupa)', () => {
-  const src = dstSrc + '\nconst _POZ_GRUPA_M = 450;\n' + extractFn('_poziHistSpojiIzvore') + '\nreturn _poziHistSpojiIzvore;';
+t('_poziHistSpojiIzvore spaja samo prostorno i vremenski isti požar', () => {
+  const src = dstSrc + '\nconst _POZ_GRUPA_M = 450;\n' + extractFn('_poziVrijemeGranice') + '\n' + extractFn('_poziIstiDogadjaj') + '\n' + extractFn('_poziHistSpojiIzvore') + '\nreturn _poziHistSpojiIzvore;';
   const _poziHistSpojiIzvore = new Function(src)();
-  const a = { la: 44.80, lo: 16.00, broj: 3 };
-  const bIsti = { la: 44.8001, lo: 16.0001, broj: 5 }; // ista lokacija, drugi izvor, više detekcija
-  const cDaleko = { la: 44.95, lo: 16.30, broj: 2 };
-  const spojeno = _poziHistSpojiIzvore([[a], [bIsti, cDaleko]]);
-  assert.strictEqual(spojeno.length, 2, 'a i bIsti se moraju spojiti u jednu grupu, cDaleko ostaje zasebna');
+  const a = { la: 44.80, lo: 16.00, broj: 3, prvi: Date.parse('2026-09-01T10:00:00Z'), zadnji: Date.parse('2026-09-02T10:00:00Z') };
+  const bIsti = { la: 44.8001, lo: 16.0001, broj: 5, prvi: Date.parse('2026-09-02T12:00:00Z'), zadnji: Date.parse('2026-09-03T10:00:00Z') };
+  const istiMjestoKasnije = { la: 44.8001, lo: 16.0001, broj: 2, prvi: Date.parse('2026-09-12T10:00:00Z'), zadnji: Date.parse('2026-09-12T10:00:00Z') };
+  const cDaleko = { la: 44.95, lo: 16.30, broj: 2, prvi: a.prvi, zadnji: a.zadnji };
+  const spojeno = _poziHistSpojiIzvore([[a], [bIsti, istiMjestoKasnije, cDaleko]]);
+  assert.strictEqual(spojeno.length, 3, 'ponovni požar na istoj lokaciji nakon prekida mora ostati zaseban');
   assert.strictEqual(spojeno[0].broj, 5, 'zadržava se verzija sa VIŠE detekcija (potpunija)');
+});
+
+t('glavni prekidač potpuno skriva sve slojeve požara', () => {
+  assert.ok(!HTML.includes('const _POZ_ALWAYS_ON'), 'ne smije postojati prisilno uključivanje požara');
+  const auto = extractFn('_poziAutoTreba');
+  assert.ok(!auto.includes('_POZ_ALWAYS_ON'));
+  const toggle = extractFn('_poziToggle');
+  assert.ok(toggle.includes('_poziOn = !!on'));
+  assert.ok(toggle.includes('_poziEffisSyncMap()'), 'EFFIS slojevi moraju pratiti glavni prekidač');
+  assert.ok(toggle.includes('_povGodLayer'), 'godišnji sloj mora se ukloniti pri gašenju');
+  assert.ok(HTML.includes('if (_poziOn) _poziObnoviIzKesa();'));
 });
 
 t('_poziHistSortiraj sortira po blizini/vremenu/jačini', () => {
@@ -326,6 +422,76 @@ t('_poziHistSortiraj sortira po blizini/vremenu/jačini', () => {
   assert.deepStrictEqual(_poziHistSortiraj(grupe, 'blizina').map(g => g.d), [1000, 5000, 9000]);
   assert.deepStrictEqual(_poziHistSortiraj(grupe, 'vrijeme').map(g => g.zadnji), [300, 200, 100]);
   assert.deepStrictEqual(_poziHistSortiraj(grupe, 'jacina').map(g => g.frpMax), [9, 5, 2]);
+});
+
+t('Pregled ima godišnje KPI kartice, a godišnja lista je samo u Historiji', () => {
+  assert.ok(HTML.includes('id="poz-god-kpi"'), 'nedostaje godišnji KPI blok');
+  assert.ok(HTML.includes('Kompletna evidencija od 2026. godine'), 'Historija mora sadržati godišnju evidenciju');
+  assert.ok(!HTML.includes('id="poz-god-body"'), 'stara godišnja lista ne smije ostati u Pregledu');
+});
+
+t('sticky podtabovi imaju neprozirnu pozadinu i ne prekrivaju izbor godina', () => {
+  assert.match(HTML, /\.poz-podtabs\s*\{[^}]*z-index:20[^}]*background:#0d1b15/s);
+  assert.ok(!HTML.includes('background:linear-gradient(180deg,#0d1b15 78%,rgba(13,27,21,0))'));
+});
+
+t('legenda i simulacija ne prekrivaju kontrole karte', () => {
+  assert.ok(HTML.includes("const minY = Math.max(58"), 'pomjerena legenda mora ostati ispod gornjih dugmadi');
+  assert.match(HTML, /#poz-legends \{[^}]*z-index:490/, 'izbor karte mora ostati iznad legende');
+  assert.ok(HTML.includes("pane:'pozariPane', radius: 5"), 'simulacijske tačke moraju biti iznad plohe');
+});
+
+t('operativni pregled i četiri glavna kartografska prekidača postoje', () => {
+  assert.ok(HTML.includes('id="poz-operativni"'));
+  ['poz-layer-points','poz-layer-main','poz-layer-area','poz-legend-check'].forEach(id => assert.ok(HTML.includes(`id="${id}"`), id));
+  assert.ok(HTML.includes('function _poziOperativniHtml()'));
+});
+
+t('status izvora razlikuje uživo, keš, grešku, isključeno i WMS stanje', () => {
+  assert.ok(HTML.includes('id="poz-source-status"'));
+  assert.ok(HTML.includes('function _poziSourceStatusHtml()'));
+  ['podaci iz keša','odgovor primljen','greška dohvata','nema u kešu','WMS sloj(a) uključeno','↻ Osvježi'].forEach(x => assert.ok(HTML.includes(x), x));
+  assert.ok(HTML.includes("m.okvir === '30d'"));
+  assert.ok(HTML.includes('tačaka ·'));
+  assert.ok(HTML.includes('nije dostupno za 30 dana'));
+  assert.ok(HTML.includes("usf_poz_effis_oker_v6"));
+  assert.ok(HTML.includes("heatSw.style.opacity = imaHeat ? '1' : '.38'"));
+});
+
+t('modal grupe nudi cijeli požar i simulaciju, a historija šest filtera', () => {
+  assert.ok(HTML.includes('function _poziPrikaziCijeli(kljuc)'));
+  assert.ok(HTML.includes('▶ Simulacija'));
+  ['poz-hist-year','poz-hist-month','poz-hist-dept','poz-hist-area','poz-hist-conf','poz-hist-state'].forEach(id => assert.ok(HTML.includes(`id="${id}"`), id));
+  assert.ok(HTML.includes('function _poziHistPrimijeniFilter(grupe)'));
+});
+
+t('strožije grupisanje koristi uži prostorni i centralni prag', () => {
+  assert.ok(HTML.includes('const _POZ_GRUPA_M   = 350'));
+  assert.ok(HTML.includes('const _POZ_GRUPA_CENTAR_FAKTOR = 1.25'));
+  assert.ok(HTML.includes("x.vrsta === 'voda'"));
+});
+
+t('tačke detekcije imaju poseban gornji pane i migracija ih vraća na vidljivo', () => {
+  assert.ok(HTML.includes("createPane('pozariDetectionsPane')"));
+  assert.ok(HTML.includes("pane:'pozariDetectionsPane'"));
+  assert.ok(HTML.includes("const _POZ_TACKE_MIG_KEY = 'usf_pozari_tacke_vidljive_v2'"));
+  assert.ok(HTML.includes('s.tacke = true'));
+});
+
+t('crveni EFFIS raster je isključen po defaultu, lokalna ploha ostaje oker', () => {
+  assert.ok(HTML.includes("usf_poz_effis_oker_v6"));
+  assert.ok(HTML.includes('_poziEffisState.opozareno = false'));
+  assert.ok(HTML.includes('_poziEffisState.detekcije = false'));
+  assert.ok(!HTML.includes("hasOwnProperty.call(_poziEffisState, 'detekcije')"));
+  assert.ok(HTML.includes("const _POZ_OPOZ_BOJE = { h6: '#f6c667', h24: '#e6aa42', d3: '#c98527', st: '#95611d' }"));
+});
+
+t('Firemap.live je dopunski izvor sa obuhvatom size_ha', () => {
+  assert.ok(HTML.includes('function _poziFiremapUrl()'));
+  assert.ok(HTML.includes('FireDB%3Amodis_ba_pt_7day'));
+  assert.ok(HTML.includes('function _poziParseFiremapJson(txt)'));
+  assert.ok(HTML.includes('areaHa:isFinite(ha) && ha > 0 ? ha : null'));
+  assert.ok(HTML.includes("'Firemap.live (FireDB)'"));
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');

@@ -43,6 +43,9 @@ import androidx.webkit.WebViewAssetLoader;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.provider.OpenableColumns;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -52,6 +55,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
 
@@ -70,6 +81,19 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private WebViewAssetLoader assetLoader;
     private BroadcastReceiver recActionReceiver;
+    private volatile File pendingUpdateApk;
+    private volatile boolean updateInProgress = false;
+    private boolean pendingOfflineMapImport = false;
+    private final Map<String, SQLiteDatabase> mbtilesDatabases = new ConcurrentHashMap<>();
+    private final Map<String, TileSchema> tileSchemas = new ConcurrentHashMap<>();
+
+    // Podržava standardni MBTiles i česte SQLiteDB varijante: z/x/y/image.
+    private static final class TileSchema {
+        final String table, z, x, y, data; final boolean tms;
+        TileSchema(String table, String z, String x, String y, String data, boolean tms) {
+            this.table = table; this.z = z; this.x = x; this.y = y; this.data = data; this.tms = tms;
+        }
+    }
 
     private static final int REQ_FILE = 1;
     private static final int REQ_PERMS = 2;
@@ -146,17 +170,32 @@ public class MainActivity extends Activity {
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
 
+        // Service-worker fetches must resolve packaged assets too, even on a first offline launch.
+        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
+            final WebViewAssetLoader localAssets = assetLoader;
+            androidx.webkit.ServiceWorkerControllerCompat.getInstance().setServiceWorkerClient(
+                new androidx.webkit.ServiceWorkerClientCompat() {
+                    @Override
+                    public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
+                        return localAssets.shouldInterceptRequest(request.getUrl());
+                    }
+                });
+        }
+
         webView.addJavascriptInterface(new DownloadBridge(), "AndroidDownload");
         webView.addJavascriptInterface(new GpsBridge(), "AndroidGps");
         webView.addJavascriptInterface(new ShareBridge(), "AndroidShare");
         webView.addJavascriptInterface(new NetBridge(), "AndroidNet");
         webView.addJavascriptInterface(new AppNotifBridge(), "AndroidNotif");
         webView.addJavascriptInterface(new UpdateBridge(), "AndroidUpdate");
+        webView.addJavascriptInterface(new MbtilesBridge(), "AndroidMbtiles");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view,
                     WebResourceRequest request) {
+                WebResourceResponse tile = interceptMbtilesTile(request.getUrl());
+                if (tile != null) return tile;
                 return assetLoader.shouldInterceptRequest(request.getUrl());
             }
 
@@ -177,7 +216,7 @@ public class MainActivity extends Activity {
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 // Reload/navigacija resetuje JS stanje, ali native isRecordingActive bi
                 // bez ovoga ostao zaglavljen na true. Nova stranica = snimanje ne postoji.
-                isRecordingActive = false;
+                isRecordingActive = getSharedPreferences("gps_session", MODE_PRIVATE).getBoolean("active", false);
                 super.onPageStarted(view, url, favicon);
             }
         });
@@ -231,7 +270,17 @@ public class MainActivity extends Activity {
                     fileCallback.onReceiveValue(null);
                 }
                 fileCallback = filePathCallback;
-                Intent intent = fileChooserParams.createIntent();
+                pendingOfflineMapImport = isOfflineMapChooser(fileChooserParams);
+                Intent intent;
+                if (pendingOfflineMapImport) {
+                    intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                } else {
+                    intent = fileChooserParams.createIntent();
+                }
                 try {
                     startActivityForResult(intent, REQ_FILE);
                 } catch (Exception e) {
@@ -270,6 +319,260 @@ public class MainActivity extends Activity {
         });
 
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+    }
+
+    private boolean isOfflineMapChooser(WebChromeClient.FileChooserParams params) {
+        String[] types = params.getAcceptTypes();
+        if (types == null) return false;
+        for (String type : types) {
+            String s = type == null ? "" : type.toLowerCase();
+            if (s.contains("mbtiles") || s.contains("sqlite") || s.contains("sqlmap")
+                    || s.contains(".db")) return true;
+        }
+        return false;
+    }
+
+    private File mbtilesDir() {
+        File dir = new File(getFilesDir(), "offline_maps");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private File mbtilesFile(String id) {
+        return new File(mbtilesDir(), id + ".sqlite");
+    }
+
+    private String displayName(Uri uri) {
+        String name = "offline.mbtiles";
+        try (Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int col = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (col >= 0) name = c.getString(col);
+            }
+        } catch (Exception ignored) {}
+        return name == null || name.trim().isEmpty() ? "offline.mbtiles" : name;
+    }
+
+    // Neke SQLite karte imaju standardnu MBTiles tabelu tiles, ali nemaju
+    // metadata.bounds. Bez granica se karta uveze, ali ostane na staroj lokaciji.
+    // Granice tada računamo iz najnižeg zoom nivoa bez čitanja cijele baze u RAM.
+    private static String pickColumn(java.util.HashSet<String> cols, String... choices) {
+        for (String choice : choices) if (cols.contains(choice)) return choice;
+        return null;
+    }
+
+    private static String q(String column) {
+        return "\"" + column.replace("\"", "\"\"") + "\"";
+    }
+
+    private TileSchema tileSchema(String id) throws Exception {
+        TileSchema cached = tileSchemas.get(id);
+        if (cached != null) return cached;
+        SQLiteDatabase db = openMbtiles(id);
+        // .mbtiles uglavnom koristi tiles(zoom_level,tile_column,tile_row,tile_data),
+        // dok .sqlitedb često ima tiles(z,x,y,image), tile_cache ili drugo ime tabele.
+        // Ne smijemo odbaciti fajl samo zato što se tabela ne zove doslovno "tiles".
+        java.util.ArrayList<String> tables = new java.util.ArrayList<>();
+        try (Cursor c = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' ORDER BY CASE WHEN lower(name)='tiles' THEN 0 ELSE 1 END, name", null)) {
+            while (c.moveToNext()) {
+                String name = c.getString(0);
+                if (name != null && !name.startsWith("sqlite_")) tables.add(name);
+            }
+        }
+        for (String table : tables) {
+            java.util.HashSet<String> cols = new java.util.HashSet<>();
+            try (Cursor c = db.rawQuery("PRAGMA table_info(" + q(table) + ")", null)) {
+                while (c.moveToNext()) cols.add(c.getString(1).toLowerCase(java.util.Locale.ROOT));
+            } catch (Exception ignored) { continue; }
+            String z = pickColumn(cols, "zoom_level", "z", "zoom", "level");
+            String x = pickColumn(cols, "tile_column", "x", "column", "col");
+            String y = pickColumn(cols, "tile_row", "y", "row");
+            String data = pickColumn(cols, "tile_data", "image", "data", "tile", "blob");
+            if (z == null || x == null || y == null || data == null) continue;
+            TileSchema schema = new TileSchema(table, z, x, y, data, "tile_row".equals(y));
+            tileSchemas.put(id, schema);
+            return schema;
+        }
+        throw new IOException("SQLite nema raster pločice (z/x/y + slika)");
+    }
+
+    private byte[] tileBytes(String id, int z, int x, int xyzY) throws Exception {
+        SQLiteDatabase db = openMbtiles(id);
+        TileSchema s = tileSchema(id);
+        int tmsY = (int) (Math.pow(2d, z) - 1d - xyzY);
+        // Standardni MBTiles je TMS, a mnoge .sqlitedb karte čuvaju XYZ.
+        int firstY = s.tms ? tmsY : xyzY;
+        int secondY = s.tms ? xyzY : tmsY;
+        String sql = "SELECT " + q(s.data) + " FROM " + q(s.table) + " WHERE " + q(s.z) + "=? AND "
+                + q(s.x) + "=? AND " + q(s.y) + "=?";
+        for (int y : new int[]{firstY, secondY}) {
+            try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(y)})) {
+                if (c.moveToFirst()) return c.getBlob(0);
+            }
+        }
+        return null;
+    }
+
+    private int[] tileZoomRange(SQLiteDatabase db, TileSchema s) {
+        try (Cursor c = db.rawQuery("SELECT MIN(" + q(s.z) + "), MAX(" + q(s.z) + ") FROM " + q(s.table), null)) {
+            if (c.moveToFirst() && !c.isNull(0) && !c.isNull(1)) return new int[]{c.getInt(0), c.getInt(1)};
+        } catch (Exception ignored) {}
+        return new int[]{0, 19};
+    }
+
+    private String boundsFromTiles(SQLiteDatabase db, TileSchema s) {
+        try (Cursor c = db.rawQuery(
+                "SELECT " + q(s.z) + ", MIN(" + q(s.x) + "), MAX(" + q(s.x) + "), "
+                + "MIN(" + q(s.y) + "), MAX(" + q(s.y) + ") FROM " + q(s.table) + " WHERE " + q(s.z)
+                + "=(SELECT MIN(" + q(s.z) + ") FROM tiles)", null)) {
+            if (!c.moveToFirst() || c.isNull(0) || c.isNull(1) || c.isNull(2) || c.isNull(3) || c.isNull(4)) return "";
+            int z = c.getInt(0); if (z < 0 || z > 30) return "";
+            double n = Math.pow(2d, z);
+            double west = c.getLong(1) / n * 360d - 180d;
+            double east = (c.getLong(2) + 1d) / n * 360d - 180d;
+            double southY = s.tms ? n - c.getLong(3) : c.getLong(4) + 1d;
+            double northY = s.tms ? n - 1d - c.getLong(4) : c.getLong(3);
+            double south = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * southY / n))));
+            double north = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * northY / n))));
+            if (!Double.isFinite(west) || !Double.isFinite(south) || !Double.isFinite(east) || !Double.isFinite(north)
+                    || west >= east || south >= north) return "";
+            return west + "," + south + "," + east + "," + north;
+        } catch (Exception ignored) { return ""; }
+    }
+
+    private JSONObject readMbtilesInfo(String id, String name) throws Exception {
+        SQLiteDatabase db = openMbtiles(id);
+        TileSchema schema = tileSchema(id);
+        JSONObject meta = new JSONObject();
+        try (Cursor c = db.rawQuery("SELECT name,value FROM metadata", null)) {
+            while (c.moveToNext()) meta.put(c.getString(0), c.getString(1));
+        } catch (Exception ignored) {}
+        int[] zooms = tileZoomRange(db, schema);
+        String bounds = meta.optString("bounds", "");
+        if (bounds.trim().isEmpty()) bounds = boundsFromTiles(db, schema);
+        JSONObject out = new JSONObject();
+        out.put("id", id); out.put("name", name);
+        out.put("minzoom", meta.has("minzoom") ? meta.optInt("minzoom", zooms[0]) : zooms[0]);
+        out.put("maxzoom", meta.has("maxzoom") ? meta.optInt("maxzoom", zooms[1]) : zooms[1]);
+        out.put("format", meta.optString("format", "png"));
+        out.put("bounds", bounds); out.put("native", true);
+        return out;
+    }
+    private SQLiteDatabase openMbtiles(String id) throws Exception {
+        SQLiteDatabase cached = mbtilesDatabases.get(id);
+        if (cached != null && cached.isOpen()) return cached;
+        File file = mbtilesFile(id);
+        if (!file.isFile()) throw new IOException("Karta nije pronađena");
+        SQLiteDatabase opened = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null,
+                SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
+        mbtilesDatabases.put(id, opened);
+        return opened;
+    }
+
+    private WebResourceResponse interceptMbtilesTile(Uri uri) {
+        try {
+            if (!"appassets.androidplatform.net".equals(uri.getHost())) return null;
+            String path = uri.getPath();
+            if (path == null || !path.startsWith("/mbtiles/")) return null;
+            String[] p = path.substring("/mbtiles/".length()).split("/");
+            if (p.length != 4) return new WebResourceResponse("image/png", null,
+                    new java.io.ByteArrayInputStream(new byte[0]));
+            String id = URLDecoder.decode(p[0], StandardCharsets.UTF_8.name());
+            int z = Integer.parseInt(p[1]), x = Integer.parseInt(p[2]), xyzY = Integer.parseInt(p[3]);
+            int tmsY = (int) (Math.pow(2, z) - 1 - xyzY);
+            byte[] bytes = null;
+            try (Cursor c = openMbtiles(id).rawQuery(
+                    "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
+                    new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(tmsY)})) {
+                if (c.moveToFirst()) bytes = c.getBlob(0);
+            }
+            if (bytes == null) bytes = new byte[0];
+            return new WebResourceResponse("image/*", null,
+                    new java.io.ByteArrayInputStream(bytes));
+        } catch (Exception e) {
+            return new WebResourceResponse("image/png", null,
+                    new java.io.ByteArrayInputStream(new byte[0]));
+        }
+    }
+
+    private static String tileMime(byte[] bytes) {
+        if (bytes == null || bytes.length < 4) return "image/png";
+        if ((bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8) return "image/jpeg";
+        if (bytes.length >= 12 && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') return "image/webp";
+        return "image/png";
+    }
+
+    class MbtilesBridge {
+        @JavascriptInterface
+        public String listMaps() {
+            JSONArray out = new JSONArray();
+            try {
+                android.content.SharedPreferences prefs = getSharedPreferences("native_mbtiles", MODE_PRIVATE);
+                for (Map.Entry<String, ?> e : prefs.getAll().entrySet()) {
+                    String id = e.getKey(), name = String.valueOf(e.getValue());
+                    if (mbtilesFile(id).isFile()) out.put(readMbtilesInfo(id, name));
+                }
+            } catch (Exception ignored) {}
+            return out.toString();
+        }
+
+        @JavascriptInterface
+        public boolean deleteMap(String id) {
+            try {
+                SQLiteDatabase db = mbtilesDatabases.remove(id);
+                if (db != null) db.close();
+                getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().remove(id).apply();
+                return !mbtilesFile(id).exists() || mbtilesFile(id).delete();
+            } catch (Exception e) { return false; }
+        }
+
+        @JavascriptInterface
+        public String getTile(String id, int z, int x, int xyzY) {
+            try {
+                byte[] bytes = tileBytes(id, z, x, xyzY);
+                if (bytes != null && bytes.length > 0)
+                    return Base64.encodeToString(bytes, Base64.NO_WRAP);
+            } catch (Exception ignored) {}
+            return "";
+        }
+
+        // Vraća stvarni MIME tip iz zaglavlja pločice. Mnoge .sqlitedb karte
+        // nemaju metadata.format i sadrže JPEG/WebP, ne PNG.
+        @JavascriptInterface
+        public String getTileDataUri(String id, int z, int x, int xyzY) {
+            try {
+                byte[] bytes = tileBytes(id, z, x, xyzY);
+                if (bytes != null && bytes.length > 0)
+                    return "data:" + tileMime(bytes) + ";base64," + Base64.encodeToString(bytes, Base64.NO_WRAP);
+            } catch (Exception ignored) {}
+            return "";
+        }
+    }
+
+    private void importOfflineMap(Uri uri) {
+        final String name = displayName(uri);
+        final String id = UUID.randomUUID().toString();
+        new Thread(() -> {
+            File target = mbtilesFile(id);
+            try (InputStream in = getContentResolver().openInputStream(uri);
+                 OutputStream out = new FileOutputStream(target)) {
+                if (in == null) throw new IOException("Fajl nije dostupan");
+                byte[] buf = new byte[1024 * 1024];
+                int n;
+                while ((n = in.read(buf)) >= 0) out.write(buf, 0, n);
+                JSONObject info = readMbtilesInfo(id, name);
+                getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().putString(id, name).apply();
+                String encoded = Base64.encodeToString(info.toString().getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+                runOnUiThread(() -> webView.evaluateJavascript(
+                        "_nativeSqlmapImported(true,'" + encoded + "')", null));
+            } catch (Exception e) {
+                if (target.exists()) target.delete();
+                String msg = Base64.encodeToString(String.valueOf(e.getMessage()).getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+                runOnUiThread(() -> webView.evaluateJavascript(
+                        "_nativeSqlmapImported(false,'" + msg + "')", null));
+            }
+        }, "mbtiles-import").start();
     }
 
     class DownloadBridge {
@@ -515,10 +818,16 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void checkAndInstall() {
+            if (updateInProgress) {
+                postUpdate("downloading", "Ažuriranje je već u toku…", -1, 0, 0);
+                return;
+            }
+            updateInProgress = true;
+            postUpdate("checking", "Provjeravam novu verziju…", -1, 0, 0);
             new Thread(() -> {
                 try {
                     org.json.JSONObject rel = dohvatiJson(RELEASES_URL);
-                    if (rel == null) { postStatus("⚠ Ne mogu provjeriti novu verziju (nema interneta?)"); return; }
+                    if (rel == null) { postUpdate("error", "Ne mogu provjeriti novu verziju — provjeri internet", -1, 0, 0); updateInProgress = false; return; }
 
                     String tag = rel.optString("tag_name", "");
                     String verNova = tag.startsWith("v") ? tag.substring(1) : tag;
@@ -528,7 +837,8 @@ public class MainActivity extends Activity {
                                 .getPackageInfo(getPackageName(), 0).versionName;
                     } catch (Exception ignored) {}
                     if (verNova.isEmpty() || !jeNovija(verNova, verTrenutna)) {
-                        postStatus("✓ Već imaš najnoviju verziju (v" + verTrenutna + ")");
+                        postUpdate("latest", "Već imaš najnoviju verziju (v" + verTrenutna + ")", 100, 0, 0);
+                        updateInProgress = false;
                         return;
                     }
 
@@ -544,21 +854,31 @@ public class MainActivity extends Activity {
                         }
                     }
                     if (apkUrl == null) {
-                        postStatus("⚠ Nova verzija v" + verNova + " postoji, ali APK nije pronađen u objavi");
+                        postUpdate("error", "Verzija v" + verNova + " postoji, ali APK nije pronađen u objavi", -1, 0, 0);
+                        updateInProgress = false;
                         return;
                     }
 
-                    postStatus("⬇ Preuzimam verziju v" + verNova + "…");
+                    postUpdate("downloading", "Preuzimam verziju v" + verNova + "…", 0, 0, 0);
                     File dir = new File(getCacheDir(), "update");
                     if (!dir.exists()) dir.mkdirs();
                     File apk = new File(dir, "UnaSanaForest-v" + verNova + ".apk");
-                    if (!preuzmiFajl(apkUrl, apk)) {
-                        postStatus("⚠ Preuzimanje nije uspjelo — provjeri vezu i pokušaj ponovo");
+                    File part = new File(dir, apk.getName() + ".part");
+                    if (part.exists()) part.delete();
+                    if (!preuzmiFajl(apkUrl, part, verNova)) {
+                        postUpdate("error", "Preuzimanje nije uspjelo — provjeri vezu i pokušaj ponovo", -1, 0, 0);
+                        updateInProgress = false;
                         return;
                     }
+                    if (apk.exists() && !apk.delete()) throw new IOException("old_apk_delete");
+                    if (!part.renameTo(apk)) throw new IOException("apk_finalize");
+                    pendingUpdateApk = apk;
+                    postUpdate("ready", "APK je preuzet — otvaram instalaciju…", 100, apk.length(), apk.length());
+                    updateInProgress = false;
                     runOnUiThread(() -> instalirajApk(apk));
                 } catch (Exception e) {
-                    postStatus("⚠ Greška pri ažuriranju: " + e.getClass().getSimpleName());
+                    postUpdate("error", "Greška pri ažuriranju: " + e.getClass().getSimpleName(), -1, 0, 0);
+                    updateInProgress = false;
                 }
             }).start();
         }
@@ -587,19 +907,47 @@ public class MainActivity extends Activity {
             }
         }
 
-        private boolean preuzmiFajl(String urlStr, File dest) throws IOException {
+        private boolean preuzmiFajl(String urlStr, File dest, String verzija) throws IOException {
             URL u = new URL(urlStr);
             HttpURLConnection c = (HttpURLConnection) u.openConnection();
             try {
                 c.setInstanceFollowRedirects(true);
                 c.setConnectTimeout(20000);
                 c.setReadTimeout(30000);
+                c.setRequestProperty("User-Agent", "UnaSanaForest-Android");
                 int status = c.getResponseCode();
                 if (status != 200) return false;
+                long ukupno = c.getContentLengthLong(), procitano = 0;
+                int zadnjiPostotak = -1;
+                long zadnjaObjava = 0;
                 try (InputStream is = c.getInputStream(); FileOutputStream fos = new FileOutputStream(dest)) {
                     byte[] buf = new byte[65536];
                     int n;
-                    while ((n = is.read(buf)) > 0) fos.write(buf, 0, n);
+                    while ((n = is.read(buf)) > 0) {
+                        fos.write(buf, 0, n);
+                        procitano += n;
+                        if (ukupno > 0) {
+                            int pct = (int) ((procitano * 100L) / ukupno);
+                            long sada = System.currentTimeMillis();
+                            if (pct != zadnjiPostotak && (sada - zadnjaObjava >= 180 || pct >= 100)) {
+                                zadnjiPostotak = pct;
+                                zadnjaObjava = sada;
+                                postUpdate("downloading", "Preuzimam verziju v" + verzija + "…", Math.min(100, pct), procitano, ukupno);
+                            }
+                        } else if (System.currentTimeMillis() - zadnjaObjava >= 500) {
+                            zadnjaObjava = System.currentTimeMillis();
+                            postUpdate("downloading", "Preuzimam verziju v" + verzija + "…", -1, procitano, 0);
+                        }
+                    }
+                }
+                if (dest.length() < 1024 * 1024) { dest.delete(); return false; }
+                try (InputStream check = new java.io.FileInputStream(dest)) {
+                    if (check.read() != 'P' || check.read() != 'K') { dest.delete(); return false; }
+                }
+                android.content.pm.PackageInfo info = getPackageManager().getPackageArchiveInfo(dest.getAbsolutePath(), 0);
+                if (info == null || !getPackageName().equals(info.packageName)) {
+                    dest.delete();
+                    return false;
                 }
                 return true;
             } finally {
@@ -608,9 +956,15 @@ public class MainActivity extends Activity {
         }
 
         private void instalirajApk(File apk) {
+            if (apk == null || !apk.isFile()) {
+                pendingUpdateApk = null;
+                postUpdate("error", "Preuzeti APK više nije dostupan — pokušaj ponovo", -1, 0, 0);
+                return;
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                     && !getPackageManager().canRequestPackageInstalls()) {
-                postStatus("Dozvoli instalaciju iz ovog izvora pa pokušaj ponovo");
+                pendingUpdateApk = apk;
+                postUpdate("permission", "Dozvoli instalaciju iz ovog izvora; zatim se vrati u aplikaciju", 100, apk.length(), apk.length());
                 try {
                     startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                             Uri.parse("package:" + getPackageName())));
@@ -622,7 +976,13 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
+            try {
+                postUpdate("installing", "Potvrdi instalaciju na Android ekranu", 100, apk.length(), apk.length());
+                startActivity(intent);
+                pendingUpdateApk = null;
+            } catch (Exception e) {
+                postUpdate("error", "Android ne može otvoriti instalaciju APK-a", -1, 0, 0);
+            }
         }
 
         // Poredi "X.Y.Z" segment po segment (numerički, ne leksikografski).
@@ -642,11 +1002,12 @@ public class MainActivity extends Activity {
             catch (Exception e) { return 0; }
         }
 
-        private void postStatus(String msg) {
+        private void postUpdate(String phase, String msg, int progress, long downloaded, long total) {
             runOnUiThread(() -> {
                 if (webView == null) return;
                 webView.evaluateJavascript(
-                        "if(typeof _azurirajStatus==='function')_azurirajStatus(" + jsStr(msg) + ")", null);
+                        "if(typeof _azurirajStatus==='function')_azurirajStatus(" + jsStr(msg) + "," +
+                                progress + "," + jsStr(phase) + "," + downloaded + "," + total + ")", null);
             });
         }
 
@@ -716,8 +1077,8 @@ public class MainActivity extends Activity {
     class GpsBridge {
         @JavascriptInterface
         public void startRecording(String title) {
+            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) throw new SecurityException("Dozvoli preciznu lokaciju");
             isRecordingActive = true;
-            requestBackgroundLocationIfNeeded();
             Intent intent = new Intent(MainActivity.this, GpsService.class);
             intent.putExtra("title", title != null ? title : "GPS Snimanje");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -728,7 +1089,24 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean isRecording() {
+            return getSharedPreferences("gps_session", MODE_PRIVATE).getBoolean("active", false);
+        }
+
+        @JavascriptInterface
+        public void setPaused(boolean paused) {
+            synchronized (GpsService.BUFFER_LOCK) {
+                getSharedPreferences("gps_session", MODE_PRIVATE).edit().putBoolean("paused", paused).commit();
+            }
+            Intent intent = new Intent(MainActivity.this, GpsService.class);
+            intent.setAction("setPaused");
+            intent.putExtra("paused", paused);
+            startService(intent);
+        }
+
+        @JavascriptInterface
         public void stopRecording() {
+            getSharedPreferences("gps_session", MODE_PRIVATE).edit().putBoolean("active", false).commit();
             isRecordingActive = false;
             Intent intent = new Intent(MainActivity.this, GpsService.class);
             intent.setAction("stop");
@@ -869,6 +1247,8 @@ public class MainActivity extends Activity {
         }
         if (needRequest) {
             ActivityCompat.requestPermissions(this, perms, REQ_PERMS);
+        } else {
+            requestBackgroundLocationIfNeeded();
         }
     }
 
@@ -876,6 +1256,9 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode,
             @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQ_PERMS) {
+            boolean fineGranted = ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED;
             for (int i = 0; i < permissions.length; i++) {
                 if (permissions[i].equals(Manifest.permission.ACCESS_FINE_LOCATION)
                         && grantResults[i] != PackageManager.PERMISSION_GRANTED) {
@@ -884,6 +1267,7 @@ public class MainActivity extends Activity {
                             Toast.LENGTH_LONG).show();
                 }
             }
+            if (fineGranted) requestBackgroundLocationIfNeeded();
         }
     }
 
@@ -902,8 +1286,15 @@ public class MainActivity extends Activity {
                     results = new Uri[]{Uri.parse(data.getDataString())};
                 }
             }
-            fileCallback.onReceiveValue(results);
+            if (pendingOfflineMapImport && results != null && results.length > 0) {
+                fileCallback.onReceiveValue(null);
+                webView.evaluateJavascript("_baseLoadStatus('⏳ Kopiram offline kartu u brzo spremište…')", null);
+                importOfflineMap(results[0]);
+            } else {
+                fileCallback.onReceiveValue(results);
+            }
             fileCallback = null;
+            pendingOfflineMapImport = false;
         }
     }
 
@@ -943,6 +1334,11 @@ public class MainActivity extends Activity {
         super.onResume();
         webView.onResume();
         hideSystemUI();
+        if (pendingUpdateApk != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && getPackageManager().canRequestPackageInstalls()) {
+            File apk = pendingUpdateApk;
+            runOnUiThread(() -> new UpdateBridge().instalirajApk(apk));
+        }
     }
 
     @Override
