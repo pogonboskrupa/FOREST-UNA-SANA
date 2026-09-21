@@ -89,9 +89,9 @@ public class MainActivity extends Activity {
 
     // Podržava standardni MBTiles i česte SQLiteDB varijante: z/x/y/image.
     private static final class TileSchema {
-        final String z, x, y, data; final boolean tms;
-        TileSchema(String z, String x, String y, String data, boolean tms) {
-            this.z = z; this.x = x; this.y = y; this.data = data; this.tms = tms;
+        final String table, z, x, y, data; final boolean tms;
+        TileSchema(String table, String z, String x, String y, String data, boolean tms) {
+            this.table = table; this.z = z; this.x = x; this.y = y; this.data = data; this.tms = tms;
         }
     }
 
@@ -369,19 +369,31 @@ public class MainActivity extends Activity {
         TileSchema cached = tileSchemas.get(id);
         if (cached != null) return cached;
         SQLiteDatabase db = openMbtiles(id);
-        java.util.HashSet<String> cols = new java.util.HashSet<>();
-        try (Cursor c = db.rawQuery("PRAGMA table_info(tiles)", null)) {
-            while (c.moveToNext()) cols.add(c.getString(1).toLowerCase(java.util.Locale.ROOT));
+        // .mbtiles uglavnom koristi tiles(zoom_level,tile_column,tile_row,tile_data),
+        // dok .sqlitedb često ima tiles(z,x,y,image), tile_cache ili drugo ime tabele.
+        // Ne smijemo odbaciti fajl samo zato što se tabela ne zove doslovno "tiles".
+        java.util.ArrayList<String> tables = new java.util.ArrayList<>();
+        try (Cursor c = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' ORDER BY CASE WHEN lower(name)='tiles' THEN 0 ELSE 1 END, name", null)) {
+            while (c.moveToNext()) {
+                String name = c.getString(0);
+                if (name != null && !name.startsWith("sqlite_")) tables.add(name);
+            }
         }
-        String z = pickColumn(cols, "zoom_level", "z", "zoom");
-        String x = pickColumn(cols, "tile_column", "x", "column");
-        String y = pickColumn(cols, "tile_row", "y", "row");
-        String data = pickColumn(cols, "tile_data", "image", "data", "tile");
-        if (z == null || x == null || y == null || data == null)
-            throw new IOException("SQLite nema podržanu tiles tabelu");
-        TileSchema schema = new TileSchema(z, x, y, data, "tile_row".equals(y));
-        tileSchemas.put(id, schema);
-        return schema;
+        for (String table : tables) {
+            java.util.HashSet<String> cols = new java.util.HashSet<>();
+            try (Cursor c = db.rawQuery("PRAGMA table_info(" + q(table) + ")", null)) {
+                while (c.moveToNext()) cols.add(c.getString(1).toLowerCase(java.util.Locale.ROOT));
+            } catch (Exception ignored) { continue; }
+            String z = pickColumn(cols, "zoom_level", "z", "zoom", "level");
+            String x = pickColumn(cols, "tile_column", "x", "column", "col");
+            String y = pickColumn(cols, "tile_row", "y", "row");
+            String data = pickColumn(cols, "tile_data", "image", "data", "tile", "blob");
+            if (z == null || x == null || y == null || data == null) continue;
+            TileSchema schema = new TileSchema(table, z, x, y, data, "tile_row".equals(y));
+            tileSchemas.put(id, schema);
+            return schema;
+        }
+        throw new IOException("SQLite nema raster pločice (z/x/y + slika)");
     }
 
     private byte[] tileBytes(String id, int z, int x, int xyzY) throws Exception {
@@ -391,7 +403,7 @@ public class MainActivity extends Activity {
         // Standardni MBTiles je TMS, a mnoge .sqlitedb karte čuvaju XYZ.
         int firstY = s.tms ? tmsY : xyzY;
         int secondY = s.tms ? xyzY : tmsY;
-        String sql = "SELECT " + q(s.data) + " FROM tiles WHERE " + q(s.z) + "=? AND "
+        String sql = "SELECT " + q(s.data) + " FROM " + q(s.table) + " WHERE " + q(s.z) + "=? AND "
                 + q(s.x) + "=? AND " + q(s.y) + "=?";
         for (int y : new int[]{firstY, secondY}) {
             try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(y)})) {
@@ -402,7 +414,7 @@ public class MainActivity extends Activity {
     }
 
     private int[] tileZoomRange(SQLiteDatabase db, TileSchema s) {
-        try (Cursor c = db.rawQuery("SELECT MIN(" + q(s.z) + "), MAX(" + q(s.z) + ") FROM tiles", null)) {
+        try (Cursor c = db.rawQuery("SELECT MIN(" + q(s.z) + "), MAX(" + q(s.z) + ") FROM " + q(s.table), null)) {
             if (c.moveToFirst() && !c.isNull(0) && !c.isNull(1)) return new int[]{c.getInt(0), c.getInt(1)};
         } catch (Exception ignored) {}
         return new int[]{0, 19};
@@ -411,7 +423,7 @@ public class MainActivity extends Activity {
     private String boundsFromTiles(SQLiteDatabase db, TileSchema s) {
         try (Cursor c = db.rawQuery(
                 "SELECT " + q(s.z) + ", MIN(" + q(s.x) + "), MAX(" + q(s.x) + "), "
-                + "MIN(" + q(s.y) + "), MAX(" + q(s.y) + ") FROM tiles WHERE " + q(s.z)
+                + "MIN(" + q(s.y) + "), MAX(" + q(s.y) + ") FROM " + q(s.table) + " WHERE " + q(s.z)
                 + "=(SELECT MIN(" + q(s.z) + ") FROM tiles)", null)) {
             if (!c.moveToFirst() || c.isNull(0) || c.isNull(1) || c.isNull(2) || c.isNull(3) || c.isNull(4)) return "";
             int z = c.getInt(0); if (z < 0 || z > 30) return "";
@@ -483,6 +495,14 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static String tileMime(byte[] bytes) {
+        if (bytes == null || bytes.length < 4) return "image/png";
+        if ((bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8) return "image/jpeg";
+        if (bytes.length >= 12 && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') return "image/webp";
+        return "image/png";
+    }
+
     class MbtilesBridge {
         @JavascriptInterface
         public String listMaps() {
@@ -513,6 +533,18 @@ public class MainActivity extends Activity {
                 byte[] bytes = tileBytes(id, z, x, xyzY);
                 if (bytes != null && bytes.length > 0)
                     return Base64.encodeToString(bytes, Base64.NO_WRAP);
+            } catch (Exception ignored) {}
+            return "";
+        }
+
+        // Vraća stvarni MIME tip iz zaglavlja pločice. Mnoge .sqlitedb karte
+        // nemaju metadata.format i sadrže JPEG/WebP, ne PNG.
+        @JavascriptInterface
+        public String getTileDataUri(String id, int z, int x, int xyzY) {
+            try {
+                byte[] bytes = tileBytes(id, z, x, xyzY);
+                if (bytes != null && bytes.length > 0)
+                    return "data:" + tileMime(bytes) + ";base64," + Base64.encodeToString(bytes, Base64.NO_WRAP);
             } catch (Exception ignored) {}
             return "";
         }
