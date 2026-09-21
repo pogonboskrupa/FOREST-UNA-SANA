@@ -135,11 +135,11 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.4.0';
+      if (label) label.textContent = 'v1.4.1';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Una Sana Forest v1.4.0';
+  if (badge) badge.textContent = 'Una Sana Forest v1.4.1';
 })();
