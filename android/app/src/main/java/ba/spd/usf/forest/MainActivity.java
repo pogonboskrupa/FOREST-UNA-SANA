@@ -85,6 +85,15 @@ public class MainActivity extends Activity {
     private volatile boolean updateInProgress = false;
     private boolean pendingOfflineMapImport = false;
     private final Map<String, SQLiteDatabase> mbtilesDatabases = new ConcurrentHashMap<>();
+    private final Map<String, TileSchema> tileSchemas = new ConcurrentHashMap<>();
+
+    // Podržava standardni MBTiles i česte SQLiteDB varijante: z/x/y/image.
+    private static final class TileSchema {
+        final String z, x, y, data; final boolean tms;
+        TileSchema(String z, String x, String y, String data, boolean tms) {
+            this.z = z; this.x = x; this.y = y; this.data = data; this.tms = tms;
+        }
+    }
 
     private static final int REQ_FILE = 1;
     private static final int REQ_PERMS = 2;
@@ -347,51 +356,96 @@ public class MainActivity extends Activity {
     // Neke SQLite karte imaju standardnu MBTiles tabelu tiles, ali nemaju
     // metadata.bounds. Bez granica se karta uveze, ali ostane na staroj lokaciji.
     // Granice tada računamo iz najnižeg zoom nivoa bez čitanja cijele baze u RAM.
-    private String boundsFromTiles(SQLiteDatabase db) {
+    private static String pickColumn(java.util.HashSet<String> cols, String... choices) {
+        for (String choice : choices) if (cols.contains(choice)) return choice;
+        return null;
+    }
+
+    private static String q(String column) {
+        return "\"" + column.replace("\"", "\"\"") + "\"";
+    }
+
+    private TileSchema tileSchema(String id) throws Exception {
+        TileSchema cached = tileSchemas.get(id);
+        if (cached != null) return cached;
+        SQLiteDatabase db = openMbtiles(id);
+        java.util.HashSet<String> cols = new java.util.HashSet<>();
+        try (Cursor c = db.rawQuery("PRAGMA table_info(tiles)", null)) {
+            while (c.moveToNext()) cols.add(c.getString(1).toLowerCase(java.util.Locale.ROOT));
+        }
+        String z = pickColumn(cols, "zoom_level", "z", "zoom");
+        String x = pickColumn(cols, "tile_column", "x", "column");
+        String y = pickColumn(cols, "tile_row", "y", "row");
+        String data = pickColumn(cols, "tile_data", "image", "data", "tile");
+        if (z == null || x == null || y == null || data == null)
+            throw new IOException("SQLite nema podržanu tiles tabelu");
+        TileSchema schema = new TileSchema(z, x, y, data, "tile_row".equals(y));
+        tileSchemas.put(id, schema);
+        return schema;
+    }
+
+    private byte[] tileBytes(String id, int z, int x, int xyzY) throws Exception {
+        SQLiteDatabase db = openMbtiles(id);
+        TileSchema s = tileSchema(id);
+        int tmsY = (int) (Math.pow(2d, z) - 1d - xyzY);
+        // Standardni MBTiles je TMS, a mnoge .sqlitedb karte čuvaju XYZ.
+        int firstY = s.tms ? tmsY : xyzY;
+        int secondY = s.tms ? xyzY : tmsY;
+        String sql = "SELECT " + q(s.data) + " FROM tiles WHERE " + q(s.z) + "=? AND "
+                + q(s.x) + "=? AND " + q(s.y) + "=?";
+        for (int y : new int[]{firstY, secondY}) {
+            try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(y)})) {
+                if (c.moveToFirst()) return c.getBlob(0);
+            }
+        }
+        return null;
+    }
+
+    private int[] tileZoomRange(SQLiteDatabase db, TileSchema s) {
+        try (Cursor c = db.rawQuery("SELECT MIN(" + q(s.z) + "), MAX(" + q(s.z) + ") FROM tiles", null)) {
+            if (c.moveToFirst() && !c.isNull(0) && !c.isNull(1)) return new int[]{c.getInt(0), c.getInt(1)};
+        } catch (Exception ignored) {}
+        return new int[]{0, 19};
+    }
+
+    private String boundsFromTiles(SQLiteDatabase db, TileSchema s) {
         try (Cursor c = db.rawQuery(
-                "SELECT zoom_level, MIN(tile_column), MAX(tile_column), "
-                + "MIN(tile_row), MAX(tile_row) FROM tiles "
-                + "WHERE zoom_level=(SELECT MIN(zoom_level) FROM tiles)", null)) {
-            if (!c.moveToFirst() || c.isNull(0) || c.isNull(1) || c.isNull(2)
-                    || c.isNull(3) || c.isNull(4)) return "";
-            int z = c.getInt(0);
-            if (z < 0 || z > 30) return "";
+                "SELECT " + q(s.z) + ", MIN(" + q(s.x) + "), MAX(" + q(s.x) + "), "
+                + "MIN(" + q(s.y) + "), MAX(" + q(s.y) + ") FROM tiles WHERE " + q(s.z)
+                + "=(SELECT MIN(" + q(s.z) + ") FROM tiles)", null)) {
+            if (!c.moveToFirst() || c.isNull(0) || c.isNull(1) || c.isNull(2) || c.isNull(3) || c.isNull(4)) return "";
+            int z = c.getInt(0); if (z < 0 || z > 30) return "";
             double n = Math.pow(2d, z);
             double west = c.getLong(1) / n * 360d - 180d;
             double east = (c.getLong(2) + 1d) / n * 360d - 180d;
-            // MBTiles redovi su TMS (0 je jug); Web Mercator računa od sjevera.
-            double southY = n - c.getLong(3);
-            double northY = n - 1d - c.getLong(4);
+            double southY = s.tms ? n - c.getLong(3) : c.getLong(4) + 1d;
+            double northY = s.tms ? n - 1d - c.getLong(4) : c.getLong(3);
             double south = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * southY / n))));
             double north = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * northY / n))));
-            if (!Double.isFinite(west) || !Double.isFinite(south)
-                    || !Double.isFinite(east) || !Double.isFinite(north)
+            if (!Double.isFinite(west) || !Double.isFinite(south) || !Double.isFinite(east) || !Double.isFinite(north)
                     || west >= east || south >= north) return "";
             return west + "," + south + "," + east + "," + north;
-        } catch (Exception ignored) {
-            return "";
-        }
+        } catch (Exception ignored) { return ""; }
     }
 
     private JSONObject readMbtilesInfo(String id, String name) throws Exception {
         SQLiteDatabase db = openMbtiles(id);
+        TileSchema schema = tileSchema(id);
         JSONObject meta = new JSONObject();
         try (Cursor c = db.rawQuery("SELECT name,value FROM metadata", null)) {
             while (c.moveToNext()) meta.put(c.getString(0), c.getString(1));
         } catch (Exception ignored) {}
+        int[] zooms = tileZoomRange(db, schema);
         String bounds = meta.optString("bounds", "");
-        if (bounds.trim().isEmpty()) bounds = boundsFromTiles(db);
+        if (bounds.trim().isEmpty()) bounds = boundsFromTiles(db, schema);
         JSONObject out = new JSONObject();
-        out.put("id", id);
-        out.put("name", name);
-        out.put("minzoom", meta.optInt("minzoom", 0));
-        out.put("maxzoom", meta.optInt("maxzoom", 19));
+        out.put("id", id); out.put("name", name);
+        out.put("minzoom", meta.has("minzoom") ? meta.optInt("minzoom", zooms[0]) : zooms[0]);
+        out.put("maxzoom", meta.has("maxzoom") ? meta.optInt("maxzoom", zooms[1]) : zooms[1]);
         out.put("format", meta.optString("format", "png"));
-        out.put("bounds", bounds);
-        out.put("native", true);
+        out.put("bounds", bounds); out.put("native", true);
         return out;
     }
-
     private SQLiteDatabase openMbtiles(String id) throws Exception {
         SQLiteDatabase cached = mbtilesDatabases.get(id);
         if (cached != null && cached.isOpen()) return cached;
@@ -456,14 +510,9 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getTile(String id, int z, int x, int xyzY) {
             try {
-                int tmsY = (int) (Math.pow(2, z) - 1 - xyzY);
-                try (Cursor c = openMbtiles(id).rawQuery(
-                        "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
-                        new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(tmsY)})) {
-                    if (c.moveToFirst()) {
-                        return Base64.encodeToString(c.getBlob(0), Base64.NO_WRAP);
-                    }
-                }
+                byte[] bytes = tileBytes(id, z, x, xyzY);
+                if (bytes != null && bytes.length > 0)
+                    return Base64.encodeToString(bytes, Base64.NO_WRAP);
             } catch (Exception ignored) {}
             return "";
         }
