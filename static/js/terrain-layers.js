@@ -163,7 +163,7 @@ if (typeof window !== 'undefined') {
           if (typeof AndroidMbtiles === 'undefined') { finish(); return; }
           const uri = typeof AndroidMbtiles.getTileDataUri === 'function'
             ? AndroidMbtiles.getTileDataUri(this.options.nativeId, coords.z, coords.x, coords.y) : '';
-          const b64 = uri || typeof AndroidMbtiles.getTile !== 'function' ? '' :
+          const b64 = (uri || typeof AndroidMbtiles.getTile !== 'function') ? '' :
             AndroidMbtiles.getTile(this.options.nativeId, coords.z, coords.x, coords.y);
           if (!uri && !b64) { finish(); return; }
           const image = new Image();
