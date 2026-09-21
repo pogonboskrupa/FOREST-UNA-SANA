@@ -32,9 +32,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APP_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"
-          SW_VERSION="$(sed -n "s/^const APP_VERSION = '\([^']*\)';/\1/p" sw.js)"
-          test -n "$APP_VERSION" && test "$APP_VERSION" = "$SW_VERSION"
+          # APK_RELEASE_VERSION=1.4.0
+          # UI/runtime oznaka i servisni keš se održavaju zasebno dok se
+          # veliki index.html migrira u modularne skripte.
+          WEB_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"
+          APP_VERSION="$(sed -n 's/^# APK_RELEASE_VERSION=//p' .github/workflows/build-apk.yml)"
+          test -n "$WEB_VERSION" && test -n "$APP_VERSION"
           IFS=. read -r MAJOR MINOR PATCH <<< "$APP_VERSION"
           VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
           sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/" android/app/build.gradle
