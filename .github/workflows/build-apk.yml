@@ -36,7 +36,7 @@ jobs:
           # UI/runtime oznaka i servisni keš se održavaju zasebno dok se
           # veliki index.html migrira u modularne skripte.
           WEB_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"
-          APP_VERSION="$(sed -n 's/^# APK_RELEASE_VERSION=//p' .github/workflows/build-apk.yml)"
+          APP_VERSION="$(sed -n 's/^[[:space:]]*# APK_RELEASE_VERSION=//p' .github/workflows/build-apk.yml)"
           test -n "$WEB_VERSION" && test -n "$APP_VERSION"
           IFS=. read -r MAJOR MINOR PATCH <<< "$APP_VERSION"
           VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
