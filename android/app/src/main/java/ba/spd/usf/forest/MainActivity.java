@@ -344,19 +344,50 @@ public class MainActivity extends Activity {
         return name == null || name.trim().isEmpty() ? "offline.mbtiles" : name;
     }
 
+    // Neke SQLite karte imaju standardnu MBTiles tabelu tiles, ali nemaju
+    // metadata.bounds. Bez granica se karta uveze, ali ostane na staroj lokaciji.
+    // Granice tada računamo iz najnižeg zoom nivoa bez čitanja cijele baze u RAM.
+    private String boundsFromTiles(SQLiteDatabase db) {
+        try (Cursor c = db.rawQuery(
+                "SELECT zoom_level, MIN(tile_column), MAX(tile_column), "
+                + "MIN(tile_row), MAX(tile_row) FROM tiles "
+                + "WHERE zoom_level=(SELECT MIN(zoom_level) FROM tiles)", null)) {
+            if (!c.moveToFirst() || c.isNull(0) || c.isNull(1) || c.isNull(2)
+                    || c.isNull(3) || c.isNull(4)) return "";
+            int z = c.getInt(0);
+            if (z < 0 || z > 30) return "";
+            double n = Math.pow(2d, z);
+            double west = c.getLong(1) / n * 360d - 180d;
+            double east = (c.getLong(2) + 1d) / n * 360d - 180d;
+            // MBTiles redovi su TMS (0 je jug); Web Mercator računa od sjevera.
+            double southY = n - c.getLong(3);
+            double northY = n - 1d - c.getLong(4);
+            double south = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * southY / n))));
+            double north = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * northY / n))));
+            if (!Double.isFinite(west) || !Double.isFinite(south)
+                    || !Double.isFinite(east) || !Double.isFinite(north)
+                    || west >= east || south >= north) return "";
+            return west + "," + south + "," + east + "," + north;
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     private JSONObject readMbtilesInfo(String id, String name) throws Exception {
         SQLiteDatabase db = openMbtiles(id);
         JSONObject meta = new JSONObject();
         try (Cursor c = db.rawQuery("SELECT name,value FROM metadata", null)) {
             while (c.moveToNext()) meta.put(c.getString(0), c.getString(1));
         } catch (Exception ignored) {}
+        String bounds = meta.optString("bounds", "");
+        if (bounds.trim().isEmpty()) bounds = boundsFromTiles(db);
         JSONObject out = new JSONObject();
         out.put("id", id);
         out.put("name", name);
         out.put("minzoom", meta.optInt("minzoom", 0));
         out.put("maxzoom", meta.optInt("maxzoom", 19));
         out.put("format", meta.optString("format", "png"));
-        out.put("bounds", meta.optString("bounds", ""));
+        out.put("bounds", bounds);
         out.put("native", true);
         return out;
     }
