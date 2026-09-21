@@ -143,3 +143,45 @@ if (typeof window !== 'undefined') {
   const badge = document.getElementById('meni-ver-badge');
   if (badge) badge.textContent = 'Una Sana Forest v1.4.1';
 })();
+
+
+// SQLitedb raster fix: stvarni sadržaj pločice određuje JPEG/PNG/WebP,
+// jer mnoge karte nemaju metadata.format. Ovaj patch vrijedi i za slojeve
+// koje je glavni runtime već otvorio prije učitavanja ove modularne skripte.
+(function _usfSqlitedbTileDecodeFix() {
+  if (typeof window === 'undefined') return;
+  const apply = () => {
+    if (typeof _NativeSqlCanvasLayer === 'undefined' || !_NativeSqlCanvasLayer.prototype) return false;
+    const proto = _NativeSqlCanvasLayer.prototype;
+    if (proto.__usfMimeAwareTiles) return true;
+    proto.createTile = function(coords, done) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 256;
+      const finish = () => { try { done(null, canvas); } catch(e) {} };
+      setTimeout(() => {
+        try {
+          if (typeof AndroidMbtiles === 'undefined') { finish(); return; }
+          const uri = typeof AndroidMbtiles.getTileDataUri === 'function'
+            ? AndroidMbtiles.getTileDataUri(this.options.nativeId, coords.z, coords.x, coords.y) : '';
+          const b64 = uri || typeof AndroidMbtiles.getTile !== 'function' ? '' :
+            AndroidMbtiles.getTile(this.options.nativeId, coords.z, coords.x, coords.y);
+          if (!uri && !b64) { finish(); return; }
+          const image = new Image();
+          image.onload = () => {
+            try { canvas.getContext('2d', { alpha:true }).drawImage(image, 0, 0, 256, 256); } catch(e) {}
+            finish();
+          };
+          image.onerror = finish;
+          image.src = uri || ('data:image/png;base64,' + b64);
+        } catch(e) { finish(); }
+      }, 0);
+      return canvas;
+    };
+    proto.__usfMimeAwareTiles = true;
+    if (Array.isArray(window._sqlLayers)) window._sqlLayers.filter(r => r.native && r.layer).forEach(r => {
+      try { r.layer.redraw(); } catch(e) {}
+    });
+    return true;
+  };
+  if (!apply()) setTimeout(apply, 0);
+})();
