@@ -10,8 +10,8 @@ android {
         applicationId "ba.spd.usf.forest"
         minSdk 24
         targetSdk 34
-        versionCode 27
-        versionName "0.22.0"
+        versionCode 28
+        versionName "0.23.0"
     }
 
     // Koristi ISKLJUČIVO postojeći release ključ; nikad ne generiši zamjenski.

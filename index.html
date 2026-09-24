@@ -340,6 +340,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 .loc-switch.on { background:#16a34a; }
 .loc-switch.on::after { transform:translateX(16px); }
+/* Nevidljivo proširenje dodirne površine do ~44px (terenski rad, rukavice) — vizuelni prekidač ostaje 38×22. */
+.loc-switch::before { content:''; position:absolute; inset:-11px -4px; }
+.loc-row {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:8px 0; color:#e2e8f0; font-size:13px;
+}
+.loc-row > span { flex:1; min-width:0; }
+.up-body input[type=checkbox] { width:22px; height:22px; accent-color:#f97316; flex-shrink:0; }
 #ab-loc-popup .loc-btn {
   flex:1; padding:9px 6px; border-radius:9px; border:1px solid #fdba74;
   background:#fff7ed; color:#c2410c; font-size:12px; font-weight:700; cursor:pointer; text-align:center;
@@ -433,8 +441,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="loc-center-dot"></div>
 <div id="loc-dist-badge"></div>
 
-<!-- Legenda projekcije opožarene površine (Požari) — vidi _poziOpozAzuriraj -->
-<div id="poz-opoz-legend" style="display:none;position:absolute;left:10px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:220px;">
+<!-- Legenda projekcije opožarene površine (Požari) — vidi _poziOpozAzuriraj. bottom:174px = iznad #zoom-grp (76px + 2×40px + 8px razmak), inače prekriva zoom dugmad. -->
+<div id="poz-opoz-legend" style="display:none;position:absolute;left:10px;bottom:calc(174px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:220px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">OPOŽARENO (PROCJENA)</div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#ffedd5;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">≤ 6 h (najnovije viđeno)</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#fdba74;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">6–24 h</span></div>
@@ -442,8 +450,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#292524;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">starije od 3 dana</span></div>
 </div>
 
-<!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve -->
-<div id="poz-god-legend" style="display:none;position:absolute;right:10px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:180px;">
+<!-- Legenda godišnjeg pregleda (Požari) — vidi _povGodRenderSve. bottom:250px = iznad #map-fabs (76px + 3×48px + 2×10px). -->
+<div id="poz-god-legend" style="display:none;position:absolute;right:10px;bottom:calc(250px + env(safe-area-inset-bottom,0px));z-index:800;background:rgba(15,23,42,0.92);border:1px solid #334155;border-radius:10px;padding:9px 12px;pointer-events:none;max-width:180px;">
   <div style="font-size:10.5px;font-weight:700;color:#e2e8f0;margin-bottom:6px;">POŽARI — KADA</div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c2410c;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">nedavno (≤ 3 dana)</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#eab308;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">ove godine</span></div>
@@ -636,7 +644,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <button class="poz-okvir-btn" data-okvir="7d" onclick="_poziPostaviOkvir('7d')">7 dana</button>
       <button class="poz-okvir-btn" data-okvir="30d" onclick="_poziPostaviOkvir('30d')">30 dana</button>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
     <label style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:12px;margin:0 0 10px;">
       <input type="checkbox" id="poz-god-trenutna-chk" onchange="_povGodToggleGodina(new Date().getUTCFullYear(), this.checked)"> Tekuća godina na karti (svi požari cijele sezone, kanton)
     </label>
@@ -650,29 +658,29 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <span>🟧 Projekcija opožarene površine</span>
       <div class="loc-switch" id="poz-opoz-switch" onclick="_poziOpozToggle(!_poziOpozOn())"></div>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 0;">Procjena iz satelitskih detekcija (tačke + poligon obojen po starosti) — NIJE mjerena granica požara.</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Procjena iz satelitskih detekcija (tačke + poligon obojen po starosti) — NIJE mjerena granica požara.</div>
     <div class="loc-row">
       <span>🔔 Upozori na nov požar blizu</span>
       <input type="checkbox" id="poz-notif-chk" onchange="_poziNotifToggle(this.checked)">
     </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🛰 Global Forest Watch — dodatni izvor</div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">🛰 Global Forest Watch — dodatni izvor</div>
       <div class="loc-row">
         <span>Dopuni FIRMS arhivu GFW detekcijama</span>
         <div class="loc-switch" id="poz-gfw-switch" onclick="_poziGfwToggle(!_poziGfwOn())"></div>
       </div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Iste NASA detekcije, ali sa GFW servera (treba admin ključ ispod) — koristno kad FIRMS arhiva ne radi ili je tuđi server nedostupan.</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-top:4px;">Iste NASA detekcije, ali sa GFW servera (treba admin ključ ispod) — koristno kad FIRMS arhiva ne radi ili je tuđi server nedostupan.</div>
     </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">📅 Godišnji pregled na karti (GFW, treba admin ključ ispod)</div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:8px;">Počev od 2026. — označi godinu(e) da vidiš sve požare te godine na karti (obojeno po legendi "POŽARI — KADA": nedavno/ove godine/prošlih godina). Ova godina je uključena po podrazumijevanom.</div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">📅 Godišnji pregled na karti (GFW, treba admin ključ ispod)</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:8px;">Počev od 2026. — označi godinu(e) da vidiš sve požare te godine na karti (obojeno po legendi "POŽARI — KADA": nedavno/ove godine/prošlih godina). Ova godina je uključena po podrazumijevanom.</div>
       <div id="poz-god-body"></div>
     </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
       <div class="loc-row">
         <span>Opožarene površine (mjerene granice)</span>
         <div class="loc-switch" id="poz-effis-ba-switch" onclick="_poziEffisToggle('opozareno',!_poziEffisOn('opozareno'))"></div>
@@ -681,11 +689,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <span>Indeks opasnosti od požara (FWI)</span>
         <div class="loc-switch" id="poz-effis-fwi-switch" onclick="_poziEffisToggle('fwi',!_poziEffisOn('fwi'))"></div>
       </div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">EFFIS opožarene površine stižu sa danima zakašnjenja (mjereno, ne uživo) — dopuna satelitskim tačkastim detekcijama iznad, ne zamjena.</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-top:4px;">EFFIS opožarene površine stižu sa danima zakašnjenja (mjereno, ne uživo) — dopuna satelitskim tačkastim detekcijama iznad, ne zamjena.</div>
     </div>
 
     <div class="treg-meta-edit" style="margin-top:14px;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🔑 Admin: FIRMS/GFW ključevi</div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">🔑 Admin: FIRMS/GFW ključevi</div>
       <input id="poz-key-firms" placeholder="FIRMS MAP_KEY (opciono)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
       <input id="poz-key-gfw" placeholder="GFW API ključ (za dodatni izvor)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">
       <button class="mf-save" onclick="_poziAdminSacuvajKljuceve()">💾 Sačuvaj ključeve</button>
@@ -696,7 +704,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
 
     <div id="poz-podtab-historija" style="display:none;">
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:10px;">Svi trenutno dostupni požari (nedavne detekcije + godišnji GFW pregled) unutar Unsko-sanskog kantona — bez obzira na okvir/godine označene u Pregledu.</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:10px;">Svi trenutno dostupni požari (nedavne detekcije + godišnji GFW pregled) unutar Unsko-sanskog kantona — bez obzira na okvir/godine označene u Pregledu.</div>
       <div style="display:flex;gap:6px;margin-bottom:10px;">
         <button class="poz-hist-sort-btn" data-sort="blizina" onclick="_poziHistPostaviSort('blizina')">📍 Blizina</button>
         <button class="poz-hist-sort-btn" data-sort="vrijeme" onclick="_poziHistPostaviSort('vrijeme')">🕒 Vrijeme</button>
@@ -706,7 +714,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
 
     <div id="poz-podtab-simulacija" style="display:none;">
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:10px;">Samo veći požari praćeni 3+ dana (kratki požari nemaju smisleno "kretanje" za simulaciju) — isti kanton kao Historija.</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:10px;">Samo veći požari praćeni 3+ dana (kratki požari nemaju smisleno "kretanje" za simulaciju) — isti kanton kao Historija.</div>
       <div id="poz-sim-lista"></div>
     </div>
   </div>
@@ -716,7 +724,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="sjeca-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪓 Sječa i vjetroizvale</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body" id="sje-panel-body">
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">GFW integrisani alarmi (DIST-ALERT, globalna pokrivenost) — javljaju kad nešto NESTANE iz vegetacije: sječa (prijavljena ili ne), vjetroizvala, klizište, opožarena površina. Ne razlikuje uzrok, samo promjenu. Treba GFW API ključ (isti kao Požari — unesi ga tamo, ispod "Admin: FIRMS/GFW ključevi").</div>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">GFW integrisani alarmi (DIST-ALERT, globalna pokrivenost) — javljaju kad nešto NESTANE iz vegetacije: sječa (prijavljena ili ne), vjetroizvala, klizište, opožarena površina. Ne razlikuje uzrok, samo promjenu. Treba GFW API ključ (isti kao Požari — unesi ga tamo, ispod "Admin: FIRMS/GFW ključevi").</div>
     <div class="loc-row" style="background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
       <span>Prikaz na karti</span>
       <div class="loc-switch" id="sje-on-switch" onclick="_sjeToggle(!_sjeOn)"></div>
@@ -738,22 +746,22 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="sumarstvo-panel" class="usf-panel">
   <div class="up-hdr"><h2>🌲 Šumarstvo</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Hansen/UMD Global Forest Change preko Global Forest Watch rasterskih tile servisa — besplatno, bez ključa. Rezolucija ~30m (Landsat), globalni skup podataka (nije specifičan za kanton).</div>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">Hansen/UMD Global Forest Change preko Global Forest Watch rasterskih tile servisa — besplatno, bez ključa. Rezolucija ~30m (Landsat), globalni skup podataka (nije specifičan za kanton).</div>
     <div class="loc-row">
       <span>🌳 Šumski pokrivač (2000)</span>
       <div class="loc-switch" id="sum-pokrivac-switch" onclick="_sumToggle('pokrivac',!_sumOn('pokrivac'))"></div>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 10px;">Gustina krošnje ≥30% u 2000. godini (Hansen bazna godina) — zeleno intenzivnije = gušća šuma.</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 10px;">Gustina krošnje ≥30% u 2000. godini (Hansen bazna godina) — zeleno intenzivnije = gušća šuma.</div>
     <div class="loc-row">
       <span>🟧 Gubitak šume (2001–2024)</span>
       <div class="loc-switch" id="sum-gubitak-switch" onclick="_sumToggle('gubitak',!_sumOn('gubitak'))"></div>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 10px;">Godišnji gubitak krošnje (sječa, požar, vjetroizvala — ne razlikuje uzrok), obojeno po godini gubitka (GFW paleta, starije/novije).</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 10px;">Godišnji gubitak krošnje (sječa, požar, vjetroizvala — ne razlikuje uzrok), obojeno po godini gubitka (GFW paleta, starije/novije).</div>
     <div class="loc-row">
       <span>🔵 Rast šume (2000–2012)</span>
       <div class="loc-switch" id="sum-rast-switch" onclick="_sumToggle('rast',!_sumOn('rast'))"></div>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Svi slojevi su statični (ne uživo) — Hansen Global Forest Change se ažurira godišnje. Gubitak i rast se NE preklapaju vremenski (gubitak ide do 2024, rast samo do 2012 — to je granica same Hansen studije, ne ograničenje ove app-e).</p>
     </div>
@@ -764,7 +772,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="put-panel" class="usf-panel">
   <div class="up-hdr"><h2>🛣 Projektovanje šumskog puta</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Postavite tačke A i B (klikom na kartu) — algoritam preko modela terena (DEM) predlaže trasu koja nikad ne prelazi maksimalni dozvoljeni nagib (šestarski korak: L = ΔH/nagib).</div>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">Postavite tačke A i B (klikom na kartu) — algoritam preko modela terena (DEM) predlaže trasu koja nikad ne prelazi maksimalni dozvoljeni nagib (šestarski korak: L = ΔH/nagib).</div>
 
     <div class="treg-row" style="border-left:3px solid #4ade80;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -799,7 +807,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div id="rd-preview" style="display:none;background:#111827;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;font-size:12px;grid-template-columns:auto 1fr;gap:4px 8px;color:#e2e8f0;margin-bottom:10px;"></div>
 
     <div class="treg-meta-edit" style="margin-bottom:10px;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">⚙ Parametri trase</div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">⚙ Parametri trase</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;">
         <label style="font-size:11px;color:#94a3b8;">Maks. nagib (%)<input id="rd-p-nagibMax" type="number" step="0.5" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
         <label style="font-size:11px;color:#94a3b8;">Preporučeni nagib (%)<input id="rd-p-nagibPreporuceni" type="number" step="0.5" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
@@ -814,7 +822,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div id="rd-result" style="display:none;margin-top:10px;"></div>
 
     <div style="margin-top:16px;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">💾 Sačuvane trase <span id="rd-saved-routes-count" style="color:#4ade80;"></span></div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">💾 Sačuvane trase <span id="rd-saved-routes-count" style="color:#4ade80;"></span></div>
       <div id="rd-saved-routes-list"></div>
     </div>
 
@@ -828,7 +836,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="tematska-panel" class="usf-panel">
   <div class="up-hdr"><h2>📊 Tematska karta <span id="tem-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Učitajte .gpkg (GeoPackage) sa poligonima — aplikacija automatski prepoznaje numeričke kolone kao teme i boji poligone kvantilnom skalom (5 klasa).</div>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">Učitajte .gpkg (GeoPackage) sa poligonima — aplikacija automatski prepoznaje numeričke kolone kao teme i boji poligone kvantilnom skalom (5 klasa).</div>
     <input type="file" id="tem-file-input" accept=".gpkg" style="display:none;" onchange="_temFileChosen(event)">
     <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('tem-file-input').click()">📂 Izaberi .gpkg fajl</button>
     <div id="tem-status" style="color:#94a3b8;font-size:12px;margin-bottom:14px;min-height:16px;"></div>
@@ -883,7 +891,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <button onclick="_temTblExport()" style="padding:0 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;font-size:12px;cursor:pointer;white-space:nowrap;">⬇ CSV</button>
     </div>
     <div id="ttm-scroll" style="overflow:auto;max-height:60vh;border:1px solid #1e293b;border-radius:8px;"></div>
-    <div id="ttm-foot" style="font-size:11px;color:#64748b;margin-top:6px;"></div>
+    <div id="ttm-foot" style="font-size:11px;color:#94a3b8;margin-top:6px;"></div>
   </div>
 </div>
 
@@ -896,7 +904,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <svg id="profil-svg" viewBox="0 0 420 200" preserveAspectRatio="none" style="width:100%;height:200px;display:block;border-radius:6px;background:#080e1c;"></svg>
     <div id="profil-stats" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:12px;font-family:monospace;"></div>
-    <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:#64748b;">
+    <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:#94a3b8;">
       <span><span style="display:inline-block;width:18px;height:3px;background:#4ade80;border-radius:2px;vertical-align:middle;margin-right:4px;"></span><span id="profil-leg-ok">&lt;12%</span></span>
       <span><span style="display:inline-block;width:18px;height:3px;background:#fbbf24;border-radius:2px;vertical-align:middle;margin-right:4px;"></span><span id="profil-leg-warn">12–18%</span></span>
       <span><span style="display:inline-block;width:18px;height:3px;background:#f87171;border-radius:2px;vertical-align:middle;margin-right:4px;"></span><span id="profil-leg-bad">&gt;18%</span></span>
@@ -929,7 +937,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.22.0';
+const APP_VER = 'v0.23.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -3988,17 +3996,8 @@ function _povGodRenderSve() {
   }
   _poziRenderPanel();
 }
-function _povGodZoom(godina, i) {
-  const g = _povGodPodaci[godina]?.evts?.[i];
-  if (!g) return;
-  switchMainTab('karta');
-  const zoom = g.spanM > 2000 ? 12 : 13;
-  setTimeout(() => map.setView([g.la, g.lo], Math.max(map.getZoom(), zoom)), 80);
-}
-
-// Checkbox po godini + puna lista požara (ne samo mjesečni zbir) za svaku
-// OZNAČENU godinu — prijavljeni bug je bio da se prikazivao samo mjesečni
-// zbir, ne i stvarni požari, pa je izgledalo kao da nedostaju.
+// Checkbox po godini + sažetak (broj požara, površina) za svaku OZNAČENU
+// godinu. Pojedinačni požari se listaju u podtabu "Historija požara".
 function _povGodPanelHtml() {
   const dostupne = _povGodDostupneGodine();
   const oznaceneSet = new Set(_povGodOznaceneGodine());
@@ -4017,16 +4016,10 @@ function _povGodPanelHtml() {
       else if (stanje.busy && !stanje.evts.length) telo = `<div style="font-size:11px;color:#94a3b8;padding:4px 0;">⏳ Učitavam…</div>`;
       else if (!stanje.evts.length) telo = `<div style="font-size:11px;color:#4ade80;padding:4px 0;">✓ Nema zabilježenih požara u Unsko-sanskom kantonu.</div>`;
       else {
+        // Pojedinačna lista je u podtabu "Historija požara" (sortabilna); ovdje samo sažetak.
         const ukupnoHa = stanje.evts.reduce((s, g) => s + _poziPovrsinaGrupe(g), 0);
-        const redovi = stanje.evts.map((g, i) => {
-          const dt = g.zadnji ?? Date.parse(g.dt);
-          const dtTxt = isFinite(dt) ? new Date(dt).toLocaleDateString('bs-BA') : '—';
-          return `<div onclick="_povGodZoom(${godina},${i})" style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid #1e293b;cursor:pointer;font-size:11.5px;">
-            <span style="flex:1;color:#e2e8f0;">${dtTxt} · ${_msrFmt(g.d)}</span>
-            <span style="color:#64748b;">${g.broj} det. · ${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</span>
-          </div>`;
-        }).join('');
-        telo = `<div style="font-size:11px;color:#94a3b8;margin:2px 0 6px;">${stanje.evts.length} požara · procijenjeno ${_poziPovrsTxt(ukupnoHa)}${m.kes ? ' · iz keša' : ''}</div>${redovi}`;
+        telo = `<div style="font-size:11px;color:#94a3b8;margin:2px 0 6px;">${stanje.evts.length} požara · procijenjeno ${_poziPovrsTxt(ukupnoHa)}${m.kes ? ' · iz keša' : ''}</div>
+          <button onclick="_poziPodTab('historija')" style="width:100%;padding:9px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:12px;cursor:pointer;">📜 Pogledaj listu u Historiji požara</button>`;
       }
     }
     return `<div style="margin-top:8px;">
@@ -4662,9 +4655,8 @@ function _poziHistSortiraj(grupe, sort) {
 let _poziHistLista = [];
 function _poziHistIzracunaj() {
   const ref = _poziRefTacka();
-  const trenutna = new Date().getUTCFullYear();
-  const godisnje = (_povGodPodaci[trenutna] && _povGodPodaci[trenutna].evts) || [];
-  const spojeno = _poziHistSpojiIzvore([_poziEvts, godisnje]);
+  const godisnje = _povGodOznaceneGodine().map(g => (_povGodPodaci[g] && _povGodPodaci[g].evts) || []);
+  const spojeno = _poziHistSpojiIzvore([_poziEvts, ...godisnje]);
   const kanton = _poziHistFiltrirajKanton(spojeno);
   return _poziHistSortiraj(_poziGrupeBlizu(kanton, ref), _poziHistSort());
 }
@@ -6077,7 +6069,7 @@ function _temClassEdHtml(m) {
       <input type="color" id="tem-ed-c-${m.id}-${i}" value="${c}" style="width:30px;height:28px;padding:0;border:1px solid #334155;border-radius:6px;background:none;cursor:pointer;flex-shrink:0;">
       <span style="font-size:10px;color:#64748b;width:16px;flex-shrink:0;">${i + 1}.</span>
       ${numIn(edges[i], `id="${loId}" onchange="_temEdSyncEdge('${m.id}',${i},this.value)"`)}
-      <span style="font-size:11px;color:#64748b;flex-shrink:0;">–</span>
+      <span style="font-size:11px;color:#94a3b8;flex-shrink:0;">–</span>
       ${numIn(edges[i + 1], `id="${hiId}" onchange="_temEdSyncEdge('${m.id}',${i + 1},this.value)"`)}
       ${delBtn}
     </div>`;
