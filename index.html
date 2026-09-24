@@ -410,6 +410,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 .loc-switch.on { background:#16a34a; }
 .loc-switch.on::after { transform:translateX(16px); }
+/* Nevidljivo proširenje dodirne površine do ~44px (terenski rad, rukavice) — vizuelni prekidač ostaje 38×22. */
+.loc-switch::before { content:''; position:absolute; inset:-11px -4px; }
+.up-body input[type=checkbox] { width:22px; height:22px; accent-color:#f97316; flex-shrink:0; }
 #ab-loc-popup .loc-btn {
   flex:1; padding:9px 6px; border-radius:9px; border:1px solid #fdba74;
   background:#fff7ed; color:#c2410c; font-size:12px; font-weight:700; cursor:pointer; text-align:center;
@@ -867,7 +870,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <button class="poz-okvir-btn" data-okvir="7d" onclick="_poziPostaviOkvir('7d')">7 dana</button>
       <button class="poz-okvir-btn" data-okvir="30d" onclick="_poziPostaviOkvir('30d')">30 dana</button>
     </div>
-    <div class="poz-panel-note" style="font-size:10px;color:#475569;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
+    <div class="poz-panel-note" style="font-size:11px;color:#94a3b8;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
     <div id="poz-god-kpi" class="poz-kpi-grid"></div>
     <div class="poz-section-card" style="margin:0 0 10px !important;">
       <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">📅 Opožarene plohe po godinama</div>
@@ -893,7 +896,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <span>Dopuni FIRMS arhivu GFW detekcijama</span>
         <div class="loc-switch" id="poz-gfw-switch" onclick="_poziGfwToggle(!_poziGfwOn())"></div>
       </div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Iste NASA detekcije, ali sa GFW servera (treba admin ključ ispod) — koristno kad FIRMS arhiva ne radi ili je tuđi server nedostupan.</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-top:4px;">Iste NASA detekcije, ali sa GFW servera (treba admin ključ ispod) — koristno kad FIRMS arhiva ne radi ili je tuđi server nedostupan.</div>
     </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
@@ -910,7 +913,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <span>Indeks opasnosti od požara (FWI)</span>
         <div class="loc-switch" id="poz-effis-fwi-switch" onclick="_poziEffisToggle('fwi',!_poziEffisOn('fwi'))"></div>
       </div>
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-top:4px;">Lokalna procjena iznad je oker i uključena po defaultu. EFFIS NRT je gotova crvena WMS slika koju nije moguće pouzdano prebojiti; služi samo kao opcionalna šira referenca.</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-top:4px;">Lokalna procjena iznad je oker i uključena po defaultu. EFFIS NRT je gotova crvena WMS slika koju nije moguće pouzdano prebojiti; služi samo kao opcionalna šira referenca.</div>
     </div>
 
     <div class="treg-meta-edit" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
@@ -940,7 +943,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
 
     <div id="poz-podtab-simulacija" style="display:none;">
-      <div style="font-size:10px;color:#475569;line-height:1.45;margin-bottom:10px;">Samo veći požari praćeni 3+ dana (kratki požari nemaju smisleno "kretanje" za simulaciju) — isti kanton kao Historija.</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:10px;">Samo veći požari praćeni 3+ dana (kratki požari nemaju smisleno "kretanje" za simulaciju) — isti kanton kao Historija.</div>
       <div id="poz-sim-lista"></div>
     </div>
   </div>
@@ -977,17 +980,17 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <span>🌳 Šumski pokrivač (2000)</span>
       <div class="loc-switch" id="sum-pokrivac-switch" onclick="_sumToggle('pokrivac',!_sumOn('pokrivac'))"></div>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 10px;">Gustina krošnje ≥30% u 2000. godini (Hansen bazna godina) — zeleno intenzivnije = gušća šuma.</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 10px;">Gustina krošnje ≥30% u 2000. godini (Hansen bazna godina) — zeleno intenzivnije = gušća šuma.</div>
     <div class="loc-row">
       <span>🟧 Gubitak šume (2001–2024)</span>
       <div class="loc-switch" id="sum-gubitak-switch" onclick="_sumToggle('gubitak',!_sumOn('gubitak'))"></div>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 10px;">Godišnji gubitak krošnje (sječa, požar, vjetroizvala — ne razlikuje uzrok), obojeno po godini gubitka (GFW paleta, starije/novije).</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 10px;">Godišnji gubitak krošnje (sječa, požar, vjetroizvala — ne razlikuje uzrok), obojeno po godini gubitka (GFW paleta, starije/novije).</div>
     <div class="loc-row">
       <span>🔵 Rast šume (2000–2012)</span>
       <div class="loc-switch" id="sum-rast-switch" onclick="_sumToggle('rast',!_sumOn('rast'))"></div>
     </div>
-    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Svi slojevi su statični (ne uživo) — Hansen Global Forest Change se ažurira godišnje. Gubitak i rast se NE preklapaju vremenski (gubitak ide do 2024, rast samo do 2012 — to je granica same Hansen studije, ne ograničenje ove app-e).</p>
     </div>
