@@ -60,4 +60,17 @@ t('_sumUrl vraća null za nepoznat ključ sloja', () => {
   assert.strictEqual(_sumUrl('nepostojeci'), null);
 });
 
+// Regresija: bez pane-a L.tileLayer ide u tilePane (z 200), ispod offline
+// SQLitedb/MBTiles podloge (offlineBasePane, z 210) — gubitak se ne vidi.
+t('Šumarstvo slojevi su u vlastitom pane-u IZNAD offline podloge', () => {
+  const z = name => {
+    const m = HTML.match(new RegExp("getPane\\('" + name + "'\\)\\.style\\.zIndex\\s*=\\s*(\\d+)"));
+    assert.ok(m, 'nije nađen zIndex za pane ' + name);
+    return Number(m[1]);
+  };
+  assert.match(HTML, /const _SUM_OPTS = \{[^}]*pane:\s*'sumarstvoPane'/, '_SUM_OPTS mora postaviti pane');
+  assert.ok(z('sumarstvoPane') > z('offlineBasePane'), 'sumarstvoPane mora biti iznad offlineBasePane');
+  assert.ok(z('sumarstvoPane') < z('pozariPane'), 'požari moraju ostati iznad šumarstva');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — šumarstvo');

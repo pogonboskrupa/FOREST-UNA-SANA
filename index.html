@@ -1416,6 +1416,8 @@ map.getPane('pozariHeatPane').style.pointerEvents = 'none';
 map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 450;
 map.createPane('pozariDetectionsPane'); map.getPane('pozariDetectionsPane').style.zIndex = 455;
 map.getPane('pozariRasterPane').style.pointerEvents = 'none';
+map.createPane('sumarstvoPane'); map.getPane('sumarstvoPane').style.zIndex = 420;
+map.getPane('sumarstvoPane').style.pointerEvents = 'none';
 map.createPane('sjecaPane');    map.getPane('sjecaPane').style.zIndex    = 430;
 
 const _BASE_CHOICE_KEY = 'usf_base_choice_v1';
@@ -4304,10 +4306,16 @@ function _sumUrl(key) {
   if (key === 'rast') return 'https://tiles.globalforestwatch.org/umd_tree_cover_gain/latest/dynamic/{z}/{x}/{y}.png';
   return null;
 }
+// Bez eksplicitnog pane-a L.tileLayer ide u Leafletov tilePane (z 200) —
+// ISPOD offline SQLitedb/MBTiles podloge (offlineBasePane, z 210), pa se
+// sloj uopšte ne vidi dok je offline karta aktivna. GFW dinamičke pločice
+// postoje do z12; maxNativeZoom ih uvećava dalje umjesto praznih pločica.
+// zIndex unutar pane-a: gubitak uvijek iznad pokrivača i rasta.
+const _SUM_OPTS = { pane: 'sumarstvoPane', maxZoom: 22, maxNativeZoom: 12, attribution: 'Hansen/UMD/Google/USGS/NASA, GFW' };
 const _SUM_LAYERS = {
-  pokrivac: L.tileLayer(_sumUrl('pokrivac'), { maxZoom: 22, opacity: 0.7, attribution: 'Hansen/UMD/Google/USGS/NASA, GFW' }),
-  gubitak: L.tileLayer(_sumUrl('gubitak'), { maxZoom: 22, opacity: 0.85, attribution: 'Hansen/UMD/Google/USGS/NASA, GFW' }),
-  rast: L.tileLayer(_sumUrl('rast'), { maxZoom: 22, opacity: 0.7, attribution: 'Hansen/UMD/Google/USGS/NASA, GFW' })
+  pokrivac: L.tileLayer(_sumUrl('pokrivac'), { ..._SUM_OPTS, opacity: 0.7, zIndex: 1 }),
+  rast: L.tileLayer(_sumUrl('rast'), { ..._SUM_OPTS, opacity: 0.8, zIndex: 2 }),
+  gubitak: L.tileLayer(_sumUrl('gubitak'), { ..._SUM_OPTS, opacity: 0.9, zIndex: 3 })
 };
 const _SUM_KEY = 'usf_sumarstvo_slojevi';
 let _sumState = {};
