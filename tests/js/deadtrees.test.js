@@ -10,10 +10,8 @@ new Function('window', 'globalThis', SRC)(root, root);
 const D = root.USFDeadtrees;
 
 let pass = 0;
-function t(name, fn) {
-  try { fn(); pass++; console.log('  ✔ ' + name); }
-  catch (e) { console.error('  ✘ ' + name + '\n      ' + e.message); process.exitCode = 1; }
-}
+const _testovi = [];
+function t(name, fn) { _testovi.push([name, fn]); }
 
 console.log('Šumarstvo — Sušenje (deadtrees.earth COG):');
 
@@ -65,4 +63,47 @@ t('geotiff.js je lokalno (offline APK) i lijeno učitan', () => {
   assert.ok(!HTML.includes('src="static/libs/geotiff.js"'), 'ne učitavati 300 KB pri startu');
 });
 
-console.log('\n' + pass + ' prošlo, 0 palo — sušenje');
+// Regresija (v1.4.8 na telefonu): "4702962233905250000 exceeds MAX_SAFE_INTEGER"
+// — 206 odgovor nije sadržavao traženi opseg pa je geotiff čitao double kao offset.
+t('provjeriOdgovor odbija pomjeren opseg, 200 i krivu dužinu', () => {
+  assert.deepStrictEqual(D.parsirajOpseg('bytes=0-65535'), { start: 0, end: 65535, total: null });
+  assert.deepStrictEqual(D.parsirajOpseg('bytes 10-19/100'), { start: 10, end: 19, total: 100 });
+  const t0 = { start: 0, end: 65535 };
+  D.provjeriOdgovor(t0, 206, 'bytes 0-65535/9000000', 65536);
+  assert.throws(() => D.provjeriOdgovor(t0, 206, 'bytes 8-65543/9000000', 65536), /umjesto 0-65535/);
+  assert.throws(() => D.provjeriOdgovor(t0, 200, null, 9000000), /range/);
+  assert.throws(() => D.provjeriOdgovor(t0, 206, 'bytes 0-65535/9000000', 100), /dužina/);
+  // kraj fajla: server skrati opseg na total-1
+  D.provjeriOdgovor({ start: 90, end: 199 }, 206, 'bytes 90-99/100', 10);
+  // bez izloženog Content-Range (CORS) prihvati kraći odgovor, ne duži
+  D.provjeriOdgovor({ start: 90, end: 199 }, 206, null, 10);
+  assert.throws(() => D.provjeriOdgovor({ start: 0, end: 9 }, 206, null, 11), /dužina/);
+});
+
+t('rangeKlijent ide preko AndroidRange mosta i vraća provjeren odgovor', async () => {
+  const pozivi = [];
+  root.AndroidRange = { get(url, a, e, id) { pozivi.push([a, e]); setTimeout(() => root._usfRangeCb(id, 206, 'bytes ' + a + '-' + e + '/1000', Buffer.alloc(+e - +a + 1, 7).toString('base64'), ''), 0); } };
+  root.atob = s => Buffer.from(s, 'base64').toString('binary');
+  const r = await D.rangeKlijent('https://data2.deadtrees.earth/x.tif').request({ headers: { Range: 'bytes=100-199' } });
+  assert.deepStrictEqual(pozivi, [['100', '199']]);
+  assert.strictEqual(r.status, 206);
+  assert.strictEqual(r.getHeader('Content-Range'), 'bytes 100-199/1000');
+  assert.strictEqual((await r.getData()).byteLength, 100);
+  delete root.AndroidRange;
+});
+
+t('APK: Range ide kroz nativni most, ne kroz WebView intercept', () => {
+  const J = fs.readFileSync(path.join(__dirname, '../../android/app/src/main/java/ba/spd/usf/forest/MainActivity.java'), 'utf8');
+  assert.ok(J.includes('addJavascriptInterface(new RangeBridge(), "AndroidRange")'));
+  assert.ok(J.includes('RANGE_HOST = "data2.deadtrees.earth"'));
+  assert.ok(!J.includes('proxyCorsRange'));
+  assert.ok(SRC.includes('fromCustomClient(rangeKlijent(url)'));
+});
+
+(async () => {
+  for (const [name, fn] of _testovi) {
+    try { await fn(); pass++; console.log('  ✔ ' + name); }
+    catch (e) { console.error('  ✘ ' + name + '\n      ' + e.message); process.exitCode = 1; }
+  }
+  console.log('\n' + pass + ' prošlo, ' + (_testovi.length - pass) + ' palo — sušenje');
+})();

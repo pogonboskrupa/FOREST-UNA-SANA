@@ -1,7 +1,7 @@
 // Sušenje šume — deadtrees.earth Sentinel-2 karte (udio stojećeg suhog drveta,
 // godišnje 2017–2025, 10 m). Izvor su javni Cloud-Optimized GeoTIFF-ovi koje
 // koristi i sam deadtrees.earth frontend (MIT); nema tile/WMS servisa, pa se
-// COG čita direktno HTTP range zahtjevima (geotiff.js, lijeno učitan tek kad se
+// COG čita direktno HTTP range zahtjevima (geotiff.js 2.1.3 — ista verzija kao deadtrees.earth; lijeno učitan tek kad se
 // sloj uključi) i boji na klijentu istom rampom kao na deadtrees.earth.
 (function (root) {
   'use strict';
@@ -61,12 +61,84 @@
     return _libPromise;
   }
 
+  // ── Range klijent sa provjerom. geotiff.js vjeruje da 206 odgovor sadrži
+  // baš traženi opseg; ako posrednik vrati drugi dio fajla, parser čita
+  // pogrešne bajtove (npr. double kao 64-bit offset → "exceeds
+  // MAX_SAFE_INTEGER"). Zato se Content-Range i dužina provjeravaju ovdje. ──
+  function parsirajOpseg(h) {
+    const m = /bytes[ =](\d+)-(\d+)(?:\/(\d+|\*))?/.exec(String(h || ''));
+    if (!m) return null;
+    return { start: +m[1], end: +m[2], total: m[3] && m[3] !== '*' ? +m[3] : null };
+  }
+
+  function provjeriOdgovor(trazeno, status, contentRange, duzina) {
+    if (status !== 206) throw new Error(status === 200 ? 'server ne podržava range zahtjeve (200)' : 'HTTP ' + status);
+    const cr = parsirajOpseg(contentRange);
+    if (cr && cr.start !== trazeno.start) {
+      throw new Error('server vratio bajtove ' + cr.start + '-' + cr.end + ' umjesto ' + trazeno.start + '-' + trazeno.end);
+    }
+    const trazenaDuz = trazeno.end - trazeno.start + 1;
+    // Bez Content-Range (CORS ga ne izloži) kraj fajla može vratiti manje bajtova.
+    const ocek = cr ? Math.min(trazeno.end, cr.total ? cr.total - 1 : trazeno.end) - trazeno.start + 1 : trazenaDuz;
+    if (cr ? duzina !== ocek : (duzina < 1 || duzina > trazenaDuz)) {
+      throw new Error('dužina odgovora ' + duzina + ' umjesto ' + ocek + ' bajtova');
+    }
+  }
+
+  // APK: range se čita nativno (AndroidRange), mimo WebView mrežnog sloja.
+  const _cbs = new Map();
+  let _cbSeq = 0;
+  root._usfRangeCb = function (id, status, contentRange, b64, greska) {
+    const cb = _cbs.get(id);
+    if (!cb) return;
+    _cbs.delete(id);
+    if (greska) { cb.rej(new Error(greska)); return; }
+    const bin = atob(b64 || ''), buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    cb.res({ status, contentRange, buf: buf.buffer });
+  };
+  function nativniRange(url, t) {
+    return new Promise((res, rej) => {
+      const id = 'r' + (++_cbSeq);
+      _cbs.set(id, { res, rej });
+      try { root.AndroidRange.get(url, String(t.start), String(t.end), id); }
+      catch (e) { _cbs.delete(id); rej(e); }
+    });
+  }
+
+  async function webRange(url, t, signal) {
+    const r = await fetch(url, { headers: { Range: 'bytes=' + t.start + '-' + t.end }, signal, cache: 'no-store' });
+    return { status: r.status, contentRange: r.headers.get('content-range'), buf: await r.arrayBuffer() };
+  }
+
+  let _zadnjaGreska = null;
+  function rangeKlijent(url) {
+    return {
+      url,
+      async request(opts) {
+        const h = (opts && opts.headers) || {};
+        const t = parsirajOpseg(h.Range || h.range);
+        if (!t) throw new Error('geotiff zahtjev bez Range zaglavlja');
+        let r;
+        try {
+          r = root.AndroidRange && root.AndroidRange.get
+            ? await nativniRange(url, t)
+            : await webRange(url, t, opts && opts.signal);
+          provjeriOdgovor(t, r.status, r.contentRange, r.buf.byteLength);
+        } catch (e) { _zadnjaGreska = e; throw e; }
+        const cr = /^bytes \d+-\d+\/\d+$/.test(String(r.contentRange || '').trim()) ? String(r.contentRange).trim() : null;
+        const hdr = { 'content-range': cr, 'content-type': 'image/tiff' };
+        return { ok: true, status: 206, getHeader: n => hdr[String(n).toLowerCase()], getData: async () => r.buf };
+      }
+    };
+  }
+
   const _cog = {};
   function otvoriCog(url) {
     if (!_cog[url]) {
       _cog[url] = (async () => {
         const G = await ucitajLib();
-        const tiff = await G.fromUrl(url, { cacheSize: 200 });
+        const tiff = await G.fromCustomClient(rangeKlijent(url), { cacheSize: 200 });
         const n = await tiff.getImageCount();
         const slike = [];
         for (let i = 0; i < n; i++) slike.push(await tiff.getImage(i));
@@ -104,6 +176,9 @@
         const tile = document.createElement('canvas');
         tile.width = tile.height = this.options.tileSize;
         this._crtaj(tile, coords).then(() => done(null, tile), e => {
+          // geotiff.js grešku klijenta zamijeni sa AggregateError("Request failed")
+          // bez uzroka — prikaži stvarni razlog iz range klijenta.
+          if (e && e.errors && _zadnjaGreska) e = _zadnjaGreska;
           if (this.options.onGreska) this.options.onGreska(e);
           done(null, tile); // prazna pločica, ne ponavljaj u petlji
         });
@@ -161,5 +236,5 @@
     });
   }
 
-  root.USFDeadtrees = { GODINE, cogUrl, alfa, projDef, izaberiNivo, napraviSloj, ucitajLib };
+  root.USFDeadtrees = { GODINE, cogUrl, alfa, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib };
 })(typeof window !== 'undefined' ? window : globalThis);
