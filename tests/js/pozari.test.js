@@ -330,7 +330,7 @@ t('_poziOpozBufKm koristi jačinu i rezoluciju bez automatskog pojasa od 400m', 
 
 t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {
   const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
-  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + ['_poziFiremapNajnovije', '_poziUnija', '_poziKrugoviOko', '_poziFiremapOblik'].map(extractFn).join('\n') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
   const _poziOpozGeom = new Function('turf', src)(turf);
   // Jedna tačka — mora vratiti buffer poligon (Polygon/MultiPolygon) oko nje.
   const geomJedna = _poziOpozGeom([{ la: 44.8, lo: 16.0, rez: 375 }]);
@@ -345,6 +345,37 @@ t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/
   else assert.match(geomTri.geometry.type, /Polygon/);
   // Prazan niz / nepostojeći turf → bez pucanja, vraća null.
   assert.strictEqual(_poziOpozGeom([]), null);
+});
+
+// Regresija: Firemap šalje tačku po ažuriranju, svaku sa UKUPNOM površinom;
+// krug po tački je pojas širio ~150 m preko stvarnog. Sada: najnovija tačka
+// po požaru, oblik po detekcijama, površina = Firemap ha.
+t('Firemap: jedna (najnovija) tačka po požaru, oblik po detekcijama sa tačnom površinom', () => {
+  const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
+  const src = ['_poziOpozBufKm', '_poziFiremapNajnovije', '_poziUnija', '_poziKrugoviOko', '_poziFiremapOblik', '_poziOpozGeom']
+    .map(extractFn).join('\n') + '\nreturn { _poziOpozGeom, _poziFiremapNajnovije };';
+  const { _poziOpozGeom, _poziFiremapNajnovije } = new Function('turf', src)(turf);
+  const fm = (la, lo, dt, ha) => ({ la, lo, dt, areaHa: ha, fireId: 'F1', rez: 375 });
+  const stari = fm(44.800, 16.000, '2026-09-20T10:00:00Z', 20);
+  const novi = fm(44.806, 16.006, '2026-09-21T10:00:00Z', 20);
+  const ciste = _poziFiremapNajnovije([stari, novi, { la: 44.8, lo: 16, dt: '2026-09-21T09:00:00Z' }]);
+  assert.strictEqual(ciste.length, 2);
+  assert.ok(ciste.includes(novi) && !ciste.includes(stari));
+  // Izduženi požar: 5 detekcija u liniji (≈ 1.3 km), Firemap 20 ha.
+  const det = [0, 1, 2, 3, 4].map(i => ({ la: 44.806, lo: 16.000 + i * 0.004, dt: '2026-09-21T08:00:00Z', rez: 375, frp: 5 }));
+  const geom = _poziOpozGeom([stari, novi, ...det]);
+  const ha = turf.area(geom) / 10000;
+  assert.ok(Math.abs(ha - 20) < 0.6, 'površina oblika mora biti ≈ Firemap 20 ha, dobijeno ' + ha.toFixed(2));
+  const [minX, minY, maxX, maxY] = turf.bbox(geom);
+  const sirinaM = turf.distance([minX, minY], [minX, maxY], { units: 'kilometers' }) * 1000;
+  const duzinaM = turf.distance([minX, minY], [maxX, minY], { units: 'kilometers' }) * 1000;
+  assert.ok(duzinaM > sirinaM * 2, 'oblik prati izduženi niz detekcija, ne krug');
+  // Stari (dva kruga po 20 ha na različitim mjestima) bi dao skoro duplo.
+  const dvaKruga = turf.area(turf.union(turf.buffer(turf.point([16, 44.8]), 0.252, { units: 'kilometers' }), turf.buffer(turf.point([16.006, 44.806]), 0.252, { units: 'kilometers' }))) / 10000;
+  assert.ok(dvaKruga > ha * 1.5);
+  // Bez detekcija: uvučeni krug kao do sada.
+  const sam = _poziOpozGeom([novi]);
+  assert.ok(turf.area(sam) / 10000 < 20);
 });
 
 t('_povGodDostupneGodine nudi tekuću i četiri prethodne godine', () => {

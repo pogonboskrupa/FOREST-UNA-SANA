@@ -4683,6 +4683,12 @@ function _poziProcijenjeniHa(p) {
 }
 function _poziPovrsinaGrupe(g) {
   if (!g?.pts?.length) return 0;
+  // Kad Firemap zna površinu požara, ona je mjera cijele grupe (detekcije su
+  // unutar nje); starija ažuriranja istog požara se ne sabiraju.
+  if (typeof _poziFiremapNajnovije === 'function') {
+    const fm = _poziFiremapNajnovije(g.pts).filter(p => Number(p?.areaHa) > 0);
+    if (fm.length) return fm.reduce((s, p) => s + Number(p.areaHa), 0);
+  }
   const cells = new Set();
   let ha = 0;
   g.pts.forEach(p => {
@@ -5293,18 +5299,62 @@ function _poziOpozGrupisiPoStarosti(pts) {
   });
   return bands;
 }
-function _poziOpozGeom(pts) {
+// Firemap šalje tačku za svako ažuriranje istog požara, svaku sa UKUPNOM
+// površinom — krug po tački je površinu brojao više puta i pojas je bio
+// širi od stvarnog. Zadržava se samo najnovija tačka po požaru.
+function _poziFiremapNajnovije(pts) {
+  const naj = new Map();
+  (pts || []).forEach(p => {
+    if (!(Number(p?.areaHa) > 0)) return;
+    const k = p.fireId || (Number(p.la).toFixed(4) + ',' + Number(p.lo).toFixed(4));
+    const s = naj.get(k);
+    if (!s || (Date.parse(p.dt) || 0) > (Date.parse(s.dt) || 0)) naj.set(k, p);
+  });
+  const zadrzi = new Set(naj.values());
+  return (pts || []).filter(p => !(Number(p?.areaHa) > 0) || zadrzi.has(p));
+}
+function _poziUnija(dijelovi) {
+  if (!dijelovi.length) return null;
+  let u = dijelovi[0];
+  for (let i = 1; i < dijelovi.length; i++) {
+    try { u = turf.union(u, dijelovi[i]) || u; }
+    catch(e) { return turf.featureCollection(dijelovi); }
+  }
+  return u;
+}
+function _poziKrugoviOko(centri, rKm) {
+  return _poziUnija(centri.map(c => turf.buffer(turf.point([c.lo, c.la]), rKm, { units: 'kilometers' })));
+}
+// Firemap zna površinu (ha), ne granicu. Kad postoje satelitske detekcije
+// istog požara, oblik prati NJIH (unija krugova oko detekcija i Firemap
+// tačke), a zajednički radijus se traži bisekcijom tako da površina bude
+// jednaka Firemap površini. Bez detekcija ostaje uvučeni krug (_poziOpozBufKm).
+function _poziFiremapOblik(dog, detekcije) {
+  const ciljM2 = Number(dog.areaHa) * 10000;
+  const rEqKm = Math.sqrt(ciljM2 / Math.PI) / 1000;
+  const od = turf.point([dog.lo, dog.la]);
+  const blizu = (detekcije || []).filter(d =>
+    turf.distance(od, turf.point([d.lo, d.la]), { units: 'kilometers' }) <= rEqKm + 0.4);
+  if (blizu.length < 2) return turf.buffer(od, _poziOpozBufKm(dog), { units: 'kilometers' });
+  const centri = [dog, ...blizu];
+  const povrsina = rKm => { const g = _poziKrugoviOko(centri, rKm); return g ? turf.area(g) : 0; };
+  let lo = 0.02, hi = rEqKm;
+  if (povrsina(lo) >= ciljM2) return _poziKrugoviOko(centri, lo);
+  for (let i = 0; i < 14; i++) {
+    const mid = (lo + hi) / 2;
+    if (povrsina(mid) > ciljM2) hi = mid; else lo = mid;
+  }
+  return _poziKrugoviOko(centri, lo);
+}
+function _poziOpozGeom(pts, oblikPts) {
   if (!pts || !pts.length || typeof turf === 'undefined') return null;
   try {
-    const krugovi = pts.map(p => turf.buffer(
-      turf.point([p.lo, p.la]), _poziOpozBufKm(p), { units: 'kilometers' }
-    ));
-    let u = krugovi[0];
-    for (let i = 1; i < krugovi.length; i++) {
-      try { u = turf.union(u, krugovi[i]) || u; }
-      catch(e) { return turf.featureCollection(krugovi); }
-    }
-    return u;
+    const cisto = _poziFiremapNajnovije(pts);
+    const detekcijeOblika = (oblikPts || pts).filter(p => !(Number(p?.areaHa) > 0));
+    const dijelovi = cisto.map(p => Number(p?.areaHa) > 0
+      ? _poziFiremapOblik(p, detekcijeOblika)
+      : turf.buffer(turf.point([p.lo, p.la]), _poziOpozBufKm(p), { units: 'kilometers' }));
+    return _poziUnija(dijelovi.filter(Boolean));
   } catch(e) { return null; }
 }
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
@@ -5328,11 +5378,14 @@ function _poziOpozAzuriraj() {
   if (!nacrtano) return;
   const grp = L.layerGroup();
   _poziEvts.forEach(g => {
-    const bands = _poziOpozGrupisiPoStarosti(g.pts);
+    // Starija Firemap ažuriranja istog požara se izbace PRIJE podjele po
+    // starosti, inače bi stara tačka ostala crtana u starijem bandu.
+    const svi = _poziFiremapNajnovije(g.pts);
+    const bands = _poziOpozGrupisiPoStarosti(svi);
     _POZ_OPOZ_REDOSLIJED.forEach(id => {
       const pts = bands[id];
       if (!pts || !pts.length) return;
-      const geom = _poziOpozGeom(pts);
+      const geom = _poziOpozGeom(pts, svi);
       if (!geom) return;
       try {
         L.geoJSON(geom, { pane: 'pozariProjectionPane', smoothFactor: 0,
