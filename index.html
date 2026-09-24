@@ -788,7 +788,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       </section>
       <section class="karta-hub-card">
         <h3>🗂 Offline SQLite / MBTiles</h3>
-        <p>Učitaj velike lokalne karte u formatima .sqlmap, .sqlite, .mbtiles ili .db.</p>
+        <p>Učitaj velike lokalne karte u formatima .sqlitedb, .mbtiles, .sqlmap, .sqlite ili .db.</p>
         <button class="karta-hub-action" onclick="openUcitajKartuSection()">Upravljaj offline kartama</button>
       </section>
       <section class="karta-hub-card">
@@ -1078,7 +1078,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div class="up-hdr"><h2>🗂 Učitaj kartu <span id="sqlmap-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
     <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:10px;">Više offline karata može ostati na uređaju. Aktivna karta se pamti i automatski vraća pri sljedećem pokretanju.</div>
-    <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
+    <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlitedb,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
     <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('sqlmap-file-input').click()">📂 Izaberi MBTiles/SQLite fajl</button>
     <div id="sqlmap-status" style="color:#94a3b8;font-size:12px;margin-bottom:14px;min-height:16px;"></div>
     <div id="sqlmap-list"></div>

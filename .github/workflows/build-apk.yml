@@ -22,6 +22,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Java testovi (offline karte, bez Androida)
+        run: |
+          javac -encoding UTF-8 -d /tmp/jt android/app/src/main/java/ba/spd/usf/forest/SqliteTileMath.java android/test-java/SqliteTileMathTest.java
+          java -ea -cp /tmp/jt ba.spd.usf.forest.SqliteTileMathTest
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools'
@@ -32,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # APK_RELEASE_VERSION=1.4.4
+          # APK_RELEASE_VERSION=1.4.5
           # UI/runtime oznaka i servisni keš se održavaju zasebno dok se
           # veliki index.html migrira u modularne skripte.
           WEB_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"

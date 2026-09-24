@@ -89,9 +89,10 @@ public class MainActivity extends Activity {
 
     // Podržava standardni MBTiles i česte SQLiteDB varijante: z/x/y/image.
     private static final class TileSchema {
-        final String table, z, x, y, data; final boolean tms;
-        TileSchema(String table, String z, String x, String y, String data, boolean tms) {
+        final String table, z, x, y, data; final boolean tms, inverted;
+        TileSchema(String table, String z, String x, String y, String data, boolean tms, boolean inverted) {
             this.table = table; this.z = z; this.x = x; this.y = y; this.data = data; this.tms = tms;
+            this.inverted = inverted;
         }
     }
 
@@ -389,24 +390,61 @@ public class MainActivity extends Activity {
             String y = pickColumn(cols, "tile_row", "y", "row");
             String data = pickColumn(cols, "tile_data", "image", "data", "tile", "blob");
             if (z == null || x == null || y == null || data == null) continue;
-            TileSchema schema = new TileSchema(table, z, x, y, data, "tile_row".equals(y));
+            boolean mbtiles = "zoom_level".equals(z);
+            boolean inverted = false;
+            if (!mbtiles) {
+                // .sqlitedb (RMaps/Locus/OsmAnd) često čuva zoom obrnuto (17 - zoom).
+                // Odluka iz broja pločica po nivou, pa info.tilenumbering — vidi
+                // SqliteTileMath. Bez ovoga se ne nađe nijedna pločica, a zoom
+                // raspon i granice ispadnu pogrešni.
+                int[] stored = storedZoomRange(db, table, z);
+                if (stored != null) {
+                    inverted = SqliteTileMath.decideInverted(infoTileNumbering(db), stored[0], stored[1],
+                            tileCountAtZoom(db, table, z, stored[0]), tileCountAtZoom(db, table, z, stored[1]));
+                }
+            }
+            TileSchema schema = new TileSchema(table, z, x, y, data, "tile_row".equals(y), inverted);
             tileSchemas.put(id, schema);
             return schema;
         }
         throw new IOException("SQLite nema raster pločice (z/x/y + slika)");
     }
 
+    /** Vrijednost info.tilenumbering, ili null ako tabela/kolona ne postoji. */
+    private static String infoTileNumbering(SQLiteDatabase db) {
+        try (Cursor c = db.rawQuery("SELECT tilenumbering FROM info LIMIT 1", null)) {
+            if (c.moveToFirst() && !c.isNull(0)) return c.getString(0);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private static long tileCountAtZoom(SQLiteDatabase db, String table, String zCol, int storedZ) {
+        try (Cursor c = db.rawQuery("SELECT COUNT(*) FROM " + q(table) + " WHERE " + q(zCol) + "=?",
+                new String[]{String.valueOf(storedZ)})) {
+            if (c.moveToFirst()) return c.getLong(0);
+        } catch (Exception ignored) {}
+        return 0;
+    }
+
+    private static int[] storedZoomRange(SQLiteDatabase db, String table, String zCol) {
+        try (Cursor c = db.rawQuery("SELECT MIN(" + q(zCol) + "), MAX(" + q(zCol) + ") FROM " + q(table), null)) {
+            if (c.moveToFirst() && !c.isNull(0) && !c.isNull(1)) return new int[]{c.getInt(0), c.getInt(1)};
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     private byte[] tileBytes(String id, int z, int x, int xyzY) throws Exception {
         SQLiteDatabase db = openMbtiles(id);
         TileSchema s = tileSchema(id);
-        int tmsY = (int) (Math.pow(2d, z) - 1d - xyzY);
+        int tmsY = SqliteTileMath.tmsY(z, xyzY);
+        int storedZ = SqliteTileMath.storedZoom(z, s.inverted);
         // Standardni MBTiles je TMS, a mnoge .sqlitedb karte čuvaju XYZ.
         int firstY = s.tms ? tmsY : xyzY;
         int secondY = s.tms ? xyzY : tmsY;
         String sql = "SELECT " + q(s.data) + " FROM " + q(s.table) + " WHERE " + q(s.z) + "=? AND "
                 + q(s.x) + "=? AND " + q(s.y) + "=?";
         for (int y : new int[]{firstY, secondY}) {
-            try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(y)})) {
+            try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(storedZ), String.valueOf(x), String.valueOf(y)})) {
                 if (c.moveToFirst()) return c.getBlob(0);
             }
         }
@@ -414,29 +452,22 @@ public class MainActivity extends Activity {
     }
 
     private int[] tileZoomRange(SQLiteDatabase db, TileSchema s) {
-        try (Cursor c = db.rawQuery("SELECT MIN(" + q(s.z) + "), MAX(" + q(s.z) + ") FROM " + q(s.table), null)) {
-            if (c.moveToFirst() && !c.isNull(0) && !c.isNull(1)) return new int[]{c.getInt(0), c.getInt(1)};
-        } catch (Exception ignored) {}
-        return new int[]{0, 19};
+        int[] stored = storedZoomRange(db, s.table, s.z);
+        if (stored == null) return new int[]{0, 19};
+        return SqliteTileMath.realZoomRange(stored[0], stored[1], s.inverted);
     }
 
     private String boundsFromTiles(SQLiteDatabase db, TileSchema s) {
+        // Najniži STVARNI zoom (najmanje pločica) — kod obrnute numeracije to je
+        // najveća vrijednost u bazi.
+        String agg = s.inverted ? "MAX" : "MIN";
         try (Cursor c = db.rawQuery(
                 "SELECT " + q(s.z) + ", MIN(" + q(s.x) + "), MAX(" + q(s.x) + "), "
                 + "MIN(" + q(s.y) + "), MAX(" + q(s.y) + ") FROM " + q(s.table) + " WHERE " + q(s.z)
-                + "=(SELECT MIN(" + q(s.z) + ") FROM tiles)", null)) {
+                + "=(SELECT " + agg + "(" + q(s.z) + ") FROM " + q(s.table) + ")", null)) {
             if (!c.moveToFirst() || c.isNull(0) || c.isNull(1) || c.isNull(2) || c.isNull(3) || c.isNull(4)) return "";
-            int z = c.getInt(0); if (z < 0 || z > 30) return "";
-            double n = Math.pow(2d, z);
-            double west = c.getLong(1) / n * 360d - 180d;
-            double east = (c.getLong(2) + 1d) / n * 360d - 180d;
-            double southY = s.tms ? n - c.getLong(3) : c.getLong(4) + 1d;
-            double northY = s.tms ? n - 1d - c.getLong(4) : c.getLong(3);
-            double south = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * southY / n))));
-            double north = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * northY / n))));
-            if (!Double.isFinite(west) || !Double.isFinite(south) || !Double.isFinite(east) || !Double.isFinite(north)
-                    || west >= east || south >= north) return "";
-            return west + "," + south + "," + east + "," + north;
+            int zoom = SqliteTileMath.realZoom(c.getInt(0), s.inverted);
+            return SqliteTileMath.boundsFromTileRange(zoom, c.getLong(1), c.getLong(2), c.getLong(3), c.getLong(4), s.tms);
         } catch (Exception ignored) { return ""; }
     }
 
@@ -479,15 +510,9 @@ public class MainActivity extends Activity {
                     new java.io.ByteArrayInputStream(new byte[0]));
             String id = URLDecoder.decode(p[0], StandardCharsets.UTF_8.name());
             int z = Integer.parseInt(p[1]), x = Integer.parseInt(p[2]), xyzY = Integer.parseInt(p[3]);
-            int tmsY = (int) (Math.pow(2, z) - 1 - xyzY);
-            byte[] bytes = null;
-            try (Cursor c = openMbtiles(id).rawQuery(
-                    "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
-                    new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(tmsY)})) {
-                if (c.moveToFirst()) bytes = c.getBlob(0);
-            }
+            byte[] bytes = tileBytes(id, z, x, xyzY);
             if (bytes == null) bytes = new byte[0];
-            return new WebResourceResponse("image/*", null,
+            return new WebResourceResponse(tileMime(bytes), null,
                     new java.io.ByteArrayInputStream(bytes));
         } catch (Exception e) {
             return new WebResourceResponse("image/png", null,
