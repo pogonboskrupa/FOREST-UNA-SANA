@@ -558,6 +558,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div class="mc-txt"><b>Sječa i vjetroizvale</b><span>GFW alarmi smetnje vegetacije (DIST-ALERT)</span></div>
       <div class="mc-badge ready">Osnovno spremno</div>
     </div>
+    <div class="meni-card" onclick="openSumarstvoSection()">
+      <div class="mc-ico">🌲</div>
+      <div class="mc-txt"><b>Šumarstvo</b><span>Hansen/GFW: pokrivač 2000, gubitak 2001–2024, rast 2000–2012</span></div>
+      <div class="mc-badge ready">Osnovno spremno</div>
+    </div>
     <div class="meni-card" onclick="openPutSection()">
       <div class="mc-ico">🛣</div>
       <div class="mc-txt"><b>Projektovanje šumskog puta</b><span>Trasa preko DEM-a, ograničenje nagiba</span></div>
@@ -725,6 +730,32 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div id="sje-lista"></div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Radijus je uže od Požari (50 km) — ovdje je pitanje "šta se promijenilo u mojoj šumi", ne "šta se približava". Alarmi se osvježavaju svakih 2-4 dana (nije uživo kao požari).</p>
+    </div>
+  </div>
+</div>
+
+<!-- Šumarstvo — Hansen/UMD Global Forest Change preko GFW rasterskih tile slojeva -->
+<div id="sumarstvo-panel" class="usf-panel">
+  <div class="up-hdr"><h2>🌲 Šumarstvo</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-body">
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Hansen/UMD Global Forest Change preko Global Forest Watch rasterskih tile servisa — besplatno, bez ključa. Rezolucija ~30m (Landsat), globalni skup podataka (nije specifičan za kanton).</div>
+    <div class="loc-row">
+      <span>🌳 Šumski pokrivač (2000)</span>
+      <div class="loc-switch" id="sum-pokrivac-switch" onclick="_sumToggle('pokrivac',!_sumOn('pokrivac'))"></div>
+    </div>
+    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 10px;">Gustina krošnje ≥30% u 2000. godini (Hansen bazna godina) — zeleno intenzivnije = gušća šuma.</div>
+    <div class="loc-row">
+      <span>🟧 Gubitak šume (2001–2024)</span>
+      <div class="loc-switch" id="sum-gubitak-switch" onclick="_sumToggle('gubitak',!_sumOn('gubitak'))"></div>
+    </div>
+    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 10px;">Godišnji gubitak krošnje (sječa, požar, vjetroizvala — ne razlikuje uzrok), obojeno po godini gubitka (GFW paleta, starije/novije).</div>
+    <div class="loc-row">
+      <span>🔵 Rast šume (2000–2012)</span>
+      <div class="loc-switch" id="sum-rast-switch" onclick="_sumToggle('rast',!_sumOn('rast'))"></div>
+    </div>
+    <div style="font-size:10px;color:#475569;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
+    <div class="stub-section" style="padding:24px 12px 4px;">
+      <p style="font-size:12px;">Svi slojevi su statični (ne uživo) — Hansen Global Forest Change se ažurira godišnje. Gubitak i rast se NE preklapaju vremenski (gubitak ide do 2024, rast samo do 2012 — to je granica same Hansen studije, ne ograničenje ove app-e).</p>
     </div>
   </div>
 </div>
@@ -898,7 +929,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
-const APP_VER = 'v0.21.0';
+const APP_VER = 'v0.22.0';
 document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
 
 // ── Offline detekcija (banner) ──────────────────────────────────────
@@ -3511,6 +3542,46 @@ function _poziEffisToggle(key, on) {
   if (on) _POZ_EFFIS[key].addTo(map); else map.removeLayer(_POZ_EFFIS[key]);
   const swId = key === 'opozareno' ? 'poz-effis-ba-switch' : 'poz-effis-fwi-switch';
   const sw = document.getElementById(swId); if (sw) sw.classList.toggle('on', on);
+}
+
+// ── Šumarstvo — Hansen/UMD Global Forest Change preko GFW dinamičkih tile
+// servisa (isti javni servis kao na globalforestwatch.org, besplatno, bez
+// ključa). Prag krošnje 30% je GFW-ov uobičajeni podrazumijevani prag za
+// "šuma". Globalni skup podataka — NIJE ograničen na kanton (za razliku od
+// Požari/Sječa), Hansen studija ionako pokriva cijeli svijet u jednoj mreži
+// pločica pa nema svrhe dodatno filtrirati na klijentu. ──────────────────
+const _SUM_TCD_THRESH = 30;
+const _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2024;
+// Čista funkcija (testabilna bez Leaflet-a) — gradi tile URL šablon po ključu sloja.
+function _sumUrl(key) {
+  if (key === 'pokrivac') return 'https://tiles.globalforestwatch.org/umd_tree_cover_density_2000/latest/dynamic/{z}/{x}/{y}.png?tree_cover_density_threshold=' + _SUM_TCD_THRESH;
+  if (key === 'gubitak') return 'https://tiles.globalforestwatch.org/umd_tree_cover_loss/latest/dynamic/{z}/{x}/{y}.png?start_year=' + _SUM_LOSS_OD + '&end_year=' + _SUM_LOSS_DO + '&tree_cover_density_threshold=' + _SUM_TCD_THRESH;
+  if (key === 'rast') return 'https://tiles.globalforestwatch.org/umd_tree_cover_gain/latest/dynamic/{z}/{x}/{y}.png';
+  return null;
+}
+const _SUM_LAYERS = {
+  pokrivac: L.tileLayer(_sumUrl('pokrivac'), { maxZoom: 22, opacity: 0.7, attribution: 'Hansen/UMD/Google/USGS/NASA, GFW' }),
+  gubitak: L.tileLayer(_sumUrl('gubitak'), { maxZoom: 22, opacity: 0.85, attribution: 'Hansen/UMD/Google/USGS/NASA, GFW' }),
+  rast: L.tileLayer(_sumUrl('rast'), { maxZoom: 22, opacity: 0.7, attribution: 'Hansen/UMD/Google/USGS/NASA, GFW' })
+};
+const _SUM_KEY = 'usf_sumarstvo_slojevi';
+let _sumState = {};
+try { _sumState = JSON.parse(localStorage.getItem(_SUM_KEY) || '{}'); } catch(e) {}
+Object.keys(_SUM_LAYERS).forEach(k => { if (_sumState[k]) _SUM_LAYERS[k].addTo(map); });
+function _sumOn(key) { return !!_sumState[key]; }
+const _SUM_SWITCH_ID = { pokrivac: 'sum-pokrivac-switch', gubitak: 'sum-gubitak-switch', rast: 'sum-rast-switch' };
+function _sumToggle(key, on) {
+  if (!_SUM_LAYERS[key]) return;
+  _sumState[key] = !!on;
+  try { localStorage.setItem(_SUM_KEY, JSON.stringify(_sumState)); } catch(e) {}
+  if (on) _SUM_LAYERS[key].addTo(map); else map.removeLayer(_SUM_LAYERS[key]);
+  const sw = document.getElementById(_SUM_SWITCH_ID[key]); if (sw) sw.classList.toggle('on', on);
+}
+function openSumarstvoSection() {
+  _openStubPanel('sumarstvo-panel', 'meni');
+  Object.keys(_SUM_LAYERS).forEach(key => {
+    const sw = document.getElementById(_SUM_SWITCH_ID[key]); if (sw) sw.classList.toggle('on', _sumOn(key));
+  });
 }
 
 function _poziParseCsv(txt) {
@@ -6248,7 +6319,7 @@ _temRestore();
 // GLAVNA NAVIGACIJA — Karta / Meni / Postavke, i sekcije iz Menija
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['meni-panel','postavke-panel','pozari-panel','sjeca-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel'];
+const _ALL_PANELS = ['meni-panel','postavke-panel','pozari-panel','sjeca-panel','sumarstvo-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
