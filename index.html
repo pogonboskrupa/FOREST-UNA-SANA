@@ -84,29 +84,33 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #top-bar > * { pointer-events:auto; }
 #top-left-stack { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
 #geo-badge {
-  background:rgba(15,23,42,0.85); color:#cbd5e1; border-radius:10px;
-  padding:5px 10px; font-size:10.5px; font-family:monospace; line-height:1.5;
-  box-shadow:0 2px 8px rgba(0,0,0,0.35); white-space:nowrap;
+  background:rgba(10,24,18,.86); color:#d8e8df; border-radius:12px;
+  border:1px solid rgba(134,239,172,.18);
+  padding:6px 11px; font-size:11px; font-family:monospace; line-height:1.5;
+  box-shadow:0 6px 18px rgba(0,0,0,.32); white-space:nowrap;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
 }
 #geo-badge .elev { color:#4ade80; font-weight:700; }
 
 /* === Prekidač baznih slojeva — mala ikona gore desno, otvara dropdown === */
 #layer-btn {
-  width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
-  background:rgba(15,23,42,0.9); color:#e2e8f0; font-size:18px;
-  box-shadow:0 2px 10px rgba(0,0,0,0.4); flex-shrink:0;
+  width:44px; height:44px; border-radius:14px; cursor:pointer; font-size:20px;
+  flex-shrink:0; display:grid; place-items:center; padding:0;
+  -webkit-tap-highlight-color:transparent; transition:transform .12s;
 }
+#layer-btn:active { transform:scale(.92); }
 #layer-switch {
-  display:none; position:fixed; top:calc(54px + env(safe-area-inset-top)); right:12px; z-index:501;
-  background:rgba(15,23,42,0.95); border:1px solid #1e293b; border-radius:12px; padding:6px;
-  box-shadow:0 4px 16px rgba(0,0,0,0.45); flex-direction:column; gap:4px;
+  display:none; position:fixed; top:calc(60px + env(safe-area-inset-top)); right:12px; z-index:501;
+  background:rgba(10,24,18,.96); border:1px solid rgba(134,239,172,.22); border-radius:16px; padding:6px;
+  box-shadow:0 12px 32px rgba(0,0,0,.5); flex-direction:column; gap:4px;
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
 }
 #layer-switch.show { display:flex; }
 #layer-switch button {
-  background:transparent; border:1px solid transparent; color:#cbd5e1;
-  border-radius:8px; padding:8px 10px; font-size:13px; text-align:left; cursor:pointer; white-space:nowrap;
+  background:transparent; border:1px solid transparent; color:#d8e8df; min-height:42px;
+  border-radius:11px; padding:9px 12px; font-size:13px; text-align:left; cursor:pointer; white-space:nowrap;
 }
-#layer-switch button.active { background:#16213e; border-color:#38bdf8; color:#38bdf8; }
+#layer-switch button.active { background:rgba(22,101,52,.45); border-color:rgba(74,222,128,.55); color:#bbf7d0; }
 
 #offline-banner {
   position:fixed; top:0; left:0; right:0; z-index:900; display:none;
@@ -204,31 +208,61 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
    Anchor bottom:76px (dokazano čisti donji tab-bar, vidi #main-tabs) —
    umjesto ručnog računanja piksela koje je ranije ostavljalo dugmad
    skrivenu/preklopljenu ispod njega (prijavljen bug). ──────────────────── */
+/* === Kontrole na karti — zajednički izgled: tamnozeleno "staklo" u boji teme,
+   zaobljeni kvadrati, SVG ikone linijskog stila (currentColor → aktivno stanje
+   se vidi, za razliku od emoji). ─────────────────────────────────────────── */
+.map-ctl, #layer-btn {
+  background:rgba(10,24,18,.86); color:#d8e8df;
+  border:1px solid rgba(134,239,172,.18);
+  box-shadow:0 6px 18px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.05);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+}
+.map-ctl svg {
+  width:22px; height:22px; display:block; fill:none; stroke:currentColor;
+  stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+}
+.map-ctl button, #ab-loc {
+  display:grid; place-items:center; position:relative; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; transition:transform .12s, background .15s, color .15s;
+}
+.map-ctl button:active, #ab-loc:active { transform:scale(.92); }
+
 #map-fabs {
   position:fixed; right:12px; bottom:76px; z-index:600;
-  display:flex; flex-direction:column; gap:10px; align-items:center;
+  display:flex; flex-direction:column; gap:10px; align-items:flex-end;
 }
-#map-fabs button {
-  width:48px; height:48px; border-radius:50%; border:none; cursor:pointer;
-  background:rgba(15,23,42,0.9); color:#e2e8f0; font-size:20px;
-  box-shadow:0 2px 10px rgba(0,0,0,0.4);
+.fab-pill { display:flex; flex-direction:column; border-radius:16px; overflow:hidden; }
+.fab-pill button {
+  width:50px; height:50px; border:none; background:transparent; color:inherit; padding:0;
 }
-#map-fabs button#ab-loc.active { color:#22c55e; }
-#map-fabs button:active { background:rgba(30,41,59,0.95); }
-#map-fabs button#ab-tragovi.active { color:#f97316; }
-#map-fabs button#ab-msr.active { color:#a78bfa; }
+.fab-pill button + button { border-top:1px solid rgba(134,239,172,.12); }
+#ab-loc { width:52px; height:52px; border-radius:16px; padding:0; }
+#ab-loc svg { width:24px; height:24px; }
+#ab-loc.active {
+  color:#4ade80; border-color:rgba(74,222,128,.6);
+  background:linear-gradient(145deg,rgba(22,101,52,.95),rgba(8,36,22,.95));
+  box-shadow:0 0 0 3px rgba(74,222,128,.18), 0 6px 18px rgba(0,0,0,.38);
+}
+#ab-msr.active { color:#c4b5fd; background:rgba(109,40,217,.32); }
+#ab-tragovi.recording { color:#fca5a5; background:rgba(153,27,27,.3); }
+#ab-tragovi.recording::after {
+  content:''; position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%;
+  background:#ef4444; box-shadow:0 0 0 2px rgba(10,24,18,.95); animation:fabRecPulse 1.4s ease-in-out infinite;
+}
+#ab-tragovi.recording.paused { color:#fcd34d; background:rgba(146,64,14,.3); }
+#ab-tragovi.recording.paused::after { background:#f59e0b; animation:none; }
+@keyframes fabRecPulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.4); opacity:.5; } }
+@media (prefers-reduced-motion: reduce) { #ab-tragovi.recording::after { animation:none; } }
 
-/* === Zoom +/- — donji lijevi ugao, ista bottom:76px logika kao #map-fabs === */
+/* === Zoom +/- — jedan stub, donji lijevi ugao (ista bottom:76px logika kao #map-fabs) === */
 #zoom-grp {
   position:fixed; left:12px; bottom:76px; z-index:600;
-  display:flex; flex-direction:column; gap:8px;
+  display:flex; flex-direction:column; border-radius:14px; overflow:hidden;
 }
 #zoom-grp button {
-  width:40px; height:40px; border-radius:50%; border:none; cursor:pointer;
-  background:rgba(15,23,42,0.9); color:#e2e8f0; font-size:19px; font-weight:700;
-  box-shadow:0 2px 10px rgba(0,0,0,0.4);
+  width:46px; height:46px; border:none; background:transparent; color:inherit; padding:0;
 }
-#zoom-grp button:active { background:rgba(30,41,59,0.95); }
+#zoom-grp button + button { border-top:1px solid rgba(134,239,172,.12); }
 
 /* === Mjerenja — plutajući alatni panel dok je aktivno crtanje === */
 #msr-panel {
@@ -386,13 +420,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
    reda) i oba dugmeta dijele jedan red — sažima ~4 reda visine u ~2. */
 #ab-loc-popup {
   display:none; position:fixed; bottom:76px; left:50%; transform:translateX(-50%);
-  z-index:650; background:rgba(15,23,42,0.97); border:1.5px solid #1e3a5f;
-  border-radius:14px; padding:10px 14px 12px; width:300px; max-width:92vw;
-  box-shadow:0 6px 24px rgba(0,0,0,0.5);
+  z-index:650; background:rgba(10,24,18,.96); border:1px solid rgba(134,239,172,.22);
+  border-radius:18px; padding:12px 14px 14px; width:300px; max-width:92vw;
+  box-shadow:0 12px 32px rgba(0,0,0,.5);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
 }
 #ab-loc-popup .loc-hdr {
   display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-  padding-bottom:8px; margin-bottom:10px; border-bottom:1px solid #1e293b;
+  padding-bottom:9px; margin-bottom:11px; border-bottom:1px solid rgba(134,239,172,.12);
 }
 #ab-loc-popup .loc-title { color:#e2e8f0; font-size:13px; font-weight:700; }
 #ab-loc-popup .loc-gps-info { color:#94a3b8; font-size:11px; text-align:right; }
@@ -414,10 +449,15 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .loc-switch::before { content:''; position:absolute; inset:-11px -4px; }
 .up-body input[type=checkbox] { width:22px; height:22px; accent-color:#f97316; flex-shrink:0; }
 #ab-loc-popup .loc-btn {
-  flex:1; padding:9px 6px; border-radius:9px; border:1px solid #fdba74;
-  background:#fff7ed; color:#c2410c; font-size:12px; font-weight:700; cursor:pointer; text-align:center;
+  flex:1; min-height:44px; padding:10px 6px; border-radius:12px; cursor:pointer; text-align:center;
+  border:1px solid rgba(251,146,60,.45); background:rgba(124,45,18,.28); color:#fed7aa;
+  font-size:12.5px; font-weight:700;
 }
-#ab-loc-popup .loc-btn.recording { background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
+#ab-loc-popup .loc-btn-primary {
+  border-color:rgba(74,222,128,.5); background:linear-gradient(145deg,#166534,#14532d); color:#ecfdf5;
+}
+#ab-loc-popup .loc-btn:active { transform:scale(.97); }
+#ab-loc-popup .loc-btn.recording { background:rgba(153,27,27,.45); border-color:#f87171; color:#fecaca; }
 
 /* === Trag snimanje — traka i popup === */
 #rec-bar {
@@ -623,16 +663,20 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="layer-switch"></div>
 
 <!-- Zoom — donji lijevi ugao -->
-<div id="zoom-grp">
-  <button onclick="map.zoomIn()" title="Uvećaj">+</button>
-  <button onclick="map.zoomOut()" title="Umanji">−</button>
+<div id="zoom-grp" class="map-ctl">
+  <button onclick="map.zoomIn()" title="Uvećaj" aria-label="Uvećaj"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button onclick="map.zoomOut()" title="Umanji" aria-label="Umanji"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
 </div>
 
-<!-- Plutajući alati na Karti — Moja lokacija / Mjerenja / Tragovi (jedna kolona, donji desni ugao) -->
+<!-- Plutajući alati na Karti — Mjerenja + Tragovi u jednom stubu, Moja lokacija
+     posebno i najbliže palcu (donji desni ugao). SVG ikone (ne emoji) da boja
+     aktivnog stanja radi — CSS `color` ne boji emoji. -->
 <div id="map-fabs">
-  <button id="ab-loc" onclick="_toggleLocPopup()" title="Moja lokacija">📍</button>
-  <button id="ab-msr" onclick="_toggleMsrPanel()" title="Mjerenja">📏</button>
-  <button id="ab-tragovi" onclick="openTragoviPanel()" title="Tragovi">🥾</button>
+  <div class="fab-pill map-ctl">
+    <button id="ab-msr" onclick="_toggleMsrPanel()" title="Mjerenja" aria-label="Mjerenja"><svg viewBox="0 0 24 24"><path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></svg></button>
+    <button id="ab-tragovi" onclick="openTragoviPanel()" title="Tragovi" aria-label="Tragovi"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg></button>
+  </div>
+  <button id="ab-loc" class="map-ctl" onclick="_toggleLocPopup()" title="Moja lokacija" aria-label="Moja lokacija"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
 </div>
 
 <!-- Mjerenja — plutajući alatni panel -->
@@ -682,7 +726,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="loc-toggle-item"><span>Radijus</span><div class="loc-switch" id="radius-switch" onclick="_togRadiusRings()"></div></div>
   </div>
   <div class="loc-btn-row">
-    <button class="loc-btn" onclick="_locPopupCentriraj()">🎯 Centriraj</button>
+    <button class="loc-btn loc-btn-primary" onclick="_locPopupCentriraj()">🎯 Centriraj</button>
     <button class="loc-btn" id="ab-loc-trag" onclick="_locPopupSnimiTrag()"><span id="ab-loc-trag-txt">Snimi trag</span></button>
   </div>
 </div>
@@ -1818,6 +1862,7 @@ function _updGpsSwitch() {
   // je mogao biti pokrenut/zaustavljen iz drugog panela (Tragovi lista).
   const tt = document.getElementById('ab-loc-trag-txt'); if (tt) tt.textContent = _tragOn ? 'Završi trag' : 'Snimi trag';
   const tbtn = document.getElementById('ab-loc-trag'); if (tbtn) tbtn.classList.toggle('recording', _tragOn);
+  _updTragFab();
 }
 function _toggleLocPopup() {
   const p = document.getElementById('ab-loc-popup');
@@ -2129,7 +2174,18 @@ function _updTragStats() {
   if (_activeTragTabOpen) _tragRegRender();
   _updRecBarUI();
 }
+function _updTragFab() {
+  const f = document.getElementById('ab-tragovi');
+  if (!f) return;
+  let on = false, pauza = false;
+  // try: _updGpsSwitch može biti pozvana prije `let _tragOn` (TDZ) tokom starta.
+  try { on = !!_tragOn; pauza = on && !!_tragPaused; } catch(e) {}
+  f.classList.toggle('recording', on);
+  f.classList.toggle('paused', pauza);
+  f.title = on ? (pauza ? 'Tragovi — snimanje pauzirano' : 'Tragovi — snimanje u toku') : 'Tragovi';
+}
 function _updRecBarUI() {
+  _updTragFab(); // prije ranog return-a: indikator se mora ugasiti i kad snimanje stane
   const bar = document.getElementById('rec-bar');
   if (!bar) return;
   if (!_tragOn) { bar.classList.remove('show'); return; }

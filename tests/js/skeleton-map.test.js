@@ -142,4 +142,24 @@ t('legenda ima checkbox, zatvaranje i pomjeranje dodirom', () => {
   assert.ok(HTML.includes("handle.setPointerCapture(e.pointerId)"));
   assert.ok(HTML.includes("usf_poz_legenda_pos"));
 });
+
+// CSS `color` ne boji emoji — sa emoji ikonama aktivno stanje (GPS uključen,
+// snimanje u toku) se na dugmetu uopšte ne vidi.
+t('dugmad na karti imaju SVG ikone (ne emoji) i vidljivo aktivno stanje', () => {
+  ['ab-loc', 'ab-msr', 'ab-tragovi'].forEach(id => {
+    const m = HTML.match(new RegExp('<button id="' + id + '"[^>]*>([\\s\\S]*?)</button>'));
+    assert.ok(m, 'nema dugmeta ' + id);
+    assert.ok(m[1].includes('<svg'), id + ' mora imati SVG ikonu');
+    assert.ok(!/[\u{1F300}-\u{1FAFF}]/u.test(m[1]), id + ' ne smije imati emoji ikonu');
+  });
+  assert.match(HTML, /#ab-loc\.active\s*\{/);
+  assert.match(HTML, /#ab-tragovi\.recording::after\s*\{/);
+});
+
+t('indikator snimanja na dugmetu Tragovi se osvježi i kad snimanje stane', () => {
+  const i = HTML.indexOf('function _updRecBarUI()');
+  const body = HTML.slice(i, HTML.indexOf('}', HTML.indexOf("if (!_tragOn)", i)));
+  const poziv = body.indexOf('_updTragFab()'), rani = body.indexOf('if (!_tragOn)');
+  assert.ok(poziv > 0 && poziv < rani, '_updTragFab() mora biti prije ranog return-a');
+});
 console.log('\n' + pass + ' prošlo, 0 palo — kostur karte');
