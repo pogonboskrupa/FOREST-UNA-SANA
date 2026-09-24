@@ -1036,7 +1036,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div style="display:flex;align-items:center;gap:6px;margin:6px 0 6px;font-size:11px;color:#94a3b8;">
       <span>malo</span><div id="sum-susenje-legenda" style="flex:1;height:10px;border-radius:5px;border:1px solid #141414;"></div><span>puno</span>
     </div>
-    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Udio stojećeg suhog drveta po godini (Sentinel-2, 10 m, 2017–2025) — tamnija/jača boja = više sušenja, tamni obrub oko površina. Prikaz samo za područje kantona; čita se direktno iz javnog COG fajla pa prvo učitavanje traje nekoliko sekundi. Izvor: deadtrees.earth (Mosig i sar., University of Freiburg).</div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Udio stojećeg suhog drveta po godini (Sentinel-2, 10 m, 2017–2025) — slabo sušenje je prozirno, jako tamnije i sa tamnim obrubom. Prikaz samo za područje kantona; čita se direktno iz javnog COG fajla pa prvo učitavanje traje nekoliko sekundi. Izvor: deadtrees.earth (Mosig i sar., University of Freiburg).</div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Svi slojevi su statični (ne uživo) — Hansen Global Forest Change se ažurira godišnje. Gubitak i rast se NE preklapaju vremenski (gubitak ide do 2024, rast samo do 2012 — to je granica same Hansen studije, ne ograničenje ove app-e).</p>
     </div>
@@ -4420,7 +4420,7 @@ function _sumSusenjeLegenda() {
   const el = document.getElementById('sum-susenje-legenda'), l = _SUM_LAYERS.susenje;
   if (!el || !l) return;
   const p = USFDeadtrees.PALETE[l.options.paleta] || USFDeadtrees.PALETE.zuta;
-  el.style.background = 'linear-gradient(90deg, rgb(' + p.od.join(',') + '), rgb(' + p.do.join(',') + '))';
+  el.style.background = 'linear-gradient(90deg, rgba(' + p.od.join(',') + ',0.15), rgba(' + p.od.join(',') + ',0.5) 45%, rgb(' + p.do.join(',') + '))';
 }
 function _sumSusenjePaleta(p) {
   const l = _SUM_LAYERS.susenje; if (!l) return;

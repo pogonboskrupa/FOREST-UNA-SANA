@@ -21,10 +21,15 @@
   // Neprozirnost: šum ispod ~4% prozirno. Vrijednosti u COG-u realno idu do
   // ~140/255, pa rampa deadtrees.earth (alfa = vrijednost) daje najviše ~0.5 i
   // sušenje se slabo vidi. Ovdje je dno 0.5, a puna jačina već na ~55%.
+  // Slabo sušenje (donja polovina rampe) blijedi kvadratno do 0.12, da ne
+  // prekrije kartu; jako sušenje (t ≥ 0.5) ostaje kao u v1.4.10.
+  const JAKO_T = 0.5, JAKO_ALFA = 0.5 + 0.47 * JAKO_T;
   function alfa(v) {
     const n = v / 255;
     if (!(n > 0.04)) return 0;
-    return Math.min(1, 0.5 + 0.47 * (n - 0.04) / 0.5);
+    const t = (n - 0.04) / 0.5;
+    if (t >= JAKO_T) return Math.min(1, 0.5 + 0.47 * t);
+    return 0.12 + (JAKO_ALFA - 0.12) * (t / JAKO_T) ** 2;
   }
 
   // Palete: [boja za malo sušenja, boja za puno]. Podrazumijevana žuta se ne
@@ -45,13 +50,15 @@
     return [0, 1, 2].map(i => Math.round(p.od[i] + (p.do[i] - p.od[i]) * t)).concat(Math.round(a * 255));
   }
 
-  // Tamna kontura od 1 px oko obojenih površina — vidljive na svakoj podlozi.
+  // Tamna kontura od 1 px samo oko JAKOG sušenja, i to samo na praznim
+  // pikselima — slabo sušenje ostaje blijedo, bez obruba.
+  const OBRUB_MIN_A = Math.floor(JAKO_ALFA * 255);
   function obrubi(px, T) {
     const puno = new Uint8Array(T * T);
-    for (let i = 0; i < T * T; i++) puno[i] = px[i * 4 + 3] > 0 ? 1 : 0;
+    for (let i = 0; i < T * T; i++) puno[i] = px[i * 4 + 3] >= OBRUB_MIN_A ? 1 : 0;
     for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
       const i = y * T + x;
-      if (puno[i]) continue;
+      if (puno[i] || px[i * 4 + 3] > 0) continue;
       if ((x > 0 && puno[i - 1]) || (x < T - 1 && puno[i + 1]) || (y > 0 && puno[i - T]) || (y < T - 1 && puno[i + T])) {
         const o = i * 4; px[o] = 20; px[o + 1] = 20; px[o + 2] = 20; px[o + 3] = 200;
       }
