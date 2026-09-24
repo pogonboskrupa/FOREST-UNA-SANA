@@ -197,6 +197,8 @@ public class MainActivity extends Activity {
                     WebResourceRequest request) {
                 WebResourceResponse tile = interceptMbtilesTile(request.getUrl());
                 if (tile != null) return tile;
+                WebResourceResponse cog = proxyCorsRange(request);
+                if (cog != null) return cog;
                 return assetLoader.shouldInterceptRequest(request.getUrl());
             }
 
@@ -498,6 +500,54 @@ public class MainActivity extends Activity {
                 SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
         mbtilesDatabases.put(id, opened);
         return opened;
+    }
+
+    // deadtrees.earth COG (Sušenje) se čita HTTP range zahtjevima iz JS-a
+    // (geotiff.js). Stranica je na appassets.androidplatform.net, pa bi CORS
+    // zavisio od zaglavlja njihovog servera; ovdje se zahtjev izvrši nativno i
+    // vrati sa CORS zaglavljima. Samo GET/OPTIONS i samo na ovaj host.
+    private static final String CORS_PROXY_HOST = "data2.deadtrees.earth";
+
+    private WebResourceResponse proxyCorsRange(WebResourceRequest request) {
+        Uri uri = request.getUrl();
+        if (!"https".equals(uri.getScheme()) || !CORS_PROXY_HOST.equals(uri.getHost())) return null;
+        java.util.Map<String, String> cors = new java.util.HashMap<>();
+        cors.put("Access-Control-Allow-Origin", "*");
+        cors.put("Access-Control-Allow-Headers", "Range");
+        cors.put("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
+        String method = request.getMethod();
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return new WebResourceResponse("text/plain", null, 204, "No Content", cors,
+                    new java.io.ByteArrayInputStream(new byte[0]));
+        }
+        if (!"GET".equalsIgnoreCase(method)) return null;
+        java.net.HttpURLConnection con = null;
+        try {
+            con = (java.net.HttpURLConnection) new java.net.URL(uri.toString()).openConnection();
+            con.setConnectTimeout(15000);
+            con.setReadTimeout(30000);
+            String range = null;
+            for (java.util.Map.Entry<String, String> h : request.getRequestHeaders().entrySet()) {
+                if ("Range".equalsIgnoreCase(h.getKey())) range = h.getValue();
+            }
+            if (range != null) con.setRequestProperty("Range", range);
+            int code = con.getResponseCode();
+            for (String h : new String[]{"Content-Range", "Content-Length", "Accept-Ranges"}) {
+                String v = con.getHeaderField(h);
+                if (v != null) cors.put(h, v);
+            }
+            InputStream body = code >= 400 ? con.getErrorStream() : con.getInputStream();
+            if (body == null) body = new java.io.ByteArrayInputStream(new byte[0]);
+            String reason = con.getResponseMessage();
+            if (reason == null || reason.isEmpty()) reason = code == 206 ? "Partial Content" : "OK";
+            String type = con.getContentType();
+            return new WebResourceResponse(type != null ? type.split(";")[0].trim() : "application/octet-stream",
+                    null, code, reason, cors, body);
+        } catch (Exception e) {
+            if (con != null) con.disconnect();
+            return new WebResourceResponse("text/plain", null, 502, "Bad Gateway", cors,
+                    new java.io.ByteArrayInputStream(new byte[0]));
+        }
     }
 
     private WebResourceResponse interceptMbtilesTile(Uri uri) {

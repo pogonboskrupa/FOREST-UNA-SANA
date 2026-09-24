@@ -511,4 +511,12 @@ t('_poziFilterZaOkvir zadržava SAMO tačke unutar Unsko-sanskog kantona (bez ob
   assert.ok(out[0].d <= out[1].d, 'mora ostati sortirano po udaljenosti od ref tačke');
 });
 
+// Regresija: canvas renderer pojednostavljuje (smoothFactor) male poligone
+// projekcije do nule pri odzumiranju → poligon "nestaje" pa se pojavi.
+t('poligoni projekcije požara ne pojednostavljuju se pri odzumiranju', () => {
+  const pozivi = HTML.match(/L\.geoJSON\(geom, \{[^}]*pozariProjectionPane[^}]*\}/g) || [];
+  assert.ok(pozivi.length >= 2, 'očekivana bar 2 sloja projekcije');
+  for (const c of pozivi) assert.ok(/smoothFactor:\s*0\b/.test(c), 'nedostaje smoothFactor:0 u: ' + c);
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');

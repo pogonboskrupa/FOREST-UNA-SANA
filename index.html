@@ -33,6 +33,7 @@
 <script src="static/js/reliable-fetch.js"></script>
 <script src="static/js/firebase-init.js"></script>
 <script src="static/js/road-design.js" onerror="_libErr('Projektovanje puta')"></script>
+<script src="static/js/deadtrees-layer.js" onerror="_libErr('Sušenje (deadtrees)')"></script>
 <script>
 window.addEventListener('DOMContentLoaded',function(){
   if(!_libErrNames.length)return;
@@ -1035,6 +1036,16 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div class="loc-switch" id="sum-rast-switch" onclick="_sumToggle('rast',!_sumOn('rast'))"></div>
     </div>
     <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
+    <div class="loc-row" style="margin-top:10px;">
+      <span>🟥 Sušenje šume (deadtrees.earth)</span>
+      <div class="loc-switch" id="sum-susenje-switch" onclick="_sumToggle('susenje',!_sumOn('susenje'))"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:4px 0 2px;">
+      <label for="sum-susenje-god" style="font-size:12px;color:#cbd5e1;">Godina</label>
+      <select id="sum-susenje-god" onchange="_sumSusenjeGodina(this.value)" style="flex:0 0 auto;padding:5px 8px;background:#1f2937;color:#e2e8f0;border:1px solid #374151;border-radius:6px;font-size:12px;"></select>
+      <span id="sum-susenje-status" style="font-size:11px;color:#94a3b8;"></span>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Udio stojećeg suhog drveta po godini (Sentinel-2, 10 m, 2017–2025) — intenzivnije crveno = više sušenja. Prikaz samo za područje kantona; čita se direktno iz javnog COG fajla pa prvo učitavanje traje nekoliko sekundi. Izvor: deadtrees.earth (Mosig i sar., University of Freiburg).</div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Svi slojevi su statični (ne uživo) — Hansen Global Forest Change se ažurira godišnje. Gubitak i rast se NE preklapaju vremenski (gubitak ide do 2024, rast samo do 2012 — to je granica same Hansen studije, ne ograničenje ove app-e).</p>
     </div>
@@ -4385,16 +4396,50 @@ const _SUM_LAYERS = {
   rast: L.tileLayer(_sumUrl('rast'), { ..._SUM_OPTS, opacity: 0.8, zIndex: 2 }),
   gubitak: L.tileLayer(_sumUrl('gubitak'), { ..._SUM_OPTS, opacity: 0.9, zIndex: 3 })
 };
+// Sušenje: vlastiti COG sloj (static/js/deadtrees-layer.js); bounds = kanton da
+// se ne čitaju pločice van područja (svaka pločica = HTTP range zahtjevi).
+const _SUM_SUS_GOD_KEY = 'usf_sumarstvo_susenje_god';
+let _sumSusGreskaJavljena = false;
+if (window.USFDeadtrees) {
+  let god = '2025';
+  try { god = localStorage.getItem(_SUM_SUS_GOD_KEY) || god; } catch(e) {}
+  if (!USFDeadtrees.GODINE.includes(god)) god = USFDeadtrees.GODINE[USFDeadtrees.GODINE.length - 1];
+  const Sloj = USFDeadtrees.napraviSloj(L);
+  _SUM_LAYERS.susenje = new Sloj({
+    pane: 'sumarstvoPane', zIndex: 4, godina: god,
+    bounds: L.latLngBounds([_USK_BBOX.latMin, _USK_BBOX.lonMin], [_USK_BBOX.latMax, _USK_BBOX.lonMax]),
+    attribution: 'Sušenje: deadtrees.earth (Sentinel-2)',
+    onGreska: e => {
+      console.warn('deadtrees COG', e);
+      const st = document.getElementById('sum-susenje-status');
+      if (st) st.textContent = '⚠ nedostupno';
+      if (!_sumSusGreskaJavljena) { _sumSusGreskaJavljena = true; showToast('⚠ Sušenje (deadtrees.earth) nije dostupno: ' + (e && e.message || 'mreža')); }
+    }
+  });
+  _SUM_LAYERS.susenje.on('load', () => {
+    const st = document.getElementById('sum-susenje-status'); if (st && !_sumSusGreskaJavljena) st.textContent = '';
+  });
+  _SUM_LAYERS.susenje.on('loading', () => {
+    const st = document.getElementById('sum-susenje-status'); if (st) st.textContent = '⏳';
+  });
+}
+function _sumSusenjeGodina(g) {
+  const l = _SUM_LAYERS.susenje; if (!l) return;
+  try { localStorage.setItem(_SUM_SUS_GOD_KEY, String(g)); } catch(e) {}
+  _sumSusGreskaJavljena = false;
+  l.setGodina(g);
+}
 const _SUM_KEY = 'usf_sumarstvo_slojevi';
 let _sumState = {};
 try { _sumState = JSON.parse(localStorage.getItem(_SUM_KEY) || '{}'); } catch(e) {}
 Object.keys(_SUM_LAYERS).forEach(k => { if (_sumState[k]) _SUM_LAYERS[k].addTo(map); });
 function _sumOn(key) { return !!_sumState[key]; }
-const _SUM_SWITCH_ID = { pokrivac: 'sum-pokrivac-switch', gubitak: 'sum-gubitak-switch', rast: 'sum-rast-switch' };
+const _SUM_SWITCH_ID = { pokrivac: 'sum-pokrivac-switch', gubitak: 'sum-gubitak-switch', rast: 'sum-rast-switch', susenje: 'sum-susenje-switch' };
 function _sumToggle(key, on) {
   if (!_SUM_LAYERS[key]) return;
   _sumState[key] = !!on;
   try { localStorage.setItem(_SUM_KEY, JSON.stringify(_sumState)); } catch(e) {}
+  if (key === 'susenje') _sumSusGreskaJavljena = false;
   if (on) _SUM_LAYERS[key].addTo(map); else map.removeLayer(_SUM_LAYERS[key]);
   const sw = document.getElementById(_SUM_SWITCH_ID[key]); if (sw) sw.classList.toggle('on', on);
 }
@@ -4402,7 +4447,12 @@ function openSumarstvoSection() {
   _openStubPanel('sumarstvo-panel', 'meni');
   Object.keys(_SUM_LAYERS).forEach(key => {
     const sw = document.getElementById(_SUM_SWITCH_ID[key]); if (sw) sw.classList.toggle('on', _sumOn(key));
-  });
+  });  const sel = document.getElementById('sum-susenje-god');
+  if (sel && _SUM_LAYERS.susenje && !sel.options.length) {
+    USFDeadtrees.GODINE.slice().reverse().forEach(g => sel.add(new Option(g, g)));
+  }
+  if (sel && _SUM_LAYERS.susenje) sel.value = _SUM_LAYERS.susenje.options.godina;
+  if (sel) sel.disabled = !_SUM_LAYERS.susenje;
 }
 
 function _poziParseCsv(txt) {
@@ -4881,7 +4931,7 @@ function _povGodRenderSve() {
         const geom = _poziOpozOn() ? _poziOpozGeom(g.pts || []) : null;
         if (geom) {
           try {
-            L.geoJSON(geom, { pane:'pozariProjectionPane',
+            L.geoJSON(geom, { pane:'pozariProjectionPane', smoothFactor:0,
               style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.42 } })
               .bindPopup(() => `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;"><b style="color:#fb923c;">Procijenjena opožarena površina</b><div style="font-size:18px;font-weight:800;margin:5px 0;">${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div><small style="color:#94a3b8;">Iz satelitskih piksela — nije službeno izmjerena granica.</small></div>`)
               .addTo(grp);
@@ -5207,7 +5257,7 @@ function _poziOpozAzuriraj() {
       const geom = _poziOpozGeom(pts);
       if (!geom) return;
       try {
-        L.geoJSON(geom, { pane: 'pozariProjectionPane',
+        L.geoJSON(geom, { pane: 'pozariProjectionPane', smoothFactor: 0,
           style: { color: _POZ_OPOZ_BOJE[id], weight: 1.6, fillColor: _POZ_OPOZ_BOJE[id], fillOpacity: 0.42 } }).addTo(grp);
       } catch(e) {}
     });
