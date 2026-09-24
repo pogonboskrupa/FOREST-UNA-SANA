@@ -108,4 +108,20 @@ t('APK koristi nativni MBTiles canvas bez kopiranja cijele baze u JavaScript RAM
   assert.ok(restore.indexOf('if (nativeTarget)') < restore.indexOf('await _sqlIdbGetAll()'));
 });
 
+// Regresija: maxZoom = najveći zoom fajla je sakrivao cijeli offline sloj čim
+// se zumira dalje (siva pozadina). maxZoom mora biti zoom karte, a raspon fajla
+// ide u maxNativeZoom/minNativeZoom da se pločice uvećaju/umanje.
+t('_sqlZoomOpts: offline karta ostaje vidljiva i preko najvećeg zooma fajla', () => {
+  const _sqlZoomOpts = new Function(extractFn('_sqlZoomOpts') + '\nreturn _sqlZoomOpts;')();
+  const o = _sqlZoomOpts(12, 13);
+  assert.strictEqual(o.maxZoom, 22, 'maxZoom mora biti zoom karte, ne fajla');
+  assert.strictEqual(o.maxNativeZoom, 13);
+  assert.strictEqual(o.minNativeZoom, 12);
+  assert.strictEqual(o.minZoom, 10, 'odzumiranje najviše 2 nivoa ispod fajla');
+  assert.strictEqual(_sqlZoomOpts(1, 5).minZoom, 0, 'minZoom ne ide ispod 0');
+  const bez = _sqlZoomOpts(undefined, undefined);
+  assert.strictEqual(bez.maxNativeZoom, 19); assert.strictEqual(bez.minNativeZoom, 0);
+  assert.ok(!/maxZoom:\s*(?:Number\(info\.maxzoom\)|parseInt\(meta\.maxzoom)/.test(HTML), 'offline slojevi ne smiju vezati maxZoom za fajl');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — učitaj karta');

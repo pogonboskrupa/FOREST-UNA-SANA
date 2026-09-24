@@ -49,6 +49,11 @@ sa najmanje pločica = `MAX(z)` kod obrnutog).
   biti IZNAD nje treba vlastiti pane (npr. `sumarstvoPane` z 420).
   `L.tileLayer` bez `pane` ide u `tilePane` (z 200) → ISPOD offline karte.
 - Web put (bez APK-a, sql.js u `_SqlTileLayer`) zna samo MBTiles šemu.
+- Zoom opcije sloja idu ISKLJUČIVO kroz `_sqlZoomOpts(minzoom, maxzoom)`:
+  `maxZoom` = zoom karte (22), a raspon fajla u `maxNativeZoom`/`minNativeZoom`.
+  Ako je `maxZoom` = najveći zoom fajla, Leaflet cijeli sloj ukloni čim se
+  zumira dalje → siva pozadina dok se ne odzumira (prijavljen bug, v1.4.7).
+  Odzumiranje: najviše 2 nivoa ispod fajla (svaki nivo = 4× više pločica).
 
 ## 4. Testovi
 

@@ -3701,8 +3701,8 @@ function _nativeSqlmapAdd(info) {
   const meta = { bounds: info.bounds || '' };
   const bounds = _sqlParseBounds(meta);
   const layer = new _NativeSqlCanvasLayer({
-    pane:'offlineBasePane', minZoom:Number(info.minzoom)||0, maxZoom:Number(info.maxzoom)||19,
-    maxNativeZoom:Number(info.maxzoom)||19, tileSize:256, updateWhenIdle:false, keepBuffer:3,
+    pane:'offlineBasePane', ..._sqlZoomOpts(info.minzoom, info.maxzoom),
+    tileSize:256, updateWhenIdle:false, keepBuffer:3,
     nativeId:info.id, format:info.format || 'png'
   });
   const active = _sqlmapActiveName() === info.name;
@@ -3789,6 +3789,20 @@ async function _sqlIdbSetFailCount(name, n) {
 // XYZ (brojano od VRHA naniže) — bez ove konverzije karta je vertikalno
 // izvrnuta (prva pločica gore prikazuje se dolje i obrnuto).
 function _sqlTmsY(z, xyzY) { return Math.pow(2, z) - 1 - xyzY; }
+// Zoom opcije offline sloja. maxZoom = najveći zoom FAJLA je sakrivao cijeli
+// sloj čim se zumira dalje (siva pozadina dok se ne odzumira) — Leaflet tada
+// sloj uklanja umjesto da uveća pločice. Zato: maxZoom = karta (22), a
+// maxNativeZoom/minNativeZoom = raspon fajla (pločice se uvećaju/umanje).
+// Odzumiranje je dozvoljeno još 2 nivoa ispod fajla: svaki nivo niže je 4×
+// više pločica po ekranu, pa ne neograničeno. (Brojevi unutar funkcije, ne
+// const na nivou skripte — poziva se i pri startu, prije ove linije.)
+function _sqlZoomOpts(minzoom, maxzoom) {
+  const ispod = 2, kartaMax = 22;
+  const mnRaw = parseInt(minzoom, 10), mxRaw = parseInt(maxzoom, 10);
+  const mn = Number.isFinite(mnRaw) ? Math.max(0, mnRaw) : 0;
+  const mx = Number.isFinite(mxRaw) ? Math.max(mxRaw, mn) : 19;
+  return { minZoom: Math.max(0, mn - ispod), minNativeZoom: mn, maxZoom: kartaMax, maxNativeZoom: mx };
+}
 function _sqlParseBounds(metaMap) {
   if (!metaMap.bounds) return null;
   const parts = metaMap.bounds.split(',').map(Number);
@@ -3846,9 +3860,7 @@ async function _sqlmapAddLayer(name, db, opts) {
   const layer = new _SqlTileLayer({
     db, format: meta.format || 'png',
     pane: 'offlineBasePane',
-    minZoom: parseInt(meta.minzoom, 10) || 0,
-    maxZoom: parseInt(meta.maxzoom, 10) || 19,
-    maxNativeZoom: parseInt(meta.maxzoom, 10) || 19,
+    ..._sqlZoomOpts(meta.minzoom, meta.maxzoom),
     tileSize: 256
   });
   const active = (_sqlmapActiveName() === name) || opts?.active === true;
