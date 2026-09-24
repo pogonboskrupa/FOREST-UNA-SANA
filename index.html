@@ -346,19 +346,55 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   box-shadow:0 8px 32px rgba(0,0,0,0.8); max-height:100%; overflow:auto;
 }
 
+/* Meni: grupe, kartice sa SVG ikonom u boji kategorije (--mc), status desno */
+.meni-grp { margin:0 0 16px; }
+.meni-grp h3 {
+  margin:0 4px 8px; color:#6f8a7d; font-size:10.5px; font-weight:800;
+  letter-spacing:1.1px; text-transform:uppercase;
+}
 .meni-card {
-  display:flex; align-items:center; gap:12px; background:linear-gradient(145deg,rgba(30,55,43,.96),rgba(19,38,30,.96));
-  border-radius:16px; padding:14px; margin-bottom:10px; cursor:pointer; border:1px solid var(--line);
-  box-shadow:0 5px 18px rgba(0,0,0,.14); transition:transform .12s ease,border-color .15s ease;
+  --mc:#4ade80;
+  display:flex; align-items:center; gap:12px; width:100%; box-sizing:border-box; text-align:left;
+  font:inherit; color:inherit; background:linear-gradient(145deg,rgba(28,50,40,.92),rgba(17,33,26,.92));
+  border-radius:16px; padding:12px 12px 12px 12px; margin-bottom:8px; cursor:pointer; border:1px solid var(--line);
+  box-shadow:0 4px 14px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.035);
+  transition:transform .12s ease,border-color .15s ease,background .15s ease;
+  -webkit-tap-highlight-color:transparent;
 }
-.meni-card:active { transform:scale(.985); border-color:rgba(74,222,128,.45); }
+.meni-card:active { transform:scale(.985); border-color:rgba(74,222,128,.45); border-color:color-mix(in srgb,var(--mc) 55%,transparent); }
+.meni-card:focus-visible { outline:2px solid var(--mc); outline-offset:2px; }
 .meni-card .mc-ico {
-  display:grid; place-items:center; width:42px; height:42px; border-radius:13px;
-  background:rgba(255,255,255,.055); font-size:22px; flex-shrink:0;
+  display:grid; place-items:center; width:44px; height:44px; border-radius:13px; flex-shrink:0;
+  color:var(--mc); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  background:color-mix(in srgb,var(--mc) 14%,transparent);
+  border-color:color-mix(in srgb,var(--mc) 28%,transparent);
 }
-.meni-card .mc-txt { flex:1; }
-.meni-card .mc-txt b { display:block; color:var(--text); font-size:14px; }
-.meni-card .mc-txt span { display:block; color:#8da399; font-size:11px; margin-top:3px; line-height:1.35; }
+.meni-card svg, .meni-set svg { fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.meni-card .mc-ico svg { width:23px; height:23px; }
+.meni-card .mc-txt { flex:1; min-width:0; }
+.meni-card .mc-txt b { display:block; color:var(--text); font-size:14.5px; font-weight:700; letter-spacing:-.1px; }
+.meni-card .mc-txt span { display:block; color:#8da399; font-size:11.5px; margin-top:2px; line-height:1.35; }
+.meni-card .mc-stat:empty { display:none; }
+.meni-card .mc-stat {
+  flex-shrink:0; font-size:10.5px; font-weight:800; padding:3px 8px; border-radius:999px;
+  color:var(--mc); background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); white-space:nowrap;
+  background:color-mix(in srgb,var(--mc) 15%,transparent);
+  border-color:color-mix(in srgb,var(--mc) 30%,transparent);
+}
+.meni-card .mc-stat.on::before {
+  content:''; display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:5px;
+  background:var(--mc); vertical-align:1px; box-shadow:0 0 0 3px color-mix(in srgb,var(--mc) 22%,transparent);
+}
+.meni-card .mc-chev { width:18px; height:18px; flex-shrink:0; color:#56705f; }
+.meni-set {
+  display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:12px; align-items:center;
+  width:100%; box-sizing:border-box; margin-top:4px; padding:12px 14px; text-align:left; font:inherit; cursor:pointer;
+  background:transparent; border:1px dashed rgba(148,163,184,.22); border-radius:14px; color:#b8c8c0;
+}
+.meni-set svg { grid-row:1/3; width:22px; height:22px; color:#94a3b8; }
+.meni-set span { font-size:13.5px; font-weight:700; color:var(--text); }
+.meni-set small { font-size:11px; color:#7b8f86; }
+#meni-ver-badge { text-align:center; color:#475569; font-size:11px; padding:14px 0 4px; }
 
 .set-row {
   display:flex; align-items:center; justify-content:space-between; background:var(--surface-2);
@@ -602,9 +638,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 @media (min-width:700px) {
   .usf-panel .up-body { width:min(680px,calc(100% - 32px)); margin:0 auto; box-sizing:border-box; }
-  #meni-panel .up-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; }
-  #meni-panel .meni-card { margin-bottom:0; }
-  #meni-ver-badge { grid-column:1/-1; }
+  .meni-grp { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .meni-grp h3 { grid-column:1/-1; margin-bottom:0; }
+  .meni-grp .meni-card { margin-bottom:0; }
 }
 </style>
 <style>
@@ -752,47 +788,77 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="meni-panel" class="usf-panel">
   <div class="up-hdr"><h2>☰ Meni</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div class="meni-card" onclick="openPozariSection()">
-      <div class="mc-ico">🔥</div>
-      <div class="mc-txt"><b>Požari</b><span>FIRMS detekcije, grupisanje, heatmap, vjetar</span></div>
-    </div>
-    <div class="meni-card" onclick="openSjecaSection()">
-      <div class="mc-ico">🪓</div>
-      <div class="mc-txt"><b>Sječa i vjetroizvale</b><span>GFW alarmi smetnje vegetacije (DIST-ALERT)</span></div>
-    </div>
-    <div class="meni-card" onclick="openSumarstvoSection()">
-      <div class="mc-ico">🌲</div>
-      <div class="mc-txt"><b>Šumarstvo</b><span>Hansen/GFW pokrivač, gubitak, rast; sušenje (deadtrees.earth)</span></div>
-    </div>
-    <div class="meni-card" onclick="openPutSection()">
-      <div class="mc-ico">🛣</div>
-      <div class="mc-txt"><b>Projektovanje šumskog puta</b><span>Trasa preko DEM-a, ograničenje nagiba</span></div>
-    </div>
-    <div class="meni-card" onclick="openTematskaSection()">
-      <div class="mc-ico">📊</div>
-      <div class="mc-txt"><b>Tematska karta</b><span>Bojenje odjela/odsjeka po atributu (.gpkg)</span></div>
-    </div>
-    <div class="meni-card" onclick="openUcitajKartuSection()">
-      <div class="mc-ico">🗂</div>
-      <div class="mc-txt"><b>Učitaj kartu</b><span>Offline SQLite/MBTiles import</span></div>
-    </div>
-    <div class="meni-card" onclick="openUcitajKmlSection()">
-      <div class="mc-ico">📥</div>
-      <div class="mc-txt"><b>Učitaj KML</b><span>Uvoz KML slojeva (poligon/linija/tačka)</span></div>
-    </div>
-    <div class="meni-card" onclick="openTragoviPanel()">
-      <div class="mc-ico">🥾</div>
-      <div class="mc-txt"><b>Tragovi</b><span>Sačuvani GPS tragovi</span></div>
-    </div>
-    <div class="meni-card" onclick="openMjerenjaPanel()">
-      <div class="mc-ico">📏</div>
-      <div class="mc-txt"><b>Mjerenja</b><span>Sačuvane udaljenosti, površine, nagibi</span></div>
-    </div>
-    <div class="meni-card" onclick="switchMainTab('postavke')">
-      <div class="mc-ico">⚙</div>
-      <div class="mc-txt"><b>Postavke</b><span>Verzija, ažuriranje, baterija i keš karata</span></div>
-    </div>
-    <div id="meni-ver-badge" style="text-align:center;color:#475569;font-size:11px;padding:14px 0 4px;"></div>
+    <section class="meni-grp">
+      <h3>Praćenje šume</h3>
+      <button type="button" class="meni-card" id="mc-pozari" onclick="openPozariSection()" style="--mc:#fb923c">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>
+        <span class="mc-txt"><b>Požari</b><span>FIRMS detekcije, grupisanje, heatmap, vjetar</span></span>
+        <span class="mc-stat" id="mc-stat-pozari"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" class="meni-card" id="mc-sjeca" onclick="openSjecaSection()" style="--mc:#fbbf24">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 12-8.5 8.5a2.1 2.1 0 1 1-3-3L11 9"/><path d="M15 13 9 7l4-4 6 6h3a8 8 0 0 1-7 7z"/></svg></span>
+        <span class="mc-txt"><b>Sječa i vjetroizvale</b><span>GFW alarmi smetnje vegetacije (DIST-ALERT)</span></span>
+        <span class="mc-stat" id="mc-stat-sjeca"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" class="meni-card" id="mc-sumarstvo" onclick="openSumarstvoSection()" style="--mc:#4ade80">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 6.5 9.5h3L5 15.5h14l-4.5-6h3z"/><path d="M12 15.5V22"/></svg></span>
+        <span class="mc-txt"><b>Šumarstvo</b><span>Pokrivač, gubitak, rast, sušenje</span></span>
+        <span class="mc-stat" id="mc-stat-sumarstvo"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </section>
+    <section class="meni-grp">
+      <h3>Planiranje</h3>
+      <button type="button" class="meni-card" id="mc-put" onclick="openPutSection()" style="--mc:#60a5fa">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 5 21M15.5 3 19 21"/><path d="M12 4v2.5M12 10.5v3M12 17.5v3"/></svg></span>
+        <span class="mc-txt"><b>Projektovanje šumskog puta</b><span>Trasa preko DEM-a, ograničenje nagiba</span></span>
+        <span class="mc-stat" id="mc-stat-put"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" class="meni-card" id="mc-tematska" onclick="openTematskaSection()" style="--mc:#c084fc">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.6 0-1-.9-1.4-.9-2.4 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.7 17 3 12 3z"/><circle cx="7.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.3" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.2" cy="7.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+        <span class="mc-txt"><b>Tematska karta</b><span>Bojenje odjela/odsjeka po atributu (.gpkg)</span></span>
+        <span class="mc-stat" id="mc-stat-tematska"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </section>
+    <section class="meni-grp">
+      <h3>Podaci i karte</h3>
+      <button type="button" class="meni-card" id="mc-karta" onclick="openUcitajKartuSection()" style="--mc:#2dd4bf">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/></svg></span>
+        <span class="mc-txt"><b>Učitaj kartu</b><span>Offline SQLite/MBTiles/.sqlitedb</span></span>
+        <span class="mc-stat" id="mc-stat-karta"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" class="meni-card" id="mc-kml" onclick="openUcitajKmlSection()" style="--mc:#38bdf8">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5"/><path d="M12 17.5v-6M9.5 14l2.5-2.5 2.5 2.5"/></svg></span>
+        <span class="mc-txt"><b>Učitaj KML</b><span>Poligoni, linije i tačke</span></span>
+        <span class="mc-stat" id="mc-stat-kml"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </section>
+    <section class="meni-grp">
+      <h3>Teren</h3>
+      <button type="button" class="meni-card" id="mc-tragovi" onclick="openTragoviPanel()" style="--mc:#86efac">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg></span>
+        <span class="mc-txt"><b>Tragovi</b><span>Sačuvani GPS tragovi</span></span>
+        <span class="mc-stat" id="mc-stat-tragovi"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" class="meni-card" id="mc-mjerenja" onclick="openMjerenjaPanel()" style="--mc:#a78bfa">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></svg></span>
+        <span class="mc-txt"><b>Mjerenja</b><span>Udaljenosti, površine, nagibi</span></span>
+        <span class="mc-stat" id="mc-stat-mjerenja"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </section>
+    <button type="button" class="meni-set" onclick="switchMainTab('postavke')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <span>Postavke</span><small>Verzija, ažuriranje, baterija, keš karata</small>
+    </button>
+    <div id="meni-ver-badge"></div>
   </div>
 </div>
 
@@ -7505,9 +7571,47 @@ function switchMainTab(tab) {
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   _ALL_PANELS.forEach(id => document.getElementById(id)?.classList.remove('show'));
   if (tab === 'karte') { document.getElementById('karte-panel').classList.add('show'); _renderKartaBaseList(); }
-  else if (tab === 'meni') document.getElementById('meni-panel').classList.add('show');
+  else if (tab === 'meni') { document.getElementById('meni-panel').classList.add('show'); _meniStatusRender(); }
   else if (tab === 'postavke') { document.getElementById('postavke-panel').classList.add('show'); _renderPostavke(); }
   // 'karta' — svi paneli sakriveni, mapa i FAB-ovi ispod su već vidljivi
+}
+// Čista funkcija: stanje → tekst statusa po kartici ('' = bez oznake).
+// on=true dobija tačku (sloj trenutno na karti).
+function _meniStatusi(st) {
+  // bosanska množina: 1 trag, 2–4 traga, 5+ (i 11–14) tragova; 21 trag…
+  const oblik = (k, jed, par, mn) => {
+    const d = k % 10, dd = k % 100;
+    if (d === 1 && dd !== 11) return jed;
+    if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return par;
+    return mn;
+  };
+  const n = (k, jed, par, mn) => k > 0 ? { t: k + ' ' + oblik(k, jed, par, mn), on: false } : { t: '', on: false };
+  return {
+    pozari:    st.poziOn ? { t: 'Uključeno', on: true } : { t: '', on: false },
+    sjeca:     st.sjeOn ? { t: 'Uključeno', on: true } : { t: '', on: false },
+    sumarstvo: st.sumSlojeva > 0 ? { t: st.sumSlojeva + ' ' + oblik(st.sumSlojeva, 'sloj', 'sloja', 'slojeva'), on: true } : { t: '', on: false },
+    tragovi:   n(st.tragova, 'trag', 'traga', 'tragova'),
+    mjerenja:  n(st.mjerenja, 'mjerenje', 'mjerenja', 'mjerenja')
+  };
+}
+function _meniStatusRender() {
+  let st;
+  try {
+    st = {
+      poziOn: typeof _poziOn !== 'undefined' && !!_poziOn,
+      sjeOn: typeof _sjeOn !== 'undefined' && !!_sjeOn,
+      sumSlojeva: typeof _sumState !== 'undefined' ? Object.values(_sumState).filter(Boolean).length : 0,
+      tragova: typeof _tragRegistry !== 'undefined' ? _tragRegistry.length : 0,
+      mjerenja: typeof _msrRegistry !== 'undefined' ? _msrRegistry.length : 0
+    };
+  } catch (e) { return; }
+  const s = _meniStatusi(st);
+  Object.keys(s).forEach(k => {
+    const el = document.getElementById('mc-stat-' + k);
+    if (!el) return;
+    el.textContent = s[k].t;
+    el.classList.toggle('on', s[k].on);
+  });
 }
 function _openStubPanel(panelId, tabForBack) {
   _activeMainTab = tabForBack;

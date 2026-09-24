@@ -85,6 +85,28 @@
     return best;
   }
 
+  // Odzumirano (z < DETALJ_Z) jedan piksel pločice pokriva desetine piksela
+  // izvora; overview je prosjek, pa mala žarišta nestanu. Tada se čita do 4×
+  // detaljniji nivo i uzima MAKSIMUM bloka (žarišta ostaju vidljiva).
+  // Približeno (z ≥ DETALJ_Z) ostaje obično uzorkovanje kao do sada.
+  const DETALJ_Z = 13, MAX_PROZOR = 1536;
+
+  // Najveća vrijednost u bloku k×k oko (cx, cy); nodata se preskače; -1 = ništa.
+  function maxBlok(data, ww, wh, cx, cy, k, nodata) {
+    const h = k >> 1;
+    const xa = Math.max(0, cx - h), xb = Math.min(ww - 1, cx - h + k - 1);
+    const ya = Math.max(0, cy - h), yb = Math.min(wh - 1, cy - h + k - 1);
+    let m = -1;
+    for (let y = ya; y <= yb; y++) {
+      const r = y * ww;
+      for (let x = xa; x <= xb; x++) {
+        const v = data[r + x];
+        if (v > m && v !== nodata) m = v;
+      }
+    }
+    return m;
+  }
+
   let _libPromise = null;
   function ucitajLib() {
     if (root.GeoTIFF) return Promise.resolve(root.GeoTIFF);
@@ -246,8 +268,12 @@
           if (py < minY) minY = py; if (py > maxY) maxY = py;
         }
         if (maxX < 0 || maxY < 0 || minX >= c.W || minY >= c.H) return;
-        const lvl = izaberiNivo(c.faktori, Math.max(maxX - minX, maxY - minY) / T);
+        const raspon = Math.max(maxX - minX, maxY - minY);
+        const odzum = coords.z < DETALJ_Z;
+        const zelja = odzum ? Math.max(raspon / T / 4, raspon / MAX_PROZOR) : raspon / T;
+        const lvl = izaberiNivo(c.faktori, zelja);
         const f = c.faktori[lvl], img = c.slike[lvl];
+        const kBlok = odzum ? Math.max(1, Math.round(raspon / (T * f))) : 1;
         const iw = img.getWidth(), ih = img.getHeight();
         const x0 = Math.max(0, Math.floor(minX / f)), y0 = Math.max(0, Math.floor(minY / f));
         const x1 = Math.min(iw, Math.ceil(maxX / f) + 1), y1 = Math.min(ih, Math.ceil(maxY / f) + 1);
@@ -266,8 +292,14 @@
             const sy = (gy[k] * (1 - fx) + gy[k + 1] * fx) * (1 - fy) + (gy[k + n] * (1 - fx) + gy[k + n + 1] * fx) * fy;
             const cx = Math.floor(sx / f) - x0, cy = Math.floor(sy / f) - y0;
             if (cx < 0 || cy < 0 || cx >= ww || cy >= wh) continue;
-            const v = data[cy * ww + cx];
-            if (c.nodata != null && v === c.nodata) continue;
+            let v;
+            if (kBlok > 1) {
+              v = maxBlok(data, ww, wh, cx, cy, kBlok, c.nodata);
+              if (v < 0) continue;
+            } else {
+              v = data[cy * ww + cx];
+              if (c.nodata != null && v === c.nodata) continue;
+            }
             const b = boja(v, this.options.paleta);
             if (!b) continue;
             const o = (y * T + x) * 4;
@@ -280,5 +312,5 @@
     });
   }
 
-  root.USFDeadtrees = { GODINE, PALETE, cogUrl, alfa, boja, obrubi, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib };
+  root.USFDeadtrees = { GODINE, PALETE, DETALJ_Z, cogUrl, alfa, boja, obrubi, maxBlok, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -37,6 +37,17 @@ t('boja: slabo sušenje prozirno, jako neprozirno (kao v1.4.10), monotono tamnij
   assert.ok(Object.keys(D.PALETE).includes('ljubicasta'));
 });
 
+t('maxBlok: odzumirano uzima najjače sušenje iz bloka, preskače nodata', () => {
+  const ww = 4, wh = 4, d = new Uint8Array(16);
+  d[1 * 4 + 2] = 120; d[0] = 255;
+  assert.strictEqual(D.maxBlok(d, ww, wh, 1, 1, 3, 255), 120, 'žarište u bloku 3×3 se vidi');
+  assert.strictEqual(D.maxBlok(d, ww, wh, 0, 0, 1, 255), -1, 'samo nodata → ništa');
+  assert.strictEqual(D.maxBlok(d, ww, wh, 3, 3, 1, 255), 0);
+  assert.strictEqual(D.maxBlok(d, ww, wh, 3, 3, 8, null), 255, 'blok se reže na rub prozora');
+  assert.ok(D.DETALJ_Z >= 12 && D.DETALJ_Z <= 14, 'približeno ostaje obično uzorkovanje');
+  assert.ok(SRC.includes('const odzum = coords.z < DETALJ_Z'));
+});
+
 t('obrubi dodaje tamnu konturu samo oko obojenih piksela', () => {
   const T = 4, px = new Uint8ClampedArray(T * T * 4);
   px[(1 * T + 1) * 4 + 3] = 255;

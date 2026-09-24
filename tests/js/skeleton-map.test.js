@@ -166,4 +166,33 @@ t('meni kartice nemaju oznake "Osnovno spremno"/"Spremno"', () => {
   assert.ok(!/mc-badge/.test(HTML), 'oznake statusa su uklonjene iz menija');
 });
 
+t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
+  const a = HTML.indexOf('<div id="meni-panel"'), b = HTML.indexOf('id="meni-ver-badge"', a);
+  const meni = HTML.slice(a, b);
+  assert.ok((meni.match(/class="meni-grp"/g) || []).length >= 4);
+  const kartice = meni.match(/<button type="button" class="meni-card"[\s\S]*?<\/button>/g) || [];
+  assert.strictEqual(kartice.length, 9);
+  for (const k of kartice) {
+    assert.ok(/<span class="mc-ico"><svg/.test(k), 'ikona mora biti SVG');
+    assert.ok(!/\p{Extended_Pictographic}/u.test(k), 'bez emoji u kartici');
+  }
+  assert.ok(HTML.includes("tab === 'meni') { document.getElementById('meni-panel').classList.add('show'); _meniStatusRender(); }"));
+});
+
+t('_meniStatusi: statusi i bosanska množina', () => {
+  const src = extractFn('_meniStatusi') + '\nreturn _meniStatusi;';
+  const f = new Function(src)();
+  const prazno = f({ poziOn: false, sjeOn: false, sumSlojeva: 0, tragova: 0, mjerenja: 0 });
+  assert.ok(Object.values(prazno).every(x => x.t === '' && !x.on));
+  const r = f({ poziOn: true, sjeOn: false, sumSlojeva: 2, tragova: 1, mjerenja: 5 });
+  assert.deepStrictEqual(r.pozari, { t: 'Uključeno', on: true });
+  assert.strictEqual(r.sumarstvo.t, '2 sloja');
+  assert.strictEqual(r.tragovi.t, '1 trag');
+  assert.strictEqual(r.mjerenja.t, '5 mjerenja');
+  const m = k => f({ tragova: k }).tragovi.t;
+  assert.strictEqual(m(3), '3 traga'); assert.strictEqual(m(5), '5 tragova');
+  assert.strictEqual(m(11), '11 tragova'); assert.strictEqual(m(12), '12 tragova');
+  assert.strictEqual(m(21), '21 trag'); assert.strictEqual(m(22), '22 traga');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — kostur karte');
