@@ -23,10 +23,32 @@ t('cogUrl gradi URL javnog COG-a i odbija nepoznatu godinu/vrstu', () => {
   assert.strictEqual(D.cogUrl('x', '2025'), null);
 });
 
+t('boja: jača neprozirnost od deadtrees rampe, žuta podrazumijevano, monotono tamnija', () => {
+  assert.strictEqual(D.boja(5, 'zuta'), null);
+  const slabo = D.boja(20, 'zuta'), jako = D.boja(140, 'zuta');
+  assert.ok(slabo[3] >= 128, 'i malo sušenja mora biti vidljivo (alfa ≥ 0.5)');
+  assert.ok(jako[3] >= 235, 'realni maksimum (~140/255) mora biti skoro neproziran');
+  assert.ok(jako[1] < slabo[1], 'više sušenja = tamnija nijansa');
+  assert.deepStrictEqual(D.boja(140, 'nepostojeca'), D.boja(140, 'zuta'));
+  assert.ok(Object.keys(D.PALETE).includes('ljubicasta'));
+});
+
+t('obrubi dodaje tamnu konturu samo oko obojenih piksela', () => {
+  const T = 4, px = new Uint8ClampedArray(T * T * 4);
+  px[(1 * T + 1) * 4 + 3] = 255;
+  D.obrubi(px, T);
+  const a = (x, y) => px[(y * T + x) * 4 + 3];
+  assert.strictEqual(a(1, 1), 255);
+  assert.ok(a(0, 1) > 0 && a(2, 1) > 0 && a(1, 0) > 0 && a(1, 2) > 0);
+  assert.strictEqual(a(3, 3), 0);
+  assert.strictEqual(a(0, 0), 0, 'dijagonala ne dobija obrub');
+});
+
 t('alfa: šum ispod ~4% prozirno, puna vrijednost neprozirna, monotono', () => {
   assert.strictEqual(D.alfa(0), 0);
   assert.strictEqual(D.alfa(10), 0);
   assert.strictEqual(D.alfa(255), 1);
+  assert.ok(D.alfa(140) > 0.9);
   let prev = 0;
   for (let v = 0; v <= 255; v++) { const a = D.alfa(v); assert.ok(a >= prev - 1e-9, 'nije monotono na ' + v); prev = a; }
   assert.strictEqual(D.alfa(NaN), 0);

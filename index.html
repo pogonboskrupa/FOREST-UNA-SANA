@@ -359,11 +359,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .meni-card .mc-txt { flex:1; }
 .meni-card .mc-txt b { display:block; color:var(--text); font-size:14px; }
 .meni-card .mc-txt span { display:block; color:#8da399; font-size:11px; margin-top:3px; line-height:1.35; }
-.meni-card .mc-badge {
-  font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;
-  background:#422006; color:#fbbf24; border-radius:6px; padding:3px 7px; flex-shrink:0;
-}
-.meni-card .mc-badge.ready { background:#14532d; color:#4ade80; }
 
 .set-row {
   display:flex; align-items:center; justify-content:space-between; background:var(--surface-2);
@@ -760,47 +755,38 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div class="meni-card" onclick="openPozariSection()">
       <div class="mc-ico">🔥</div>
       <div class="mc-txt"><b>Požari</b><span>FIRMS detekcije, grupisanje, heatmap, vjetar</span></div>
-      <div class="mc-badge ready">Osnovno spremno</div>
     </div>
     <div class="meni-card" onclick="openSjecaSection()">
       <div class="mc-ico">🪓</div>
       <div class="mc-txt"><b>Sječa i vjetroizvale</b><span>GFW alarmi smetnje vegetacije (DIST-ALERT)</span></div>
-      <div class="mc-badge ready">Osnovno spremno</div>
     </div>
     <div class="meni-card" onclick="openSumarstvoSection()">
       <div class="mc-ico">🌲</div>
-      <div class="mc-txt"><b>Šumarstvo</b><span>Hansen/GFW: pokrivač 2000, gubitak 2001–2024, rast 2000–2012</span></div>
-      <div class="mc-badge ready">Osnovno spremno</div>
+      <div class="mc-txt"><b>Šumarstvo</b><span>Hansen/GFW pokrivač, gubitak, rast; sušenje (deadtrees.earth)</span></div>
     </div>
     <div class="meni-card" onclick="openPutSection()">
       <div class="mc-ico">🛣</div>
       <div class="mc-txt"><b>Projektovanje šumskog puta</b><span>Trasa preko DEM-a, ograničenje nagiba</span></div>
-      <div class="mc-badge ready">Osnovno spremno</div>
     </div>
     <div class="meni-card" onclick="openTematskaSection()">
       <div class="mc-ico">📊</div>
       <div class="mc-txt"><b>Tematska karta</b><span>Bojenje odjela/odsjeka po atributu (.gpkg)</span></div>
-      <div class="mc-badge ready">Osnovno spremno</div>
     </div>
     <div class="meni-card" onclick="openUcitajKartuSection()">
       <div class="mc-ico">🗂</div>
       <div class="mc-txt"><b>Učitaj kartu</b><span>Offline SQLite/MBTiles import</span></div>
-      <div class="mc-badge ready">Spremno</div>
     </div>
     <div class="meni-card" onclick="openUcitajKmlSection()">
       <div class="mc-ico">📥</div>
       <div class="mc-txt"><b>Učitaj KML</b><span>Uvoz KML slojeva (poligon/linija/tačka)</span></div>
-      <div class="mc-badge ready">Spremno</div>
     </div>
     <div class="meni-card" onclick="openTragoviPanel()">
       <div class="mc-ico">🥾</div>
       <div class="mc-txt"><b>Tragovi</b><span>Sačuvani GPS tragovi</span></div>
-      <div class="mc-badge ready">Spremno</div>
     </div>
     <div class="meni-card" onclick="openMjerenjaPanel()">
       <div class="mc-ico">📏</div>
       <div class="mc-txt"><b>Mjerenja</b><span>Sačuvane udaljenosti, površine, nagibi</span></div>
-      <div class="mc-badge ready">Spremno</div>
     </div>
     <div class="meni-card" onclick="switchMainTab('postavke')">
       <div class="mc-ico">⚙</div>
@@ -1037,15 +1023,20 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
     <div class="loc-row" style="margin-top:10px;">
-      <span>🟥 Sušenje šume (deadtrees.earth)</span>
+      <span>🟨 Sušenje šume (deadtrees.earth)</span>
       <div class="loc-switch" id="sum-susenje-switch" onclick="_sumToggle('susenje',!_sumOn('susenje'))"></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin:4px 0 2px;">
       <label for="sum-susenje-god" style="font-size:12px;color:#cbd5e1;">Godina</label>
       <select id="sum-susenje-god" onchange="_sumSusenjeGodina(this.value)" style="flex:0 0 auto;padding:5px 8px;background:#1f2937;color:#e2e8f0;border:1px solid #374151;border-radius:6px;font-size:12px;"></select>
+      <label for="sum-susenje-boja" style="font-size:12px;color:#cbd5e1;">Boja</label>
+      <select id="sum-susenje-boja" onchange="_sumSusenjePaleta(this.value)" style="flex:0 0 auto;padding:5px 8px;background:#1f2937;color:#e2e8f0;border:1px solid #374151;border-radius:6px;font-size:12px;"></select>
       <span id="sum-susenje-status" style="font-size:11px;color:#94a3b8;"></span>
     </div>
-    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Udio stojećeg suhog drveta po godini (Sentinel-2, 10 m, 2017–2025) — intenzivnije crveno = više sušenja. Prikaz samo za područje kantona; čita se direktno iz javnog COG fajla pa prvo učitavanje traje nekoliko sekundi. Izvor: deadtrees.earth (Mosig i sar., University of Freiburg).</div>
+    <div style="display:flex;align-items:center;gap:6px;margin:6px 0 6px;font-size:11px;color:#94a3b8;">
+      <span>malo</span><div id="sum-susenje-legenda" style="flex:1;height:10px;border-radius:5px;border:1px solid #141414;"></div><span>puno</span>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Udio stojećeg suhog drveta po godini (Sentinel-2, 10 m, 2017–2025) — tamnija/jača boja = više sušenja, tamni obrub oko površina. Prikaz samo za područje kantona; čita se direktno iz javnog COG fajla pa prvo učitavanje traje nekoliko sekundi. Izvor: deadtrees.earth (Mosig i sar., University of Freiburg).</div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Svi slojevi su statični (ne uživo) — Hansen Global Forest Change se ažurira godišnje. Gubitak i rast se NE preklapaju vremenski (gubitak ide do 2024, rast samo do 2012 — to je granica same Hansen studije, ne ograničenje ove app-e).</p>
     </div>
@@ -4423,6 +4414,20 @@ if (window.USFDeadtrees) {
     const st = document.getElementById('sum-susenje-status'); if (st) st.textContent = '⏳';
   });
 }
+const _SUM_SUS_BOJA_KEY = 'usf_sumarstvo_susenje_boja';
+try { const b = localStorage.getItem(_SUM_SUS_BOJA_KEY); if (b && _SUM_LAYERS.susenje) _SUM_LAYERS.susenje.setPaleta(b); } catch(e) {}
+function _sumSusenjeLegenda() {
+  const el = document.getElementById('sum-susenje-legenda'), l = _SUM_LAYERS.susenje;
+  if (!el || !l) return;
+  const p = USFDeadtrees.PALETE[l.options.paleta] || USFDeadtrees.PALETE.zuta;
+  el.style.background = 'linear-gradient(90deg, rgb(' + p.od.join(',') + '), rgb(' + p.do.join(',') + '))';
+}
+function _sumSusenjePaleta(p) {
+  const l = _SUM_LAYERS.susenje; if (!l) return;
+  try { localStorage.setItem(_SUM_SUS_BOJA_KEY, String(p)); } catch(e) {}
+  l.setPaleta(p);
+  _sumSusenjeLegenda();
+}
 function _sumSusenjeGodina(g) {
   const l = _SUM_LAYERS.susenje; if (!l) return;
   try { localStorage.setItem(_SUM_SUS_GOD_KEY, String(g)); } catch(e) {}
@@ -4453,6 +4458,13 @@ function openSumarstvoSection() {
   }
   if (sel && _SUM_LAYERS.susenje) sel.value = _SUM_LAYERS.susenje.options.godina;
   if (sel) sel.disabled = !_SUM_LAYERS.susenje;
+  const selB = document.getElementById('sum-susenje-boja');
+  if (selB && _SUM_LAYERS.susenje && !selB.options.length) {
+    Object.entries(USFDeadtrees.PALETE).forEach(([k, v]) => selB.add(new Option(v.naziv, k)));
+  }
+  if (selB && _SUM_LAYERS.susenje) selB.value = _SUM_LAYERS.susenje.options.paleta;
+  if (selB) selB.disabled = !_SUM_LAYERS.susenje;
+  _sumSusenjeLegenda();
 }
 
 function _poziParseCsv(txt) {

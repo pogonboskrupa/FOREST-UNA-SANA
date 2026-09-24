@@ -162,4 +162,8 @@ t('indikator snimanja na dugmetu Tragovi se osvježi i kad snimanje stane', () =
   const poziv = body.indexOf('_updTragFab()'), rani = body.indexOf('if (!_tragOn)');
   assert.ok(poziv > 0 && poziv < rani, '_updTragFab() mora biti prije ranog return-a');
 });
+t('meni kartice nemaju oznake "Osnovno spremno"/"Spremno"', () => {
+  assert.ok(!/mc-badge/.test(HTML), 'oznake statusa su uklonjene iz menija');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — kostur karte');

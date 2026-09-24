@@ -18,13 +18,44 @@
     return BASE + RUN + vrsta + '_' + godina + '.cog.tif';
   }
 
-  // Ista rampa kao deadtrees.earth (createDeadwoodGeotiffLayer.ts): šum ispod
-  // ~4% prozirno, pa crvena sa neprozirnošću = normalizovana vrijednost.
+  // Neprozirnost: šum ispod ~4% prozirno. Vrijednosti u COG-u realno idu do
+  // ~140/255, pa rampa deadtrees.earth (alfa = vrijednost) daje najviše ~0.5 i
+  // sušenje se slabo vidi. Ovdje je dno 0.5, a puna jačina već na ~55%.
   function alfa(v) {
     const n = v / 255;
     if (!(n > 0.04)) return 0;
-    if (n < 0.15) return (n - 0.04) / 0.11 * 0.15;
-    return Math.min(1, n);
+    return Math.min(1, 0.5 + 0.47 * (n - 0.04) / 0.5);
+  }
+
+  // Palete: [boja za malo sušenja, boja za puno]. Podrazumijevana žuta se ne
+  // miješa sa Hansen gubitkom (ružičasto-crveno), rastom (plavo) ni pokrivačem.
+  const PALETE = {
+    zuta:       { naziv: 'Žuta',       od: [255, 241, 118], do: [255, 160, 0] },
+    ljubicasta: { naziv: 'Ljubičasta', od: [240, 171, 252], do: [134, 25, 143] },
+    cijan:      { naziv: 'Cijan',      od: [165, 243, 252], do: [14, 116, 144] },
+    crvena:     { naziv: 'Crvena',     od: [252, 165, 165], do: [185, 28, 28] }
+  };
+
+  // [r, g, b, a 0..255] ili null (prozirno).
+  function boja(v, paleta) {
+    const a = alfa(v);
+    if (!a) return null;
+    const p = PALETE[paleta] || PALETE.zuta;
+    const t = Math.min(1, Math.max(0, (v / 255 - 0.04) / 0.5));
+    return [0, 1, 2].map(i => Math.round(p.od[i] + (p.do[i] - p.od[i]) * t)).concat(Math.round(a * 255));
+  }
+
+  // Tamna kontura od 1 px oko obojenih površina — vidljive na svakoj podlozi.
+  function obrubi(px, T) {
+    const puno = new Uint8Array(T * T);
+    for (let i = 0; i < T * T; i++) puno[i] = px[i * 4 + 3] > 0 ? 1 : 0;
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+      const i = y * T + x;
+      if (puno[i]) continue;
+      if ((x > 0 && puno[i - 1]) || (x < T - 1 && puno[i + 1]) || (y > 0 && puno[i - T]) || (y < T - 1 && puno[i + T])) {
+        const o = i * 4; px[o] = 20; px[o + 1] = 20; px[o + 2] = 20; px[o + 3] = 200;
+      }
+    }
   }
 
   // proj4 definicije za CRS-ove u kojima COG realno može biti.
@@ -164,7 +195,13 @@
 
   function napraviSloj(L) {
     return L.GridLayer.extend({
-      options: { godina: '2025', tileSize: 256, maxNativeZoom: 14, maxZoom: 22, minZoom: 7, opacity: 0.9, onGreska: null },
+      options: { godina: '2025', paleta: 'zuta', tileSize: 256, maxNativeZoom: 14, maxZoom: 22, minZoom: 7, opacity: 1, onGreska: null },
+
+      setPaleta(p) {
+        if (!PALETE[p] || p === this.options.paleta) return;
+        this.options.paleta = p;
+        this.redraw();
+      },
 
       setGodina(g) {
         if (String(g) === this.options.godina) return;
@@ -224,17 +261,17 @@
             if (cx < 0 || cy < 0 || cx >= ww || cy >= wh) continue;
             const v = data[cy * ww + cx];
             if (c.nodata != null && v === c.nodata) continue;
-            const a = alfa(v);
-            if (!a) continue;
+            const b = boja(v, this.options.paleta);
+            if (!b) continue;
             const o = (y * T + x) * 4;
-            px[o] = 220; px[o + 1] = 20; px[o + 2] = 20; px[o + 3] = Math.round(a * 255);
+            px[o] = b[0]; px[o + 1] = b[1]; px[o + 2] = b[2]; px[o + 3] = b[3];
             ima = true;
           }
         }
-        if (ima) ctx.putImageData(out, 0, 0);
+        if (ima) { obrubi(px, T); ctx.putImageData(out, 0, 0); }
       }
     });
   }
 
-  root.USFDeadtrees = { GODINE, cogUrl, alfa, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib };
+  root.USFDeadtrees = { GODINE, PALETE, cogUrl, alfa, boja, obrubi, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib };
 })(typeof window !== 'undefined' ? window : globalThis);
