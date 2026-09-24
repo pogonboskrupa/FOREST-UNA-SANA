@@ -4316,13 +4316,14 @@ function _poziFilterBlizu(pts, ref) {
   return pts.map(p => ({ ...p, d: dst(ref.la, ref.lo, p.la, p.lo) }))
     .filter(p => p.d <= _POZ_RADIUS_KM * 1000).sort((a,b) => a.d - b.d);
 }
-// "30 dana" okvir je kanton-ograničen (GFW, vidi _poziGfw30Url), NE radijus
-// oko GPS/centra karte — inače bi se izgubila svrha (dio kantona daleko od
-// korisnika bi ispao, isti bug klasa kao _povGodUrl).
-function _poziFilterZaOkvir(pts, ref, okvir) {
-  const sD = pts.map(p => ({ ...p, d: dst(ref.la, ref.lo, p.la, p.lo) }));
-  if (okvir === '30d') return sD.filter(p => _uskUnutar(p.la, p.lo)).sort((a,b) => a.d - b.d);
-  return sD.filter(p => p.d <= _POZ_RADIUS_KM * 1000).sort((a,b) => a.d - b.d);
+// Požari (za razliku od Sječa/vjetroizvale iznad, koja i dalje koristi
+// radijus) se prikazuju SAMO unutar Unsko-sanskog kantona (_uskUnutar), bez
+// obzira na okvir (24h/48h/7d/30d) — korisnička odluka. NE radijus oko
+// GPS/centra karte: inače bi dio kantona daleko od trenutne pozicije
+// korisnika ispao (ista greška kao stari _povGodUrl bug).
+function _poziFilterZaOkvir(pts, ref) {
+  return pts.map(p => ({ ...p, d: dst(ref.la, ref.lo, p.la, p.lo) }))
+    .filter(p => _uskUnutar(p.la, p.lo)).sort((a,b) => a.d - b.d);
 }
 // Isti požar RAZLIČITI sateliti/preleti vide više puta — bez grupisanja
 // "14 detekcija" zvuči kao 14 požara umjesto 1 praćenog. Prostorna blizina
@@ -4530,17 +4531,13 @@ async function _poziDohvatiJedan(naziv, url, ms, opts) {
 }
 // GFW: BBOX upit (SQL preko REST-a) oko referentne tačke — mali odgovor,
 // nema opasnosti od gušenja spore veze kao kod cijele-Evrope arhive iznad.
-function _poziGfwUrl(okvir, ref) {
+// Kanton bbox (_poziGfwKantonUrl, definisano ispod), NE radijus oko ref
+// tačke — inače bi GFW dopuna vratila prazno kad je korisnik daleko od
+// kantona (npr. testiranje van terena), iako kanton ima aktivne požare.
+function _poziGfwUrl(okvir) {
   const dani = { '24h':1, '48h':2, '7d':7 }[okvir] || 1;
   const od = new Date(Date.now() - dani * 86400000).toISOString().slice(0, 10);
-  const dLat = _POZ_RADIUS_KM / 111;
-  const dLon = _POZ_RADIUS_KM / (111 * Math.cos(ref.la * Math.PI / 180));
-  const sql = 'SELECT longitude, latitude, alert__date, alert__time_utc, confidence__cat FROM results'
-    + " WHERE alert__date >= '" + od + "'"
-    + ' AND latitude >= '  + (ref.la - dLat).toFixed(3) + ' AND latitude <= '  + (ref.la + dLat).toFixed(3)
-    + ' AND longitude >= ' + (ref.lo - dLon).toFixed(3) + ' AND longitude <= ' + (ref.lo + dLon).toFixed(3)
-    + ' ORDER BY alert__date DESC, alert__time_utc DESC LIMIT 1000';
-  return 'https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql=' + encodeURIComponent(sql);
+  return _poziGfwKantonUrl(od);
 }
 // GFW vraća {"data":[{longitude, latitude, alert__date, alert__time_utc,
 // confidence__cat}, ...]} — svede se na ISTI oblik tačke kao FIRMS CSV, da
@@ -4815,8 +4812,7 @@ async function _poziDohvatiArhive(okvir) {
   const proms = zahtjevi.map(z => _poziDohvatiJedan(z.naziv, z.url, 30000));
   const gfwKljuc = _poziGfwOn() ? (_poziKljucevi.gfw || '').trim() : '';
   if (gfwKljuc) {
-    const ref = _poziRefTacka();
-    proms.push(_poziDohvatiJedan('Global Forest Watch', _poziGfwUrl(okvir, ref), 20000,
+    proms.push(_poziDohvatiJedan('Global Forest Watch', _poziGfwUrl(okvir), 20000,
       { headers:{ 'x-api-key': gfwKljuc }, parser:_poziParseGfwJson, provjera:/"data"\s*:/ }));
   }
   // Firemap.live FireDB dodaje status i procijenjeni obuhvat aktivnog požara.
@@ -4839,7 +4835,7 @@ function _poziSaveCache(pts, izvori, okvir) {
   try {
     localStorage.setItem(_POZ_CACHE_KEY, JSON.stringify({
       ts: Date.now(), izvori, okvir,
-      pts: _poziFilterZaOkvir(pts, _poziRefTacka(), okvir).slice(0, 500).map(p => ({ la:p.la, lo:p.lo, dt:p.dt, sat:p.sat, conf:p.conf, frp:p.frp, brightness:p.brightness, noc:p.noc, rez:p.rez, areaHa:p.areaHa, ageH:p.ageH, fireId:p.fireId, fireStatus:p.fireStatus }))
+      pts: _poziFilterZaOkvir(pts, _poziRefTacka()).slice(0, 500).map(p => ({ la:p.la, lo:p.lo, dt:p.dt, sat:p.sat, conf:p.conf, frp:p.frp, brightness:p.brightness, noc:p.noc, rez:p.rez, areaHa:p.areaHa, ageH:p.ageH, fireId:p.fireId, fireStatus:p.fireStatus }))
     }));
   } catch(e) {}
 }
@@ -4850,7 +4846,7 @@ function _poziObnoviIzKesa() {
   const c = _poziLoadCache();
   if (!c || !Array.isArray(c.pts)) return false;
   const ref = _poziRefTacka();
-  _poziPts = _poziFilterZaOkvir(c.pts, ref, c.okvir || _poziOkvir());
+  _poziPts = _poziFilterZaOkvir(c.pts, ref);
   _poziMeta = { izvori:c.izvori || [], dohvacenoMs:c.ts || 0, ukupno:c.pts.length, kes:true, okvir:c.okvir || _poziOkvir(), refGps:ref.gps };
   _poziEvts = _poziGrupeBlizu(_poziGrupisi(_poziPts), ref).map(g => ({ ...g, nov:false }));
   _poziRender();
@@ -4871,7 +4867,7 @@ async function _poziLoad(tiho) {
     const r = await _poziDohvatiArhive(okvir);
     if (r.ok) {
       _poziSaveCache(r.pts, r.izvori, okvir);
-      _poziPts = _poziFilterZaOkvir(r.pts, ref, okvir);
+      _poziPts = _poziFilterZaOkvir(r.pts, ref);
       _poziMeta = { izvori:r.izvori, dohvacenoMs:Date.now(), ukupno:r.pts.length, kes:false, okvir, djelomicno:r.djelomicno, greske:r.greske, refGps:ref.gps };
     } else {
       const c = _poziLoadCache();
@@ -4884,7 +4880,7 @@ async function _poziLoad(tiho) {
         if (!tiho) showToast('❌ Požari: ' + r.greska);
         return;
       }
-      _poziPts = _poziFilterZaOkvir(c.pts || [], ref, okvir);
+      _poziPts = _poziFilterZaOkvir(c.pts || [], ref);
       _poziMeta = { izvori:c.izvori || [], dohvacenoMs:c.ts, ukupno:(c.pts||[]).length, kes:true, okvir, refGps:ref.gps };
     }
     _poziEvts = _poziOznaciNove(_poziGrupeBlizu(_poziGrupisi(_poziPts), ref));
@@ -4910,9 +4906,8 @@ function _poziSazetak() {
   const izv = (izvL.length === 1 ? izvL[0] : (izvL.length ? izvL.length + ' izvora' : '')) + (m.kes ? ' · iz keša' : '');
   const okvirTxt = _poziOkvirNaziv(m.okvir);
   const nijeGps = m.refGps === false ? ' ⚠ od centra karte, ne tvoje pozicije' : '';
-  const podrucjeTxt = m.okvir === '30d' ? 'u Unsko-sanskom kantonu' : 'u krugu ' + _POZ_RADIUS_KM + ' km';
-  if (!_poziEvts.length) return { kratko: '✓ nema požara · ' + okvirTxt + (st ? ' · ' + st : '') + nijeGps,
-    toast: '✓ Nema aktivnih požara ' + podrucjeTxt + ', zadnjih ' + okvirTxt + ' (' + izv + ')' + (m.okvir === '30d' ? '' : nijeGps) };
+  if (!_poziEvts.length) return { kratko: '✓ nema požara · ' + okvirTxt + (st ? ' · ' + st : ''),
+    toast: '✓ Nema aktivnih požara u Unsko-sanskom kantonu, zadnjih ' + okvirTxt + ' (' + izv + ')' };
   const naj = _poziEvts[0];
   const smjer = _azimutSmjer(_bearing(_poziRefTacka().la, _poziRefTacka().lo, naj.la, naj.lo));
   const novih = _poziEvts.filter(g => g.nov).length;

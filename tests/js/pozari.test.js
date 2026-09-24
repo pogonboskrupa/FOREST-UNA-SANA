@@ -159,13 +159,14 @@ t('_poziParseGfwJson vraća prazno za neispravan/nedostajući JSON', () => {
   assert.deepStrictEqual(_poziParseGfwJson('{}'), []);
 });
 
-t('_poziGfwUrl gradi bbox oko referentne tačke i SQL upit kao query string', () => {
-  const src = "const _POZ_RADIUS_KM = 100;\n" + extractFn('_poziGfwUrl') + '\nreturn _poziGfwUrl;';
+t('_poziGfwUrl gradi kanton-bbox SQL upit (NE radijus oko ref tačke)', () => {
+  const src = "const _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };\n"
+    + extractFn('_poziGfwKantonUrl') + '\n' + extractFn('_poziGfwUrl') + '\nreturn _poziGfwUrl;';
   const _poziGfwUrl = new Function(src)();
-  const url = _poziGfwUrl('24h', { la: 44.8, lo: 16.0 });
+  const url = _poziGfwUrl('24h');
   assert.ok(url.startsWith('https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query/json?sql='));
   const sql = decodeURIComponent(url.split('sql=')[1]);
-  assert.ok(sql.includes('latitude >='), 'mora ograničiti bbox po latitude');
+  assert.ok(sql.includes('latitude >= 44.300'), 'mora koristiti FIKSAN kanton bbox');
   assert.ok(sql.includes('longitude >='), 'mora ograničiti bbox po longitude');
   assert.ok(/LIMIT \d+/.test(sql));
 });
@@ -492,6 +493,22 @@ t('Firemap.live je dopunski izvor sa obuhvatom size_ha', () => {
   assert.ok(HTML.includes('function _poziParseFiremapJson(txt)'));
   assert.ok(HTML.includes('areaHa:isFinite(ha) && ha > 0 ? ha : null'));
   assert.ok(HTML.includes("'Firemap.live (FireDB)'"));
+});
+
+t('_poziFilterZaOkvir zadržava SAMO tačke unutar Unsko-sanskog kantona (bez obzira na udaljenost od ref tačke)', () => {
+  const src = dstSrc + "\nconst _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };\n"
+    + extractFn('_uskUnutar') + '\n' + extractFn('_poziFilterZaOkvir') + '\nreturn _poziFilterZaOkvir;';
+  const _poziFilterZaOkvir = new Function(src)();
+  const ref = { la: 44.8, lo: 16.0 }; // unutar kantona
+  const pts = [
+    { la: 44.82, lo: 16.02 },  // unutar kantona, blizu ref
+    { la: 43.80, lo: 18.40 },  // Sarajevo — van kantona, ali blizu bi bio po starom radijusu
+    { la: 44.95, lo: 16.30 }   // unutar kantona, dalje od ref
+  ];
+  const out = _poziFilterZaOkvir(pts, ref);
+  assert.strictEqual(out.length, 2, 'tačka van kantona mora biti odbačena bez obzira na radijus');
+  assert.ok(out.every(p => p.la !== 43.80), 'Sarajevo (van kantona) ne smije proći filter');
+  assert.ok(out[0].d <= out[1].d, 'mora ostati sortirano po udaljenosti od ref tačke');
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
