@@ -346,6 +346,21 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   box-shadow:0 8px 32px rgba(0,0,0,0.8); max-height:100%; overflow:auto;
 }
 
+/* Sječa: filteri, legenda, lista zona */
+.sje-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.sje-chip {
+  padding:6px 10px; border-radius:999px; font:inherit; font-size:11.5px; cursor:pointer;
+  background:transparent; color:#9db0a7; border:1px solid var(--line);
+}
+.sje-chip.on { background:#422006; color:#fcd34d; border-color:#b45309; }
+.sje-legenda { display:flex; gap:12px; font-size:10.5px; color:#94a3b8; margin:2px 0 8px; }
+.sje-legenda i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+.sje-red { display:flex; align-items:center; gap:9px; padding:8px 4px; border-bottom:1px solid #1e293b; cursor:pointer; }
+.sje-red:active { background:rgba(245,158,11,.08); }
+.sje-izvoz {
+  width:100%; padding:10px; border-radius:10px; font:inherit; font-size:12.5px; cursor:pointer;
+  background:#172a21; color:#dcfce7; border:1px solid var(--line);
+}
 /* Meni: grupe, kartice sa SVG ikonom u boji kategorije (--mc), status desno */
 .meni-grp { margin:0 0 16px; }
 .meni-grp h3 {
@@ -1050,8 +1065,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="sjeca-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪓 Sječa i vjetroizvale</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body" id="sje-panel-body">
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">GFW integrisani alarmi (DIST-ALERT, globalna pokrivenost) — javljaju kad nešto NESTANE iz vegetacije: sječa (prijavljena ili ne), vjetroizvala, klizište, opožarena površina. Ne razlikuje uzrok, samo promjenu. Treba GFW API ključ (isti kao Požari — unesi ga tamo, ispod "Admin: FIRMS/GFW ključevi").</div>
-    <div class="loc-row" style="background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:10px;">GFW integrisani alarmi (DIST-ALERT) javljaju kad vegetacija NESTANE: sječa (prijavljena ili ne), vjetroizvala, klizište, opožarena površina — uzrok ne razlikuju. Na karti su stvarni pikseli promjene (~28×20 m). Treba GFW API ključ (Požari → Admin ključevi).</div>
+    <div class="loc-row" style="margin-bottom:10px;">
       <span>Prikaz na karti</span>
       <div class="loc-switch" id="sje-on-switch" onclick="_sjeToggle(!_sjeOn)"></div>
     </div>
@@ -1060,11 +1075,28 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <button class="poz-okvir-btn" data-okvir="30d" onclick="_sjePostaviOkvir('30d')">30 dana</button>
       <button class="poz-okvir-btn" data-okvir="90d" onclick="_sjePostaviOkvir('90d')">90 dana</button>
     </div>
-    <div id="sje-status" style="color:#94a3b8;font-size:12px;margin-bottom:10px;"></div>
-    <div id="sje-lista"></div>
-    <div class="stub-section" style="padding:24px 12px 4px;">
-      <p style="font-size:12px;">Radijus je uže od Požari (50 km) — ovdje je pitanje "šta se promijenilo u mojoj šumi", ne "šta se približava". Alarmi se osvježavaju svakih 2-4 dana (nije uživo kao požari).</p>
+    <div id="sje-status" style="color:#94a3b8;font-size:12px;margin-bottom:8px;"></div>
+    <div id="sje-kpi"></div>
+    <div id="sje-kontrole" style="display:none;">
+      <div class="sje-chips">
+        <button id="sje-f-visoka" class="sje-chip" onclick="_sjePostaviFilter('samoVisoka', !_sjeFilter().samoVisoka)">Samo visoka pouzdanost</button>
+        <button id="sje-f-provjerene" class="sje-chip" onclick="_sjePostaviFilter('sakrijProvjerene', !_sjeFilter().sakrijProvjerene)">Sakrij provjerene</button>
+      </div>
+      <div id="sje-sort" class="sje-chips">
+        <span style="font-size:11px;color:#64748b;align-self:center;">Poredaj:</span>
+        <button class="sje-chip" data-sort="novo" onclick="_sjePostaviFilter('sort','novo')">Najnovije</button>
+        <button class="sje-chip" data-sort="blizu" onclick="_sjePostaviFilter('sort','blizu')">Najbliže</button>
+        <button class="sje-chip" data-sort="vece" onclick="_sjePostaviFilter('sort','vece')">Najveće</button>
+      </div>
+      <div class="sje-legenda">
+        <span><i style="background:#fb923c"></i>do 14 dana</span><span><i style="background:#f59e0b"></i>15–45 dana</span><span><i style="background:#a16207"></i>starije</span>
+      </div>
     </div>
+    <div id="sje-lista"></div>
+    <div id="sje-izvoz-wrap" style="margin-top:10px;display:none;">
+      <button class="sje-izvoz" onclick="_sjeIzvoz()">📤 Izvezi zone (KML) za teren</button>
+    </div>
+    <div style="font-size:11px;color:#64748b;line-height:1.45;margin-top:12px;">Radijus 50 km oko GPS pozicije (ili centra karte). Alarmi se osvježavaju svakih 2–4 dana. Oznaka terenske provjere (legalna / bespravna / vjetroizvala / lažni alarm) čuva se na uređaju i ostaje vezana za lokaciju.</div>
   </div>
 </div>
 
@@ -2437,21 +2469,17 @@ function _tragToKml(t) {
 // NE otvara sistemski birač za fajlove (Android WebView ne podržava Web Share
 // Target za priloge) — zato prvo native AndroidShare most, pa Web Share API,
 // pa obično preuzimanje kao fallback za webapp/desktop.
-async function _tragRegShare(id) {
-  const t = _tragRegistry.find(x => x.id === id);
-  if (!t) return;
-  const fname = t.name.replace(/[^a-zA-Z0-9_\-]/g,'_') + '.kml';
-  const kml = _tragToKml(t);
+async function _dijeliKml(fname, kml, naslov, tekst) {
   if (typeof AndroidShare !== 'undefined' && AndroidShare.shareFile) {
     try {
       const dataUrl = 'data:application/vnd.google-earth.kml+xml;base64,' + btoa(unescape(encodeURIComponent(kml)));
-      AndroidShare.shareFile(fname, dataUrl, t.name, `Trag: ${t.name}`);
+      AndroidShare.shareFile(fname, dataUrl, naslov, tekst);
       return;
     } catch(e) {}
   }
   const file = new File([kml], fname, { type:'application/vnd.google-earth.kml+xml' });
   if (navigator.share && navigator.canShare && navigator.canShare({ files:[file] })) {
-    try { await navigator.share({ files:[file], title:t.name, text:`Trag: ${t.name}` }); return; }
+    try { await navigator.share({ files:[file], title:naslov, text:tekst }); return; }
     catch(e) { if (e && e.name === 'AbortError') return; }
   }
   const a = document.createElement('a');
@@ -2460,6 +2488,12 @@ async function _tragRegShare(id) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   showToast('📥 KML preuzet (dijeljenje fajlova nije podržano na ovom uređaju)');
+}
+async function _tragRegShare(id) {
+  const t = _tragRegistry.find(x => x.id === id);
+  if (!t) return;
+  const fname = t.name.replace(/[^a-zA-Z0-9_\-]/g,'_') + '.kml';
+  await _dijeliKml(fname, _tragToKml(t), t.name, `Trag: ${t.name}`);
 }
 function openTragoviPanel() { _activeTragTabOpen = true; _tragRegRender(); document.getElementById('tragovi-panel').classList.add('show'); }
 function closeTragoviPanel() { _activeTragTabOpen = false; document.getElementById('tragovi-panel').classList.remove('show'); }
@@ -6140,27 +6174,160 @@ function _sjePouzdanost(conf) {
   return { txt: s || 'nepoznata', boja:'#d97706', rang:2 };
 }
 
-let _sjePts = [], _sjeEvts = [], _sjeLayer = null, _sjeMeta = null;
-let _sjeOn = false, _sjeBusy = false, _sjeCanvasRenderer = null;
-
-function _sjeSaveCache(pts, okvir) {
-  try { localStorage.setItem(_SJE_CACHE_KEY, JSON.stringify({ ts: Date.now(), okvir, pts: pts.slice(0, 500) })); } catch(e) {}
+// ── Pikseli i zone. GFW integrisani alarmi su na mreži 0.00025° (~28×20 m
+// na 45° s.g.š.) — svaka tačka je centar JEDNOG piksela promjene, pa se na
+// karti crta stvarni piksel, a površina je broj jedinstvenih piksela × površina
+// piksela (ne procjena iz požarnih formula).
+const _SJE_PIKSEL_DEG = 0.00025;
+const _SJE_PIKSELI_ZOOM = 14; // od ovog zooma crtaju se pikseli, ispod krugovi zona
+function _sjePikselHa(la) {
+  const m = _SJE_PIKSEL_DEG * 111320;
+  return m * m * Math.cos(la * Math.PI / 180) / 10000;
 }
-function _sjeLoadCache() { try { return JSON.parse(localStorage.getItem(_SJE_CACHE_KEY)); } catch(e) { return null; } }
+function _sjePikselKljuc(p) { return Math.floor(p.la / _SJE_PIKSEL_DEG) + ':' + Math.floor(p.lo / _SJE_PIKSEL_DEG); }
+
+// Zone = prostorno povezani alarmi (union-find, mreža ćelija veličine praga).
+// NAMJERNO bez vremenskog uslova iz _poziGrupisi (±1 dan): sječa istog
+// odsjeka se detektuje sedmicama, a to je i dalje jedna zona.
+function _sjeGrupisi(pts, pragM) {
+  const prag = pragM || _SJE_GRUPA_M;
+  const n = (pts || []).length;
+  if (!n) return [];
+  const rod = new Int32Array(n).map((_, i) => i);
+  const nadji = i => { while (rod[i] !== i) { rod[i] = rod[rod[i]]; i = rod[i]; } return i; };
+  const srLa = pts.reduce((s, p) => s + p.la, 0) / n;
+  const cLat = prag / 111320, cLon = prag / (111320 * Math.max(0.2, Math.cos(srLa * Math.PI / 180)));
+  const mreza = new Map();
+  pts.forEach((p, i) => {
+    const cx = Math.floor(p.lo / cLon), cy = Math.floor(p.la / cLat);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      const lst = mreza.get((cx + dx) + ':' + (cy + dy));
+      if (lst) for (const j of lst) if (dst(p.la, p.lo, pts[j].la, pts[j].lo) <= prag) rod[nadji(i)] = nadji(j);
+    }
+    const k = cx + ':' + cy;
+    if (!mreza.has(k)) mreza.set(k, []);
+    mreza.get(k).push(i);
+  });
+  const skupovi = new Map();
+  pts.forEach((p, i) => { const r = nadji(i); if (!skupovi.has(r)) skupovi.set(r, []); skupovi.get(r).push(p); });
+  return [...skupovi.values()].map(gp => {
+    const piks = new Map();
+    gp.forEach(p => {
+      const k = _sjePikselKljuc(p), s0 = piks.get(k);
+      if (!s0 || (Date.parse(p.dt) || 0) > (Date.parse(s0.dt) || 0)) piks.set(k, p);
+    });
+    const jed = [...piks.values()];
+    const t = jed.map(p => Date.parse(p.dt)).filter(isFinite);
+    const najp = jed.reduce((a, b) => _sjePouzdanost(b.conf).rang > _sjePouzdanost(a.conf).rang ? b : a);
+    const zadnji = t.length ? Math.max(...t) : NaN;
+    return {
+      la: jed.reduce((s, p) => s + p.la, 0) / jed.length,
+      lo: jed.reduce((s, p) => s + p.lo, 0) / jed.length,
+      pts: jed, broj: jed.length,
+      prvi: t.length ? Math.min(...t) : NaN, zadnji,
+      dt: isFinite(zadnji) ? new Date(zadnji).toISOString() : '',
+      conf: najp.conf,
+      ha: jed.reduce((s, p) => s + _sjePikselHa(p.la), 0)
+    };
+  });
+}
+
+// Starost alarma → boja (svježe svijetlo, staro tamno) — ista logika kao Požari.
+const _SJE_STAROST = [
+  { id:'novo',   maxD:14,       boja:'#fb923c', txt:'do 14 dana' },
+  { id:'srednje', maxD:45,      boja:'#f59e0b', txt:'15–45 dana' },
+  { id:'staro',  maxD:Infinity, boja:'#a16207', txt:'starije' }
+];
+function _sjeStarost(ms, sadMs) {
+  const d = ((sadMs || Date.now()) - ms) / 86400000;
+  if (!isFinite(d)) return _SJE_STAROST[_SJE_STAROST.length - 1];
+  return _SJE_STAROST.find(b => d <= b.maxD);
+}
+
+// Terenska provjera: status se veže za lokaciju (≤ 150 m od centra zone), ne
+// za id — centar zone se pomjeri kad stignu novi alarmi.
+const _SJE_STATUS_KEY = 'usf_sjeca_status';
+const _SJE_STATUSI = {
+  legalna:      { txt:'Legalna sječa',   boja:'#4ade80', ik:'✓' },
+  bespravna:    { txt:'Bespravna sječa', boja:'#f87171', ik:'⚠' },
+  vjetroizvala: { txt:'Vjetroizvala',    boja:'#60a5fa', ik:'🌪' },
+  lazni:        { txt:'Lažni alarm',     boja:'#94a3b8', ik:'✕' }
+};
+function _sjeStatusLista() { try { const v = JSON.parse(localStorage.getItem(_SJE_STATUS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch(e) { return []; } }
+function _sjeStatusZa(g, lista) {
+  let naj = null, najD = 150;
+  (lista || _sjeStatusLista()).forEach(r => { const d = dst(g.la, g.lo, r.la, r.lo); if (d <= najD && _SJE_STATUSI[r.st]) { naj = r; najD = d; } });
+  return naj;
+}
+function _sjeOznaci(i, st) {
+  const g = _sjeEvts[i];
+  if (!g) return;
+  const lista = _sjeStatusLista().filter(r => dst(g.la, g.lo, r.la, r.lo) > 150);
+  if (_SJE_STATUSI[st]) lista.push({ la: +g.la.toFixed(6), lo: +g.lo.toFixed(6), st, ts: Date.now() });
+  try { localStorage.setItem(_SJE_STATUS_KEY, JSON.stringify(lista.slice(-500))); } catch(e) {}
+  map.closePopup();
+  _sjeRender();
+  showToast(_SJE_STATUSI[st] ? _SJE_STATUSI[st].ik + ' Označeno: ' + _SJE_STATUSI[st].txt : 'Oznaka uklonjena');
+}
+
+// Filteri/sortiranje liste i karte (pamte se).
+const _SJE_FILTER_KEY = 'usf_sjeca_filter';
+function _sjeFilter() {
+  let f = {};
+  try { f = JSON.parse(localStorage.getItem(_SJE_FILTER_KEY) || '{}') || {}; } catch(e) {}
+  return { samoVisoka: !!f.samoVisoka, sakrijProvjerene: !!f.sakrijProvjerene, sort: ['novo', 'blizu', 'vece'].includes(f.sort) ? f.sort : 'novo' };
+}
+function _sjePostaviFilter(k, v) {
+  const f = { ..._sjeFilter(), [k]: v };
+  try { localStorage.setItem(_SJE_FILTER_KEY, JSON.stringify(f)); } catch(e) {}
+  _sjeRender();
+}
+// Čista funkcija: zone → vidljive zone po filteru, sortirane.
+function _sjeFiltriraj(zone, f, statusi) {
+  const out = (zone || []).filter(g =>
+    (!f.samoVisoka || _sjePouzdanost(g.conf).rang >= 3) &&
+    (!f.sakrijProvjerene || !_sjeStatusZa(g, statusi)));
+  const cmp = {
+    novo:  (a, b) => (b.zadnji || 0) - (a.zadnji || 0),
+    blizu: (a, b) => (a.d || 0) - (b.d || 0),
+    vece:  (a, b) => (b.ha || 0) - (a.ha || 0)
+  }[f.sort] || ((a, b) => 0);
+  return out.sort(cmp);
+}
+
+let _sjePts = [], _sjeEvts = [], _sjeVidljive = [], _sjeLayer = null, _sjeMeta = null;
+let _sjeOn = false, _sjeBusy = false, _sjeCanvasRenderer = null, _sjeZoomNivo = null;
+
+// Keš u kompaktnom obliku [la, lo, datum, pouzdanost] — 5000 alarma stane
+// u ~200 KB (ranije se čuvalo samo prvih 500, pa je keš sakrivao zone).
+function _sjeSaveCache(pts, okvir) {
+  const kompakt = pts.slice(0, 5000).map(p => [+p.la.toFixed(6), +p.lo.toFixed(6), String(p.dt).slice(0, 10), p.conf || '']);
+  try { localStorage.setItem(_SJE_CACHE_KEY, JSON.stringify({ ts: Date.now(), okvir, v: 2, pts: kompakt })); } catch(e) {}
+}
+function _sjeLoadCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(_SJE_CACHE_KEY));
+    if (c && c.v === 2 && Array.isArray(c.pts)) {
+      c.pts = c.pts.map(r => ({ la: r[0], lo: r[1], dt: r[2] + 'T00:00:00Z', conf: r[3], sat: 'DIST-ALERT', frp: NaN, noc: false, rez: 30 }));
+    }
+    return c;
+  } catch(e) { return null; }
+}
+function _sjeZone(pts, ref) { return _poziGrupeBlizu(_sjeGrupisi(pts, _SJE_GRUPA_M), ref); }
 function _sjeObnoviIzKesa() {
   const c = _sjeLoadCache();
   if (!c || !Array.isArray(c.pts)) return false;
   const ref = _poziRefTacka();
   _sjePts = _poziFilterBlizu(c.pts, ref);
   _sjeMeta = { dohvacenoMs: c.ts || 0, kes: true, okvir: c.okvir || _sjeOkvir(), refGps: ref.gps };
-  _sjeEvts = _poziGrupeBlizu(_poziGrupisi(_sjePts, _SJE_GRUPA_M), ref);
+  _sjeEvts = _sjeZone(_sjePts, ref);
   _sjeRender();
   return true;
 }
 async function _sjeLoad(tiho) {
   if (_sjeBusy) return;
   const kljuc = (_poziKljucevi.gfw || '').trim();
-  if (!kljuc) { _sjeMeta = { greska: 'nema-kljuca' }; _sjeRenderPanel(); return; }
+  if (!kljuc) { _sjeMeta = { ...(_sjeEvts.length ? _sjeMeta : {}), greska: 'nema-kljuca' }; _sjeRenderPanel(); return; }
   _sjeBusy = true;
   const el = document.getElementById('sje-status'); if (el) el.textContent = '⏳ Dohvatam alarme…';
   try {
@@ -6186,7 +6353,7 @@ async function _sjeLoad(tiho) {
       _sjePts = _poziFilterBlizu(c.pts || [], ref);
       _sjeMeta = { dohvacenoMs: c.ts, okvir: okvirId, ukupno: (c.pts || []).length, kes: true, refGps: ref.gps };
     }
-    _sjeEvts = _poziGrupeBlizu(_poziGrupisi(_sjePts, _SJE_GRUPA_M), ref);
+    _sjeEvts = _sjeZone(_sjePts, ref);
     _sjeRender();
     if (!tiho) showToast(_sjeSazetak());
   } catch(e) {
@@ -6198,66 +6365,150 @@ async function _sjeLoad(tiho) {
 }
 function _sjeSazetak() {
   const m = _sjeMeta || {};
-  if (m.greska === 'nema-kljuca') return 'Treba GFW API ključ (unesi ga u Požari → Admin ključevi).';
-  if (m.greska) return '⚠ ' + m.greska;
+  if (m.greska && !_sjeEvts.length) return m.greska === 'nema-kljuca' ? 'Treba GFW API ključ (unesi ga u Požari → Admin ključevi).' : '⚠ ' + m.greska;
   if (!_sjeEvts.length) return '✓ Nema alarma u krugu ' + _SJE_RADIUS_KM + ' km, zadnjih ' + _sjeOkvirNaziv(m.okvir) + (m.kes ? ' · iz keša' : '');
-  const ukupnoHa = _sjeEvts.reduce((s, g) => s + _poziPovrsinaGrupe(g), 0);
-  return _sjeEvts.length + ' alarma · ~' + _poziPovrsTxt(ukupnoHa) + ' · ' + _sjeOkvirNaziv(m.okvir) + (m.kes ? ' · iz keša' : '');
+  const ukupnoHa = _sjeEvts.reduce((s, g) => s + g.ha, 0);
+  return _sjeEvts.length + ' zona · ' + _poziPovrsTxt(ukupnoHa) + ' · ' + _sjeOkvirNaziv(m.okvir) + (m.kes ? ' · iz keša' : '');
 }
+function _sjeDatum(t) { if (!isFinite(t)) return '—'; const d = new Date(t); return d.getUTCDate() + '.' + (d.getUTCMonth() + 1) + '.'; }
 function _sjePopupHtml(g, ref) {
+  const i = _sjeEvts.indexOf(g);
   const pz = _sjePouzdanost(g.conf);
+  const st = _sjeStarost(g.zadnji);
+  const stat = _sjeStatusZa(g);
   const smjer = _azimutSmjer(_bearing(ref.la, ref.lo, g.la, g.lo));
-  const vr = t => isFinite(t) ? new Date(t).toLocaleDateString('bs-BA') : '—';
+  let mgi = '';
+  try { const m = wgsToMGI5(g.la, g.lo); mgi = 'Y ' + m.y + ', X ' + m.x; } catch(e) {}
   const red = (l, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;font-size:11px;"><span style="color:#94a3b8;">${l}</span><span style="color:#e2e8f0;text-align:right;">${v}</span></div>`;
-  return `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;min-width:215px;">
-    <div style="font-size:14px;font-weight:700;color:#d97706;margin-bottom:6px;">🪓 Alarm smetnje — ${g.broj} detekcija</div>
+  const dugme = (k, v) => `<button onclick="_sjeOznaci(${i},'${k}')" style="flex:1 1 45%;padding:6px 4px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid ${v.boja}66;background:${stat && stat.st === k ? v.boja + '33' : 'transparent'};color:${v.boja};">${v.ik} ${v.txt}</button>`;
+  return `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;min-width:230px;">
+    <div style="font-size:14px;font-weight:700;color:${st.boja};margin-bottom:6px;">🪓 Zona promjene · ${_poziPovrsTxt(g.ha)}</div>
     ${red('Udaljenost', `<b style="color:#fbbf24;">${_msrFmt(g.d)}</b> ${smjer}`)}
-    ${red('Prvi put viđen', vr(g.prvi))}
-    ${red('Zadnji put', vr(g.zadnji))}
+    ${red('Alarmi', `${_sjeDatum(g.prvi)} – ${_sjeDatum(g.zadnji)} <span style="color:#64748b;">(${st.txt})</span>`)}
+    ${red('Pikseli', g.broj + ' × ~0,06 ha')}
     ${red('Pouzdanost', `<span style="color:${pz.boja};">${pz.txt}</span>`)}
-    ${red('Procijenjena površina', _poziPovrsTxt(_poziPovrsinaGrupe(g)))}
-    <div style="font-size:9px;color:#64748b;margin-top:6px;">DIST-ALERT (GFW) — javlja NESTANAK vegetacije: sječa, vjetroizvala, klizište ili opožarena površina. Ne razlikuje uzrok.</div>
+    ${mgi ? red('MGI 5', mgi) : ''}
+    <div style="font-size:10px;color:#94a3b8;margin:8px 0 4px;">Terenska provjera${stat ? ': <b style="color:' + _SJE_STATUSI[stat.st].boja + ';">' + _SJE_STATUSI[stat.st].txt + '</b>' : ''}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;">${Object.entries(_SJE_STATUSI).map(([k, v]) => dugme(k, v)).join('')}</div>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      ${stat ? `<button onclick="_sjeOznaci(${i},'')" style="flex:1;padding:6px;border-radius:8px;font-size:11px;background:transparent;border:1px solid #334155;color:#94a3b8;cursor:pointer;">Ukloni oznaku</button>` : ''}
+      <a href="https://www.google.com/maps/dir/?api=1&destination=${g.la.toFixed(6)},${g.lo.toFixed(6)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border-radius:8px;font-size:11px;background:#14532d;color:#dcfce7;text-decoration:none;">🧭 Navigiraj</a>
+    </div>
+    <div style="font-size:9px;color:#64748b;margin-top:6px;">GFW DIST-ALERT — nestanak vegetacije (sječa, vjetroizvala, klizište, požar). Ne razlikuje uzrok.</div>
   </div>`;
 }
 function _sjeRender() {
   if (_sjeLayer) { try { map.removeLayer(_sjeLayer); } catch(e) {} }
   _sjeLayer = L.layerGroup([], { pane: 'sjecaPane' });
+  if (!_sjeCanvasRenderer && L.canvas) _sjeCanvasRenderer = L.canvas({ pane: 'sjecaPane', padding: 0.35 });
   const ref = _poziRefTacka();
-  (_sjeEvts || []).forEach(g => {
-    if (!_sjeCanvasRenderer && L.canvas) _sjeCanvasRenderer = L.canvas({ pane: 'sjecaPane', padding: 0.35 });
-    const pz = _sjePouzdanost(g.conf);
-    const mk = L.circleMarker([g.la, g.lo], { renderer: _sjeCanvasRenderer, pane: 'sjecaPane', radius: Math.min(14, 6 + g.broj), color: '#fff', weight: 2, fillColor: pz.boja, fillOpacity: 0.9 });
-    mk.bindPopup(() => _sjePopupHtml(g, ref), { maxWidth: 270 });
-    mk.addTo(_sjeLayer);
+  const statusi = _sjeStatusLista();
+  _sjeVidljive = _sjeFiltriraj(_sjeEvts, _sjeFilter(), statusi);
+  _sjeZoomNivo = map.getZoom() >= _SJE_PIKSELI_ZOOM;
+  const h = _SJE_PIKSEL_DEG / 2;
+  _sjeVidljive.forEach(g => {
+    const stat = _sjeStatusZa(g, statusi);
+    const rub = stat ? _SJE_STATUSI[stat.st].boja : '#fff';
+    const popup = () => _sjePopupHtml(g, ref);
+    if (_sjeZoomNivo) {
+      // Stvarni pikseli promjene, obojeni po starosti svakog alarma.
+      g.pts.forEach(p => {
+        const b = _sjeStarost(Date.parse(p.dt)).boja;
+        L.rectangle([[p.la - h, p.lo - h], [p.la + h, p.lo + h]], { renderer: _sjeCanvasRenderer, pane: 'sjecaPane',
+          color: stat ? rub : b, weight: stat ? 1.5 : 0.6, fillColor: b, fillOpacity: 0.75 })
+          .bindPopup(popup, { maxWidth: 290 }).addTo(_sjeLayer);
+      });
+    } else {
+      const r = Math.max(6, Math.min(18, 5 + Math.sqrt(g.ha) * 4));
+      L.circleMarker([g.la, g.lo], { renderer: _sjeCanvasRenderer, pane: 'sjecaPane', radius: r,
+        color: rub, weight: stat ? 3 : 2, fillColor: _sjeStarost(g.zadnji).boja, fillOpacity: 0.9 })
+        .bindPopup(popup, { maxWidth: 290 }).addTo(_sjeLayer);
+    }
   });
   if (_sjeOn) _sjeLayer.addTo(map);
   _sjeRenderPanel();
 }
-function _sjeRedHtml(g, i, ref) {
-  const pz = _sjePouzdanost(g.conf);
+// Pikseli ↔ krugovi zona kad se pređe prag zooma (samo tada, ne na svaki zoom).
+map.on('zoomend', () => {
+  if (!_sjeOn || !_sjeEvts.length) return;
+  if ((map.getZoom() >= _SJE_PIKSELI_ZOOM) !== _sjeZoomNivo) _sjeRender();
+});
+function _sjeRedHtml(g, ref) {
+  const i = _sjeEvts.indexOf(g);
+  const st = _sjeStarost(g.zadnji);
+  const stat = _sjeStatusZa(g);
   const smjer = _azimutSmjer(_bearing(ref.la, ref.lo, g.la, g.lo));
-  return `<div onclick="_sjeZoom(${i})" style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #1e293b;cursor:pointer;">
-    <span style="width:9px;height:9px;border-radius:50%;background:${pz.boja};border:1px solid rgba(255,255,255,0.45);flex-shrink:0;"></span>
+  const chip = stat ? `<span style="font-size:10px;padding:2px 7px;border-radius:999px;color:${_SJE_STATUSI[stat.st].boja};border:1px solid ${_SJE_STATUSI[stat.st].boja}55;white-space:nowrap;">${_SJE_STATUSI[stat.st].ik} ${_SJE_STATUSI[stat.st].txt}</span>`
+    : `<span style="font-size:10px;color:#64748b;white-space:nowrap;">${_sjePouzdanost(g.conf).txt}</span>`;
+  return `<div class="sje-red" onclick="_sjeZoom(${i})">
+    <span style="width:10px;height:10px;border-radius:3px;background:${st.boja};flex-shrink:0;"></span>
     <span style="flex:1;min-width:0;">
-      <span style="font-size:12px;color:#e2e8f0;">${_msrFmt(g.d)} <span style="color:#64748b;">${smjer}</span></span>
-      <div style="font-size:10px;color:#64748b;">${g.broj} detekcija · ~${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div>
+      <span style="font-size:12.5px;color:#e2e8f0;font-weight:600;">${_poziPovrsTxt(g.ha)}</span>
+      <span style="font-size:11px;color:#94a3b8;"> · ${_msrFmt(g.d)} ${smjer}</span>
+      <div style="font-size:10.5px;color:#64748b;">${_sjeDatum(g.prvi)} – ${_sjeDatum(g.zadnji)} · ${g.broj} piksela</div>
     </span>
-    <span style="font-size:10px;color:#64748b;">${pz.txt}</span>
+    ${chip}
   </div>`;
+}
+function _sjeKpiHtml() {
+  if (!_sjeOn || !_sjeEvts.length) return '';
+  const ha = _sjeEvts.reduce((s, g) => s + g.ha, 0);
+  const novo = _sjeEvts.filter(g => _sjeStarost(g.zadnji).id === 'novo').length;
+  const statusi = _sjeStatusLista();
+  const provjereno = _sjeEvts.filter(g => _sjeStatusZa(g, statusi)).length;
+  const kpi = (v, l) => `<div style="flex:1;background:#102019;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#e2e8f0;">${v}</div><div style="font-size:10px;color:#94a3b8;">${l}</div></div>`;
+  return `<div style="display:flex;gap:6px;margin-bottom:8px;">${kpi(_sjeEvts.length, 'zona')}${kpi(_poziPovrsTxt(ha), 'ukupno')}${kpi(novo, 'do 14 dana')}${kpi(provjereno, 'provjereno')}</div>`;
 }
 function _sjeListaHtml() {
   if (!_sjeOn) return '';
   const m = _sjeMeta || {};
-  if (m.greska) return `<div style="font-size:11px;color:#f87171;padding:6px 0;line-height:1.5;">${_escHtml(m.greska === 'nema-kljuca' ? 'Treba GFW API ključ (unesi ga u Požari → Admin ključevi).' : m.greska)}</div>`;
+  const greska = m.greska ? `<div style="font-size:11px;color:#f87171;padding:6px 0;line-height:1.5;">${_escHtml(m.greska === 'nema-kljuca' ? 'Treba GFW API ključ (unesi ga u Požari → Admin ključevi).' : m.greska)}</div>` : '';
+  // Greška osvježavanja ne smije sakriti već učitane (keširane) zone.
+  if (greska && !_sjeEvts.length) return greska;
   if (!_sjeEvts.length) return `<div style="font-size:11px;color:#4ade80;padding:6px 0;">✓ Nema alarma u krugu ${_SJE_RADIUS_KM} km, zadnjih ${_sjeOkvirNaziv(m.okvir)}.</div>`;
+  if (!_sjeVidljive.length) return greska + `<div style="font-size:11px;color:#94a3b8;padding:6px 0;">Nijedna zona ne odgovara filteru.</div>`;
   const ref = _poziRefTacka();
-  return _sjeEvts.map((g, i) => _sjeRedHtml(g, i, ref)).join('');
+  const MAX = 150;
+  return greska + _sjeVidljive.slice(0, MAX).map(g => _sjeRedHtml(g, ref)).join('')
+    + (_sjeVidljive.length > MAX ? `<div style="font-size:11px;color:#64748b;padding:6px 0;">+ još ${_sjeVidljive.length - MAX} zona (vidljive na karti)</div>` : '');
 }
 function _sjeZoom(i) {
   const g = _sjeEvts[i];
   if (!g) return;
   switchMainTab('karta');
-  setTimeout(() => map.setView([g.la, g.lo], Math.max(map.getZoom(), 14)), 80);
+  setTimeout(() => {
+    const b = L.latLngBounds(g.pts.map(p => [p.la, p.lo])).pad(0.6);
+    map.fitBounds(b, { maxZoom: 17 });
+    if (map.getZoom() < _SJE_PIKSELI_ZOOM) map.setZoom(_SJE_PIKSELI_ZOOM);
+  }, 80);
+}
+// KML zona (poligoni piksela po zoni + status) — za GPS uređaj/terenske kolege.
+function _sjeKml(zone) {
+  const h = _SJE_PIKSEL_DEG / 2;
+  const statusi = _sjeStatusLista();
+  const pm = zone.map((g, n) => {
+    const stat = _sjeStatusZa(g, statusi);
+    const boja = stat ? _SJE_STATUSI[stat.st].boja : _sjeStarost(g.zadnji).boja;
+    const polys = g.pts.map(p => {
+      const c = [[p.lo - h, p.la - h], [p.lo + h, p.la - h], [p.lo + h, p.la + h], [p.lo - h, p.la + h], [p.lo - h, p.la - h]]
+        .map(([x, y]) => x.toFixed(6) + ',' + y.toFixed(6) + ',0').join(' ');
+      return `<Polygon><outerBoundaryIs><LinearRing><coordinates>${c}</coordinates></LinearRing></outerBoundaryIs></Polygon>`;
+    }).join('');
+    const opis = `${_poziPovrsTxt(g.ha)} · ${_sjeDatum(g.prvi)}–${_sjeDatum(g.zadnji)} · ${_sjePouzdanost(g.conf).txt}` + (stat ? ' · ' + _SJE_STATUSI[stat.st].txt : '');
+    return `  <Placemark><name>Zona ${n + 1}</name><description>${_escXml(opis)}</description>
+    <Style><LineStyle><color>${_hexToKmlColor(boja)}</color><width>1.5</width></LineStyle><PolyStyle><color>99${_hexToKmlColor(boja).slice(2)}</color></PolyStyle></Style>
+    <MultiGeometry>${polys}</MultiGeometry></Placemark>`;
+  }).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document><name>Sječa i vjetroizvale (GFW DIST-ALERT)</name>
+${pm}
+</Document></kml>`;
+}
+async function _sjeIzvoz() {
+  if (!_sjeVidljive.length) { showToast('Nema zona za izvoz'); return; }
+  const dan = new Date().toISOString().slice(0, 10);
+  await _dijeliKml('sjeca_alarmi_' + dan + '.kml', _sjeKml(_sjeVidljive), 'Sječa i vjetroizvale', _sjeVidljive.length + ' zona promjene (GFW DIST-ALERT)');
 }
 function _sjeToggle(on) {
   _sjeOn = on;
@@ -6271,7 +6522,16 @@ function _sjeToggle(on) {
 function _sjeRenderPanel() {
   const onOff = document.getElementById('sje-on-switch'); if (onOff) onOff.classList.toggle('on', _sjeOn);
   document.querySelectorAll('#sjeca-panel .poz-okvir-btn').forEach(b => b.classList.toggle('on', b.dataset.okvir === _sjeOkvir()));
+  const f = _sjeFilter();
+  const kontrole = document.getElementById('sje-kontrole');
+  if (kontrole) kontrole.style.display = _sjeOn && _sjeEvts.length ? 'block' : 'none';
+  const izvoz = document.getElementById('sje-izvoz-wrap');
+  if (izvoz) izvoz.style.display = _sjeOn && _sjeEvts.length ? 'block' : 'none';
+  const fv = document.getElementById('sje-f-visoka'); if (fv) fv.classList.toggle('on', f.samoVisoka);
+  const fp = document.getElementById('sje-f-provjerene'); if (fp) fp.classList.toggle('on', f.sakrijProvjerene);
+  document.querySelectorAll('#sje-sort button').forEach(b => b.classList.toggle('on', b.dataset.sort === f.sort));
   const status = document.getElementById('sje-status'); if (status) status.textContent = _sjeSazetak();
+  const kpi = document.getElementById('sje-kpi'); if (kpi) kpi.innerHTML = _sjeKpiHtml();
   const lista = document.getElementById('sje-lista'); if (lista) lista.innerHTML = _sjeListaHtml();
 }
 function openSjecaSection() {
