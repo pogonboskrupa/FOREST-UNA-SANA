@@ -1,0 +1,59 @@
+name: EFDA probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/practical-pasteur-p2npth]
+    paths: ['.github/workflows/efda-probe.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Zenodo zapis (najnovija verzija)
+        run: |
+          set -eu
+          curl -sSL https://zenodo.org/api/records/13333034 -o rec.json
+          LATEST=$(python3 -c "import json;r=json.load(open('rec.json'));print(r.get('links',{}).get('latest') or '')")
+          echo "latest link: $LATEST"
+          if [ -n "$LATEST" ]; then curl -sSL "$LATEST" -o latest.json; else cp rec.json latest.json; fi
+          python3 - <<'EOF'
+          import json
+          r = json.load(open('latest.json'))
+          m = r.get('metadata', {})
+          print('ID', r.get('id'), '| verzija', m.get('version'), '| datum', m.get('publication_date'))
+          print('NASLOV', m.get('title'))
+          for f in r.get('files', []):
+              print('FAJL', f['key'], f['size'], f['links']['self'])
+          EOF
+      - name: BiH arhiva — sadržaj i opis slojeva
+        run: |
+          set -eu
+          sudo apt-get -qq update && sudo apt-get -qq install -y gdal-bin >/dev/null
+          URL=$(python3 - <<'EOF'
+          import json, re
+          r = json.load(open('latest.json'))
+          c = [f for f in r.get('files', []) if re.search(r'bosnia|herzeg|\bbih\b|_ba[_.]', f['key'], re.I)]
+          print(c[0]['links']['self'] if c else '')
+          EOF
+          )
+          echo "BiH URL: $URL"
+          [ -n "$URL" ] || { echo "BiH fajl nije pronađen"; exit 0; }
+          curl -sSL "$URL" -o bih.bin
+          ls -la bih.bin; file bih.bin
+          mkdir -p bih
+          case "$(file -b bih.bin)" in
+            *Zip*) unzip -o -q bih.bin -d bih ;;
+            *gzip*|*tar*) tar -xf bih.bin -C bih ;;
+            *) cp bih.bin bih/bih.tif ;;
+          esac
+          find bih -type f -exec ls -la {} \;
+          for t in $(find bih -iname '*.tif'); do
+            echo "=================== $t"
+            gdalinfo "$t" | sed -n '1,12p;/Band 1/,/Band 2/p' | head -60
+            gdalinfo "$t" | grep -iE 'LAYOUT|COMPRESSION|Overviews|Block=' | head -8
+            gdalinfo -stats "$t" 2>/dev/null | grep -iE 'STATISTICS_(MIN|MAX|MEAN)' | head -3
+          done
