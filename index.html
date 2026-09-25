@@ -1327,12 +1327,42 @@ function _sljedecaVerzija(verzija) {
   return `v${major}.${minor}.${patch}`;
 }
 
-// ── Offline detekcija (banner) ──────────────────────────────────────
+// ── Provjera kvalitete veze ─────────────────────────────────────────
+// Ring buffer zadnjih 10 mjerenja iz reliableFetch observera.
+const _netBuf = [];
+setNetObserver(function(ishod) {
+  _netBuf.push({ ok: ishod.ok, t: Date.now() });
+  if (_netBuf.length > 10) _netBuf.shift();
+  _updOfflineBanner();
+});
+// Vraća true kad je veza loša: effectiveType slow-2g/2g, ili 3+ greške u 60s.
+function _vezaLoša() {
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn && (conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g')) return true;
+  const prag = Date.now() - 60000;
+  const nedavne = _netBuf.filter(m => m.t > prag);
+  return nedavne.length >= 3 && nedavne.filter(m => !m.ok).length >= 3;
+}
+
+// ── Offline / slaba veza — banner ───────────────────────────────────
 function _updOfflineBanner() {
-  document.getElementById('offline-banner').style.display = navigator.onLine ? 'none' : 'block';
+  const el = document.getElementById('offline-banner');
+  if (!navigator.onLine) {
+    el.textContent = '📡 Offline — GPS, tragovi i učitane karte rade bez interneta';
+    el.style.background = '#7c2d12';
+    el.style.display = 'block';
+  } else if (_vezaLoša()) {
+    el.textContent = '📶 Slaba veza — online slojevi mogu biti spori ili nedostupni';
+    el.style.background = '#78350f';
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
 }
 window.addEventListener('online', _updOfflineBanner);
 window.addEventListener('offline', _updOfflineBanner);
+const _netConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+if (_netConn) _netConn.addEventListener('change', _updOfflineBanner);
 _updOfflineBanner();
 
 // ── Keširani tile layer (retry/timeout/parent-fallback) ─────────────
@@ -2953,8 +2983,7 @@ function _msrPoligonPovrsina(pts) {
   } catch(e) { return fallback(); }
 }
 function _fetchT(url, ms = 12000, opts = {}) {
-  const sig = (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') ? AbortSignal.timeout(ms) : undefined;
-  return fetch(url, sig ? { ...opts, signal: sig } : opts);
+  return reliableFetch(url, opts, ms);
 }
 async function _msrFetchElev(lat, lng) {
   const key = lat.toFixed(5)+','+lng.toFixed(5);
@@ -5787,7 +5816,7 @@ function _poziNotifProvjeri() {
 const _POZ_AUTO_MS = 10 * 60 * 1000, _POZ_STALE_MS = 5 * 60 * 1000;
 let _poziNotifTimer = null;
 function _poziAutoTreba() { return document.getElementById('pozari-panel')?.classList.contains('show') || _poziNotifOn(); }
-function _poziNotifTimerStart() { _poziNotifTimerStop(); _poziNotifTimer = setInterval(() => { if (!_poziAutoTreba() || !navigator.onLine || _poziBusy || document.hidden) return; _poziLoad(true); }, _POZ_AUTO_MS); }
+function _poziNotifTimerStart() { _poziNotifTimerStop(); _poziNotifTimer = setInterval(() => { if (!_poziAutoTreba() || !navigator.onLine || _vezaLoša() || _poziBusy || document.hidden) return; _poziLoad(true); }, _POZ_AUTO_MS); }
 function _poziNotifTimerStop() { if (_poziNotifTimer) { clearInterval(_poziNotifTimer); _poziNotifTimer = null; } }
 function _poziAutoSync() { if (_poziAutoTreba()) _poziNotifTimerStart(); else _poziNotifTimerStop(); }
 function _poziOsvjeziAkoJeStaro() {
