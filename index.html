@@ -1589,6 +1589,8 @@ map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 330;
 map.createPane('pozariRasterPane'); map.getPane('pozariRasterPane').style.zIndex = 430;
 map.createPane('pozariProjectionPane'); map.getPane('pozariProjectionPane').style.zIndex = 440;
 map.getPane('pozariProjectionPane').style.pointerEvents = 'none';
+// Veći padding sprečava SVG clipping pri panu (smoothFactor:0 + kompleksni poligoni).
+const _pozProjRenderer = L.svg({ padding: 0.5 });
 map.createPane('pozariHeatPane'); map.getPane('pozariHeatPane').style.zIndex = 445;
 map.getPane('pozariHeatPane').style.pointerEvents = 'none';
 map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 450;
@@ -5094,7 +5096,7 @@ function _povGodRenderSve() {
         const geom = _poziOpozOn() ? _poziOpozGeom(g.pts || []) : null;
         if (geom) {
           try {
-            L.geoJSON(geom, { pane:'pozariProjectionPane', smoothFactor:0,
+            L.geoJSON(geom, { pane:'pozariProjectionPane', smoothFactor:0, renderer:_pozProjRenderer,
               style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.42 } })
               .bindPopup(() => `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;"><b style="color:#fb923c;">Procijenjena opožarena površina</b><div style="font-size:18px;font-weight:800;margin:5px 0;">${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div><small style="color:#94a3b8;">Iz satelitskih piksela — nije službeno izmjerena granica.</small></div>`)
               .addTo(grp);
@@ -5397,7 +5399,7 @@ function _poziUnija(dijelovi) {
   let u = dijelovi[0];
   for (let i = 1; i < dijelovi.length; i++) {
     try { u = turf.union(u, dijelovi[i]) || u; }
-    catch(e) { return turf.featureCollection(dijelovi); }
+    catch(e) {} // preskoči nespojivi dio, zadrži dosadašnju uniju
   }
   return u;
 }
@@ -5464,10 +5466,10 @@ function _poziOpozAzuriraj() {
     _POZ_OPOZ_REDOSLIJED.forEach(id => {
       const pts = bands[id];
       if (!pts || !pts.length) return;
-      const geom = _poziOpozGeom(pts, svi);
+      const geom = _poziOpozGeom(pts);
       if (!geom) return;
       try {
-        L.geoJSON(geom, { pane: 'pozariProjectionPane', smoothFactor: 0,
+        L.geoJSON(geom, { pane: 'pozariProjectionPane', smoothFactor: 0, renderer: _pozProjRenderer,
           style: { color: _POZ_OPOZ_BOJE[id], weight: 1.6, fillColor: _POZ_OPOZ_BOJE[id], fillOpacity: 0.42 } }).addTo(grp);
       } catch(e) {}
     });
