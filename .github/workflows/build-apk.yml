@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # APK_RELEASE_VERSION=1.4.28
+          # APK_RELEASE_VERSION=1.4.29
           # UI/runtime oznaka i servisni keš se održavaju zasebno dok se
           # veliki index.html migrira u modularne skripte.
           WEB_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"

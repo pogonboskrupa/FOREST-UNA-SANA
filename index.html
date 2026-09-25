@@ -5674,19 +5674,44 @@ function _poziOpozGeom(pts, oblikPts) {
     return _poziUnija(dijelovi.filter(Boolean));
   } catch(e) { return null; }
 }
-// Plohe za prikaz: zatvaranje nad SVIM detekcijama zajedno (grupisanje u
-// požare je strože, ~350 m, pa bi ploha po grupi ostala rascjepkana), pa
-// podjela na odvojene plohe; svaka nosi vrijeme najnovije detekcije u sebi.
+// Detekcije se vežu u istu plohu samo ako su susjedni pikseli (≤ 1,4 piksela,
+// VIIRS ~525 m — isto koliko zatvaranje premošćuje) I ako između njih nema
+// više od 2 dana (oblaci/dim, isto pravilo kao _poziGrupisi). Tačke blizu
+// u prostoru, ali iz različitog vremena, ostaju odvojene plohe.
+function _poziVremenskiKlasteri(pts) {
+  const n = (pts || []).length;
+  if (!n) return [];
+  const rod = [...Array(n).keys()];
+  const nadji = i => { while (rod[i] !== i) { rod[i] = rod[rod[i]]; i = rod[i]; } return i; };
+  const rez = p => (Number(p?.rez) >= 900 ? 1000 : 375);
+  const dani = pts.map(_poziDanUTC);
+  const CEL = 0.02; // ~1,6–2,2 km: dovoljno za MODIS vezu (1,4 km), pretraga samo susjednih ćelija
+  const mreza = new Map();
+  pts.forEach((p, i) => {
+    const cx = Math.floor(p.lo / CEL), cy = Math.floor(p.la / CEL);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      (mreza.get((cx + dx) + ',' + (cy + dy)) || []).forEach(j => {
+        const q = pts[j];
+        if (dani[i] === null || dani[j] === null || Math.abs(dani[i] - dani[j]) > 2) return;
+        if (dst(p.la, p.lo, q.la, q.lo) > 1.4 * Math.max(rez(p), rez(q))) return;
+        rod[nadji(i)] = nadji(j);
+      });
+    }
+    const k = cx + ',' + cy;
+    (mreza.get(k) || mreza.set(k, []).get(k)).push(i);
+  });
+  const grupe = new Map();
+  pts.forEach((p, i) => { const r = nadji(i); (grupe.get(r) || grupe.set(r, []).get(r)).push(p); });
+  return [...grupe.values()];
+}
+// Plohe za prikaz: zatvaranje po vremensko-prostornom klasteru (vidi gore);
+// svaka ploha nosi vrijeme najnovije detekcije svog klastera.
 function _poziPlohe(pts) {
-  const geom = _poziOpozGeom(pts);
-  if (!geom) return [];
-  return turf.flatten(geom).features.map(f => {
-    let naj = 0;
-    (pts || []).forEach(p => {
-      const t = Date.parse(p.dt);
-      if (t > naj && turf.booleanPointInPolygon(turf.point([p.lo, p.la]), f)) naj = t;
-    });
-    return { f, naj };
+  return _poziVremenskiKlasteri(pts).flatMap(k => {
+    const geom = _poziOpozGeom(k);
+    if (!geom) return [];
+    const naj = Math.max(0, ...k.map(p => Date.parse(p.dt)).filter(isFinite));
+    return turf.flatten(geom).features.map(f => ({ f, naj }));
   });
 }
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';

@@ -631,4 +631,21 @@ t('FIRMS sa ključem: Area API i za 24h/48h/7d, evropski CSV samo kao rezerva; k
   assert.ok(god.includes('_POV_GOD_SVJEZE_MS'), 'bez ponovnog dohvata godine na svako otvaranje');
 });
 
+t('plohe: spajaju se samo detekcije povezane iz dana u dan, ne sve bliske tačke', () => {
+  const src = dstSrc + '\n' + extractFn('_poziDanUTC') + '\n' + extractFn('_poziVremenskiKlasteri') + '\nreturn _poziVremenskiKlasteri;';
+  const f = new Function(src)();
+  const d = (dan, la, lo) => ({ la, lo, rez: 375, dt: '2026-08-' + String(dan).padStart(2, '0') + 'T01:30:00Z' });
+  // Požar koji napreduje ~370 m dnevno 15.–20.8. (jedan dan bez detekcije) → jedna ploha.
+  const lanac = [d(15, 44.820, 16.050), d(16, 44.8225, 16.053), d(18, 44.825, 16.056), d(19, 44.8275, 16.059), d(20, 44.830, 16.062)];
+  assert.strictEqual(f(lanac).length, 1, 'uzastopni dani i susjedni pikseli su jedna ploha');
+  // Ista blizina, ali 10 dana kasnije i 3 dana tišine → zasebne plohe.
+  const kasnije = d(30, 44.8225, 16.0535);
+  assert.strictEqual(f([...lanac, kasnije]).length, 2, 'bliska tačka iz drugog vremena se ne spaja');
+  // Isti dan, ali 1,5 km dalje → zasebno.
+  assert.strictEqual(f([d(15, 44.82, 16.05), d(15, 44.82, 16.069)]).length, 2);
+  assert.deepStrictEqual(f([]), []);
+  const plohe = HTML.slice(HTML.indexOf('function _poziPlohe('), HTML.indexOf('function _poziPlohe(') + 400);
+  assert.ok(plohe.includes('_poziVremenskiKlasteri(pts)'));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
