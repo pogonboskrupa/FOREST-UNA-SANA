@@ -617,4 +617,17 @@ t('FIRMS Area API: kanton bbox, komadi ≤10 dana, spajanje sa GFW bez duplikata
   assert.ok(god.includes('_poziFirmsPeriod(firmsKljuc, _POV_GOD_FIRMS_DANA)'));
 });
 
+t('FIRMS sa ključem: Area API i za 24h/48h/7d, evropski CSV samo kao rezerva; keš ne gazi svjež odgovor', () => {
+  const arh = HTML.slice(HTML.indexOf('async function _poziDohvatiArhive'), HTML.indexOf('async function _poziLoad('));
+  assert.ok(arh.includes('_poziFirmsPeriod(firmsKljuc, dana)'), 'kratki okviri koriste Area API');
+  assert.ok(/: firmsEvropa\(\)/.test(arh) && arh.includes('firmsEvropa().then'), 'evropski CSV bez ključa ili kad Area API padne');
+  assert.ok(arh.includes("Date.parse(p.dt) < odMs"), 'rezanje na stvarni okvir sati');
+  const obn = HTML.slice(HTML.indexOf('function _poziObnoviIzKesa()'), HTML.indexOf('function _poziObnoviIzKesa()') + 400);
+  assert.ok(obn.includes('if (_poziMeta && !_poziMeta.kes) return false;'));
+  assert.ok(HTML.includes('ključ odbijen — evropski CSV'));
+  assert.ok(HTML.includes('/^(NASA FIRMS|FIRMS|VIIRS|MODIS)/i'), 'greška se pripisuje izvoru po prefiksu, ne po riječi');
+  const god = HTML.slice(HTML.indexOf('async function _povGodLoadGodina'), HTML.indexOf('let _povGodLayer'));
+  assert.ok(god.includes('_POV_GOD_SVJEZE_MS'), 'bez ponovnog dohvata godine na svako otvaranje');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');

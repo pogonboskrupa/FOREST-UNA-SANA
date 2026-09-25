@@ -5141,6 +5141,7 @@ function _povGodGrupisiPoMjesecu(grupe) {
 // Tekuća i četiri prethodne godine; podrazumijevano je uključena samo tekuća.
 const _POV_GOD_BROJ_GODINA = 5;
 const _POV_GOD_FIRMS_DANA = 60;
+const _POV_GOD_SVJEZE_MS = 30 * 60 * 1000;
 const _POV_GOD_GODINE_KEY = 'usf_pozari_god_godine';
 const _POV_GOD_CACHE_PFX = 'usf_pozari_god_kes_';
 let _povGodPodaci = {}; // godina(broj) -> { evts, meta, busy }
@@ -5186,6 +5187,9 @@ function _povGodToggleGodina(godina, on) {
 async function _povGodLoadGodina(godina, tiho) {
   const stanje = _povGodPodaci[godina] || (_povGodPodaci[godina] = { evts: [], meta: null, busy: false });
   if (stanje.busy) return;
+  // Tiho osvježavanje (otvaranje panela) ne ponavlja desetine zahtjeva ako je
+  // godina svježe učitana — bitno na slaboj terenskoj vezi.
+  if (tiho && stanje.meta && !stanje.meta.kes && !stanje.meta.greska && Date.now() - (stanje.meta.dohvacenoMs || 0) < _POV_GOD_SVJEZE_MS) return;
   const gfwKljuc = (_poziKljucevi.gfw || '').trim(), firmsKljuc = (_poziKljucevi.firms || '').trim();
   // FIRMS Area API pokriva samo zadnjih ~2 mjeseca (NRT) — dopuna tekuće
   // godine, da se nedavni požar vidi i kad GFW upit ne prođe.
@@ -5373,8 +5377,21 @@ async function _poziDohvatiArhive(okvir) {
     if (!uspjeh.length) return { ok:false, greska: greske.join(' · ') };
     return { ok:true, pts: _poziBezDuplikata(uspjeh.flatMap(r => r.pts)), izvori: uspjeh.map(r => r.naziv), djelomicno: greske.length > 0, greske };
   }
-  const zahtjevi = _POZ_IZVORI.map(izv => ({ naziv:izv.naziv, url:_poziUrl(izv, okvir) }));
-  const proms = zahtjevi.map(z => _poziDohvatiJedan(z.naziv, z.url, 30000));
+  // Sa MAP_KEY: Area API samo za kanton (par KB). Evropski CSV za 7 dana je
+  // više MB i na terenskoj vezi istekne prije kraja — ostaje samo kao rezerva.
+  const firmsKljuc = (_poziKljucevi.firms || '').trim();
+  // Area API broji kalendarske (UTC) dane — traži se dan više, pa se reže
+  // na stvarni okvir (zadnjih 24 h, ne "od ponoći").
+  const satiOkvira = { '24h':24, '48h':48, '7d':168 }[okvir] || 24;
+  const dana = Math.ceil(satiOkvira / 24) + 1;
+  const odMs = Date.now() - satiOkvira * 3600000;
+  const firmsEvropa = () => Promise.all(_POZ_IZVORI.map(izv => _poziDohvatiJedan(izv.naziv, _poziUrl(izv, okvir), 30000)));
+  const firmsProm = firmsKljuc
+    ? _poziFirmsPeriod(firmsKljuc, dana).then(r => r.ok
+        ? [{ ok:true, naziv:r.naziv, pts:r.pts.filter(p => !(Date.parse(p.dt) < odMs)) }, ...(r.greske || []).map(g => ({ ok:false, naziv:'NASA FIRMS', greska:g.replace(/^FIRMS Area API: /, 'Area API: ') }))]
+        : firmsEvropa().then(ev => [{ ok:false, naziv:'NASA FIRMS', greska:'Area API: ' + r.greska.replace(/FIRMS Area API: /g, '') }, ...ev]))
+    : firmsEvropa();
+  const proms = [firmsProm];
   const gfwKljuc = _poziGfwOn() ? (_poziKljucevi.gfw || '').trim() : '';
   if (gfwKljuc) {
     proms.push(_poziDohvatiJedan('Global Forest Watch', _poziGfwUrl(okvir), 20000,
@@ -5384,7 +5401,7 @@ async function _poziDohvatiArhive(okvir) {
   // Ne ruši glavni prikaz ako njihov server privremeno nije dostupan.
   proms.push(_poziDohvatiJedan('Firemap.live (FireDB)', _poziFiremapUrl(), 20000,
     { parser:_poziParseFiremapJson, provjera:/"features"\s*:/ }));
-  const rez = await Promise.all(proms);
+  const rez = (await Promise.all(proms)).flat();
   const uspjeh = rez.filter(r => r.ok);
   const greske = rez.filter(r => !r.ok).map(r => r.naziv + ': ' + r.greska);
   if (!uspjeh.length) return { ok:false, greska: greske.join(' · ') };
@@ -5408,6 +5425,9 @@ function _poziLoadCache() { try { return JSON.parse(localStorage.getItem(_POZ_CA
 // Posljednji uspješan dohvat je terenski podatak — prikaži ga ODMAH pri
 // otvaranju, ne čekaj mrežu (korisnik bez signala inače vidi praznu kartu).
 function _poziObnoviIzKesa() {
+  // Svjež odgovor (i "nema požara" ili greška) ima prednost — keš je bio
+  // vraćan čim je lista prazna, pa je status lažno pisao "podaci iz keša".
+  if (_poziMeta && !_poziMeta.kes) return false;
   const c = _poziLoadCache();
   if (!c || !Array.isArray(c.pts)) return false;
   const ref = _poziRefTacka();
@@ -6153,7 +6173,10 @@ function _poziSourceStatusHtml() {
   const aktivni = new Set(m.izvori || []);
   const greske = (m.greske || (m.greska ? [m.greska] : [])).map(String);
   const ima = rx => [...aktivni].some(x => rx.test(String(x)));
-  const imaGresku = rx => greske.some(x => rx.test(x));
+  // Po izvoru s početka poruke ("NASA FIRMS: …"), ne po bilo kojoj riječi —
+  // GFW greška zna spomenuti "viirs" pa je status lažno optuživao FIRMS.
+  const greskePojedinacno = greske.flatMap(x => String(x).split(' · '));
+  const imaGresku = rx => greskePojedinacno.some(x => rx.test(x));
   const oznaka = (txt, cls) => `<span class="${cls}">${txt}</span>`;
   const statusPodatkovnogIzvora = (ukljucen, radi, greska) => {
     if (!ukljucen) return oznaka('isključeno','poz-source-off');
@@ -6165,17 +6188,19 @@ function _poziSourceStatusHtml() {
     return oznaka('bez podataka','poz-source-off');
   };
   const firmsRadi = ima(/VIIRS|MODIS|FIRMS/i);
-  const firmsGreska = imaGresku(/VIIRS|MODIS|FIRMS/i);
+  const firmsGreska = imaGresku(/^(NASA FIRMS|FIRMS|VIIRS|MODIS)/i);
+  const firmsAreaGreska = imaGresku(/^NASA FIRMS: Area API/i);
   const firmsStatus = m.okvir === '30d' && !(_poziKljucevi.firms || '').trim() ? oznaka('30 dana treba FIRMS ključ','poz-source-off')
+    : firmsRadi && firmsAreaGreska && !m.kes ? oznaka('● ključ odbijen — evropski CSV','poz-source-warn')
     : statusPodatkovnogIzvora(true,firmsRadi,firmsGreska);
   const gfwUkljucen = _poziGfwOn() || m.okvir === '30d';
   const gfwRadi = ima(/Global Forest Watch|GFW/i);
-  const gfwGreska = imaGresku(/Global Forest Watch|GFW/i);
+  const gfwGreska = imaGresku(/^(Global Forest Watch|GFW)/i);
   const age = m.dohvacenoMs ? _poziStarost(m.dohvacenoMs) : 'nije ažurirano';
   const porijeklo = m.kes ? 'keš' : (m.dohvacenoMs ? 'uživo' : '—');
   const ukupno = Number.isFinite(Number(m.ukupno)) ? Number(m.ukupno) : (_poziPts || []).length;
   const period = _poziOkvirNaziv(m.okvir || _poziOkvir());
-  const detalji = greske.length ? `<details style="margin-top:7px;"><summary style="cursor:pointer;color:#fbbf24;font-size:10px;">Detalji grešaka (${greske.length})</summary><div style="margin-top:6px;color:#94a3b8;font-size:9px;line-height:1.45;word-break:break-word;">${greske.map(_escHtml).join('<br>')}</div></details>` : '';
+  const detalji = greske.length ? `<details style="margin-top:7px;" ${(firmsGreska && !firmsRadi) || firmsAreaGreska || (gfwGreska && !gfwRadi) ? 'open' : ''}><summary style="cursor:pointer;color:#fbbf24;font-size:10px;">Detalji grešaka (${greske.length})</summary><div style="margin-top:6px;color:#94a3b8;font-size:9px;line-height:1.45;word-break:break-word;">${greske.map(_escHtml).join('<br>')}</div></details>` : '';
   return `<div class="poz-section-card" style="margin:0 0 10px !important;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
       <span style="font-size:11px;color:#94a3b8;">Status podataka · ${period}</span>
