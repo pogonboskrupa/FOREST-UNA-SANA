@@ -26,7 +26,7 @@ function t(name, fn) {
 console.log('Šumarstvo — Hansen/GFW tile URL-ovi:');
 
 t('_sumUrl gradi pokrivac 2000 URL sa pragom krošnje', () => {
-  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2024;\n"
+  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2025;\n"
     + extractFn('_sumUrl') + '\nreturn _sumUrl;';
   const _sumUrl = new Function(src)();
   const url = _sumUrl('pokrivac');
@@ -35,18 +35,19 @@ t('_sumUrl gradi pokrivac 2000 URL sa pragom krošnje', () => {
   assert.ok(url.includes('tree_cover_density_threshold=30'));
 });
 
-t('_sumUrl gradi gubitak 2001-2024 URL sa opsegom godina', () => {
-  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2024;\n"
+t('_sumUrl gradi gubitak 2001-2025 URL sa opsegom godina (Hansen v1.13)', () => {
+  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2025;\n"
     + extractFn('_sumUrl') + '\nreturn _sumUrl;';
   const _sumUrl = new Function(src)();
   const url = _sumUrl('gubitak');
   assert.ok(url.startsWith('https://tiles.globalforestwatch.org/umd_tree_cover_loss/'));
   assert.ok(url.includes('start_year=2001'));
-  assert.ok(url.includes('end_year=2024'));
+  assert.ok(url.includes('end_year=2025'));
+  assert.ok(HTML.includes('_SUM_LOSS_DO = 2025'), 'aplikacija traži i 2025.');
 });
 
 t('_sumUrl gradi rast URL bez dodatnih parametara (Hansen gain je fiksno 2000-2012)', () => {
-  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2024;\n"
+  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2025;\n"
     + extractFn('_sumUrl') + '\nreturn _sumUrl;';
   const _sumUrl = new Function(src)();
   const url = _sumUrl('rast');
@@ -54,7 +55,7 @@ t('_sumUrl gradi rast URL bez dodatnih parametara (Hansen gain je fiksno 2000-20
 });
 
 t('_sumUrl vraća null za nepoznat ključ sloja', () => {
-  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2024;\n"
+  const src = "const _SUM_TCD_THRESH = 30;\nconst _SUM_LOSS_OD = 2001, _SUM_LOSS_DO = 2025;\n"
     + extractFn('_sumUrl') + '\nreturn _sumUrl;';
   const _sumUrl = new Function(src)();
   assert.strictEqual(_sumUrl('nepostojeci'), null);
