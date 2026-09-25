@@ -1619,8 +1619,10 @@ map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 330;
 map.createPane('pozariRasterPane'); map.getPane('pozariRasterPane').style.zIndex = 430;
 map.createPane('pozariProjectionPane'); map.getPane('pozariProjectionPane').style.zIndex = 440;
 map.getPane('pozariProjectionPane').style.pointerEvents = 'none';
-// Veći padding sprečava SVG clipping pri panu (smoothFactor:0 + kompleksni poligoni).
-const _pozProjRenderer = L.svg({ padding: 0.5 });
+// Canvas (kao ostatak karte, preferCanvas) u VLASTITOM pane-u; veći padding
+// da poligon ne bude odsječen pri panu. SVG renderer bez pane-a je završavao
+// u overlayPane i pri svakom pomaku se precrtavao preko cijele karte.
+const _pozProjRenderer = L.canvas({ pane: 'pozariProjectionPane', padding: 0.5 });
 map.createPane('pozariHeatPane'); map.getPane('pozariHeatPane').style.zIndex = 445;
 map.getPane('pozariHeatPane').style.pointerEvents = 'none';
 map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 450;
@@ -5315,7 +5317,10 @@ function _povGodRenderSve() {
         // Klik na poligon jasno navodi da nije riječ o službenom premjeru.
         const boja = _povGodBoja(g, godina);
         const bojaPlohe = godina < new Date().getUTCFullYear() ? '#a97425' : '#d99a32';
-        const geom = _poziOpozOn() ? _poziOpozGeom(g.pts || []) : null;
+        // Isti požar je već nacrtan iz trenutnih detekcija — druga ploha preko
+        // njega je davala "više prikaza jedan preko drugog".
+        const vecNacrtan = (_poziEvts || []).some(e => dst(e.la, e.lo, g.la, g.lo) < _POZ_DUPLIKAT_M);
+        const geom = _poziOpozOn() && !vecNacrtan ? _poziOpozGeom(g.pts || []) : null;
         if (geom) {
           try {
             L.geoJSON(geom, { pane:'pozariProjectionPane', smoothFactor:0, renderer:_pozProjRenderer,
@@ -5568,7 +5573,7 @@ function _poziMkStarost(ms) { const h = (Date.now() - ms) / 3600000; if (!isFini
   // Zato ga prikazujemo konzervativnije: rub procjene uvlačimo za 150 m.
   // Male pojedinačne satelitske detekcije ostaju vidljive s najmanje 20 m.
 function _poziOpozBufKm(podatak) {
-  const unutrasnjiOdmakM = 150;
+  const unutrasnjiOdmakM = 150; // isti odmak kao _poziFiremapOblik
   const p = typeof podatak === 'object' ? podatak : { rez:podatak };
   const poznataHa = Number(p?.areaHa);
   // Firemapov obuhvat je već površina događaja — ekvivalentni krug je samo
@@ -5591,16 +5596,6 @@ function _poziOpozBufKm(podatak) {
     : (pouz >= 3 ? 0.95 : pouz === 2 ? 0.75 : 0.55);
   const maxM = rez >= 900 ? 100 : 70;
   return Math.max(0.02, Math.min(maxM, osnovaM * jacina) / 1000);
-}
-function _poziOpozGrupisiPoStarosti(pts) {
-  const bands = {};
-  (pts || []).forEach(p => {
-    const t = Date.parse(p.dt);
-    if (!isFinite(t)) return;
-    const id = _poziMkStarost(t).id;
-    (bands[id] = bands[id] || []).push(p);
-  });
-  return bands;
 }
 // Firemap šalje tačku za svako ažuriranje istog požara, svaku sa UKUPNOM
 // površinom — krug po tački je površinu brojao više puta i pojas je bio
@@ -5633,15 +5628,19 @@ function _poziKrugoviOko(centri, rKm) {
 // tačke), a zajednički radijus se traži bisekcijom tako da površina bude
 // jednaka Firemap površini. Bez detekcija ostaje uvučeni krug (_poziOpozBufKm).
 function _poziFiremapOblik(dog, detekcije) {
-  const ciljM2 = Number(dog.areaHa) * 10000;
-  const rEqKm = Math.sqrt(ciljM2 / Math.PI) / 1000;
+  const rEqKm = Math.sqrt(Number(dog.areaHa) * 10000 / Math.PI) / 1000;
+  // Firemap obuhvat je širi od stvarno izgorjelog; oblik se uvlači ~150 m
+  // (isti odmak kao _poziOpozBufKm), i kad prati satelitske detekcije.
+  const uvucenoKm = 0.15;
+  const rCiljKm = Math.max(0.02, rEqKm - uvucenoKm);
+  const ciljM2 = Math.PI * (rCiljKm * 1000) ** 2;
   const od = turf.point([dog.lo, dog.la]);
   const blizu = (detekcije || []).filter(d =>
     turf.distance(od, turf.point([d.lo, d.la]), { units: 'kilometers' }) <= rEqKm + 0.4);
   if (blizu.length < 2) return turf.buffer(od, _poziOpozBufKm(dog), { units: 'kilometers' });
   const centri = [dog, ...blizu];
   const povrsina = rKm => { const g = _poziKrugoviOko(centri, rKm); return g ? turf.area(g) : 0; };
-  let lo = 0.02, hi = rEqKm;
+  let lo = 0.02, hi = rCiljKm;
   if (povrsina(lo) >= ciljM2) return _poziKrugoviOko(centri, lo);
   for (let i = 0; i < 14; i++) {
     const mid = (lo + hi) / 2;
@@ -5661,7 +5660,7 @@ function _poziOpozGeom(pts, oblikPts) {
   } catch(e) { return null; }
 }
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
-const _POZ_OPOZ_REDOSLIJED = ['st', 'd3', 'h24', 'h6']; // starije ispod, svježe iznad (kao legenda)
+const _POZ_DUPLIKAT_M = 1500;
 const _POZ_OPOZ_BOJE = { h6: '#f6c667', h24: '#e6aa42', d3: '#c98527', st: '#95611d' };
 function _poziOpozOn() { try { const v = localStorage.getItem(_POZ_OPOZ_KEY); return v === null ? true : v === '1'; } catch(e) { return true; } }
 function _poziOpozToggle(on) {
@@ -5681,21 +5680,17 @@ function _poziOpozAzuriraj() {
   if (legEl) legEl.style.display = nacrtano ? 'block' : 'none';
   if (!nacrtano) return;
   const grp = L.layerGroup();
+  // Jedan poligon po požaru, obojen po starosti NAJNOVIJE detekcije. Ranije
+  // je svaki starosni pojas bio zaseban poligon sa svojim obrisom — više
+  // prozirnih ploha jedna preko druge je titralo pri pomjeranju karte.
   prikazane.forEach(g => {
-    // Starija Firemap ažuriranja istog požara se izbace PRIJE podjele po
-    // starosti, inače bi stara tačka ostala crtana u starijem bandu.
-    const svi = _poziFiremapNajnovije(g.pts);
-    const bands = _poziOpozGrupisiPoStarosti(svi);
-    _POZ_OPOZ_REDOSLIJED.forEach(id => {
-      const pts = bands[id];
-      if (!pts || !pts.length) return;
-      const geom = _poziOpozGeom(pts);
-      if (!geom) return;
-      try {
-        L.geoJSON(geom, { pane: 'pozariProjectionPane', smoothFactor: 0, renderer: _pozProjRenderer,
-          style: { color: _POZ_OPOZ_BOJE[id], weight: 1.6, fillColor: _POZ_OPOZ_BOJE[id], fillOpacity: 0.42 } }).addTo(grp);
-      } catch(e) {}
-    });
+    const geom = _poziOpozGeom(_poziFiremapNajnovije(g.pts));
+    if (!geom) return;
+    const boja = _POZ_OPOZ_BOJE[_poziMkStarost(Number(g.zadnji)).id] || _POZ_OPOZ_BOJE.st;
+    try {
+      L.geoJSON(geom, { pane: 'pozariProjectionPane', smoothFactor: 0, renderer: _pozProjRenderer,
+        style: { color: boja, weight: 1.6, fillColor: boja, fillOpacity: 0.42 } }).addTo(grp);
+    } catch(e) {}
   });
   _poziOpozLayer = grp.addTo(map);
 }
@@ -5787,10 +5782,16 @@ const _PoziHeat = L.Layer.extend({
     if (!this._latlngs.length) return;
     const img = ctx.getImageData(0, 0, this._canvas.width, this._canvas.height);
     const d = img.data, pal = this._palette;
+    // Normalizacija: najgušće mjesto u prikazu dobija punu boju. Bez toga je
+    // par detekcija (tipično na terenu) davao samo blijedu kremastu mrlju.
+    let maxA = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > maxA) maxA = d[i];
+    const k = maxA ? 255 / maxA : 1;
     for (let i = 3; i < d.length; i += 4) {
-      const a = d[i]; if (!a) continue;
-      const off = a * 4;
+      const a0 = d[i]; if (!a0) continue;
+      const a = Math.min(255, Math.round(a0 * k)), off = a * 4;
       d[i-3] = pal[off]; d[i-2] = pal[off+1]; d[i-1] = pal[off+2];
+      d[i] = Math.min(235, 60 + a * 0.75);
     }
     ctx.putImageData(img, 0, 0);
   },
@@ -5884,7 +5885,7 @@ function _poziRender() {
   if (_poziHeatLayer) { try { map.removeLayer(_poziHeatLayer); } catch(e) {} }
   const heatPts = _poziSamoAktivni() ? prikazane.flatMap(g => g.pts || []) : (_poziPts || []);
   if (_poziOn && _poziHeatOn() && heatPts.length) {
-    if (!_poziHeatLayer) _poziHeatLayer = new _PoziHeat([], { pane:'pozariHeatPane', gradient:{ 0.3:'#fff3c4', 0.6:'#f2d184', 0.85:'#d6a84b', 1:'#9b742c' } });
+    if (!_poziHeatLayer) _poziHeatLayer = new _PoziHeat([], { pane:'pozariHeatPane', gradient:{ 0.15:'#fde047', 0.45:'#fb923c', 0.75:'#ef4444', 1:'#7f1d1d' } });
     _poziHeatLayer.setLatLngs(heatPts.map(p => [p.la, p.lo]));
     _poziHeatLayer.addTo(map);
   }
@@ -6361,6 +6362,9 @@ function _poziRenderPanel() {
   const operativni = document.getElementById('poz-operativni'); if (operativni) operativni.innerHTML = _poziOperativniHtml();
   const sourceStatus = document.getElementById('poz-source-status'); if (sourceStatus) sourceStatus.innerHTML = _poziSourceStatusHtml();
   const onOff = document.getElementById('poz-on-switch'); if (onOff) onOff.classList.toggle('on', _poziOn);
+  // Prekidač prati postavku — ranije je izgledao ugašen dok detekcije još nisu stigle.
+  const heatSw = document.getElementById('poz-heat-switch');
+  if (heatSw) { const ima = (_poziPts || []).length > 0; heatSw.classList.toggle('on', _poziHeatOn()); heatSw.style.opacity = ima ? '1' : '.6'; heatSw.title = ima ? '' : 'Heatmap će se prikazati kad stignu detekcije'; }
   const tacke = document.getElementById('poz-layer-points'); if (tacke) tacke.checked = _poziSlojOn('tacke');
   const oznake = document.getElementById('poz-layer-main'); if (oznake) oznake.checked = _poziSlojOn('oznake');
   const ploha = document.getElementById('poz-layer-area'); if (ploha) ploha.checked = _poziOpozOn();
@@ -6385,7 +6389,6 @@ async function openPozariSection() {
   const fEl = document.getElementById('poz-key-firms'), gEl = document.getElementById('poz-key-gfw');
   if (fEl) fEl.value = _poziKljucevi.firms || '';
   if (gEl) gEl.value = _poziKljucevi.gfw || '';
-  const heatSw = document.getElementById('poz-heat-switch'); if (heatSw) { const imaHeat = (_poziPts || []).length > 0; heatSw.classList.toggle('on', imaHeat && _poziHeatOn()); heatSw.style.opacity = imaHeat ? '1' : '.38'; heatSw.title = imaHeat ? '' : 'Nema učitanih detekcija za heatmap'; }
   const notifChk = document.getElementById('poz-notif-chk'); if (notifChk) notifChk.checked = _poziNotifOn();
   const gfwSw = document.getElementById('poz-gfw-switch'); if (gfwSw) gfwSw.classList.toggle('on', _poziGfwOn());
   const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));

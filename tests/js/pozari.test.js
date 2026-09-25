@@ -298,23 +298,6 @@ t('_poziSimPodaciZaDan je kumulativan — dan N sadrži sve detekcije zaključno
   assert.ok(dan2.ha > dan1.ha, 'kumulativna površina mora rasti sa danima');
 });
 
-t('_poziOpozGrupisiPoStarosti raspoređuje tačke po ISTIM bandovima kao markeri (_POZ_MK_STAROST)', () => {
-  const src = "const _POZ_MK_STAROST = [{id:'h6',maxH:6,fill:'#fdba74'},{id:'h24',maxH:24,fill:'#fb923c'},{id:'d3',maxH:72,fill:'#c2410c'},{id:'st',maxH:Infinity,fill:'#292524'}];\n" +
-    extractFn('_poziMkStarost') + '\n' + extractFn('_poziOpozGrupisiPoStarosti') + '\nreturn _poziOpozGrupisiPoStarosti;';
-  const _poziOpozGrupisiPoStarosti = new Function(src)();
-  const now = Date.now();
-  const pts = [
-    { la: 44.8, lo: 16.0, dt: new Date(now - 2 * 3600000).toISOString() },   // 2h -> h6
-    { la: 44.8, lo: 16.0, dt: new Date(now - 10 * 3600000).toISOString() },  // 10h -> h24
-    { la: 44.8, lo: 16.0, dt: new Date(now - 5 * 86400000).toISOString() }   // 5 dana -> st
-  ];
-  const bands = _poziOpozGrupisiPoStarosti(pts);
-  assert.strictEqual(bands.h6.length, 1);
-  assert.strictEqual(bands.h24.length, 1);
-  assert.strictEqual(bands.st.length, 1);
-  assert.strictEqual(bands.d3, undefined);
-});
-
 t('_poziOpozBufKm koristi jačinu i rezoluciju bez automatskog pojasa od 400m', () => {
   const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\nreturn _poziOpozBufKm;';
   const _poziOpozBufKm = new Function(src)();
@@ -365,7 +348,9 @@ t('Firemap: jedna (najnovija) tačka po požaru, oblik po detekcijama sa tačnom
   const det = [0, 1, 2, 3, 4].map(i => ({ la: 44.806, lo: 16.000 + i * 0.004, dt: '2026-09-21T08:00:00Z', rez: 375, frp: 5 }));
   const geom = _poziOpozGeom([stari, novi, ...det]);
   const ha = turf.area(geom) / 10000;
-  assert.ok(Math.abs(ha - 20) < 0.6, 'površina oblika mora biti ≈ Firemap 20 ha, dobijeno ' + ha.toFixed(2));
+  // Firemap 20 ha → ekvivalentni radijus ~252 m, uvučen 150 m → ~102 m (~3.3 ha).
+  const ocekHa = Math.PI * (Math.sqrt(20 * 10000 / Math.PI) - 150) ** 2 / 10000;
+  assert.ok(Math.abs(ha - ocekHa) < 0.3, 'površina oblika mora biti Firemap uvučen 150 m (' + ocekHa.toFixed(2) + ' ha), dobijeno ' + ha.toFixed(2));
   const [minX, minY, maxX, maxY] = turf.bbox(geom);
   const sirinaM = turf.distance([minX, minY], [minX, maxY], { units: 'kilometers' }) * 1000;
   const duzinaM = turf.distance([minX, minY], [maxX, minY], { units: 'kilometers' }) * 1000;
@@ -487,7 +472,8 @@ t('status izvora razlikuje uživo, keš, grešku, isključeno i WMS stanje', () 
   assert.ok(HTML.includes('tačaka ·'));
   assert.ok(HTML.includes('nije dostupno za 30 dana'));
   assert.ok(HTML.includes("usf_poz_effis_oker_v6"));
-  assert.ok(HTML.includes("heatSw.style.opacity = imaHeat ? '1' : '.38'"));
+  // Heatmap prekidač prati postavku, a ne to da li su detekcije već stigle.
+  assert.ok(HTML.includes("heatSw.classList.toggle('on', _poziHeatOn())"));
 });
 
 t('modal grupe nudi cijeli požar i simulaciju, a historija šest filtera', () => {
@@ -593,6 +579,21 @@ t('FIRMS/GFW ključevi ostaju na uređaju i ne brišu se praznim Firestore odgov
   assert.ok(cuvaj.indexOf('_poziKljucLokalnoSacuvaj()') < cuvaj.indexOf('fbDb.collection'), 'lokalno čuvanje prije (i bez) Firestore upisa');
   const fb = fs.readFileSync(path.join(__dirname, '../../static/js/firebase-init.js'), 'utf8');
   assert.ok(fb.includes("new Event('usf-fb-ready')"));
+});
+
+t('projekcija: jedan poligon po požaru, canvas u vlastitom pane-u, bez duplikata iz godišnjeg sloja', () => {
+  assert.ok(HTML.includes("L.canvas({ pane: 'pozariProjectionPane'"), 'renderer mora biti u pozariProjectionPane');
+  assert.ok(!/L\.svg\(\{ padding/.test(HTML));
+  const opoz = HTML.slice(HTML.indexOf('function _poziOpozAzuriraj()'), HTML.indexOf('function _poziIconGrupa'));
+  assert.strictEqual((opoz.match(/L\.geoJSON\(/g) || []).length, 1);
+  assert.ok(!opoz.includes('_poziOpozGrupisiPoStarosti'), 'nema više zasebnih poligona po starosti');
+  assert.ok(HTML.includes('vecNacrtan') && HTML.includes('_POZ_DUPLIKAT_M'));
+});
+
+t('heatmap normalizuje gustinu (par detekcija nije blijed) i ima izraženu paletu', () => {
+  const heat = HTML.slice(HTML.indexOf('const _PoziHeat'), HTML.indexOf('let _poziHeatLayer'));
+  assert.ok(heat.includes('maxA') && heat.includes('255 / maxA'));
+  assert.ok(HTML.includes("0.75:'#ef4444'"));
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
