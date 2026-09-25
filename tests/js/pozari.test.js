@@ -597,7 +597,7 @@ t('ploha iz detekcija: susjedni pikseli se spajaju u jednu plohu, udaljeni poža
   assert.strictEqual(f([]), null);
 });
 
-t('FIRMS Area API: kanton bbox, komadi ≤10 dana, spajanje sa GFW bez duplikata', () => {
+t('FIRMS Area API: kanton bbox, komadi ≤5 dana (limit servera), spajanje sa GFW bez duplikata', () => {
   const src = 'const _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };\nconst _POZ_FIRMS_AREA = "https://firms.modaps.eosdis.nasa.gov/api/area/csv/";\n'
     + ['_poziFirmsAreaUrl', '_poziFirmsKomadi', '_poziBezDuplikata'].map(extractFn).join('\n') + '\nreturn { _poziFirmsAreaUrl, _poziFirmsKomadi, _poziBezDuplikata };';
   const f = new Function(src)();
@@ -606,7 +606,8 @@ t('FIRMS Area API: kanton bbox, komadi ≤10 dana, spajanje sa GFW bez duplikata
   const sada = Date.parse('2026-09-25T12:00:00Z');
   const k60 = f._poziFirmsKomadi(60, sada);
   assert.strictEqual(k60[0].od, '2026-07-28');
-  assert.ok(k60.every(k => k.dana >= 1 && k.dana <= 10));
+  assert.ok(k60.every(k => k.dana >= 1 && k.dana <= 5), 'FIRMS odbija DAY_RANGE > 5');
+  assert.strictEqual(k60.length, 12);
   assert.strictEqual(k60.reduce((s, k) => s + k.dana, 0), 60, 'pokriva tačno 60 dana, do danas');
   assert.ok(k60.some(k => k.od <= '2026-08-15') && k60.some(k => k.od >= '2026-09-01'), 'uključuje period požara 15.8.–5.9.');
   const p = { la: 44.82, lo: 16.05, dt: '2026-08-20T01:30:00Z' };
@@ -614,7 +615,7 @@ t('FIRMS Area API: kanton bbox, komadi ≤10 dana, spajanje sa GFW bez duplikata
   const arh = HTML.slice(HTML.indexOf('async function _poziDohvatiArhive'), HTML.indexOf('async function _poziLoad('));
   assert.ok(arh.includes('_poziFirmsPeriod(firmsKljuc, 30)'));
   const god = HTML.slice(HTML.indexOf('async function _povGodLoadGodina'), HTML.indexOf('let _povGodLayer'));
-  assert.ok(god.includes('_poziFirmsPeriod(firmsKljuc, _POV_GOD_FIRMS_DANA)'));
+  assert.ok(god.includes('_poziFirmsPeriod(firmsKljuc, _POV_GOD_FIRMS_DANA,'));
 });
 
 t('FIRMS sa ključem: Area API i za 24h/48h/7d, evropski CSV samo kao rezerva; keš ne gazi svjež odgovor', () => {

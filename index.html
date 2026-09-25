@@ -5202,7 +5202,8 @@ async function _povGodLoadGodina(godina, tiho) {
     const [g, f] = await Promise.all([
       gfwKljuc ? _poziDohvatiJedan('GFW ' + godina + '. godina', _povGodUrl(godina), 35000,
         { headers: { 'x-api-key': gfwKljuc }, parser: _poziParseGfwJson, provjera: /"data"\s*:/ }) : null,
-      firmsDopuna ? _poziFirmsPeriod(firmsKljuc, _POV_GOD_FIRMS_DANA) : null
+      // Samo VIIRS (375 m) — 60 dana u komadima po 5 je već 36 zahtjeva.
+      firmsDopuna ? _poziFirmsPeriod(firmsKljuc, _POV_GOD_FIRMS_DANA, _POZ_FIRMS_AREA_IZVORI.filter(x => x.startsWith('VIIRS'))) : null
     ]);
     const uspjeh = [g, f].filter(r => r && r.ok);
     const greske = [...(f?.greske || []), ...[g, f].filter(r => r && !r.ok).map(r => (r === g ? 'GFW: ' : '') + r.greska)];
@@ -5321,7 +5322,7 @@ function _povGodKpiHtml() {
 // DRUGI SERVER za iste NASA detekcije — pita se paralelno (opt-in, treba
 // admin ključ) jer je bbox upit mali, korisno kad FIRMS arhiva ne prolazi.
 // ── FIRMS Area API (treba MAP_KEY): bbox kantona, bilo koji period iz zadnjih
-// ~2 mjeseca (NRT), u komadima od najviše 10 dana. Besplatna arhiva ide samo
+// ~2 mjeseca (NRT), u komadima od najviše 5 dana (server odbija >5: "Expects [1..5]"). Besplatna arhiva ide samo
 // 7 dana unazad, pa bez ovoga požar od prije 3–6 sedmica nije bio vidljiv. ──
 const _POZ_FIRMS_AREA = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv/';
 const _POZ_FIRMS_AREA_IZVORI = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'MODIS_NRT'];
@@ -5329,12 +5330,13 @@ function _poziFirmsAreaUrl(kljuc, izvor, odDatum, dana) {
   const bbox = [_USK_BBOX.lonMin, _USK_BBOX.latMin, _USK_BBOX.lonMax, _USK_BBOX.latMax].map(v => v.toFixed(3)).join(',');
   return _POZ_FIRMS_AREA + encodeURIComponent(kljuc) + '/' + izvor + '/' + bbox + '/' + dana + '/' + odDatum;
 }
-// Komadi [odDatum, dana] od `danaUnazad` dana prije danas do danas, po ≤10 dana.
+// Komadi [odDatum, dana] od `danaUnazad` dana prije danas do danas, po ≤5 dana.
 function _poziFirmsKomadi(danaUnazad, sadaMs) {
   const dan = 86400000, kraj = Math.floor((sadaMs || Date.now()) / dan) * dan;
   const out = [];
-  for (let od = kraj - (danaUnazad - 1) * dan; od <= kraj; od += 10 * dan) {
-    out.push({ od: new Date(od).toISOString().slice(0, 10), dana: Math.min(10, Math.round((kraj - od) / dan) + 1) });
+  const MAX_DANA = 5;
+  for (let od = kraj - (danaUnazad - 1) * dan; od <= kraj; od += MAX_DANA * dan) {
+    out.push({ od: new Date(od).toISOString().slice(0, 10), dana: Math.min(MAX_DANA, Math.round((kraj - od) / dan) + 1) });
   }
   return out;
 }
@@ -5347,9 +5349,9 @@ function _poziBezDuplikata(pts) {
     vidjeno.add(k); return true;
   });
 }
-async function _poziFirmsPeriod(kljuc, danaUnazad) {
+async function _poziFirmsPeriod(kljuc, danaUnazad, izvori) {
   const poslovi = [];
-  _poziFirmsKomadi(danaUnazad).forEach(k => _POZ_FIRMS_AREA_IZVORI.forEach(izv => poslovi.push({ izv, k })));
+  _poziFirmsKomadi(danaUnazad).forEach(k => (izvori || _POZ_FIRMS_AREA_IZVORI).forEach(izv => poslovi.push({ izv, k })));
   const rez = [];
   // Po 4 zahtjeva odjednom — terenska veza, ne gušiti je desetinama paralelnih.
   for (let i = 0; i < poslovi.length; i += 4) {
