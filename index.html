@@ -6410,24 +6410,42 @@ async function openPozariSection() {
 // sljedećoj fazi. Trenutni dohvat (arhivski CSV) NE treba ključ; ovo samo
 // upisuje/čita dijeljenu vrijednost preko Firestore (usf_pozari_kljucevi,
 // vidi firebase/firestore.rules — čitanje svima, upis samo usf_admins). ──
+// Lokalna kopija: bez nje su ključevi nestajali kad Firebase kasni (slab
+// signal, prijava još traje) ili kad uređaj nije admin pa upis bude odbijen.
+const _POZ_KLJUC_LOKAL = 'usf_pozari_kljucevi';
 let _poziKljucevi = { firms: '', gfw: '' };
+try { const k = JSON.parse(localStorage.getItem(_POZ_KLJUC_LOKAL) || 'null'); if (k) _poziKljucevi = { firms: k.firms || '', gfw: k.gfw || '' }; } catch(e) {}
+function _poziKljucLokalnoSacuvaj() { try { localStorage.setItem(_POZ_KLJUC_LOKAL, JSON.stringify(_poziKljucevi)); } catch(e) {} }
 async function _poziKljucUcitaj() {
   if (!fbDb) return;
   try {
     const snap = await _withTimeout(fbDb.collection('usf_pozari_kljucevi').doc('glavni').get(), 8000);
-    if (snap.exists) _poziKljucevi = { firms: snap.data().firms || '', gfw: snap.data().gfw || '' };
+    if (!snap.exists) return;
+    const d = snap.data() || {};
+    // Prazna vrijednost iz Firestore-a ne briše lokalno sačuvan ključ.
+    const novi = { firms: d.firms || _poziKljucevi.firms, gfw: d.gfw || _poziKljucevi.gfw };
+    const promjena = novi.firms !== _poziKljucevi.firms || novi.gfw !== _poziKljucevi.gfw;
+    _poziKljucevi = novi;
+    _poziKljucLokalnoSacuvaj();
+    if (promjena) {
+      const fEl = document.getElementById('poz-key-firms'), gEl = document.getElementById('poz-key-gfw');
+      if (fEl && !fEl.value) fEl.value = novi.firms;
+      if (gEl && !gEl.value) gEl.value = novi.gfw;
+    }
   } catch(e) {}
 }
+window.addEventListener('usf-fb-ready', () => { _poziKljucUcitaj(); });
 async function _poziAdminSacuvajKljuceve() {
-  if (!fbDb || !fbUid) { showToast('⚠ Firebase nije spreman — provjeri Postavke'); return; }
   const firms = document.getElementById('poz-key-firms')?.value.trim() || '';
   const gfw = document.getElementById('poz-key-gfw')?.value.trim() || '';
+  _poziKljucevi = { firms, gfw };
+  _poziKljucLokalnoSacuvaj();
+  if (!fbDb || !fbUid) { showToast('💾 Ključevi sačuvani na ovom uređaju (Firebase nije spreman za dijeljenje)'); return; }
   try {
     await fbDb.collection('usf_pozari_kljucevi').doc('glavni').set({ firms, gfw, updatedBy: fbUid, updatedAt: Date.now() }, { merge: true });
-    _poziKljucevi = { firms, gfw };
-    showToast('✅ Ključevi sačuvani (koristiće se kad Area API/GFW bude dodan)');
+    showToast('✅ Ključevi sačuvani i podijeljeni sa svim uređajima');
   } catch(e) {
-    showToast('⚠ Upis odbijen — samo admin (usf_admins) može mijenjati ključeve');
+    showToast('💾 Sačuvano na ovom uređaju — dijeljenje sa drugima može samo admin (usf_admins)');
   }
 }
 

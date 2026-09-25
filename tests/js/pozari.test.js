@@ -584,4 +584,15 @@ t('EFFIS se jednokratno isključuje i kod korisnika koji su ga uključili (v7)',
   assert.ok(/opozareno:false, detekcije:false, fwi:false/.test(blok));
 });
 
+t('FIRMS/GFW ključevi ostaju na uređaju i ne brišu se praznim Firestore odgovorom', () => {
+  const blok = HTML.slice(HTML.indexOf("const _POZ_KLJUC_LOKAL"), HTML.indexOf("async function _poziAdminSacuvajKljuceve"));
+  assert.ok(blok.includes("localStorage.getItem(_POZ_KLJUC_LOKAL)"), 'ključevi se čitaju lokalno pri pokretanju');
+  assert.ok(/d\.gfw \|\| _poziKljucevi\.gfw/.test(blok), 'prazan Firestore ne briše lokalni ključ');
+  assert.ok(HTML.includes("addEventListener('usf-fb-ready'"), 'ponovo čitanje kad Firebase postane spreman');
+  const cuvaj = HTML.slice(HTML.indexOf("async function _poziAdminSacuvajKljuceve"), HTML.indexOf("async function _poziAdminSacuvajKljuceve") + 900);
+  assert.ok(cuvaj.indexOf('_poziKljucLokalnoSacuvaj()') < cuvaj.indexOf('fbDb.collection'), 'lokalno čuvanje prije (i bez) Firestore upisa');
+  const fb = fs.readFileSync(path.join(__dirname, '../../static/js/firebase-init.js'), 'utf8');
+  assert.ok(fb.includes("new Event('usf-fb-ready')"));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');

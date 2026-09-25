@@ -51,6 +51,7 @@ async function _fbInit() {
 function _fbOnReady() {
   const el = document.getElementById('set-uid-txt');
   if (el) el.textContent = fbUid;
+  try { window.dispatchEvent(new Event('usf-fb-ready')); } catch(e) {}
 }
 
 _fbInit();
