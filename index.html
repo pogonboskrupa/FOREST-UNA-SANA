@@ -113,11 +113,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 #layer-switch button.active { background:rgba(22,101,52,.45); border-color:rgba(74,222,128,.55); color:#bbf7d0; }
 
-#offline-banner {
-  position:fixed; top:0; left:0; right:0; z-index:900; display:none;
-  background:#7c2d12; color:#fff; font-size:12px; text-align:center;
-  padding:6px 8px; padding-top:calc(6px + env(safe-area-inset-top));
-}
 
 /* === Custom dialog sheet (zamjenjuje native alert/confirm/prompt) ===
    Kopirano iz dokazanog US-SUME obrasca — WebView native confirm() prikazuje
@@ -668,7 +663,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 </head>
 <body>
 
-<div id="offline-banner">📡 Offline — GPS, tragovi i učitane karte rade bez interneta</div>
 
 <div id="map"></div>
 <div id="base-load-status" role="status">⏳ Učitavam posljednju offline kartu…</div>
@@ -921,6 +915,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="postavke-panel" class="usf-panel">
   <div class="up-hdr"><h2>⚙ Postavke</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
+    <div class="set-row" id="set-mreza-row" style="display:none;">
+      <span>Stanje veze</span>
+      <b id="set-mreza-txt"></b>
+    </div>
     <div class="set-row"><span>Verzija aplikacije</span><b id="set-ver-txt" style="color:#4ade80;"></b></div>
     <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px;">
       <span>Uređaj ID (za admin pristup)</span>
@@ -1344,19 +1342,21 @@ function _vezaLoša() {
   return nedavne.length >= 3 && nedavne.filter(m => !m.ok).length >= 3;
 }
 
-// ── Offline / slaba veza — banner ───────────────────────────────────
+// ── Stanje veze — prikazuje se samo u Postavke tabu ─────────────────
 function _updOfflineBanner() {
-  const el = document.getElementById('offline-banner');
+  const row = document.getElementById('set-mreza-row');
+  const txt = document.getElementById('set-mreza-txt');
+  if (!row || !txt) return;
   if (!navigator.onLine) {
-    el.textContent = '📡 Offline — GPS, tragovi i učitane karte rade bez interneta';
-    el.style.background = '#7c2d12';
-    el.style.display = 'block';
+    txt.textContent = '📡 Offline';
+    txt.style.color = '#f87171';
+    row.style.display = '';
   } else if (_vezaLoša()) {
-    el.textContent = '📶 Slaba veza — online slojevi mogu biti spori ili nedostupni';
-    el.style.background = '#78350f';
-    el.style.display = 'block';
+    txt.textContent = '📶 Slaba veza';
+    txt.style.color = '#fb923c';
+    row.style.display = '';
   } else {
-    el.style.display = 'none';
+    row.style.display = 'none';
   }
 }
 window.addEventListener('online', _updOfflineBanner);
@@ -7982,6 +7982,7 @@ function openUcitajKartuSection() { _openStubPanel('ucitajkartu-panel', 'karte')
 function openUcitajKmlSection()   { _openStubPanel('ucitajkml-panel', 'karte'); }
 
 function _renderPostavke() {
+  _updOfflineBanner();
   const el = document.getElementById('set-ver-txt');
   if (el) el.textContent = APP_VER;
   const uidEl = document.getElementById('set-uid-txt');
