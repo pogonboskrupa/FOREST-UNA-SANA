@@ -4486,6 +4486,13 @@ try {
     localStorage.setItem('usf_poz_effis_oker_v6', '1');
     localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
   }
+  // v7: ponovo isključi sve EFFIS slojeve i kod korisnika koji su ih ručno uključili
+  // (EFFIS server nepouzdano isporučuje pločice na terenu).
+  if (localStorage.getItem('usf_poz_effis_off_v7') !== '1') {
+    _poziEffisState = { opozareno:false, detekcije:false, fwi:false };
+    localStorage.setItem('usf_poz_effis_off_v7', '1');
+    localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
+  }
 } catch(e) {}
 function _poziEffisOn(key) { return !!_poziEffisState[key]; }
 function _poziEffisSyncMap() {

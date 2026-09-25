@@ -579,4 +579,9 @@ t('EFFIS WMS ponovo traži neuspjelu pločicu i zadržava stare pri zumu', () =>
   assert.strictEqual((blok.match(/new _EffisWms\(/g) || []).length, 3);
 });
 
+t('EFFIS se jednokratno isključuje i kod korisnika koji su ga uključili (v7)', () => {
+  const blok = HTML.slice(HTML.indexOf("usf_poz_effis_off_v7") - 200, HTML.indexOf("usf_poz_effis_off_v7") + 400);
+  assert.ok(/opozareno:false, detekcije:false, fwi:false/.test(blok));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
