@@ -5213,23 +5213,23 @@ function _povGodRenderSve() {
   if (_poziOn && oznacene.length) {
     const grp = L.layerGroup([], { pane: 'pozariPane' });
     oznacene.forEach(godina => {
-      _povGodPodaci[godina].evts.forEach(g => {
-        // Procijenjena opožarena površina je ispod tačaka i glavne oznake.
-        // Klik na poligon jasno navodi da nije riječ o službenom premjeru.
-        const boja = _povGodBoja(g, godina);
-        const bojaPlohe = godina < new Date().getUTCFullYear() ? '#a97425' : '#d99a32';
-        // Isti požar je već nacrtan iz trenutnih detekcija — druga ploha preko
-        // njega je davala "više prikaza jedan preko drugog".
-        const vecNacrtan = (_poziEvts || []).some(e => dst(e.la, e.lo, g.la, g.lo) < _POZ_DUPLIKAT_M);
-        const geom = _poziOpozOn() && !vecNacrtan ? _poziOpozGeom(g.pts || []) : null;
-        if (geom) {
+      // Procijenjena opožarena površina je ispod tačaka i glavne oznake; plohe
+      // se računaju nad svim detekcijama godine zajedno (vidi _poziPlohe).
+      // Požar koji je već nacrtan iz trenutnih detekcija se preskače — druga
+      // ploha preko njega je davala "više prikaza jedan preko drugog".
+      const bojaPlohe = godina < new Date().getUTCFullYear() ? '#a97425' : '#d99a32';
+      if (_poziOpozOn()) {
+        const pts = _povGodPodaci[godina].evts
+          .filter(g => !(_poziEvts || []).some(e => dst(e.la, e.lo, g.la, g.lo) < _POZ_DUPLIKAT_M))
+          .flatMap(g => g.pts || []);
+        _poziPlohe(pts).forEach(({ f }) => {
           try {
-            L.geoJSON(geom, { pane:'pozariProjectionPane', smoothFactor:0, renderer:_pozProjRenderer,
-              style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.42 } })
-              .bindPopup(() => `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;"><b style="color:#fb923c;">Procijenjena opožarena površina</b><div style="font-size:18px;font-weight:800;margin:5px 0;">${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div><small style="color:#94a3b8;">Iz satelitskih piksela — nije službeno izmjerena granica.</small></div>`)
-              .addTo(grp);
+            L.geoJSON(f, { pane:'pozariProjectionPane', smoothFactor:0, renderer:_pozProjRenderer,
+              style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.42 } }).addTo(grp);
           } catch(e) {}
-        }
+        });
+      }
+      _povGodPodaci[godina].evts.forEach(g => {
         // Svaka stvarna satelitska detekcija ostaje vidljiva po defaultu i stilizovana je prema pouzdanosti.
         if (_poziSlojOn('tacke')) (g.pts || []).forEach(p => {
           L.circleMarker([p.la,p.lo], { ..._poziTackaStil(p), pane:'pozariDetectionsPane' })
@@ -5549,16 +5549,50 @@ function _poziFiremapOblik(dog, detekcije) {
   }
   return _poziKrugoviOko(centri, lo);
 }
+// Ploha iz satelitskih detekcija: morfološko zatvaranje — svaka detekcija
+// se proširi toliko da se susjedni pikseli (i dijagonalni, do ~525 m za
+// VIIRS) spoje, pa se sve uvuče nazad. Rezultat je JEDNA povezana ploha sa
+// rubom ~0,2 piksela iza krajnjih detekcija (VIIRS ~75 m, MODIS ~200 m);
+// krug po detekciji je davao samo razbacane oker tačke.
+function _poziZatvorenaPloha(det) {
+  if (!det.length) return null;
+  const _POZ_ZATV_SIRI = 1.3333, _POZ_ZATV_RUB = 0.2;
+  const rez = p => (Number(p?.rez) >= 900 ? 1000 : 375);
+  const uvuciKm = (_POZ_ZATV_SIRI - _POZ_ZATV_RUB) * Math.min(...det.map(rez)) / 1000;
+  const prosireno = _poziUnija(det.map(p => turf.buffer(turf.point([p.lo, p.la]), uvuciKm + _POZ_ZATV_RUB * rez(p) / 1000, { units: 'kilometers' })));
+  if (!prosireno) return null;
+  const z = turf.buffer(prosireno, -uvuciKm, { units: 'kilometers' });
+  return z && z.geometry && turf.area(z) > 0 ? z : null;
+}
 function _poziOpozGeom(pts, oblikPts) {
   if (!pts || !pts.length || typeof turf === 'undefined') return null;
   try {
     const cisto = _poziFiremapNajnovije(pts);
+    const fm = cisto.filter(p => Number(p?.areaHa) > 0);
     const detekcijeOblika = (oblikPts || pts).filter(p => !(Number(p?.areaHa) > 0));
-    const dijelovi = cisto.map(p => Number(p?.areaHa) > 0
-      ? _poziFiremapOblik(p, detekcijeOblika)
-      : turf.buffer(turf.point([p.lo, p.la]), _poziOpozBufKm(p), { units: 'kilometers' }));
+    // Detekcije koje već oblikuju Firemap plohu (površina poznata) ne crtaju se
+    // ponovo — inače bi zatvaranje poništilo uvlačenje Firemap obuhvata.
+    const blizuFm = d => fm.some(f => turf.distance(turf.point([f.lo, f.la]), turf.point([d.lo, d.la]), { units: 'kilometers' })
+      <= Math.sqrt(Number(f.areaHa) * 10000 / Math.PI) / 1000 + 0.4);
+    const det = cisto.filter(p => !(Number(p?.areaHa) > 0) && !blizuFm(p));
+    const dijelovi = [...fm.map(p => _poziFiremapOblik(p, detekcijeOblika)), _poziZatvorenaPloha(det)];
     return _poziUnija(dijelovi.filter(Boolean));
   } catch(e) { return null; }
+}
+// Plohe za prikaz: zatvaranje nad SVIM detekcijama zajedno (grupisanje u
+// požare je strože, ~350 m, pa bi ploha po grupi ostala rascjepkana), pa
+// podjela na odvojene plohe; svaka nosi vrijeme najnovije detekcije u sebi.
+function _poziPlohe(pts) {
+  const geom = _poziOpozGeom(pts);
+  if (!geom) return [];
+  return turf.flatten(geom).features.map(f => {
+    let naj = 0;
+    (pts || []).forEach(p => {
+      const t = Date.parse(p.dt);
+      if (t > naj && turf.booleanPointInPolygon(turf.point([p.lo, p.la]), f)) naj = t;
+    });
+    return { f, naj };
+  });
 }
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
 const _POZ_DUPLIKAT_M = 1500;
@@ -5581,15 +5615,14 @@ function _poziOpozAzuriraj() {
   if (legEl) legEl.style.display = nacrtano ? 'block' : 'none';
   if (!nacrtano) return;
   const grp = L.layerGroup();
-  // Jedan poligon po požaru, obojen po starosti NAJNOVIJE detekcije. Ranije
-  // je svaki starosni pojas bio zaseban poligon sa svojim obrisom — više
-  // prozirnih ploha jedna preko druge je titralo pri pomjeranju karte.
-  prikazane.forEach(g => {
-    const geom = _poziOpozGeom(_poziFiremapNajnovije(g.pts));
-    if (!geom) return;
-    const boja = _POZ_OPOZ_BOJE[_poziMkStarost(Number(g.zadnji)).id] || _POZ_OPOZ_BOJE.st;
+  // Plohe iz svih prikazanih detekcija zajedno; boja = starost najnovije
+  // detekcije unutar plohe. Jedna ploha po području (bez slojeva po starosti
+  // koji su se preklapali i titrali pri pomjeranju karte).
+  const najnovijeUkupno = Math.max(...prikazane.map(g => Number(g.zadnji) || 0));
+  _poziPlohe(prikazane.flatMap(g => g.pts || [])).forEach(({ f, naj }) => {
+    const boja = _POZ_OPOZ_BOJE[_poziMkStarost(naj || najnovijeUkupno).id] || _POZ_OPOZ_BOJE.st;
     try {
-      L.geoJSON(geom, { pane: 'pozariProjectionPane', smoothFactor: 0, renderer: _pozProjRenderer,
+      L.geoJSON(f, { pane: 'pozariProjectionPane', smoothFactor: 0, renderer: _pozProjRenderer,
         style: { color: boja, weight: 1.6, fillColor: boja, fillOpacity: 0.42 } }).addTo(grp);
     } catch(e) {}
   });

@@ -312,7 +312,7 @@ t('_poziOpozBufKm koristi jačinu i rezoluciju bez automatskog pojasa od 400m', 
 
 t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/libs)', () => {
   const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
-  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + ['_poziFiremapNajnovije', '_poziUnija', '_poziKrugoviOko', '_poziFiremapOblik'].map(extractFn).join('\n') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
+  const src = extractFn('_poziPixelHa') + '\nconst _POZ_HOTSPOT_FAKTOR=0.35;\n' + extractFn('_poziSiroviHa') + '\n' + extractFn('_poziOpozBufKm') + '\n' + ['_poziFiremapNajnovije', '_poziUnija', '_poziKrugoviOko', '_poziFiremapOblik', '_poziZatvorenaPloha'].map(extractFn).join('\n') + '\n' + extractFn('_poziOpozGeom') + '\nreturn _poziOpozGeom;';
   const _poziOpozGeom = new Function('turf', src)(turf);
   // Jedna tačka — mora vratiti buffer poligon (Polygon/MultiPolygon) oko nje.
   const geomJedna = _poziOpozGeom([{ la: 44.8, lo: 16.0, rez: 375 }]);
@@ -334,7 +334,7 @@ t('_poziOpozGeom pravi buffer poligon oko tačaka (koristi pravi turf iz static/
 // po požaru, oblik po detekcijama, površina = Firemap ha.
 t('Firemap: jedna (najnovija) tačka po požaru, oblik po detekcijama sa tačnom površinom', () => {
   const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
-  const src = ['_poziOpozBufKm', '_poziFiremapNajnovije', '_poziUnija', '_poziKrugoviOko', '_poziFiremapOblik', '_poziOpozGeom']
+  const src = ['_poziOpozBufKm', '_poziFiremapNajnovije', '_poziUnija', '_poziKrugoviOko', '_poziFiremapOblik', '_poziZatvorenaPloha', '_poziOpozGeom']
     .map(extractFn).join('\n') + '\nreturn { _poziOpozGeom, _poziFiremapNajnovije };';
   const { _poziOpozGeom, _poziFiremapNajnovije } = new Function('turf', src)(turf);
   const fm = (la, lo, dt, ha) => ({ la, lo, dt, areaHa: ha, fireId: 'F1', rez: 375 });
@@ -345,7 +345,8 @@ t('Firemap: jedna (najnovija) tačka po požaru, oblik po detekcijama sa tačnom
   assert.ok(ciste.includes(novi) && !ciste.includes(stari));
   // Izduženi požar: 5 detekcija u liniji (≈ 1.3 km), Firemap 20 ha.
   const det = [0, 1, 2, 3, 4].map(i => ({ la: 44.806, lo: 16.000 + i * 0.004, dt: '2026-09-21T08:00:00Z', rez: 375, frp: 5 }));
-  const geom = _poziOpozGeom([stari, novi, ...det]);
+  // Prve 4 detekcije su u dosegu Firemap tačke (≤ ~650 m) i oblikuju njenu plohu.
+  const geom = _poziOpozGeom([stari, novi, ...det.slice(0, 4)]);
   const ha = turf.area(geom) / 10000;
   // Firemap 20 ha → ekvivalentni radijus ~252 m, uvučen 150 m → ~102 m (~3.3 ha).
   const ocekHa = Math.PI * (Math.sqrt(20 * 10000 / Math.PI) - 150) ** 2 / 10000;
@@ -357,6 +358,9 @@ t('Firemap: jedna (najnovija) tačka po požaru, oblik po detekcijama sa tačnom
   // Stari (dva kruga po 20 ha na različitim mjestima) bi dao skoro duplo.
   const dvaKruga = turf.area(turf.union(turf.buffer(turf.point([16, 44.8]), 0.252, { units: 'kilometers' }), turf.buffer(turf.point([16.006, 44.806]), 0.252, { units: 'kilometers' }))) / 10000;
   assert.ok(dvaKruga > ha * 1.5);
+  // Peta (~790 m) je van dosega → zasebna mala ploha oko nje (VIIRS rub ~75 m).
+  const saPetom = turf.area(_poziOpozGeom([stari, novi, ...det])) / 10000;
+  assert.ok(Math.abs(saPetom - ha - Math.PI * 0.075 ** 2 * 100) < 0.25, 'dodatna ploha oko udaljene detekcije, dobijeno +' + (saPetom - ha).toFixed(2));
   // Bez detekcija: uvučeni krug kao do sada.
   const sam = _poziOpozGeom([novi]);
   assert.ok(turf.area(sam) / 10000 < 20);
@@ -521,7 +525,7 @@ t('_poziFilterZaOkvir zadržava SAMO tačke unutar Unsko-sanskog kantona (bez ob
 // Regresija: canvas renderer pojednostavljuje (smoothFactor) male poligone
 // projekcije do nule pri odzumiranju → poligon "nestaje" pa se pojavi.
 t('poligoni projekcije požara ne pojednostavljuju se pri odzumiranju', () => {
-  const pozivi = HTML.match(/L\.geoJSON\(geom, \{[^}]*pozariProjectionPane[^}]*\}/g) || [];
+  const pozivi = HTML.match(/L\.geoJSON\((?:geom|f), \{[^}]*pozariProjectionPane[^}]*\}/g) || [];
   assert.ok(pozivi.length >= 2, 'očekivana bar 2 sloja projekcije');
   for (const c of pozivi) assert.ok(/smoothFactor:\s*0\b/.test(c), 'nedostaje smoothFactor:0 u: ' + c);
 });
@@ -558,19 +562,35 @@ t('FIRMS/GFW ključevi ostaju na uređaju i ne brišu se praznim Firestore odgov
   assert.ok(fb.includes("new Event('usf-fb-ready')"));
 });
 
-t('projekcija: jedan poligon po požaru, canvas u vlastitom pane-u, bez duplikata iz godišnjeg sloja', () => {
+t('projekcija: plohe iz svih detekcija zajedno, canvas u vlastitom pane-u, bez duplikata iz godišnjeg sloja', () => {
   assert.ok(HTML.includes("L.canvas({ pane: 'pozariProjectionPane'"), 'renderer mora biti u pozariProjectionPane');
   assert.ok(!/L\.svg\(\{ padding/.test(HTML));
   const opoz = HTML.slice(HTML.indexOf('function _poziOpozAzuriraj()'), HTML.indexOf('function _poziIconGrupa'));
   assert.strictEqual((opoz.match(/L\.geoJSON\(/g) || []).length, 1);
   assert.ok(!opoz.includes('_poziOpozGrupisiPoStarosti'), 'nema više zasebnih poligona po starosti');
-  assert.ok(HTML.includes('vecNacrtan') && HTML.includes('_POZ_DUPLIKAT_M'));
+  assert.ok(opoz.includes("_poziPlohe(prikazane.flatMap(g => g.pts || []))"), 'zatvaranje nad svim prikazanim detekcijama');
+  const god = HTML.slice(HTML.indexOf('function _povGodRenderSve()'), HTML.indexOf('function _povGodRenderSve()') + 2500);
+  assert.ok(god.includes('_POZ_DUPLIKAT_M') && god.includes('_poziPlohe('), 'godišnji sloj preskače već nacrtane i spaja detekcije');
 });
 
 t('heatmap normalizuje gustinu (par detekcija nije blijed) i ima izraženu paletu', () => {
   const heat = HTML.slice(HTML.indexOf('const _PoziHeat'), HTML.indexOf('let _poziHeatLayer'));
   assert.ok(heat.includes('maxA') && heat.includes('255 / maxA'));
   assert.ok(HTML.includes("0.75:'#ef4444'"));
+});
+
+t('ploha iz detekcija: susjedni pikseli se spajaju u jednu plohu, udaljeni požari ostaju odvojeni', () => {
+  const turf = require(path.join(__dirname, '../../static/libs/turf.min.js'));
+  const src = ['_poziUnija', '_poziZatvorenaPloha'].map(extractFn).join('\n') + '\nreturn _poziZatvorenaPloha;';
+  const f = new Function('turf', src)(turf);
+  // Lanac VIIRS detekcija na ~365 m (susjedni pikseli, i dijagonalno).
+  const lanac = [[16.050,44.820],[16.053,44.8225],[16.056,44.825],[16.0545,44.8195],[16.059,44.8275],[16.052,44.8175]].map(([lo, la]) => ({ la, lo, rez: 375 }));
+  const z = f(lanac);
+  assert.strictEqual(z.geometry.type, 'Polygon', 'susjedni pikseli moraju dati jednu povezanu plohu, ne tačke');
+  assert.ok(turf.area(z) / 1e4 > 15, 'ploha pokriva prostor između detekcija');
+  assert.strictEqual(f([{ la: 44.8, lo: 16, rez: 375 }, { la: 44.8, lo: 16.02, rez: 375 }]).geometry.type, 'MultiPolygon', '1,6 km udaljeni ostaju odvojeni');
+  assert.ok(Math.abs(turf.area(f([{ la: 44.8, lo: 16, rez: 375 }])) / 1e4 - 1.77) < 0.15, 'jedna VIIRS detekcija → krug ~75 m');
+  assert.strictEqual(f([]), null);
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
