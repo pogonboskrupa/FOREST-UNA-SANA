@@ -550,4 +550,12 @@ t('poligoni projekcije požara ne pojednostavljuju se pri odzumiranju', () => {
   for (const c of pozivi) assert.ok(/smoothFactor:\s*0\b/.test(c), 'nedostaje smoothFactor:0 u: ' + c);
 });
 
+t('Pregled: sažetak okvira, akcije najbližeg i lista ostalih požara', () => {
+  for (const fn of ['_poziSazetakHtml', '_poziOstaliHtml', '_poziKopirajKoord', '_poziNavUrl'])
+    assert.ok(HTML.includes('function ' + fn + '('), 'nedostaje ' + fn);
+  const op = HTML.slice(HTML.indexOf('function _poziOperativniHtml()'), HTML.indexOf('function _poziNavUrl('));
+  assert.ok(op.includes('_poziSazetakHtml()') && op.includes('_poziOstaliHtml()'));
+  assert.ok(HTML.indexOf('id="poz-meteo"') < HTML.indexOf('id="poz-source-status"'), 'vjetar ide uz najbliži požar');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');

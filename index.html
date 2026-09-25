@@ -616,6 +616,15 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .poz-ops-metric { padding:8px 9px; border-radius:10px; background:rgba(15,23,42,.6); }
 .poz-ops-metric span { display:block; color:#71857b; font-size:9px; }
 .poz-ops-metric b { display:block; margin-top:3px; color:#e2e8f0; font-size:12px; }
+.poz-ops-akcije { display:flex; gap:6px; margin-top:9px; }
+.poz-ops-btn { flex:1; padding:9px 4px; border:1px solid #334155; border-radius:9px; background:#0f172a; color:#cbd5e1; font-size:11px; font-weight:700; text-align:center; text-decoration:none; cursor:pointer; }
+.poz-ops-btn-glavno { border-color:rgba(251,146,60,.35); background:rgba(124,45,18,.35); color:#fed7aa; }
+.poz-sum-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-bottom:10px; }
+.poz-sum-chip { padding:8px 6px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; text-align:center; min-width:0; }
+.poz-sum-chip b { display:block; font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.poz-sum-chip span { display:block; margin-top:2px; color:#71857b; font-size:9px; line-height:1.2; }
+.poz-ostali-red { display:flex; align-items:center; gap:9px; padding:8px 2px; border-top:1px solid #1e293b; cursor:pointer; }
+.poz-ostali-dot { width:9px; height:9px; border-radius:50%; flex:none; }
 .poz-layer-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
 .poz-layer-grid .loc-row { margin:0; min-height:38px; padding:8px 9px; }
 .poz-source-grid { display:grid; gap:6px; }
@@ -961,6 +970,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
     <div id="poz-podtab-pregled">
     <div id="poz-operativni"></div>
+    <div id="poz-meteo" style="margin:-4px 0 10px;"></div>
     <div class="loc-row" style="background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
       <span>Prikaz požara na karti</span>
       <div class="loc-switch" id="poz-on-switch" onclick="_poziToggle(!_poziOn)"></div>
@@ -988,7 +998,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <div id="poz-status" style="color:#94a3b8;font-size:12px;margin-bottom:10px;"></div>
     <div id="poz-source-status"></div>
-    <div id="poz-meteo"></div>
     <div class="loc-row" style="margin-top:14px;">
       <span>🌡 Toplotna karta (heatmap)</span>
       <div class="loc-switch" id="poz-heat-switch" onclick="this.classList.toggle('on');_poziHeatSet(this.classList.contains('on'))"></div>
@@ -5839,7 +5848,8 @@ function _poziOperativniHtml() {
   const ref = _poziRefTacka(), smjer = _azimutSmjer(_bearing(ref.la,ref.lo,g.la,g.lo));
   const pz = _poziPouzdanost(g.conf), dani = _poziSimDani(g).length;
   const badge = _poziStatusPozara(g) === 'aktivan' ? 'AKTIVAN' : 'NEDAVNI';
-  return `<div class="poz-ops-card">
+  const kljuc = _poziEvtKljuc(g);
+  return `${_poziSazetakHtml()}<div class="poz-ops-card">
     <div class="poz-ops-head"><div><div class="poz-ops-title">Najbliži požarni događaj</div><div style="color:#94a3b8;font-size:10px;margin-top:3px;">${_msrFmt(g.d)} ${smjer}${ref.gps?'':' · od centra karte'}</div></div><span class="poz-ops-badge">${badge}</span></div>
     <div class="poz-ops-grid">
       <div class="poz-ops-metric"><span>Aktivnost</span><b>${_poziStarost(g.zadnji)}</b></div>
@@ -5849,7 +5859,64 @@ function _poziOperativniHtml() {
       <div class="poz-ops-metric"><span>Pouzdanost</span><b style="color:${pz.boja};">${pz.txt}</b></div>
       <div class="poz-ops-metric"><span>Maks. FRP</span><b>${g.frpMax ? g.frpMax.toFixed(1)+' MW' : '—'}</b></div>
     </div>
-    <button onclick="_poziPrikaziCijeli('${_poziEvtKljuc(g)}')" style="width:100%;margin-top:9px;padding:9px;border:1px solid rgba(251,146,60,.35);border-radius:9px;background:rgba(124,45,18,.35);color:#fed7aa;font-size:11px;font-weight:750;">Prikaži cijeli požar na karti</button>
+    <div class="poz-ops-akcije">
+      <button onclick="_poziPrikaziCijeli('${kljuc}')" class="poz-ops-btn poz-ops-btn-glavno">🗺 Na karti</button>
+      <a href="${_poziNavUrl(g)}" target="_blank" rel="noopener" class="poz-ops-btn">🧭 Navigiraj</a>
+      <button onclick="_poziKopirajKoord('${kljuc}')" class="poz-ops-btn">📋 Koordinate</button>
+    </div>
+  </div>${_poziOstaliHtml()}`;
+}
+function _poziNavUrl(g) {
+  return 'https://www.google.com/maps/dir/?api=1&destination=' + g.la.toFixed(6) + ',' + g.lo.toFixed(6);
+}
+function _poziKoordTxt(g) {
+  let txt = 'WGS84 ' + g.la.toFixed(5) + ', ' + g.lo.toFixed(5);
+  try { const m = wgsToMGI5(g.la, g.lo); txt += ' · MGI5 Y ' + m.y + ', X ' + m.x; } catch(e) {}
+  return txt;
+}
+function _poziKopirajKoord(kljuc) {
+  const g = (_poziEvts || []).find(x => _poziEvtKljuc(x) === kljuc) || _poziSveGrupe().find(x => _poziEvtKljuc(x) === kljuc);
+  if (!g) return;
+  const txt = _poziKoordTxt(g);
+  if (!navigator.clipboard) { showToast(txt); return; }
+  navigator.clipboard.writeText(txt).then(() => showToast('📋 Kopirano: ' + txt), () => showToast(txt));
+}
+// Sažetak cijelog okvira — vidi se odmah koliko je požara, ne samo najbliži.
+function _poziSazetakHtml() {
+  const evts = _poziEvts || [];
+  const aktivni = evts.filter(g => _poziStatusPozara(g) === 'aktivan').length;
+  const ha = _poziPovrsinaJedinstvena(evts);
+  const najjaci = evts.reduce((m, g) => Math.max(m, Number(g.frpMax) || 0), 0);
+  const chip = (l, v, boja) => `<div class="poz-sum-chip"><b style="color:${boja};">${v}</b><span>${l}</span></div>`;
+  return `<div class="poz-sum-row">
+    ${chip('požara · ' + _poziOkvirNaziv(), evts.length, '#e2e8f0')}
+    ${chip('aktivnih <24h', aktivni, aktivni ? '#f87171' : '#4ade80')}
+    ${chip('procj. površina', '~' + _poziPovrsTxt(ha), '#fbbf24')}
+    ${chip('maks. FRP', najjaci ? najjaci.toFixed(0) + ' MW' : '—', '#fb923c')}
+  </div>`;
+}
+// Ostali požari u okviru (najbliži je već u kartici iznad), po udaljenosti.
+const _POZ_OSTALI_MAX = 12;
+function _poziOstaliHtml() {
+  const ostali = (_poziEvts || []).slice(1);
+  if (!ostali.length) return '';
+  const ref = _poziRefTacka();
+  const redovi = ostali.slice(0, _POZ_OSTALI_MAX).map(g => {
+    const aktivan = _poziStatusPozara(g) === 'aktivan';
+    const smjer = _azimutSmjer(_bearing(ref.la, ref.lo, g.la, g.lo));
+    return `<div class="poz-ostali-red" onclick="_poziPrikaziCijeli('${_poziEvtKljuc(g)}')">
+      <span class="poz-ostali-dot" style="background:${aktivan ? '#ef4444' : '#a16207'};"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="color:#e2e8f0;font-size:12px;font-weight:700;">${_msrFmt(g.d)} ${smjer}</div>
+        <div style="color:#80958a;font-size:10px;">${_poziStarost(g.zadnji)} · ${g.broj} det. · ~${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div>
+      </div>
+      <span style="color:#64748b;font-size:14px;">›</span>
+    </div>`;
+  }).join('');
+  const vise = ostali.length > _POZ_OSTALI_MAX ? `<div style="color:#64748b;font-size:10px;padding:6px 2px 0;">+ još ${ostali.length - _POZ_OSTALI_MAX} — vidi Historiju</div>` : '';
+  return `<div class="poz-section-card" style="margin:0 0 10px !important;">
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">Ostali požari u okviru (${ostali.length})</div>
+    ${redovi}${vise}
   </div>`;
 }
 function _poziSourceStatusHtml() {
