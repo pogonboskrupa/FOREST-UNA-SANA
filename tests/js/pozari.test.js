@@ -34,7 +34,6 @@ t('modularni FIRMS stil i odvojeni oker poligoni', () => {
   assert.strictEqual(fn({ conf:'n' }).fillColor, '#f59e0b');
   assert.strictEqual(fn({ conf:'l' }).fillColor, '#fde047');
   assert.ok(HTML.includes('Lokalna oker opožarena ploha'));
-  assert.ok(HTML.includes('EFFIS NRT — crveni referentni raster'));
   assert.ok(!/_POZ_OPOZ_BOJE\s*=\s*\{[^}]*#(?:dc2626|ef4444)/i.test(HTML));
 });
 
@@ -386,12 +385,7 @@ t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen
   assert.ok(HTML.includes('id="poz-god-izbor"'));
 });
 
-t('EFFIS šira procjena se migrira na isključeno, a GFW ključ se čeka prije godišnjeg učitavanja', () => {
-  assert.ok(HTML.includes("_poziEffisState.opozareno = false"));
-  assert.ok(HTML.includes('EFFIS NRT — crveni referentni raster'));
-  assert.ok(HTML.includes("layers: 'nrt.ba.poly.season'"), 'mora koristiti postojeći EFFIS sezonski sloj, ne uklonjeni modis.ba');
-  assert.ok(HTML.includes("layers: 'modis.hs.month'"), 'mora imati EFFIS satelitske detekcije za zadnjih 30 dana');
-  assert.ok(HTML.includes("usf_poz_effis_oker_v6"), 'EFFIS raster se mora isključiti pri migraciji na oker lokalnu projekciju');
+t('GFW ključ se čeka prije godišnjeg učitavanja', () => {
   const fn = extractFn('openPozariSection');
   assert.ok(fn.startsWith('async function'), 'otvaranje Požara mora čekati GFW ključ');
   assert.ok(fn.indexOf('await _poziKljucUcitaj()') < fn.indexOf('_povGodLoadGodina'), 'ključ mora doći prije godišnjeg dohvata');
@@ -423,7 +417,6 @@ t('glavni prekidač potpuno skriva sve slojeve požara', () => {
   assert.ok(!auto.includes('_POZ_ALWAYS_ON'));
   const toggle = extractFn('_poziToggle');
   assert.ok(toggle.includes('_poziOn = !!on'));
-  assert.ok(toggle.includes('_poziEffisSyncMap()'), 'EFFIS slojevi moraju pratiti glavni prekidač');
   assert.ok(toggle.includes('_povGodLayer'), 'godišnji sloj mora se ukloniti pri gašenju');
   assert.ok(HTML.includes('if (_poziOn) _poziObnoviIzKesa();'));
 });
@@ -464,14 +457,13 @@ t('operativni pregled i četiri glavna kartografska prekidača postoje', () => {
   assert.ok(HTML.includes('function _poziOperativniHtml()'));
 });
 
-t('status izvora razlikuje uživo, keš, grešku, isključeno i WMS stanje', () => {
+t('status izvora razlikuje uživo, keš, grešku i isključeno', () => {
   assert.ok(HTML.includes('id="poz-source-status"'));
   assert.ok(HTML.includes('function _poziSourceStatusHtml()'));
-  ['podaci iz keša','odgovor primljen','greška dohvata','nema u kešu','WMS sloj(a) uključeno','↻ Osvježi'].forEach(x => assert.ok(HTML.includes(x), x));
+  ['podaci iz keša','odgovor primljen','greška dohvata','nema u kešu','↻ Osvježi'].forEach(x => assert.ok(HTML.includes(x), x));
   assert.ok(HTML.includes("m.okvir === '30d'"));
   assert.ok(HTML.includes('tačaka ·'));
   assert.ok(HTML.includes('nije dostupno za 30 dana'));
-  assert.ok(HTML.includes("usf_poz_effis_oker_v6"));
   // Heatmap prekidač prati postavku, a ne to da li su detekcije već stigle.
   assert.ok(HTML.includes("heatSw.classList.toggle('on', _poziHeatOn())"));
 });
@@ -496,11 +488,9 @@ t('tačke detekcije imaju poseban gornji pane i migracija ih vraća na vidljivo'
   assert.ok(HTML.includes('s.tacke = true'));
 });
 
-t('crveni EFFIS raster je isključen po defaultu, lokalna ploha ostaje oker', () => {
-  assert.ok(HTML.includes("usf_poz_effis_oker_v6"));
-  assert.ok(HTML.includes('_poziEffisState.opozareno = false'));
-  assert.ok(HTML.includes('_poziEffisState.detekcije = false'));
-  assert.ok(!HTML.includes("hasOwnProperty.call(_poziEffisState, 'detekcije')"));
+t('EFFIS je uklonjen, lokalna ploha je jedina (oker) procjena opožarenog', () => {
+  assert.ok(!/effis\.emergency|_POZ_EFFIS|_poziEffis|pozariRasterPane/i.test(HTML), 'EFFIS slojevi ne smiju postojati');
+  assert.ok(HTML.includes("localStorage.removeItem('usf_pozari_effis')"), 'stara EFFIS postavka se briše');
   assert.ok(HTML.includes("const _POZ_OPOZ_BOJE = { h6: '#f6c667', h24: '#e6aa42', d3: '#c98527', st: '#95611d' }"));
 });
 
@@ -555,19 +545,6 @@ t('filter "samo aktivni" djeluje na listu, kartu i projekciju', () => {
   assert.ok(render.includes('_poziPrikazaneGrupe()'));
   const opoz = HTML.slice(HTML.indexOf('function _poziOpozAzuriraj()'), HTML.indexOf('function _poziIconGrupa'));
   assert.ok(opoz.includes('_poziPrikazaneGrupe()'));
-});
-
-t('EFFIS WMS ponovo traži neuspjelu pločicu i zadržava stare pri zumu', () => {
-  assert.ok(!/L\.tileLayer\.wms\(/.test(HTML), 'EFFIS ne smije biti obični L.tileLayer.wms (prazne pločice)');
-  const blok = HTML.slice(HTML.indexOf('const _EffisWms'), HTML.indexOf('const _POZ_EFFIS_KEY'));
-  assert.ok(blok.includes('_tileOnError(') && blok.includes('usfpok='));
-  assert.ok(/updateWhenZooming:\s*false/.test(blok) && /keepBuffer:\s*6/.test(blok));
-  assert.strictEqual((blok.match(/new _EffisWms\(/g) || []).length, 3);
-});
-
-t('EFFIS se jednokratno isključuje i kod korisnika koji su ga uključili (v7)', () => {
-  const blok = HTML.slice(HTML.indexOf("usf_poz_effis_off_v7") - 200, HTML.indexOf("usf_poz_effis_off_v7") + 400);
-  assert.ok(/opozareno:false, detekcije:false, fwi:false/.test(blok));
 });
 
 t('FIRMS/GFW ključevi ostaju na uređaju i ne brišu se praznim Firestore odgovorom', () => {

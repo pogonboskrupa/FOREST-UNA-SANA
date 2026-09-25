@@ -120,11 +120,6 @@ t('svaki korišteni Leaflet pane je stvarno kreiran (map.createPane)', () => {
   assert.deepStrictEqual(missing, [], 'pane(ovi) korišteni ali nikad kreirani: ' + missing.join(', '));
 });
 
-t('EFFIS raster ima vlastiti pane iznad naknadno učitane SQLite karte', () => {
-  assert.ok(HTML.includes("map.createPane('pozariRasterPane')"));
-  assert.ok(HTML.includes("getPane('pozariRasterPane').style.zIndex = 430"));
-  assert.strictEqual((HTML.match(/pane:'pozariRasterPane', layers:/g) || []).length, 3);
-});
 t('SQLite/MBTiles je bazna karta, teren i požari su slojevi iznad nje', () => {
   assert.ok(HTML.includes("pane: 'offlineBasePane'"));
   assert.ok(HTML.includes('Object.values(TL).forEach(layer =>'));

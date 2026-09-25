@@ -710,8 +710,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c98527;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnjih 7 dana</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#b9781d;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">tekuća godina</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:14px;height:11px;border-radius:2px;background:#a855f7;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS NRT šira procjena</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:8px;height:8px;border-radius:50%;background:#f43f5e;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">EFFIS satelit · 30 dana</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1px solid #64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">satelitska detekcija</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="font-size:14px;color:#fb923c;line-height:12px;">▲</span><span style="font-size:10.5px;color:#cbd5e1;">veći požar · detalji / simulacija</span></div>
 </div>
@@ -1030,23 +1028,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <div class="loc-switch" id="poz-gfw-switch" onclick="_poziGfwToggle(!_poziGfwOn())"></div>
       </div>
       <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-top:4px;">Iste NASA detekcije, ali sa GFW servera (treba admin ključ ispod) — koristno kad FIRMS arhiva ne radi ili je tuđi server nedostupan.</div>
-    </div>
-
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">🗺 Copernicus EFFIS — rasterski slojevi (besplatno, bez ključa)</div>
-      <div class="loc-row">
-        <span>EFFIS NRT — crveni referentni raster</span>
-        <div class="loc-switch" id="poz-effis-ba-switch" onclick="_poziEffisToggle('opozareno',!_poziEffisOn('opozareno'))"></div>
-      </div>
-      <div class="loc-row">
-        <span>Satelitske detekcije (zadnjih 30 dana)</span>
-        <div class="loc-switch" id="poz-effis-det-switch" onclick="_poziEffisToggle('detekcije',!_poziEffisOn('detekcije'))"></div>
-      </div>
-      <div class="loc-row">
-        <span>Indeks opasnosti od požara (FWI)</span>
-        <div class="loc-switch" id="poz-effis-fwi-switch" onclick="_poziEffisToggle('fwi',!_poziEffisOn('fwi'))"></div>
-      </div>
-      <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-top:4px;">Lokalna procjena iznad je oker i uključena po defaultu. EFFIS NRT je gotova crvena WMS slika koju nije moguće pouzdano prebojiti; služi samo kao opcionalna šira referenca.</div>
     </div>
 
     <div class="treg-meta-edit" style="margin-top:14px;padding-top:14px;border-top:1px solid #1e293b;">
@@ -1616,7 +1597,6 @@ map.on('moveend', () => {
 map.createPane('offlineBasePane'); map.getPane('offlineBasePane').style.zIndex = 210;
 map.createPane('tragMsrLines'); map.getPane('tragMsrLines').style.zIndex = 410;
 map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 330;
-map.createPane('pozariRasterPane'); map.getPane('pozariRasterPane').style.zIndex = 430;
 map.createPane('pozariProjectionPane'); map.getPane('pozariProjectionPane').style.zIndex = 440;
 map.getPane('pozariProjectionPane').style.pointerEvents = 'none';
 // Canvas (kao ostatak karte, preferCanvas) u VLASTITOM pane-u; veći padding
@@ -1627,7 +1607,6 @@ map.createPane('pozariHeatPane'); map.getPane('pozariHeatPane').style.zIndex = 4
 map.getPane('pozariHeatPane').style.pointerEvents = 'none';
 map.createPane('pozariPane');   map.getPane('pozariPane').style.zIndex   = 450;
 map.createPane('pozariDetectionsPane'); map.getPane('pozariDetectionsPane').style.zIndex = 455;
-map.getPane('pozariRasterPane').style.pointerEvents = 'none';
 map.createPane('sumarstvoPane'); map.getPane('sumarstvoPane').style.zIndex = 420;
 map.getPane('sumarstvoPane').style.pointerEvents = 'none';
 map.createPane('sumarstvoProjPane'); map.getPane('sumarstvoProjPane').style.zIndex = 425;
@@ -4307,7 +4286,7 @@ function _withTimeout(promise, ms) {
 // OPSEG OVE VERZIJE (namjerno suženo — vidi CLAUDE.md/komentare za razlog
 // svake odluke): koristi se ISKLJUČIVO besplatni FIRMS arhivski CSV izvoz
 // za Evropu (24h/48h/7d, NE treba nikakav ključ/nalog), dopunjen opt-in
-// GFW/EFFIS izvorima i procjenom opožarene površine (tačke + hull+buffer
+// GFW izvorima i procjenom opožarene površine (tačke + hull+buffer
 // projekcija po starosti — vidi _poziOpozGeom niže). Sentinel-2 dopuna i
 // puni debug panel i dalje NISU u ovoj verziji.
 // =====================================================================
@@ -4433,87 +4412,9 @@ function _poziPragIzmedju(a, b, prag, prepreke) {
   return p;
 }
 
-// ── EFFIS (Copernicus/JRC) rasterski slojevi — evropski sistem za šumske
-// požare, besplatno i bez ključa. Dopuna tačkastim satelitskim detekcijama
-// iznad: opozareno = STVARNO izmjerene opožarene granice (kasni danima),
-// fwi = prognoza opasnosti (gdje je danas rizično, ne šta je već gorjelo).
-// Obični L.tileLayer.wms ostavlja praznu pločicu kad EFFIS server zakasni
-// ili vrati grešku (pravougaona rupa u plohi, "nestane pa se pojavi").
-// Pločice ostaju <img> (EFFIS ne mora slati CORS), ali neuspjela se
-// ponovo traži do 3 puta, a stare ostaju vidljive dok se nove učitavaju.
-const _EFFIS_POKUSAJI = 3;
-const _EffisWms = L.TileLayer.WMS.extend({
-  _tileOnError(done, tile, e) {
-    const n = (tile._usfPok || 0) + 1;
-    if (n <= _EFFIS_POKUSAJI && this._map && navigator.onLine !== false) {
-      tile._usfPok = n;
-      setTimeout(() => {
-        if (!this._map || !tile.parentNode) return;
-        const u = String(tile.src || '').replace(/([?&])usfpok=\d+/, '$1').replace(/[?&]$/, '');
-        if (u) tile.src = u + (u.includes('?') ? '&' : '?') + 'usfpok=' + n;
-      }, 900 * n);
-      return;
-    }
-    L.TileLayer.prototype._tileOnError.call(this, done, tile, e);
-  }
-});
-const _EFFIS_OPTS = { format: 'image/png', transparent: true, tiled: true, version: '1.1.1', maxZoom: 22,
-  keepBuffer: 6, updateWhenZooming: false, updateWhenIdle: true, updateInterval: 150, attribution: 'Copernicus EFFIS' };
-const _POZ_EFFIS = {
-  opozareno: new _EffisWms('https://maps.effis.emergency.copernicus.eu/gwis', {
-    // `modis.ba` više nije objavljen EFFIS sloj, pa je karta ostajala prazna.
-    // Sezonski NRT poligoni pokrivaju i požar od prije nekoliko sedmica.
-    ..._EFFIS_OPTS, pane:'pozariRasterPane', layers: 'nrt.ba.poly.season', opacity: 0.78
-  }),
-  detekcije: new _EffisWms('https://maps.effis.emergency.copernicus.eu/gwis', {
-    // Nezavisan mjesečni prikaz tačaka MODIS/VIIRS, bez FIRMS/GFW ključa.
-    ..._EFFIS_OPTS, pane:'pozariRasterPane', layers: 'modis.hs.month', opacity: 0.92
-  }),
-  fwi: new _EffisWms('https://maps.effis.emergency.copernicus.eu/gwis', {
-    ..._EFFIS_OPTS, pane:'pozariRasterPane', layers: 'ecmwf.fwi', opacity: 0.55
-  })
-};
-const _POZ_EFFIS_KEY = 'usf_pozari_effis';
-let _poziEffisState = {};
-try { _poziEffisState = JSON.parse(localStorage.getItem(_POZ_EFFIS_KEY) || '{}'); } catch(e) {}
-// EFFIS WMS je odvojen raster, ne lokalna projekcija iz detekcija. Provider
-// njegove poligone/tačke isporučuje u crvenoj paleti koju ne možemo pouzdano
-// prebojiti bez gubitka podataka. Zato je potpuno isključen po defaultu:
-// oker na karti uvijek znači našu lokalnu procjenu opožarene površine.
-try {
-  if (localStorage.getItem('usf_poz_effis_oker_v6') !== '1') {
-    _poziEffisState.opozareno = false;
-    _poziEffisState.detekcije = false;
-    _poziEffisState.fwi = false;
-    localStorage.setItem('usf_poz_effis_oker_v6', '1');
-    localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
-  }
-  // v7: ponovo isključi sve EFFIS slojeve i kod korisnika koji su ih ručno uključili
-  // (EFFIS server nepouzdano isporučuje pločice na terenu).
-  if (localStorage.getItem('usf_poz_effis_off_v7') !== '1') {
-    _poziEffisState = { opozareno:false, detekcije:false, fwi:false };
-    localStorage.setItem('usf_poz_effis_off_v7', '1');
-    localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState));
-  }
-} catch(e) {}
-function _poziEffisOn(key) { return !!_poziEffisState[key]; }
-function _poziEffisSyncMap() {
-  Object.keys(_POZ_EFFIS).forEach(k => {
-    const treba = _poziOn && _poziEffisState[k];
-    if (treba && !map.hasLayer(_POZ_EFFIS[k])) _POZ_EFFIS[k].addTo(map);
-    if (!treba && map.hasLayer(_POZ_EFFIS[k])) map.removeLayer(_POZ_EFFIS[k]);
-  });
-}
-function _poziEffisToggle(key, on) {
-  if (!_POZ_EFFIS[key]) return;
-  _poziEffisState[key] = !!on;
-  if (key === 'opozareno' && on) showToast('EFFIS NRT je crveni referentni raster; lokalna procjena ostaje oker.');
-  try { localStorage.setItem(_POZ_EFFIS_KEY, JSON.stringify(_poziEffisState)); } catch(e) {}
-  _poziEffisSyncMap();
-  const swId = key === 'opozareno' ? 'poz-effis-ba-switch' : (key === 'detekcije' ? 'poz-effis-det-switch' : 'poz-effis-fwi-switch');
-  const sw = document.getElementById(swId); if (sw) sw.classList.toggle('on', on);
-  _poziLegendeAzuriraj();
-}
+// EFFIS slojevi su uklonjeni (nepouzdane pločice na terenu, crvena ploha
+// šira od stvarne) — počisti staru postavku.
+try { localStorage.removeItem('usf_pozari_effis'); } catch(e) {}
 
 function _poziLegendaToggle(on) {
   document.getElementById('poz-legends').hidden = !on;
@@ -4564,7 +4465,7 @@ function _poziLegendeAzuriraj() {
   const legEl = document.getElementById('poz-god-legend');
   if (!legEl) return;
   const imaGodina = _povGodOznaceneGodine().some(g => _povGodPodaci[g]?.evts?.length);
-  legEl.style.display = _poziOn && (imaGodina || _poziEffisOn('opozareno') || _poziEffisOn('detekcije')) ? 'block' : 'none';
+  legEl.style.display = _poziOn && imaGodina ? 'block' : 'none';
 }
 
 // ── Šumarstvo — Hansen/UMD Global Forest Change preko GFW dinamičkih tile
@@ -5979,7 +5880,6 @@ function _poziToggle(on) {
   _poziOn = !!on;
   try { localStorage.setItem(_POZ_ON_KEY, _poziOn ? '1' : '0'); } catch(e) {}
   _poziAutoSync();
-  _poziEffisSyncMap();
   if (!_poziOn) {
     [_poziLayer, _poziHeatLayer, _poziOpozLayer, _povGodLayer].forEach(layer => { try { if (layer && map.hasLayer(layer)) map.removeLayer(layer); } catch(e) {} });
     const opozLegenda = document.getElementById('poz-opoz-legend'); if (opozLegenda) opozLegenda.style.display = 'none';
@@ -6164,10 +6064,6 @@ function _poziSourceStatusHtml() {
   const gfwUkljucen = _poziGfwOn() || m.okvir === '30d';
   const gfwRadi = ima(/Global Forest Watch|GFW/i);
   const gfwGreska = imaGresku(/Global Forest Watch|GFW/i);
-  const effisBroj = Object.values(_poziEffisState).filter(Boolean).length;
-  const effisStatus = !effisBroj ? oznaka('isključeno','poz-source-off')
-    : !navigator.onLine ? oznaka(effisBroj + ' sloj(a) · offline','poz-source-warn')
-    : oznaka(effisBroj + ' WMS sloj(a) uključeno','poz-source-ok');
   const age = m.dohvacenoMs ? _poziStarost(m.dohvacenoMs) : 'nije ažurirano';
   const porijeklo = m.kes ? 'keš' : (m.dohvacenoMs ? 'uživo' : '—');
   const ukupno = Number.isFinite(Number(m.ukupno)) ? Number(m.ukupno) : (_poziPts || []).length;
@@ -6182,7 +6078,6 @@ function _poziSourceStatusHtml() {
       <div class="poz-source-row"><span>Veza</span>${navigator.onLine?oznaka('● online','poz-source-ok'):oznaka('● offline','poz-source-warn')}</div>
       <div class="poz-source-row"><span>NASA FIRMS</span>${firmsStatus}</div>
       <div class="poz-source-row"><span>Global Forest Watch</span>${statusPodatkovnogIzvora(gfwUkljucen,gfwRadi,gfwGreska)}</div>
-      <div class="poz-source-row"><span>Copernicus EFFIS</span>${effisStatus}</div>
       <div class="poz-source-row"><span>Podaci</span><span class="${m.kes?'poz-source-warn':'poz-source-ok'}">${porijeklo} · ${age}</span></div>
       <div class="poz-source-row"><span>Učitano</span><span class="poz-source-ok">${ukupno} tačaka · ${(_poziEvts||[]).length} požara</span></div>
     </div>
@@ -6391,11 +6286,7 @@ async function openPozariSection() {
   if (gEl) gEl.value = _poziKljucevi.gfw || '';
   const notifChk = document.getElementById('poz-notif-chk'); if (notifChk) notifChk.checked = _poziNotifOn();
   const gfwSw = document.getElementById('poz-gfw-switch'); if (gfwSw) gfwSw.classList.toggle('on', _poziGfwOn());
-  const baSw = document.getElementById('poz-effis-ba-switch'); if (baSw) baSw.classList.toggle('on', _poziEffisOn('opozareno'));
-  const detSw = document.getElementById('poz-effis-det-switch'); if (detSw) detSw.classList.toggle('on', _poziEffisOn('detekcije'));
-  const fwiSw = document.getElementById('poz-effis-fwi-switch'); if (fwiSw) fwiSw.classList.toggle('on', _poziEffisOn('fwi'));
   _poziLegendeAzuriraj();
-  _poziEffisSyncMap();
   const trenutnaGodina = new Date().getUTCFullYear();
   const godineZaUcitati = [...new Set([..._povGodOznaceneGodine(), trenutnaGodina])];
   godineZaUcitati.forEach(godina => {
@@ -6457,7 +6348,6 @@ _poziKljucUcitaj();
 setTimeout(() => {
   if (_poziOn) _poziObnoviIzKesa();
   _poziAutoSync();
-  _poziEffisSyncMap();
   if (_poziOn) _poziLoad(true);
 }, 0);
 
