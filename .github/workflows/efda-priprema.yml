@@ -1,0 +1,42 @@
+name: EFDA priprema
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/practical-pasteur-p2npth]
+    paths: ['.github/workflows/efda-priprema.yml', 'tools/efda_priprema.py']
+
+permissions:
+  contents: write
+
+jobs:
+  priprema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: GDAL
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y gdal-bin python3-gdal python3-numpy >/dev/null
+      - name: EFDA metapodaci (kodovi uzroka)
+        run: curl -sSL https://zenodo.org/api/records/21722408/files/0_METADATA_EFDA_v3.0.txt/content
+      - name: BiH arhiva
+        run: |
+          set -eu
+          curl -sSL https://zenodo.org/api/records/21722408/files/BosniaandHerzegovina.zip/content -o bih.zip
+          mkdir -p bih
+          unzip -o -q -j bih.zip '*latest_disturbance*' '*disturbance_agent_bosnia*' -d bih
+          ls -la bih
+      - name: Izrez na 5 općina
+        run: |
+          set -eu
+          mkdir -p static/data
+          /usr/bin/python3 tools/efda_priprema.py bih/latest_disturbance_bosniaandherzegovina_v30.tif bih/disturbance_agent_bosniaandherzegovina_v30.tif static/data
+          ls -la static/data
+          gdalinfo static/data/efda_opcine.tif | grep -E 'Size is|LAYOUT|COMPRESSION|NoData|Overviews'
+      - name: Sačuvaj rezultat na granu
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/data/efda_opcine.tif static/data/efda_opcine.json static/data/opcine5.geojson
+          git commit -m "data: EFDA v3.0 izrez za 5 općina (automatski)" || echo "nema promjena"
+          git push origin HEAD:${GITHUB_REF_NAME}
