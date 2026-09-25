@@ -1,6 +1,6 @@
 {
-  "name": "Una Sana Forest",
-  "short_name": "USF",
+  "name": "Grmeč Navigator",
+  "short_name": "Grmeč Navigator",
   "description": "Požari i projektovanje šumskog puta — offline GIS alat za šumare",
   "id": "/",
   "start_url": "./index.html",

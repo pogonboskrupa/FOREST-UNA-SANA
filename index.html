@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Una Sana Forest">
+<meta name="apple-mobile-web-app-title" content="Grmeč Navigator">
 <meta name="theme-color" content="#16213e">
 <!-- Aplikacija je NAMJERNO tamna (bez svjetle teme) — bez ovoga Android
      Chrome-ov "Force Dark" zna dodatno potamniti već tamni tekst preko
@@ -15,7 +15,7 @@
      Požari sekciji), jer bez eksplicitne šeme pretpostavlja svijetlu
      stranicu i "ispravlja" je. -->
 <meta name="color-scheme" content="dark">
-<title>Una Sana Forest</title>
+<title>Grmeč Navigator</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -623,7 +623,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .poz-sum-chip { padding:8px 6px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; text-align:center; min-width:0; }
 .poz-sum-chip b { display:block; font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .poz-sum-chip span { display:block; margin-top:2px; color:#71857b; font-size:9px; line-height:1.2; }
-.poz-ostali-red { display:flex; align-items:center; gap:9px; padding:8px 2px; border-top:1px solid #1e293b; cursor:pointer; }
 .sum-proj-row { display:flex; align-items:flex-start; gap:10px; margin:10px 0 8px; padding:10px 11px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; cursor:pointer; }
 .sum-proj-row input { width:18px; height:18px; margin-top:1px; flex:none; accent-color:#f59e0b; }
 .sum-proj-row b { display:block; color:#e2e8f0; font-size:13px; }
@@ -636,7 +635,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .sum-proj-red { display:flex; align-items:center; gap:8px; padding:7px 2px; border-top:1px solid #1e293b; cursor:pointer; font-size:11px; color:#cbd5e1; }
 .leaflet-tooltip.sum-proj-lbl { background:rgba(15,23,42,.85); color:#fde68a; border:none; box-shadow:none; font-size:10px; font-weight:700; padding:1px 5px; }
 .leaflet-tooltip.sum-proj-lbl::before { display:none; }
-.poz-ostali-dot { width:9px; height:9px; border-radius:50%; flex:none; }
 .poz-filter-akt { display:flex; align-items:center; gap:9px; margin:-2px 0 10px; padding:9px 11px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; color:#cbd5e1; font-size:11px; cursor:pointer; }
 .poz-filter-akt input { width:18px; height:18px; flex:none; accent-color:#ef4444; }
 .poz-layer-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
@@ -1317,12 +1315,12 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 
 <script>
 // =====================================================================
-// UNA SANA FOREST — verzija na TRI mjesta: ovdje, sw.js APP_VERSION,
+// GRMEČ NAVIGATOR — verzija na TRI mjesta: ovdje, sw.js APP_VERSION,
 // android/app/build.gradle versionCode+versionName. Sva tri MORAJU biti
 // usklađena prije svakog commita.
 // =====================================================================
 const APP_VER = 'v1.3.9';
-document.getElementById('meni-ver-badge').textContent = 'Una Sana Forest ' + APP_VER;
+document.getElementById('meni-ver-badge').textContent = 'Grmeč Navigator ' + APP_VER;
 
 // Verzije koriste tri jednocifrena segmenta: patch i minor idu 0–9.
 // Primjeri: 1.1.9 → 1.1.9 → 1.2.0; 1.9.9 → 2.0.0.
@@ -6139,7 +6137,7 @@ function _poziOperativniHtml() {
       <a href="${_poziNavUrl(g)}" target="_blank" rel="noopener" class="poz-ops-btn">🧭 Navigiraj</a>
       <button onclick="_poziKopirajKoord('${kljuc}')" class="poz-ops-btn">📋 Koordinate</button>
     </div>
-  </div>${_poziOstaliHtml()}`;
+  </div>`;
 }
 function _poziNavUrl(g) {
   return 'https://www.google.com/maps/dir/?api=1&destination=' + g.la.toFixed(6) + ',' + g.lo.toFixed(6);
@@ -6170,30 +6168,6 @@ function _poziSazetakHtml() {
     ${chip('maks. FRP', najjaci ? najjaci.toFixed(0) + ' MW' : '—', '#fb923c')}
   </div>
   <label class="poz-filter-akt"><input type="checkbox" ${_poziSamoAktivni() ? 'checked' : ''} onchange="_poziSamoAktivniSet(this.checked)"><span>Samo aktivni požari (detekcija u zadnja 24 h) — lista i karta</span></label>`;
-}
-// Ostali požari u okviru (najbliži je već u kartici iznad), po udaljenosti.
-const _POZ_OSTALI_MAX = 12;
-function _poziOstaliHtml() {
-  const ostali = _poziPrikazaneGrupe().slice(1);
-  if (!ostali.length) return '';
-  const ref = _poziRefTacka();
-  const redovi = ostali.slice(0, _POZ_OSTALI_MAX).map(g => {
-    const aktivan = _poziStatusPozara(g) === 'aktivan';
-    const smjer = _azimutSmjer(_bearing(ref.la, ref.lo, g.la, g.lo));
-    return `<div class="poz-ostali-red" onclick="_poziPrikaziCijeli('${_poziEvtKljuc(g)}')">
-      <span class="poz-ostali-dot" style="background:${aktivan ? '#ef4444' : '#a16207'};"></span>
-      <div style="flex:1;min-width:0;">
-        <div style="color:#e2e8f0;font-size:12px;font-weight:700;">${_msrFmt(g.d)} ${smjer}</div>
-        <div style="color:#80958a;font-size:10px;">${_poziStarost(g.zadnji)} · ${g.broj} det. · ~${_poziPovrsTxt(_poziPovrsinaGrupe(g))}</div>
-      </div>
-      <span style="color:#64748b;font-size:14px;">›</span>
-    </div>`;
-  }).join('');
-  const vise = ostali.length > _POZ_OSTALI_MAX ? `<div style="color:#64748b;font-size:10px;padding:6px 2px 0;">+ još ${ostali.length - _POZ_OSTALI_MAX} — vidi Historiju</div>` : '';
-  return `<div class="poz-section-card" style="margin:0 0 10px !important;">
-    <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${_poziSamoAktivni() ? 'Ostali aktivni požari' : 'Ostali požari u okviru'} (${ostali.length})</div>
-    ${redovi}${vise}
-  </div>`;
 }
 function _poziSourceStatusHtml() {
   const m = _poziMeta || {};

@@ -534,11 +534,12 @@ t('poligoni projekcije požara ne pojednostavljuju se pri odzumiranju', () => {
   for (const c of pozivi) assert.ok(/smoothFactor:\s*0\b/.test(c), 'nedostaje smoothFactor:0 u: ' + c);
 });
 
-t('Pregled: sažetak okvira, akcije najbližeg i lista ostalih požara', () => {
-  for (const fn of ['_poziSazetakHtml', '_poziOstaliHtml', '_poziKopirajKoord', '_poziNavUrl'])
+t('Pregled: sažetak okvira i akcije najbližeg, bez liste ostalih požara', () => {
+  for (const fn of ['_poziSazetakHtml', '_poziKopirajKoord', '_poziNavUrl'])
     assert.ok(HTML.includes('function ' + fn + '('), 'nedostaje ' + fn);
   const op = HTML.slice(HTML.indexOf('function _poziOperativniHtml()'), HTML.indexOf('function _poziNavUrl('));
-  assert.ok(op.includes('_poziSazetakHtml()') && op.includes('_poziOstaliHtml()'));
+  assert.ok(op.includes('_poziSazetakHtml()'));
+  assert.ok(!HTML.includes('_poziOstaliHtml') && !HTML.includes('Ostali požari u okviru'), 'lista ostalih požara je uklonjena iz Pregleda');
   assert.ok(HTML.indexOf('id="poz-meteo"') < HTML.indexOf('id="poz-source-status"'), 'vjetar ide uz najbliži požar');
 });
 
@@ -646,6 +647,14 @@ t('plohe: spajaju se samo detekcije povezane iz dana u dan, ne sve bliske tačke
   assert.deepStrictEqual(f([]), []);
   const plohe = HTML.slice(HTML.indexOf('function _poziPlohe('), HTML.indexOf('function _poziPlohe(') + 400);
   assert.ok(plohe.includes('_poziVremenskiKlasteri(pts)'));
+});
+
+t('naziv aplikacije je Grmeč Navigator', () => {
+  assert.ok(HTML.includes('<title>Grmeč Navigator</title>'));
+  assert.ok(!/Una Sana Forest/i.test(HTML));
+  const man = JSON.parse(fs.readFileSync(path.join(__dirname, '../../manifest.json'), 'utf8'));
+  assert.strictEqual(man.name, 'Grmeč Navigator');
+  assert.ok(fs.readFileSync(path.join(__dirname, '../../android/app/src/main/res/values/strings.xml'), 'utf8').includes('<string name="app_name">Grmeč Navigator</string>'));
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
