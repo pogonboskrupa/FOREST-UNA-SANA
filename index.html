@@ -251,6 +251,24 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 @keyframes fabRecPulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.4); opacity:.5; } }
 @media (prefers-reduced-motion: reduce) { #ab-tragovi.recording::after { animation:none; } }
 
+/* === Legenda nagiba/ekspozicije na karti — između #zoom-grp (lijevo, 46px)
+   i #map-fabs (desno, 52px), iznad donje trake; ispod FAB-ova po z-indexu. === */
+#terrain-map-legend {
+  display:none; position:fixed; bottom:76px; left:70px; right:76px; z-index:590;
+  max-width:300px; margin:0 auto; padding:7px 9px 8px; border-radius:12px;
+  background:rgba(10,24,18,.92); border:1px solid rgba(134,239,172,.22);
+  box-shadow:0 6px 18px rgba(0,0,0,.35); color:#d8e8df; cursor:pointer;
+}
+#terrain-map-legend .tml-title { font-size:10px; font-weight:800; letter-spacing:.3px; color:#91a69b; text-transform:uppercase; margin-bottom:5px; }
+#terrain-map-legend .tml-row { display:grid; gap:4px 6px; }
+#terrain-map-legend .tml-slope { grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px 3px; }
+#terrain-map-legend .tml-slope .tml-item { gap:3px; font-size:10px; }
+#terrain-map-legend .tml-aspect { grid-template-columns:repeat(3,minmax(0,1fr)); }
+#terrain-map-legend .tml-item { display:flex; align-items:center; gap:4px; font-size:10.5px; white-space:nowrap; min-width:0; }
+#terrain-map-legend .tml-item i { width:11px; height:11px; border-radius:3px; flex:none; opacity:.9; }
+#terrain-map-legend.mini .tml-row { display:none; }
+#terrain-map-legend.mini .tml-title { margin:0; }
+#terrain-map-legend.mini .tml-title::after { content:' ▸'; }
 /* === Zoom +/- — jedan stub, donji lijevi ugao (ista bottom:76px logika kao #map-fabs) === */
 #zoom-grp {
   position:fixed; left:12px; bottom:76px; z-index:600;
@@ -913,7 +931,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       </section>
       <section class="karta-hub-card">
         <h3>🏔 Analiza terena</h3>
-        <label style="display:block;padding:10px 0"><input id="terrain-slope" type="checkbox" onchange="_terrainToggle('slope',this.checked)"> Nagib terena (stepeni)</label>
+        <label style="display:block;padding:10px 0"><input id="terrain-slope" type="checkbox" onchange="_terrainToggle('slope',this.checked)"> Nagib terena (0–15, 15–25, 25–35, 35–50, &gt;50°)</label>
         <label style="display:block;padding:10px 0"><input id="terrain-aspect" type="checkbox" onchange="_terrainToggle('aspect',this.checked)"> Ekspozicija — strane svijeta</label>
         <label style="display:block;padding:10px 0"><input id="terrain-shade" type="checkbox" onchange="_terrainToggle('shade',this.checked)"> Hillshade — sjenčenje reljefa</label>
         <label>Prozirnost dodataka <input type="range" min="15" max="85" value="55" oninput="_terrainOpacity(this.value)" aria-label="Prozirnost slojeva terena"></label>

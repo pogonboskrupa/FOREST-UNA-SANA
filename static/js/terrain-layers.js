@@ -6,21 +6,25 @@ function terrainGradient(east, south) {
   return { slope, aspect };
 }
 const terrainAspectColors = ['#3b82f6','#06b6d4','#22c55e','#a3e635','#facc15','#f97316','#ef4444','#a855f7'];
+// Šumarske klase nagiba (°): gornja granica klase i boja; sve klase su obojene.
+const terrainSlopeClasses = [
+  { max: 15, color: '#22c55e', label: '0–15°' },
+  { max: 25, color: '#facc15', label: '15–25°' },
+  { max: 35, color: '#f97316', label: '25–35°' },
+  { max: 50, color: '#dc2626', label: '35–50°' },
+  { max: Infinity, color: '#7e22ce', label: '>50°' }
+];
+const terrainAspectLabels = ['S','SI','I','JI','J','JZ','Z','SZ'];
 function terrainColor(mode, east, south) {
   const g = terrainGradient(east, south);
   if (mode === 'aspect') return g.slope <= 10 ? '#a1a1aa' : terrainAspectColors[Math.floor((g.aspect+22.5)/45)%8];
-  if (mode === 'slope') {
-    if (g.slope <= 30) return null;
-    const t=Math.max(0,Math.min(1,(g.slope-30)/30));
-    const from=[254,202,202],to=[185,28,28];
-    return '#'+from.map((v,i)=>Math.round(v+(to[i]-v)*t).toString(16).padStart(2,'0')).join('');
-  }
+  if (mode === 'slope') return terrainSlopeClasses.find(k => g.slope < k.max).color;
   // Sun from NW, elevation 45 degrees; unit normal (-east,+south,1).
   const light = Math.max(0, (east*0.5 + south*0.5 + Math.SQRT1_2)/Math.sqrt(1+east*east+south*south));
   const n = Math.round(35 + 220*light);
   return '#' + n.toString(16).padStart(2,'0').repeat(3);
 }
-if (typeof module !== 'undefined') module.exports = {terrainGradient,terrainColor};
+if (typeof module !== 'undefined') module.exports = {terrainGradient,terrainColor,terrainSlopeClasses};
 if (typeof window !== 'undefined') {
   const saved = (()=>{try{return JSON.parse(localStorage.getItem('usf_terrain')||'{}');}catch(e){return {};}})();
   const layers = {}, decoded = new Map();
@@ -68,11 +72,24 @@ if (typeof window !== 'undefined') {
     }
   });
   const persist=()=>localStorage.setItem('usf_terrain',JSON.stringify({...saved,opacity}));
+  // Legenda na karti: dolje u sredini, između zuma (lijevo) i dugmadi (desno),
+  // iznad donje trake. Dodir je skuplja na naslov (npr. kad je otvorena traka traga).
+  const mapLegend=document.createElement('div');
+  mapLegend.id='terrain-map-legend';
+  document.body.appendChild(mapLegend);
+  mapLegend.addEventListener('click',()=>{mapLegend.classList.toggle('mini');try{localStorage.setItem('usf_terrain_leg_mini',mapLegend.classList.contains('mini')?'1':'0');}catch(e){}});
+  try{if(localStorage.getItem('usf_terrain_leg_mini')==='1')mapLegend.classList.add('mini');}catch(e){}
   const legend=()=>{
     let rows=[];
-    if(saved.slope)rows.push(...[['transparent','≤30° bez boje'],['#f9b4b4','30–40°'],['#e86d6d','40–50°'],['#b91c1c','≥60°']]);
+    if(saved.slope)rows.push(...terrainSlopeClasses.map(k=>[k.color,k.label]));
     if(saved.aspect)rows.push(['#a1a1aa','Neutralno ≤10°'],...['Sjever','Sjeveroistok','Istok','Jugoistok','Jug','Jugozapad','Zapad','Sjeverozapad'].map((t,i)=>[terrainAspectColors[i],t]));
     document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
+    const stavka=(c,t)=>`<span class="tml-item"><i style="background:${c}"></i>${t}</span>`;
+    let html='';
+    if(saved.slope)html=`<div class="tml-title">Nagib terena (°)</div><div class="tml-row tml-slope">${terrainSlopeClasses.map(k=>stavka(k.color,k.label.replace('°',''))).join('')}</div>`;
+    else if(saved.aspect)html=`<div class="tml-title">Ekspozicija</div><div class="tml-row tml-aspect">${terrainAspectLabels.map((t,i)=>stavka(terrainAspectColors[i],t)).join('')}${stavka('#a1a1aa','ravno')}</div>`;
+    mapLegend.innerHTML=html;
+    mapLegend.style.display=html?'block':'none';
   };
   window._terrainToggle=(mode,on)=>{
     // Two categorical rasters cannot be read reliably on top of one another.
@@ -135,13 +152,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.4.33';
+      if (label) label.textContent = 'v1.4.34';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v1.4.33';
+  if (badge) badge.textContent = 'Grmeč Navigator v1.4.34';
 })();
 
 

@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const {terrainGradient,terrainColor} = require('../../static/js/terrain-layers.js');
+const {terrainGradient,terrainColor,terrainSlopeClasses} = require('../../static/js/terrain-layers.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
@@ -11,12 +11,21 @@ assert.equal(terrainGradient(1,0).slope,45);
 assert.equal(terrainColor('aspect',0,0),'#a1a1aa');
 assert.equal(terrainColor('aspect',Math.tan(10*Math.PI/180),0),'#a1a1aa');
 assert.notEqual(terrainColor('aspect',Math.tan(10.1*Math.PI/180),0),'#a1a1aa');
-assert.equal(terrainColor('slope',Math.tan(30*Math.PI/180),0),null);
-assert.equal(terrainColor('slope',Math.tan(20*Math.PI/180),0),null);
-assert.notEqual(terrainColor('slope',Math.tan(30.1*Math.PI/180),0),null);
-assert.notEqual(terrainColor('slope',Math.tan(40*Math.PI/180),0),terrainColor('slope',Math.tan(60*Math.PI/180),0));
+// Pet šumarskih klasa nagiba, sve obojene (ranije je sve ≤30° bilo prozirno).
+const nag = d => terrainColor('slope', Math.tan(d*Math.PI/180), 0);
+assert.equal(nag(0), '#22c55e'); assert.equal(nag(14.9), '#22c55e');
+assert.equal(nag(15.1), '#facc15'); assert.equal(nag(24.9), '#facc15');
+assert.equal(nag(25.1), '#f97316'); assert.equal(nag(34.9), '#f97316');
+assert.equal(nag(35.1), '#dc2626'); assert.equal(nag(49.9), '#dc2626');
+assert.equal(nag(50.1), '#7e22ce'); assert.equal(nag(75), '#7e22ce');
+assert.equal(terrainSlopeClasses.map(k => k.label).join(' '), '0–15° 15–25° 25–35° 35–50° >50°');
+// Legenda na karti: između zuma i FAB-ova, iznad donje trake, ispod dugmadi po z-indexu.
+const leg = html.slice(html.indexOf('#terrain-map-legend {'), html.indexOf('#terrain-map-legend .tml-title'));
+assert.ok(/bottom:76px/.test(leg) && /left:70px/.test(leg) && /right:76px/.test(leg) && /z-index:590/.test(leg), 'legenda se ne smije preklapati sa dugmadima');
+const tjs = fs.readFileSync(path.join(__dirname, '../../static/js/terrain-layers.js'), 'utf8');
+assert.ok(tjs.includes("mapLegend.id='terrain-map-legend'") && tjs.includes("mapLegend.style.display=html?'block':'none'"), 'legenda na karti samo kad je nagib ili ekspozicija uključena');
 assert.notEqual(terrainColor('shade',1,1),terrainColor('shade',-1,-1));
 assert.ok(html.includes('await cache.put(url, resp.clone())'), 'DEM tile mora biti sigurno upisan za offline rad');
 assert.ok(html.includes('URL.revokeObjectURL(objectUrl)'), 'Image fallback ne smije curiti object URL memoriju');
 assert.ok(html.includes("pane:'pozariPane', radius: 5"), 'simulacijske tačke moraju biti iznad projekcije plohe');
-console.log('Terrain: cardinal aspects, red slope >30°, neutral threshold and hillshade passed');
+console.log('Terrain: cardinal aspects, 5 slope classes, map legend, neutral threshold and hillshade passed');
