@@ -624,7 +624,21 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .poz-sum-chip b { display:block; font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .poz-sum-chip span { display:block; margin-top:2px; color:#71857b; font-size:9px; line-height:1.2; }
 .poz-ostali-red { display:flex; align-items:center; gap:9px; padding:8px 2px; border-top:1px solid #1e293b; cursor:pointer; }
+.sum-proj-row { display:flex; align-items:flex-start; gap:10px; margin:10px 0 8px; padding:10px 11px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; cursor:pointer; }
+.sum-proj-row input { width:18px; height:18px; margin-top:1px; flex:none; accent-color:#f59e0b; }
+.sum-proj-row b { display:block; color:#e2e8f0; font-size:13px; }
+.sum-proj-row small { display:block; color:#80958a; font-size:10px; margin-top:2px; }
+.sum-proj-card { padding:10px 11px; margin-bottom:10px; border-radius:12px; background:#0f172a; border:1px solid rgba(245,158,11,.3); }
+.sum-proj-kpi { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.sum-proj-kpi div { padding:7px 6px; border-radius:9px; background:#111c2e; text-align:center; }
+.sum-proj-kpi b { display:block; color:#fbbf24; font-size:14px; font-weight:800; }
+.sum-proj-kpi span { display:block; color:#71857b; font-size:9px; margin-top:2px; }
+.sum-proj-red { display:flex; align-items:center; gap:8px; padding:7px 2px; border-top:1px solid #1e293b; cursor:pointer; font-size:11px; color:#cbd5e1; }
+.leaflet-tooltip.sum-proj-lbl { background:rgba(15,23,42,.85); color:#fde68a; border:none; box-shadow:none; font-size:10px; font-weight:700; padding:1px 5px; }
+.leaflet-tooltip.sum-proj-lbl::before { display:none; }
 .poz-ostali-dot { width:9px; height:9px; border-radius:50%; flex:none; }
+.poz-filter-akt { display:flex; align-items:center; gap:9px; margin:-2px 0 10px; padding:9px 11px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; color:#cbd5e1; font-size:11px; cursor:pointer; }
+.poz-filter-akt input { width:18px; height:18px; flex:none; accent-color:#ef4444; }
 .poz-layer-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
 .poz-layer-grid .loc-row { margin:0; min-height:38px; padding:8px 9px; }
 .poz-source-grid { display:grid; gap:6px; }
@@ -1141,6 +1155,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     <div style="display:flex;align-items:center;gap:6px;margin:6px 0 6px;font-size:11px;color:#94a3b8;">
       <span>malo</span><div id="sum-susenje-legenda" style="flex:1;height:10px;border-radius:5px;border:1px solid #141414;"></div><span>puno</span>
     </div>
+    <label class="sum-proj-row"><input type="checkbox" id="sum-sus-proj-chk" onchange="_sumProjToggle(this.checked)"><span><b>📐 Projekcija površine sušenja</b><small>Parcele sa sušenjem u vidljivom dijelu karte, sa površinom svake</small></span></label>
+    <div id="sum-sus-proj-opts" style="display:none;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;color:#cbd5e1;">
+      <label for="sum-sus-proj-prag">Udio suhog ≥</label>
+      <select id="sum-sus-proj-prag" onchange="_sumProjPostaviPrag(this.value)" style="padding:5px 8px;background:#1f2937;color:#e2e8f0;border:1px solid #374151;border-radius:6px;font-size:12px;"><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option><option value="40">40%</option></select>
+      <button onclick="_sumProjRacunaj()" style="margin-left:auto;border:1px solid #334155;border-radius:7px;padding:5px 9px;background:#0f172a;color:#cbd5e1;font-size:11px;">↻ Preračunaj</button>
+    </div>
+    <div id="sum-sus-proj-rez"></div>
     <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Udio stojećeg suhog drveta po godini (Sentinel-2, 10 m, 2017–2025) — slabo sušenje je prozirno, jako tamnije i sa tamnim obrubom. Prikaz samo za područje kantona; čita se direktno iz javnog COG fajla pa prvo učitavanje traje nekoliko sekundi. Izvor: deadtrees.earth (Mosig i sar., University of Freiburg).</div>
     <div class="stub-section" style="padding:24px 12px 4px;">
       <p style="font-size:12px;">Svi slojevi su statični (ne uživo) — Hansen Global Forest Change se ažurira godišnje. Gubitak i rast se NE preklapaju vremenski (gubitak ide do 2024, rast samo do 2012 — to je granica same Hansen studije, ne ograničenje ove app-e).</p>
@@ -1607,6 +1628,7 @@ map.createPane('pozariDetectionsPane'); map.getPane('pozariDetectionsPane').styl
 map.getPane('pozariRasterPane').style.pointerEvents = 'none';
 map.createPane('sumarstvoPane'); map.getPane('sumarstvoPane').style.zIndex = 420;
 map.getPane('sumarstvoPane').style.pointerEvents = 'none';
+map.createPane('sumarstvoProjPane'); map.getPane('sumarstvoProjPane').style.zIndex = 425;
 map.createPane('sjecaPane');    map.getPane('sjecaPane').style.zIndex    = 430;
 
 const _BASE_CHOICE_KEY = 'usf_base_choice_v1';
@@ -4583,12 +4605,14 @@ function _sumSusenjePaleta(p) {
   try { localStorage.setItem(_SUM_SUS_BOJA_KEY, String(p)); } catch(e) {}
   l.setPaleta(p);
   _sumSusenjeLegenda();
+  if (_sumProjOn() && _sumProjRez?.lista) _sumProjCrtaj(_sumProjRez.lista, _sumProjRez.god, _sumProjRez.prag);
 }
 function _sumSusenjeGodina(g) {
   const l = _SUM_LAYERS.susenje; if (!l) return;
   try { localStorage.setItem(_SUM_SUS_GOD_KEY, String(g)); } catch(e) {}
   _sumSusGreskaJavljena = false;
   l.setGodina(g);
+  if (_sumProjOn()) _sumProjRacunaj();
 }
 const _SUM_KEY = 'usf_sumarstvo_slojevi';
 let _sumState = {};
@@ -4604,6 +4628,157 @@ function _sumToggle(key, on) {
   if (on) _SUM_LAYERS[key].addTo(map); else map.removeLayer(_SUM_LAYERS[key]);
   const sw = document.getElementById(_SUM_SWITCH_ID[key]); if (sw) sw.classList.toggle('on', on);
 }
+// ── Sušenje: projekcija površine — parcele (povezani 10 m pikseli iznad
+// praga udjela suhog drveta) u vidljivom dijelu kantona, sa površinom.
+// Odzumirano se čita grublji overview COG-a, pa je procjena grublja
+// (rezolucija se prikazuje u panelu).
+const _SUM_PROJ_KEY = 'usf_sumarstvo_susenje_proj', _SUM_PROJ_PRAG_KEY = 'usf_sumarstvo_susenje_prag';
+const _SUM_PROJ_MIN_HA = 0.1, _SUM_PROJ_MAX_PARCELA = 300, _SUM_PROJ_ETIKETE = 25, _SUM_PROJ_LISTA = 10;
+let _sumProjLayer = null, _sumProjSeq = 0, _sumProjTimer = null, _sumProjRez = null;
+function _sumProjOn() { try { return localStorage.getItem(_SUM_PROJ_KEY) === '1'; } catch(e) { return false; } }
+function _sumProjPrag() {
+  let v = 20; try { v = Number(localStorage.getItem(_SUM_PROJ_PRAG_KEY)) || 20; } catch(e) {}
+  return [10, 20, 30, 40].includes(v) ? v : 20;
+}
+function _sumProjPostaviPrag(v) {
+  try { localStorage.setItem(_SUM_PROJ_PRAG_KEY, String(v)); } catch(e) {}
+  _sumProjRacunaj();
+}
+function _sumProjToggle(on) {
+  try { localStorage.setItem(_SUM_PROJ_KEY, on ? '1' : '0'); } catch(e) {}
+  map.off('moveend', _sumProjZakazi);
+  if (on) { map.on('moveend', _sumProjZakazi); _sumProjRacunaj(); }
+  else {
+    _sumProjSeq++;
+    if (_sumProjLayer) { try { map.removeLayer(_sumProjLayer); } catch(e) {} _sumProjLayer = null; }
+    _sumProjRez = null;
+  }
+  _sumProjPanel();
+}
+let _sumProjPreskoci = false;
+function _sumProjZakazi() {
+  clearTimeout(_sumProjTimer);
+  if (_sumProjPreskoci) { _sumProjPreskoci = false; return; }
+  // Na slaboj vezi se ne čita automatski na svaki pomak — samo na "Preračunaj".
+  if (typeof _vezaLoša === 'function' && _vezaLoša()) { _sumProjRez = { ...( _sumProjRez || {}), zastarjelo:true }; _sumProjPanel(); return; }
+  _sumProjTimer = setTimeout(_sumProjRacunaj, 700);
+}
+// Površina jednog piksela prozora oko (x, y), iz uglova preračunatih u WGS84.
+function _sumPikselM2(u, x, y) {
+  const a = u(x, y), b = u(x + 1, y), c = u(x, y + 1);
+  const kx = 111320 * Math.cos(a[0] * Math.PI / 180), ky = 110540;
+  const v1 = [(b[1] - a[1]) * kx, (b[0] - a[0]) * ky], v2 = [(c[1] - a[1]) * kx, (c[0] - a[0]) * ky];
+  return Math.abs(v1[0] * v2[1] - v1[1] * v2[0]);
+}
+function _sumProjBbox() {
+  const vb = map.getBounds();
+  const b = { latMin: Math.max(vb.getSouth(), _USK_BBOX.latMin), latMax: Math.min(vb.getNorth(), _USK_BBOX.latMax),
+              lonMin: Math.max(vb.getWest(), _USK_BBOX.lonMin), lonMax: Math.min(vb.getEast(), _USK_BBOX.lonMax) };
+  return b.latMin < b.latMax && b.lonMin < b.lonMax ? b : null;
+}
+async function _sumProjRacunaj() {
+  if (!_sumProjOn()) return;
+  const D = window.USFDeadtrees;
+  if (!D || !D.procitajPodrucje || !_SUM_LAYERS.susenje) { _sumProjRez = { greska:'Sloj sušenja nije dostupan' }; _sumProjPanel(); return; }
+  const seq = ++_sumProjSeq;
+  const b = _sumProjBbox();
+  if (!b) { _sumProjCrtaj([]); _sumProjRez = { greska:'Vidljivi dio karte je van kantona' }; _sumProjPanel(); return; }
+  const god = _SUM_LAYERS.susenje.options.godina, prag = _sumProjPrag();
+  _sumProjRez = { ...(_sumProjRez || {}), ucitava:true, zastarjelo:false, greska:null };
+  _sumProjPanel();
+  try {
+    const r = await D.procitajPodrucje(god, b, 1024);
+    if (seq !== _sumProjSeq) return;
+    if (!r) { _sumProjCrtaj([]); _sumProjRez = { lista:[], broj:0, ukupnoHa:0, suhoHa:0, god, prag }; _sumProjPanel(); return; }
+    const par = D.oznaciParcele(r.data, r.ww, r.wh, Math.ceil(prag / 100 * 255), r.nodata);
+    const sve = [];
+    for (let id = 1; id <= par.n; id++) {
+      const i = par.prvi[id], x = i % r.ww, pa = _sumPikselM2(r.uLatLng, x, (i - x) / r.ww);
+      const ha = par.broj[id] * pa / 1e4;
+      if (ha < _SUM_PROJ_MIN_HA) continue;
+      sve.push({ id, ha, suhoHa: par.suma[id] / 255 * pa / 1e4, udio: par.suma[id] / par.broj[id] / 255 });
+    }
+    sve.sort((a, c) => c.ha - a.ha);
+    const crtaj = sve.slice(0, _SUM_PROJ_MAX_PARCELA);
+    const obrisi = D.obrisi(par.lab, r.ww, r.wh, crtaj.map(p => p.id));
+    crtaj.forEach(p => { p.rings = (obrisi.get(p.id) || []).map(ring => ring.map(([x, y]) => r.uLatLng(x, y))); });
+    const c = r.uLatLng(r.ww / 2, r.wh / 2);
+    _sumProjCrtaj(crtaj, god, prag);
+    _sumProjRez = {
+      lista: crtaj, broj: sve.length, god, prag,
+      ukupnoHa: sve.reduce((s, p) => s + p.ha, 0), suhoHa: sve.reduce((s, p) => s + p.suhoHa, 0),
+      rezM: Math.sqrt(_sumPikselM2(r.uLatLng, Math.floor(r.ww / 2), Math.floor(r.wh / 2))), centar: c
+    };
+  } catch(e) {
+    if (seq !== _sumProjSeq) return;
+    _sumProjRez = { greska: 'Nije moguće pročitati podatke: ' + (e && e.message || 'mreža') };
+  }
+  _sumProjPanel();
+}
+function _sumProjPopup(p, god, prag) {
+  return `<div style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:10px;min-width:210px;">
+    <b style="color:#fbbf24;font-size:14px;">Parcela sušenja · ${p.ha.toFixed(2)} ha</b>
+    <div style="font-size:11px;margin-top:6px;color:#cbd5e1;">Prosječan udio suhog drveta: <b>${Math.round(p.udio * 100)}%</b></div>
+    <div style="font-size:11px;color:#cbd5e1;">Ekvivalent potpuno suhe površine: <b>${p.suhoHa.toFixed(2)} ha</b></div>
+    <small style="display:block;margin-top:6px;color:#80958a;">${god}. · prag ≥${prag}% · procjena iz Sentinel-2, nije terenski premjer</small>
+  </div>`;
+}
+function _sumProjCrtaj(lista, god, prag) {
+  if (_sumProjLayer) { try { map.removeLayer(_sumProjLayer); } catch(e) {} }
+  _sumProjLayer = L.layerGroup();
+  const pal = (window.USFDeadtrees && USFDeadtrees.PALETE[_SUM_LAYERS.susenje?.options.paleta]) || { do:[255,160,0] };
+  const boja = 'rgb(' + pal.do.join(',') + ')';
+  const etikete = map.getZoom() >= 13;
+  lista.forEach((p, i) => {
+    if (!p.rings || !p.rings.length) return;
+    const poly = L.polygon(p.rings, { pane:'sumarstvoProjPane', color:boja, weight:1.6, fillColor:boja, fillOpacity:0.16, fillRule:'evenodd', smoothFactor:0 });
+    poly.bindPopup(() => _sumProjPopup(p, god, prag), { maxWidth:280 });
+    if (etikete && i < _SUM_PROJ_ETIKETE) poly.bindTooltip(p.ha.toFixed(p.ha >= 10 ? 0 : 1) + ' ha', { permanent:true, direction:'center', className:'sum-proj-lbl', pane:'tooltipPane' });
+    p.bounds = poly.getBounds();
+    poly.addTo(_sumProjLayer);
+  });
+  _sumProjLayer.addTo(map);
+}
+function _sumProjFokus(i) {
+  const p = _sumProjRez?.lista?.[i];
+  if (!p || !p.bounds) return;
+  switchMainTab('karta');
+  setTimeout(() => {
+    _sumProjPreskoci = true; // zadrži ovu listu da se popup otvori na istoj parceli
+    map.fitBounds(p.bounds, { padding:[40, 40], maxZoom:17 });
+    setTimeout(() => { _sumProjLayer?.eachLayer(l => { if (l.getBounds && l.getBounds().equals(p.bounds)) l.openPopup(); }); }, 400);
+  }, 80);
+}
+function _sumProjPanel() {
+  const chk = document.getElementById('sum-sus-proj-chk'); if (chk) { chk.checked = _sumProjOn(); chk.disabled = !_SUM_LAYERS.susenje; }
+  const opts = document.getElementById('sum-sus-proj-opts'); if (opts) opts.style.display = _sumProjOn() ? 'flex' : 'none';
+  const prag = document.getElementById('sum-sus-proj-prag'); if (prag) prag.value = String(_sumProjPrag());
+  const el = document.getElementById('sum-sus-proj-rez');
+  if (!el) return;
+  const r = _sumProjRez;
+  if (!_sumProjOn() || !r) { el.innerHTML = ''; return; }
+  if (r.greska) { el.innerHTML = `<div class="sum-proj-card" style="color:#fca5a5;font-size:11px;">⚠ ${_escHtml(r.greska)}</div>`; return; }
+  if (!r.lista) { el.innerHTML = `<div class="sum-proj-card" style="color:#94a3b8;font-size:11px;">⏳ Računam parcele sušenja…</div>`; return; }
+  const status = r.ucitava ? '<span style="color:#94a3b8;">⏳ osvježavam…</span>'
+    : r.zastarjelo ? '<span style="color:#fb923c;">slaba veza — pritisni Preračunaj</span>' : '';
+  const grubo = r.rezM > 15 ? `<div style="font-size:10px;color:#fb923c;margin-top:6px;">Rezolucija ~${Math.round(r.rezM)} m — približi kartu za precizniju procjenu (do 10 m).</div>` : '';
+  const redovi = r.lista.slice(0, _SUM_PROJ_LISTA).map((p, i) => `<div class="sum-proj-red" onclick="_sumProjFokus(${i})">
+      <b style="color:#fbbf24;min-width:22px;">${i + 1}.</b>
+      <span style="flex:1;">${p.ha.toFixed(2)} ha <span style="color:#80958a;">· suho ${Math.round(p.udio * 100)}%</span></span>
+      <span style="color:#64748b;">›</span></div>`).join('');
+  el.innerHTML = `<div class="sum-proj-card">
+    <div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#94a3b8;margin-bottom:7px;"><span>Vidljivo područje · ${r.god}. · ≥${r.prag}%</span>${status}</div>
+    <div class="sum-proj-kpi">
+      <div><b>${r.broj}</b><span>parcela ≥ ${_SUM_PROJ_MIN_HA} ha</span></div>
+      <div><b>${r.ukupnoHa.toFixed(1)} ha</b><span>zahvaćena površina</span></div>
+      <div><b>${r.suhoHa.toFixed(1)} ha</b><span>ekvivalent suhog</span></div>
+    </div>
+    ${grubo}
+    ${redovi ? `<div style="font-size:10px;color:#80958a;margin:8px 0 2px;">Najveće parcele (dodir → karta)</div>${redovi}` : '<div style="font-size:11px;color:#80958a;margin-top:8px;">Nema parcela iznad praga u vidljivom dijelu.</div>'}
+    ${r.broj > _SUM_PROJ_MAX_PARCELA ? `<div style="font-size:10px;color:#64748b;margin-top:6px;">Na karti je nacrtano ${_SUM_PROJ_MAX_PARCELA} najvećih.</div>` : ''}
+  </div>`;
+}
+if (_sumProjOn() && _SUM_LAYERS.susenje) { map.on('moveend', _sumProjZakazi); map.whenReady(() => setTimeout(_sumProjRacunaj, 1500)); }
 function openSumarstvoSection() {
   _openStubPanel('sumarstvo-panel', 'meni');
   Object.keys(_SUM_LAYERS).forEach(key => {
@@ -4621,6 +4796,7 @@ function openSumarstvoSection() {
   if (selB && _SUM_LAYERS.susenje) selB.value = _SUM_LAYERS.susenje.options.paleta;
   if (selB) selB.disabled = !_SUM_LAYERS.susenje;
   _sumSusenjeLegenda();
+  _sumProjPanel();
 }
 
 function _poziParseCsv(txt) {
@@ -4854,6 +5030,17 @@ function _poziStarost(ms) {
   const h = Math.round(min / 60);
   if (h < 48) return 'prije ' + h + ' h';
   return 'prije ' + Math.round(h / 24) + ' dana';
+}
+const _POZ_SAMO_AKT_KEY = 'usf_pozari_samo_aktivni';
+function _poziSamoAktivni() { try { return localStorage.getItem(_POZ_SAMO_AKT_KEY) === '1'; } catch(e) { return false; } }
+function _poziSamoAktivniSet(on) {
+  try { localStorage.setItem(_POZ_SAMO_AKT_KEY, on ? '1' : '0'); } catch(e) {}
+  _poziRender();
+}
+// Grupe koje se crtaju/listaju — uz filter "samo aktivni" samo požari sa detekcijom <24h.
+function _poziPrikazaneGrupe() {
+  const evts = _poziEvts || [];
+  return _poziSamoAktivni() ? evts.filter(g => _poziStatusPozara(g) === 'aktivan') : evts;
 }
 function _poziStatusPozara(g) { const h = (Date.now() - Number(g?.zadnji)) / 3600000; return isFinite(h) && h <= 24 ? 'aktivan' : 'nedavni / vjerovatno ugašen'; }
 // Bosanska množina.
@@ -5463,11 +5650,12 @@ let _poziOpozLayer = null;
 function _poziOpozAzuriraj() {
   if (_poziOpozLayer) { try { map.removeLayer(_poziOpozLayer); } catch(e) {} _poziOpozLayer = null; }
   const legEl = document.getElementById('poz-opoz-legend');
-  const nacrtano = _poziOpozOn() && _poziOn && (_poziEvts || []).length && typeof turf !== 'undefined';
+  const prikazane = _poziPrikazaneGrupe();
+  const nacrtano = _poziOpozOn() && _poziOn && prikazane.length && typeof turf !== 'undefined';
   if (legEl) legEl.style.display = nacrtano ? 'block' : 'none';
   if (!nacrtano) return;
   const grp = L.layerGroup();
-  _poziEvts.forEach(g => {
+  prikazane.forEach(g => {
     // Starija Firemap ažuriranja istog požara se izbace PRIJE podjele po
     // starosti, inače bi stara tačka ostala crtana u starijem bandu.
     const svi = _poziFiremapNajnovije(g.pts);
@@ -5651,7 +5839,8 @@ function _poziRender() {
   if (_poziLayer) { try { map.removeLayer(_poziLayer); } catch(e) {} }
   _poziLayer = L.layerGroup([], { pane:'pozariPane' });
   const ref = _poziRefTacka();
-  (_poziEvts || []).forEach(g => {
+  const prikazane = _poziPrikazaneGrupe();
+  prikazane.forEach(g => {
     if (!_poziCanvasRenderer && L.canvas) _poziCanvasRenderer = L.canvas({ pane:'pozariDetectionsPane', padding:0.35 });
     // Svaka stvarna detekcija ima FIRMS stil prema pouzdanosti i ostaje vidljiva ispod grupne oznake.
     if (_poziSlojOn('tacke')) g.pts.forEach(p => {
@@ -5667,9 +5856,10 @@ function _poziRender() {
   });
   if (_poziOn) _poziLayer.addTo(map);
   if (_poziHeatLayer) { try { map.removeLayer(_poziHeatLayer); } catch(e) {} }
-  if (_poziOn && _poziHeatOn() && (_poziPts || []).length) {
+  const heatPts = _poziSamoAktivni() ? prikazane.flatMap(g => g.pts || []) : (_poziPts || []);
+  if (_poziOn && _poziHeatOn() && heatPts.length) {
     if (!_poziHeatLayer) _poziHeatLayer = new _PoziHeat([], { pane:'pozariHeatPane', gradient:{ 0.3:'#fff3c4', 0.6:'#f2d184', 0.85:'#d6a84b', 1:'#9b742c' } });
-    _poziHeatLayer.setLatLngs(_poziPts.map(p => [p.la, p.lo]));
+    _poziHeatLayer.setLatLngs(heatPts.map(p => [p.la, p.lo]));
     _poziHeatLayer.addTo(map);
   }
   _poziOpozAzuriraj();
@@ -5843,8 +6033,13 @@ function _poziOsvjeziAkoJeStaro() {
 function _poziOperativniHtml() {
   if (_poziBusy && !_poziEvts.length) return `<div class="poz-ops-card"><div class="poz-ops-title">⏳ Učitavam operativne podatke…</div></div>`;
   if (!_poziOn) return `<div class="poz-ops-card"><div class="poz-ops-title">Prikaz požara je isključen</div><div style="color:#71857b;font-size:10px;margin-top:5px;">Uključi prikaz da vidiš najbliži događaj i stanje na karti.</div></div>`;
-  const g = (_poziEvts || [])[0];
-  if (!g) return `<div class="poz-ops-card"><div class="poz-ops-head"><div class="poz-ops-title">✓ Nema zabilježenih požara</div><span class="poz-ops-badge" style="background:#14532d;color:#bbf7d0;">${_poziOkvirNaziv()}</span></div></div>`;
+  const g = _poziPrikazaneGrupe()[0];
+  if (!g) {
+    const skriveno = _poziSamoAktivni() && (_poziEvts || []).length;
+    const naslov = skriveno ? '✓ Nema aktivnih požara (<24h)' : '✓ Nema zabilježenih požara';
+    const napomena = skriveno ? `<div style="color:#80958a;font-size:10px;margin-top:6px;">${(_poziEvts || []).length} starijih je sakriveno filterom.</div>` : '';
+    return `${skriveno ? _poziSazetakHtml() : ''}<div class="poz-ops-card"><div class="poz-ops-head"><div class="poz-ops-title">${naslov}</div><span class="poz-ops-badge" style="background:#14532d;color:#bbf7d0;">${_poziOkvirNaziv()}</span></div>${napomena}</div>`;
+  }
   const ref = _poziRefTacka(), smjer = _azimutSmjer(_bearing(ref.la,ref.lo,g.la,g.lo));
   const pz = _poziPouzdanost(g.conf), dani = _poziSimDani(g).length;
   const badge = _poziStatusPozara(g) === 'aktivan' ? 'AKTIVAN' : 'NEDAVNI';
@@ -5893,12 +6088,13 @@ function _poziSazetakHtml() {
     ${chip('aktivnih <24h', aktivni, aktivni ? '#f87171' : '#4ade80')}
     ${chip('procj. površina', '~' + _poziPovrsTxt(ha), '#fbbf24')}
     ${chip('maks. FRP', najjaci ? najjaci.toFixed(0) + ' MW' : '—', '#fb923c')}
-  </div>`;
+  </div>
+  <label class="poz-filter-akt"><input type="checkbox" ${_poziSamoAktivni() ? 'checked' : ''} onchange="_poziSamoAktivniSet(this.checked)"><span>Samo aktivni požari (detekcija u zadnja 24 h) — lista i karta</span></label>`;
 }
 // Ostali požari u okviru (najbliži je već u kartici iznad), po udaljenosti.
 const _POZ_OSTALI_MAX = 12;
 function _poziOstaliHtml() {
-  const ostali = (_poziEvts || []).slice(1);
+  const ostali = _poziPrikazaneGrupe().slice(1);
   if (!ostali.length) return '';
   const ref = _poziRefTacka();
   const redovi = ostali.slice(0, _POZ_OSTALI_MAX).map(g => {
@@ -5915,7 +6111,7 @@ function _poziOstaliHtml() {
   }).join('');
   const vise = ostali.length > _POZ_OSTALI_MAX ? `<div style="color:#64748b;font-size:10px;padding:6px 2px 0;">+ još ${ostali.length - _POZ_OSTALI_MAX} — vidi Historiju</div>` : '';
   return `<div class="poz-section-card" style="margin:0 0 10px !important;">
-    <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">Ostali požari u okviru (${ostali.length})</div>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${_poziSamoAktivni() ? 'Ostali aktivni požari' : 'Ostali požari u okviru'} (${ostali.length})</div>
     ${redovi}${vise}
   </div>`;
 }

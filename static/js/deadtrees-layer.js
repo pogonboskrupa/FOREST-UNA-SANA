@@ -214,7 +214,8 @@
         return {
           slike, epsg, ox, oy, rx, ry, W, H: glavna.getHeight(), nodata,
           faktori: slike.map(s => W / s.getWidth()),
-          fwd: root.proj4('EPSG:4326', def).forward
+          fwd: root.proj4('EPSG:4326', def).forward,
+          inv: root.proj4('EPSG:4326', def).inverse
         };
       })();
       _cog[url].catch(() => { delete _cog[url]; });
@@ -312,5 +313,105 @@
     });
   }
 
-  root.USFDeadtrees = { GODINE, PALETE, DETALJ_Z, cogUrl, alfa, boja, obrubi, maxBlok, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib };
+  // ── Projekcija površine: raster → parcele (4-povezani pikseli ≥ praga) ──
+  function oznaciParcele(data, ww, wh, pragV, nodata) {
+    const N = ww * wh, lab = new Int32Array(N), stek = new Int32Array(N);
+    const broj = [0], suma = [0], prvi = [0];
+    const ok = k => !lab[k] && data[k] >= pragV && data[k] !== nodata;
+    let n = 0;
+    for (let i = 0; i < N; i++) {
+      if (!ok(i)) continue;
+      n++;
+      let sp = 0, b = 0, s = 0;
+      lab[i] = n; stek[sp++] = i;
+      while (sp) {
+        const j = stek[--sp], x = j % ww;
+        b++; s += data[j];
+        if (x > 0 && ok(j - 1)) { lab[j - 1] = n; stek[sp++] = j - 1; }
+        if (x < ww - 1 && ok(j + 1)) { lab[j + 1] = n; stek[sp++] = j + 1; }
+        if (j >= ww && ok(j - ww)) { lab[j - ww] = n; stek[sp++] = j - ww; }
+        if (j + ww < N && ok(j + ww)) { lab[j + ww] = n; stek[sp++] = j + ww; }
+      }
+      broj.push(b); suma.push(s); prvi.push(i);
+    }
+    return { lab, n, broj, suma, prvi };
+  }
+
+  // Izbacuje tačke na pravoj liniji (stepenasti obris ima ih mnogo).
+  function bezKolinearnih(ring, W1) {
+    const pts = ring.map(v => [v % W1, (v - v % W1) / W1]), n = pts.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
+      if ((b[0] - a[0]) * (c[1] - b[1]) !== (b[1] - a[1]) * (c[0] - b[0])) out.push(b);
+    }
+    return out;
+  }
+
+  // Obris parcele po ivicama piksela → prstenovi u koordinatama uglova piksela.
+  // Rupe i dodiri u uglu daju više prstenova; crtati sa fillRule 'evenodd'.
+  function obrisi(lab, ww, wh, ids) {
+    const W1 = ww + 1, ivice = new Map();
+    ids.forEach(id => ivice.set(id, new Map()));
+    const dodaj = (m, a, b) => { const l = m.get(a); if (l) l.push(b); else m.set(a, [b]); };
+    for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) {
+      const i = y * ww + x, id = lab[i];
+      if (!id) continue;
+      const m = ivice.get(id);
+      if (!m) continue;
+      const v = y * W1 + x;
+      if (y === 0 || lab[i - ww] !== id) dodaj(m, v, v + 1);
+      if (x === ww - 1 || lab[i + 1] !== id) dodaj(m, v + 1, v + 1 + W1);
+      if (y === wh - 1 || lab[i + ww] !== id) dodaj(m, v + 1 + W1, v + W1);
+      if (x === 0 || lab[i - 1] !== id) dodaj(m, v + W1, v);
+    }
+    const rez = new Map();
+    ivice.forEach((m, id) => {
+      const prsteni = [];
+      for (const [start, izlazi] of m) {
+        while (izlazi.length) {
+          const ring = [start];
+          let cur = izlazi.pop();
+          while (cur !== start) {
+            ring.push(cur);
+            const l = m.get(cur);
+            if (!l || !l.length) break;
+            cur = l.pop();
+          }
+          const r = bezKolinearnih(ring, W1);
+          if (r.length >= 3) prsteni.push(r);
+        }
+      }
+      rez.set(id, prsteni);
+    });
+    return rez;
+  }
+
+  // Čita prozor COG-a za bbox (WGS84) na nivou čija duža strana ≤ ~maxStrana px.
+  // uLatLng(x, y) pretvara ugao piksela prozora u [lat, lng].
+  async function procitajPodrucje(godina, b, maxStrana) {
+    const c = await otvoriCog(cogUrl('deadwood', godina));
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let j = 0; j <= 4; j++) for (let i = 0; i <= 4; i++) {
+      const [X, Y] = c.fwd([b.lonMin + (b.lonMax - b.lonMin) * i / 4, b.latMin + (b.latMax - b.latMin) * j / 4]);
+      const px = (X - c.ox) / c.rx, py = (Y - c.oy) / c.ry;
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+    }
+    minX = Math.max(0, Math.floor(minX)); minY = Math.max(0, Math.floor(minY));
+    maxX = Math.min(c.W, Math.ceil(maxX)); maxY = Math.min(c.H, Math.ceil(maxY));
+    if (maxX <= minX || maxY <= minY) return null;
+    const zelja = Math.max(1, Math.max(maxX - minX, maxY - minY) / (maxStrana || 1024));
+    const lvl = izaberiNivo(c.faktori, zelja), f = c.faktori[lvl], img = c.slike[lvl];
+    const x0 = Math.floor(minX / f), y0 = Math.floor(minY / f);
+    const x1 = Math.min(img.getWidth(), Math.ceil(maxX / f)), y1 = Math.min(img.getHeight(), Math.ceil(maxY / f));
+    if (x1 <= x0 || y1 <= y0) return null;
+    const r = await img.readRasters({ window: [x0, y0, x1, y1], samples: [0], interleave: false });
+    const uLatLng = (x, y) => {
+      const [lng, lat] = c.inv([c.ox + (x0 + x) * f * c.rx, c.oy + (y0 + y) * f * c.ry]);
+      return [lat, lng];
+    };
+    return { data: r[0], ww: x1 - x0, wh: y1 - y0, f, nodata: c.nodata, uLatLng };
+  }
+
+  root.USFDeadtrees = { GODINE, PALETE, DETALJ_Z, cogUrl, alfa, boja, obrubi, maxBlok, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib, oznaciParcele, obrisi, procitajPodrucje };
 })(typeof window !== 'undefined' ? window : globalThis);

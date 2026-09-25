@@ -141,6 +141,36 @@ t('APK: Range ide kroz nativni most, ne kroz WebView intercept', () => {
   assert.ok(SRC.includes('fromCustomClient(rangeKlijent(url)'));
 });
 
+t('oznaciParcele: 4-povezane parcele iznad praga, nodata i slabo sušenje ne ulaze', () => {
+  const g = ['XX..X', 'X...X', '..s..', 'N.XXX'];
+  const ww = 5, wh = 4, data = new Uint8Array(ww * wh);
+  g.forEach((r, y) => [...r].forEach((c, x) => { data[y * ww + x] = c === 'X' ? 120 : c === 's' ? 30 : c === 'N' ? 255 : 0; }));
+  const p = D.oznaciParcele(data, ww, wh, 51, 255);
+  assert.strictEqual(p.n, 3, 'tri odvojene parcele (dijagonala ne spaja)');
+  assert.deepStrictEqual(p.broj.slice(1).sort(), [2, 3, 3]);
+  assert.strictEqual(p.suma[1], 3 * 120);
+});
+
+t('obrisi: vanjski prsten + rupa, bez kolinearnih tačaka', () => {
+  const g = ['XXXX', 'X..X', 'XXXX'];
+  const ww = 4, wh = 3, data = new Uint8Array(ww * wh);
+  g.forEach((r, y) => [...r].forEach((c, x) => { if (c === 'X') data[y * ww + x] = 200; }));
+  const p = D.oznaciParcele(data, ww, wh, 51);
+  const r = D.obrisi(p.lab, ww, wh, [1]).get(1);
+  assert.strictEqual(r.length, 2, 'obris i rupa');
+  const plohe = r.map(ring => Math.abs(ring.reduce((s, [x, y], i) => { const [x2, y2] = ring[(i + 1) % ring.length]; return s + x * y2 - x2 * y; }, 0) / 2)).sort((a, b) => a - b);
+  assert.deepStrictEqual(plohe, [2, 12]);
+  assert.ok(r.every(ring => ring.length === 4), 'pravougaonici imaju samo 4 ugla');
+});
+
+t('projekcija površine: checkbox, vlastiti pane iznad sušenja, prag i površina u panelu', () => {
+  assert.ok(HTML.includes('id="sum-sus-proj-chk"'));
+  assert.ok(HTML.includes("map.createPane('sumarstvoProjPane')"));
+  assert.ok(/pane:'sumarstvoProjPane'/.test(HTML));
+  assert.ok(HTML.includes('function _sumPikselM2(') && HTML.includes('D.procitajPodrucje('));
+  assert.strictEqual(typeof D.procitajPodrucje, 'function');
+});
+
 (async () => {
   for (const [name, fn] of _testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + name); }

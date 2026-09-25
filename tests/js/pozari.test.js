@@ -558,4 +558,17 @@ t('Pregled: sažetak okvira, akcije najbližeg i lista ostalih požara', () => {
   assert.ok(HTML.indexOf('id="poz-meteo"') < HTML.indexOf('id="poz-source-status"'), 'vjetar ide uz najbliži požar');
 });
 
+t('filter "samo aktivni" djeluje na listu, kartu i projekciju', () => {
+  const src = extractFn('_poziStatusPozara') + '\n' + extractFn('_poziPrikazaneGrupe') + '\nreturn _poziPrikazaneGrupe;';
+  const sad = Date.now();
+  const evts = [{ zadnji: sad - 2 * 3600e3 }, { zadnji: sad - 30 * 3600e3 }];
+  const f = on => new Function('_poziEvts', '_poziSamoAktivni', src)(evts, () => on)();
+  assert.strictEqual(f(false).length, 2);
+  assert.strictEqual(f(true).length, 1);
+  const render = HTML.slice(HTML.indexOf('function _poziRender()'), HTML.indexOf('function _poziSimListaGrupe'));
+  assert.ok(render.includes('_poziPrikazaneGrupe()'));
+  const opoz = HTML.slice(HTML.indexOf('function _poziOpozAzuriraj()'), HTML.indexOf('function _poziIconGrupa'));
+  assert.ok(opoz.includes('_poziPrikazaneGrupe()'));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
