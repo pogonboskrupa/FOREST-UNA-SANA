@@ -29,6 +29,6 @@ echo "Assets kopirani u $ASSETS_DIR/"
 echo "Ukupna velicina: $(du -sh $ASSETS_DIR | cut -f1)"
 
 # Fail the build instead of shipping an APK that needs the network to boot.
-for asset in index.html static/libs/leaflet.min.js static/libs/leaflet.min.css static/libs/proj4.js static/libs/turf.min.js static/libs/sql-wasm.js static/libs/sql-wasm.wasm static/js/firebase-init.js static/js/road-design.js static/js/deadtrees-layer.js static/libs/geotiff.js; do
+for asset in index.html static/libs/leaflet.min.js static/libs/leaflet.min.css static/libs/proj4.js static/libs/turf.min.js static/libs/sql-wasm.js static/libs/sql-wasm.wasm static/js/firebase-init.js static/js/road-design.js static/js/deadtrees-layer.js static/js/efda-layer.js static/data/efda_opcine.tif static/data/efda_opcine.json static/data/opcine5.geojson static/libs/geotiff.js; do
   test -s "$ASSETS_DIR/$asset" || { echo "Missing offline asset: $asset" >&2; exit 1; }
 done

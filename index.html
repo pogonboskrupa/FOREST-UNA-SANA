@@ -34,6 +34,7 @@
 <script src="static/js/firebase-init.js"></script>
 <script src="static/js/road-design.js" onerror="_libErr('Projektovanje puta')"></script>
 <script src="static/js/deadtrees-layer.js" onerror="_libErr('Sušenje (deadtrees)')"></script>
+<script src="static/js/efda-layer.js" onerror="_libErr('Poremećaji šume (EFDA)')"></script>
 <script>
 window.addEventListener('DOMContentLoaded',function(){
   if(!_libErrNames.length)return;
@@ -635,6 +636,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .sum-proj-red { display:flex; align-items:center; gap:8px; padding:7px 2px; border-top:1px solid #1e293b; cursor:pointer; font-size:11px; color:#cbd5e1; }
 .leaflet-tooltip.sum-proj-lbl { background:rgba(15,23,42,.85); color:#fde68a; border:none; box-shadow:none; font-size:10px; font-weight:700; padding:1px 5px; }
 .leaflet-tooltip.sum-proj-lbl::before { display:none; }
+.sum-por-uzroci { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0; }
+.sum-por-chip { display:flex; align-items:center; gap:6px; padding:6px 9px; border-radius:999px; border:1px solid #334155; background:#0f172a; color:#cbd5e1; font-size:11px; cursor:pointer; }
+.sum-por-chip input { width:15px; height:15px; margin:0; }
+.sum-por-chip i { width:10px; height:10px; border-radius:3px; display:inline-block; }
+.sum-por-tab { width:100%; border-collapse:collapse; font-size:11px; color:#cbd5e1; margin-top:4px; }
+.sum-por-tab th, .sum-por-tab td { padding:5px 4px; border-top:1px solid #1e293b; text-align:right; }
+.sum-por-tab th:first-child, .sum-por-tab td:first-child { text-align:left; }
+.sum-por-tab th { color:#80958a; font-weight:600; font-size:10px; }
 .poz-filter-akt { display:flex; align-items:center; gap:9px; margin:-2px 0 10px; padding:9px 11px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; color:#cbd5e1; font-size:11px; cursor:pointer; }
 .poz-filter-akt input { width:18px; height:18px; flex:none; accent-color:#ef4444; }
 .poz-layer-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
@@ -1120,6 +1129,21 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <div class="loc-switch" id="sum-rast-switch" onclick="_sumToggle('rast',!_sumOn('rast'))"></div>
     </div>
     <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 0;">Površine gdje je krošnja NARASLA u periodu 2000–2012 (Hansen ne pokriva noviji rast).</div>
+    <div class="loc-row" style="margin-top:10px;">
+      <span>🪵 Poremećaji šume 1985–2024</span>
+      <div class="loc-switch" id="sum-poremecaji-switch" onclick="_sumToggle('poremecaji',!_sumOn('poremecaji'))"></div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin:2px 0 6px;">Godina i uzrok zadnjeg poremećaja krošnje (Landsat, 30 m) — Bosanska Krupa, Bihać, Cazin, Bosanski Petrovac, Sanski Most. Dodir na kartu pokazuje godinu i uzrok.</div>
+    <div id="sum-por-opts" style="display:none;">
+      <div id="sum-por-uzroci" class="sum-por-uzroci"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;color:#cbd5e1;">
+        <label for="sum-por-od">Period</label>
+        <select id="sum-por-od" onchange="_sumPorPostavi({ od: Number(this.value) })" style="padding:5px 8px;background:#1f2937;color:#e2e8f0;border:1px solid #374151;border-radius:6px;font-size:12px;">
+          <option value="1985">1985–2024 (sve)</option><option value="2000">od 2000.</option><option value="2010">od 2010.</option><option value="2015">od 2015.</option><option value="2020">od 2020.</option><option value="2024">samo 2024.</option>
+        </select>
+      </div>
+      <div id="sum-por-stat"></div>
+    </div>
     <div class="loc-row" style="margin-top:10px;">
       <span>🟨 Sušenje šume (deadtrees.earth)</span>
       <div class="loc-switch" id="sum-susenje-switch" onclick="_sumToggle('susenje',!_sumOn('susenje'))"></div>
@@ -4537,12 +4561,100 @@ function _sumSusenjeGodina(g) {
   l.setGodina(g);
   if (_sumProjOn()) _sumProjRacunaj();
 }
+// ── Poremećaji šume (EFDA v3.0, 5 općina) — lokalni fajl iz APK-a, vidi
+// static/js/efda-layer.js. Filter (uzroci, period) se pamti. ────────────
+const _SUM_POR_KEY = 'usf_sumarstvo_poremecaji_filter';
+let _sumPorGrid = null, _sumPorObrub = null, _sumPorMeta = null, _sumPorGreskaJavljena = false;
+function _sumPorStanje() {
+  let s = null; try { s = JSON.parse(localStorage.getItem(_SUM_POR_KEY) || 'null'); } catch(e) {}
+  const uzroci = Array.isArray(s?.uzroci) ? s.uzroci.filter(u => [0, 1, 2, 3].includes(u)) : [0, 1, 2, 3];
+  const od = [1985, 2000, 2010, 2015, 2020, 2024].includes(s?.od) ? s.od : 1985;
+  return { uzroci, od };
+}
+function _sumPorFilter() { const s = _sumPorStanje(); return { uzroci: new Set(s.uzroci), odGodine: s.od }; }
+function _sumPorPostavi(promjena) {
+  const s = { ..._sumPorStanje(), ...promjena };
+  try { localStorage.setItem(_SUM_POR_KEY, JSON.stringify(s)); } catch(e) {}
+  if (_sumPorGrid) _sumPorGrid.setFilter(_sumPorFilter());
+  _sumPorPanel();
+}
+function _sumPorUzrokToggle(u, on) {
+  const set = new Set(_sumPorStanje().uzroci);
+  if (on) set.add(u); else set.delete(u);
+  _sumPorPostavi({ uzroci: [...set].sort() });
+}
+async function _sumPorUcitajDodatke() {
+  if (!_sumPorMeta) {
+    try { const r = await fetch('static/data/efda_opcine.json'); if (r.ok) _sumPorMeta = await r.json(); } catch(e) {}
+  }
+  if (_sumPorObrub && !_sumPorObrub.getLayers().length) {
+    try {
+      const r = await fetch('static/data/opcine5.geojson');
+      if (r.ok) L.geoJSON(await r.json(), { pane:'sumarstvoPane', interactive:false,
+        style:{ color:'#e2e8f0', weight:1.3, opacity:0.8, dashArray:'5 5', fill:false } }).addTo(_sumPorObrub);
+    } catch(e) {}
+  }
+  _sumPorPanel();
+}
+// Hektari po općini i uzroku za izabrani period (iz statistike pripreme).
+function _sumPorStatistika(meta, stanje) {
+  const redovi = Object.entries(meta?.opcine || {}).map(([ime, o]) => {
+    const po = { 0: 0, 1: 0, 2: 0, 3: 0 };
+    Object.entries(o.po_godini_ha || {}).forEach(([g, uz]) => {
+      if (Number(g) < stanje.od) return;
+      Object.entries(uz).forEach(([u, ha]) => { if (stanje.uzroci.includes(Number(u))) po[u] += ha; });
+    });
+    return { ime, po, ukupno: po[0] + po[1] + po[2] + po[3] };
+  });
+  return redovi.sort((a, b) => b.ukupno - a.ukupno);
+}
+function _sumPorPanel() {
+  const opts = document.getElementById('sum-por-opts');
+  if (opts) opts.style.display = _sumOn('poremecaji') ? '' : 'none';
+  const s = _sumPorStanje();
+  const uz = document.getElementById('sum-por-uzroci');
+  if (uz && window.USFEfda) uz.innerHTML = [1, 2, 3, 0].map(u => {
+    const d = USFEfda.UZROCI[u];
+    return `<label class="sum-por-chip"><input type="checkbox" ${s.uzroci.includes(u) ? 'checked' : ''} onchange="_sumPorUzrokToggle(${u}, this.checked)"><i style="background:rgb(${d.boja.join(',')});"></i>${d.naziv}</label>`;
+  }).join('');
+  const od = document.getElementById('sum-por-od'); if (od) od.value = String(s.od);
+  const st = document.getElementById('sum-por-stat');
+  if (!st) return;
+  if (!_sumPorMeta) { st.innerHTML = ''; return; }
+  const redovi = _sumPorStatistika(_sumPorMeta, s);
+  const ha = v => v >= 100 ? Math.round(v).toLocaleString('bs') : v.toFixed(1);
+  const zbir = k => redovi.reduce((t, r) => t + (k === 'u' ? r.ukupno : r.po[k]), 0);
+  st.innerHTML = `<table class="sum-por-tab"><tr><th>Općina (ha)</th><th>Sječa</th><th>Vjetar/potk.</th><th>Požar</th><th>Ukupno</th></tr>
+    ${redovi.map(r => `<tr><td>${_escHtml(r.ime)}</td><td>${ha(r.po[3])}</td><td>${ha(r.po[1])}</td><td>${ha(r.po[2])}</td><td><b>${ha(r.ukupno)}</b></td></tr>`).join('')}
+    <tr><td><b>Ukupno</b></td><td>${ha(zbir(3))}</td><td>${ha(zbir(1))}</td><td>${ha(zbir(2))}</td><td><b>${ha(zbir('u'))}</b></td></tr></table>`;
+}
+if (window.USFEfda) {
+  const Por = USFEfda.napraviSloj(L);
+  _sumPorGrid = new Por({ pane: 'sumarstvoPane', zIndex: 5, filter: _sumPorFilter(), onGreska: e => {
+    if (_sumPorGreskaJavljena) return;
+    _sumPorGreskaJavljena = true;
+    showToast('⚠ Poremećaji šume nisu dostupni: ' + (e && e.message || 'greška'));
+  } });
+  _sumPorObrub = L.layerGroup();
+  _SUM_LAYERS.poremecaji = L.layerGroup([_sumPorGrid, _sumPorObrub]);
+  _SUM_LAYERS.poremecaji.on('add', _sumPorUcitajDodatke);
+  map.on('click', async e => {
+    if (!_sumOn('poremecaji')) return;
+    try {
+      const c = await USFEfda.ucitaj();
+      const v = USFEfda.vrijednostNa(c, e.latlng.lat, e.latlng.lng);
+      if (!USFEfda.boja(v, _sumPorFilter())) return;
+      const d = USFEfda.dekodiraj(v), u = USFEfda.UZROCI[d.uzrok];
+      L.popup({ maxWidth: 240 }).setLatLng(e.latlng).setContent(`<div style="background:#0f172a;color:#e2e8f0;padding:9px 11px;border-radius:10px;"><b style="color:rgb(${u.boja.join(',')});">${u.naziv}</b><div style="font-size:13px;margin-top:3px;">Zadnji poremećaj: <b>${d.godina}.</b></div><small style="color:#80958a;">Landsat 30 m, procjena modela — nije terenski podatak</small></div>`).openOn(map);
+    } catch(err) {}
+  });
+}
 const _SUM_KEY = 'usf_sumarstvo_slojevi';
 let _sumState = {};
 try { _sumState = JSON.parse(localStorage.getItem(_SUM_KEY) || '{}'); } catch(e) {}
 Object.keys(_SUM_LAYERS).forEach(k => { if (_sumState[k]) _SUM_LAYERS[k].addTo(map); });
 function _sumOn(key) { return !!_sumState[key]; }
-const _SUM_SWITCH_ID = { pokrivac: 'sum-pokrivac-switch', gubitak: 'sum-gubitak-switch', rast: 'sum-rast-switch', susenje: 'sum-susenje-switch' };
+const _SUM_SWITCH_ID = { pokrivac: 'sum-pokrivac-switch', gubitak: 'sum-gubitak-switch', rast: 'sum-rast-switch', susenje: 'sum-susenje-switch', poremecaji: 'sum-poremecaji-switch' };
 function _sumToggle(key, on) {
   if (!_SUM_LAYERS[key]) return;
   _sumState[key] = !!on;
@@ -4550,6 +4662,7 @@ function _sumToggle(key, on) {
   if (key === 'susenje') _sumSusGreskaJavljena = false;
   if (on) _SUM_LAYERS[key].addTo(map); else map.removeLayer(_SUM_LAYERS[key]);
   const sw = document.getElementById(_SUM_SWITCH_ID[key]); if (sw) sw.classList.toggle('on', on);
+  if (key === 'poremecaji') { _sumPorGreskaJavljena = false; _sumPorPanel(); }
 }
 // ── Sušenje: projekcija površine — parcele (povezani 10 m pikseli iznad
 // praga udjela suhog drveta) u vidljivom dijelu kantona, sa površinom.
@@ -4720,6 +4833,8 @@ function openSumarstvoSection() {
   if (selB) selB.disabled = !_SUM_LAYERS.susenje;
   _sumSusenjeLegenda();
   _sumProjPanel();
+  _sumPorPanel();
+  if (_sumOn('poremecaji')) _sumPorUcitajDodatke();
 }
 
 function _poziParseCsv(txt) {
