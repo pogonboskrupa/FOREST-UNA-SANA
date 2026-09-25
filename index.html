@@ -4435,21 +4435,40 @@ function _poziPragIzmedju(a, b, prag, prepreke) {
 // požare, besplatno i bez ključa. Dopuna tačkastim satelitskim detekcijama
 // iznad: opozareno = STVARNO izmjerene opožarene granice (kasni danima),
 // fwi = prognoza opasnosti (gdje je danas rizično, ne šta je već gorjelo).
+// Obični L.tileLayer.wms ostavlja praznu pločicu kad EFFIS server zakasni
+// ili vrati grešku (pravougaona rupa u plohi, "nestane pa se pojavi").
+// Pločice ostaju <img> (EFFIS ne mora slati CORS), ali neuspjela se
+// ponovo traži do 3 puta, a stare ostaju vidljive dok se nove učitavaju.
+const _EFFIS_POKUSAJI = 3;
+const _EffisWms = L.TileLayer.WMS.extend({
+  _tileOnError(done, tile, e) {
+    const n = (tile._usfPok || 0) + 1;
+    if (n <= _EFFIS_POKUSAJI && this._map && navigator.onLine !== false) {
+      tile._usfPok = n;
+      setTimeout(() => {
+        if (!this._map || !tile.parentNode) return;
+        const u = String(tile.src || '').replace(/([?&])usfpok=\d+/, '$1').replace(/[?&]$/, '');
+        if (u) tile.src = u + (u.includes('?') ? '&' : '?') + 'usfpok=' + n;
+      }, 900 * n);
+      return;
+    }
+    L.TileLayer.prototype._tileOnError.call(this, done, tile, e);
+  }
+});
+const _EFFIS_OPTS = { format: 'image/png', transparent: true, tiled: true, version: '1.1.1', maxZoom: 22,
+  keepBuffer: 6, updateWhenZooming: false, updateWhenIdle: true, updateInterval: 150, attribution: 'Copernicus EFFIS' };
 const _POZ_EFFIS = {
-  opozareno: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
+  opozareno: new _EffisWms('https://maps.effis.emergency.copernicus.eu/gwis', {
     // `modis.ba` više nije objavljen EFFIS sloj, pa je karta ostajala prazna.
     // Sezonski NRT poligoni pokrivaju i požar od prije nekoliko sedmica.
-    pane:'pozariRasterPane', layers: 'nrt.ba.poly.season', format: 'image/png', transparent: true, tiled: true,
-    version: '1.1.1', maxZoom: 22, opacity: 0.78, attribution: 'Copernicus EFFIS'
+    ..._EFFIS_OPTS, pane:'pozariRasterPane', layers: 'nrt.ba.poly.season', opacity: 0.78
   }),
-  detekcije: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
+  detekcije: new _EffisWms('https://maps.effis.emergency.copernicus.eu/gwis', {
     // Nezavisan mjesečni prikaz tačaka MODIS/VIIRS, bez FIRMS/GFW ključa.
-    pane:'pozariRasterPane', layers: 'modis.hs.month', format: 'image/png', transparent: true, tiled: true,
-    version: '1.1.1', maxZoom: 22, opacity: 0.92, attribution: 'Copernicus EFFIS'
+    ..._EFFIS_OPTS, pane:'pozariRasterPane', layers: 'modis.hs.month', opacity: 0.92
   }),
-  fwi: L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/gwis', {
-    pane:'pozariRasterPane', layers: 'ecmwf.fwi', format: 'image/png', transparent: true, tiled: true,
-    version: '1.1.1', maxZoom: 22, opacity: 0.55, attribution: 'Copernicus EFFIS'
+  fwi: new _EffisWms('https://maps.effis.emergency.copernicus.eu/gwis', {
+    ..._EFFIS_OPTS, pane:'pozariRasterPane', layers: 'ecmwf.fwi', opacity: 0.55
   })
 };
 const _POZ_EFFIS_KEY = 'usf_pozari_effis';

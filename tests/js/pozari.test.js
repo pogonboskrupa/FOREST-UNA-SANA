@@ -571,4 +571,12 @@ t('filter "samo aktivni" djeluje na listu, kartu i projekciju', () => {
   assert.ok(opoz.includes('_poziPrikazaneGrupe()'));
 });
 
+t('EFFIS WMS ponovo traži neuspjelu pločicu i zadržava stare pri zumu', () => {
+  assert.ok(!/L\.tileLayer\.wms\(/.test(HTML), 'EFFIS ne smije biti obični L.tileLayer.wms (prazne pločice)');
+  const blok = HTML.slice(HTML.indexOf('const _EffisWms'), HTML.indexOf('const _POZ_EFFIS_KEY'));
+  assert.ok(blok.includes('_tileOnError(') && blok.includes('usfpok='));
+  assert.ok(/updateWhenZooming:\s*false/.test(blok) && /keepBuffer:\s*6/.test(blok));
+  assert.strictEqual((blok.match(/new _EffisWms\(/g) || []).length, 3);
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
