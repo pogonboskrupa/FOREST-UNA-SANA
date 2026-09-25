@@ -55,6 +55,12 @@ sa najmanje pločica = `MAX(z)` kod obrnutog).
   zumira dalje → siva pozadina dok se ne odzumira (prijavljen bug, v1.4.7).
   Odzumiranje: najviše 2 nivoa ispod fajla (svaki nivo = 4× više pločica).
 
+- Pozicija se NE mijenja pri uvozu/izboru offline karte ni pri startu
+  (korisnik ostaje gdje je bio, `usf_last_pos`): `_sqlmapSelect` nema
+  `fitBounds`; skok na obuhvat je samo dugme "⤢ Obuhvat" (`_sqlmapZoom`).
+  Karta MORA imati eksplicitan `minZoom: 0` — inače Leaflet uzima minZoom
+  iz offline sloja i prisilno zumira (v1.4.15).
+
 ## 4. Testovi
 
 - `android/test-java/SqliteTileMathTest.java` — pokreće se u CI-ju prije

@@ -1521,6 +1521,10 @@ try {
 
 const map = L.map('map', {
   maxZoom: 22,
+  // Eksplicitno: bez ovoga Leaflet uzima minZoom iz slojeva, pa offline karta
+  // (minZoom = min fajla − 2) pri izboru ili startu PRISILNO zumira kartu i
+  // korisnik izgubi poziciju/zoom. Ispod raspona fajla karta je samo prazna.
+  minZoom: 0,
   zoomControl: false,
   attributionControl: false,
   // fadeAnimation isključen — sa njim Leaflet postavlja inline opacity na
@@ -3829,7 +3833,6 @@ function _nativeSqlmapImported(ok, b64) {
     if (!rec) throw new Error('Neispravni podaci karte');
     _sqlmapSetActiveName(rec.name);
     _sqlmapSelect(rec.id, false);
-    if (rec.bounds) map.fitBounds(rec.bounds, { padding:[20,20] });
     _baseLoadStatus('');
     showToast('✅ Karta spremljena za instantno otvaranje: ' + rec.name);
     _sqlmapRegRender();
@@ -3994,7 +3997,6 @@ async function _sqlmapLoadFile(file) {
     await _sqlIdbPut({ name, blob: new Blob([buf]), thumb, failCount: 0, addedAt: Date.now() });
     _sqlmapSetActiveName(name);
     _sqlmapSelect(rec.id, false);
-    if (rec.bounds) { try { map.fitBounds(rec.bounds, { padding: [20,20] }); } catch(x) {} }
     setStatus('✅ Učitano: ' + name);
     _sqlmapRegRender();
   } catch(e) {
@@ -4025,7 +4027,7 @@ async function _sqlmapRestoreAll() {
   if (choice.type === 'offline') {
     const nativeTarget = _sqlLayers.find(r => r.native && r.name === choice.name);
     if (nativeTarget) {
-      _sqlmapSelect(nativeTarget.id, false);
+      _sqlmapSelect(nativeTarget.id, 'tiho');
       _baseLoadStatus('');
       _sqlmapRegRender();
       return;
@@ -4045,7 +4047,7 @@ async function _sqlmapRestoreAll() {
       _baseLoadStatus('⏳ Učitavam ' + target.name + '…');
       const ok = await _sqlmapRestoreOne(target);
       const restored = _sqlLayers.find(r => r.name === target.name);
-      if (ok && restored) { _sqlmapSelect(restored.id, false); _baseLoadStatus(''); }
+      if (ok && restored) { _sqlmapSelect(restored.id, 'tiho'); _baseLoadStatus(''); }
       else _sqlmapFallbackOnline('Posljednja offline karta se nije mogla otvoriti');
     }
   } else _baseLoadStatus('');
@@ -4079,8 +4081,20 @@ function _sqlmapSelect(id, zoom) {
   const icoBtn = document.getElementById('layer-btn'); if (icoBtn) icoBtn.textContent = '🗂';
   _sqlmapSyncLayerSwitch();
   _renderKartaBaseList();
-  if (zoom !== false && r.bounds) { map.fitBounds(r.bounds, { padding: [20,20] }); switchMainTab('karta'); }
+  // Pozicija i zoom se NE mijenjaju pri izboru karte (korisnik ostaje gdje je
+  // bio). zoom=true samo vraća na kartu; skok na obuhvat je dugme ⤢ Obuhvat.
+  if (zoom === true) switchMainTab('karta');
+  if (zoom !== 'tiho') _sqlmapJaviAkoVan(r);
   _sqlmapRegRender();
+}
+// Čista provjera: pokriva li karta (bounds) datu tačku; bez granica → da.
+function _sqlmapPokriva(bounds, latlng) {
+  if (!bounds || !latlng) return true;
+  try { return bounds.contains(latlng); } catch(e) { return true; }
+}
+function _sqlmapJaviAkoVan(r) {
+  if (!r || _sqlmapPokriva(r.bounds, map.getCenter())) return;
+  showToast('ℹ Karta „' + r.name + '“ ne pokriva ovo područje — Meni → Učitaj kartu → ⤢ Obuhvat');
 }
 
 function _sqlmapToggle(id) {
@@ -4095,7 +4109,8 @@ function _sqlmapToggle(id) {
 function _sqlmapZoom(id) {
   const r = _sqlLayers.find(x => x.id === id);
   if (!r || !r.bounds) { showToast('⚠ Karta nema definisane granice (metadata.bounds)'); return; }
-  _sqlmapSelect(id, false);
+  _sqlmapSelect(id, 'tiho');
+  switchMainTab('karta');
   map.fitBounds(r.bounds, { padding: [20,20] });
   _sqlmapRegRender();
   switchMainTab('karta');
@@ -4125,7 +4140,7 @@ async function _sqlmapDelete(id) {
   } else await _sqlIdbDelete(r.name);
   if (r.active) {
     const next = _sqlLayers[0];
-    if (next) _sqlmapSelect(next.id, false);
+    if (next) _sqlmapSelect(next.id, 'tiho');
     else { _sqlmapSetActiveName(''); _sqlmapFallbackOnline('Aktivna offline karta je uklonjena'); }
   }
   _sqlmapSyncLayerSwitch();
@@ -4150,6 +4165,7 @@ async function _sqlmapRegRender() {
     <div class="treg-btns">
       <button onclick="_sqlmapSelect('${r.id}',true)">${r.active ? '✓ Aktivna' : '▶ Koristi'}</button>
       <button onclick="_sqlmapToggle('${r.id}')">${r.vis !== false ? '🙈 Sakrij' : '👁 Prikaži'}</button>
+      ${r.bounds ? `<button onclick="_sqlmapZoom('${r.id}')">⤢ Obuhvat</button>` : ''}
       <button class="del-btn" onclick="_sqlmapDeleteConfirm('${r.id}')">🗑 Ukloni</button>
     </div></div>
   </div>`).join('');

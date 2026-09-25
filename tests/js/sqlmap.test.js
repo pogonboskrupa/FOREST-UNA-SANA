@@ -124,4 +124,25 @@ t('_sqlZoomOpts: offline karta ostaje vidljiva i preko najvećeg zooma fajla', (
   assert.ok(!/maxZoom:\s*(?:Number\(info\.maxzoom\)|parseInt\(meta\.maxzoom)/.test(HTML), 'offline slojevi ne smiju vezati maxZoom za fajl');
 });
 
+
+// Korisnik traži: izbor/učitavanje offline karte i ponovni ulazak NE mijenjaju poziciju.
+t('izbor i uvoz offline karte ne pomjeraju kartu; obuhvat samo na dugme', () => {
+  const sel = extractFn('_sqlmapSelect');
+  assert.ok(!sel.includes('fitBounds'), '_sqlmapSelect ne smije raditi fitBounds');
+  assert.ok(!extractFn('_nativeSqlmapImported').includes('fitBounds'));
+  assert.ok(!extractFn('_sqlmapLoadFile').includes('fitBounds'));
+  assert.ok(extractFn('_sqlmapZoom').includes('fitBounds'), 'dugme ⤢ Obuhvat i dalje skače na kartu');
+  assert.ok(HTML.includes("_sqlmapZoom('${r.id}')\">⤢ Obuhvat"));
+  assert.ok(/L\.map\('map', \{[\s\S]{0,400}minZoom: 0,/.test(HTML), 'minZoom karte mora biti eksplicitan (inače ga offline sloj nameće)');
+  assert.ok(HTML.includes("localStorage.getItem('usf_last_pos')"), 'start sa zadnje pozicije');
+});
+
+t('_sqlmapPokriva: tačka unutar/izvan granica karte, bez granica = pokriva', () => {
+  const f = new Function(extractFn('_sqlmapPokriva') + '\nreturn _sqlmapPokriva;')();
+  const b = { contains: ll => ll.lat > 44 && ll.lat < 45 };
+  assert.strictEqual(f(b, { lat: 44.5 }), true);
+  assert.strictEqual(f(b, { lat: 46 }), false);
+  assert.strictEqual(f(null, { lat: 46 }), true);
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — učitaj karta');
