@@ -118,6 +118,9 @@ t('_poziGrupisi prekida požar kad ista lokacija nema uzastopnu dnevnu aktivnost
   const grupe = fn(samePlace, 450);
   assert.strictEqual(grupe.length, 2, 'prekid 3 dana mora biti novi požar');
   assert.deepStrictEqual(grupe.map(g => g.broj).sort(), [1,2]);
+  // Dan-dva bez detekcije (oblaci/dim) ne prekida požar.
+  const saPauzom = fn([samePlace[0], { ...samePlace[2], dt:'2026-09-03T10:00:00Z' }, { ...samePlace[1], dt:'2026-09-05T10:00:00Z' }], 450);
+  assert.strictEqual(saPauzom.length, 1, 'pauza od 2 dana je isti požar');
 });
 
 t('_poziGrupisi ne spaja lanac udaljenih požara preko rubnih tačaka', () => {
@@ -467,7 +470,8 @@ t('status izvora razlikuje uživo, keš, grešku i isključeno', () => {
   ['podaci iz keša','odgovor primljen','greška dohvata','nema u kešu','↻ Osvježi'].forEach(x => assert.ok(HTML.includes(x), x));
   assert.ok(HTML.includes("m.okvir === '30d'"));
   assert.ok(HTML.includes('tačaka ·'));
-  assert.ok(HTML.includes('nije dostupno za 30 dana'));
+  assert.ok(HTML.includes('30 dana treba FIRMS ključ'));
+  assert.ok(HTML.includes('greška — prikazan keš'), 'greška se vidi i kad se prikazuje keš');
   // Heatmap prekidač prati postavku, a ne to da li su detekcije već stigle.
   assert.ok(HTML.includes("heatSw.classList.toggle('on', _poziHeatOn())"));
 });
@@ -591,6 +595,26 @@ t('ploha iz detekcija: susjedni pikseli se spajaju u jednu plohu, udaljeni poža
   assert.strictEqual(f([{ la: 44.8, lo: 16, rez: 375 }, { la: 44.8, lo: 16.02, rez: 375 }]).geometry.type, 'MultiPolygon', '1,6 km udaljeni ostaju odvojeni');
   assert.ok(Math.abs(turf.area(f([{ la: 44.8, lo: 16, rez: 375 }])) / 1e4 - 1.77) < 0.15, 'jedna VIIRS detekcija → krug ~75 m');
   assert.strictEqual(f([]), null);
+});
+
+t('FIRMS Area API: kanton bbox, komadi ≤10 dana, spajanje sa GFW bez duplikata', () => {
+  const src = 'const _USK_BBOX = { latMin: 44.30, latMax: 45.30, lonMin: 15.60, lonMax: 16.90 };\nconst _POZ_FIRMS_AREA = "https://firms.modaps.eosdis.nasa.gov/api/area/csv/";\n'
+    + ['_poziFirmsAreaUrl', '_poziFirmsKomadi', '_poziBezDuplikata'].map(extractFn).join('\n') + '\nreturn { _poziFirmsAreaUrl, _poziFirmsKomadi, _poziBezDuplikata };';
+  const f = new Function(src)();
+  assert.strictEqual(f._poziFirmsAreaUrl('KEY', 'VIIRS_SNPP_NRT', '2026-08-15', 10),
+    'https://firms.modaps.eosdis.nasa.gov/api/area/csv/KEY/VIIRS_SNPP_NRT/15.600,44.300,16.900,45.300/10/2026-08-15');
+  const sada = Date.parse('2026-09-25T12:00:00Z');
+  const k60 = f._poziFirmsKomadi(60, sada);
+  assert.strictEqual(k60[0].od, '2026-07-28');
+  assert.ok(k60.every(k => k.dana >= 1 && k.dana <= 10));
+  assert.strictEqual(k60.reduce((s, k) => s + k.dana, 0), 60, 'pokriva tačno 60 dana, do danas');
+  assert.ok(k60.some(k => k.od <= '2026-08-15') && k60.some(k => k.od >= '2026-09-01'), 'uključuje period požara 15.8.–5.9.');
+  const p = { la: 44.82, lo: 16.05, dt: '2026-08-20T01:30:00Z' };
+  assert.strictEqual(f._poziBezDuplikata([p, { ...p, sat: 'VIIRS (GFW)' }, { ...p, dt: '2026-08-21T01:30:00Z' }]).length, 2);
+  const arh = HTML.slice(HTML.indexOf('async function _poziDohvatiArhive'), HTML.indexOf('async function _poziLoad('));
+  assert.ok(arh.includes('_poziFirmsPeriod(firmsKljuc, 30)'));
+  const god = HTML.slice(HTML.indexOf('async function _povGodLoadGodina'), HTML.indexOf('let _povGodLayer'));
+  assert.ok(god.includes('_poziFirmsPeriod(firmsKljuc, _POV_GOD_FIRMS_DANA)'));
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — požari');

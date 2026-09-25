@@ -1002,7 +1002,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       <button class="poz-okvir-btn" data-okvir="7d" onclick="_poziPostaviOkvir('7d')">7 dana</button>
       <button class="poz-okvir-btn" data-okvir="30d" onclick="_poziPostaviOkvir('30d')">30 dana</button>
     </div>
-    <div class="poz-panel-note" style="font-size:11px;color:#94a3b8;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba GFW admin ključ (unesi ispod) — FIRMS besplatna arhiva ide samo do 7 dana unazad.</div>
+    <div class="poz-panel-note" style="font-size:11px;color:#94a3b8;line-height:1.45;margin:-4px 0 10px;">"30 dana" treba FIRMS ili GFW ključ (Napredni izvori) — besplatna FIRMS arhiva ide samo do 7 dana unazad. S FIRMS ključem godišnji pregled dobija i zadnjih 60 dana.</div>
     <div id="poz-god-kpi" class="poz-kpi-grid"></div>
     <div class="poz-section-card" style="margin:0 0 10px !important;">
       <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">📅 Opožarene plohe po godinama</div>
@@ -4809,7 +4809,7 @@ function _poziDanUTC(p) {
 }
 function _poziDaniUzastopni(pts) {
   const dani = [...new Set((pts || []).map(_poziDanUTC).filter(d => d !== null))].sort((a,b) => a-b);
-  return dani.length > 0 && dani.every((d,i) => i === 0 || d - dani[i-1] <= 1);
+  return dani.length > 0 && dani.every((d,i) => i === 0 || d - dani[i-1] <= 2);
 }
 function _poziGrupisi(pts, pragM) {
   const prag = pragM || _POZ_GRUPA_M;
@@ -4825,7 +4825,9 @@ function _poziGrupisi(pts, pragM) {
       if (g.pts.length && dst(g.la, g.lo, p.la, p.lo) > prag * centarFaktor) return false;
       return g.pts.some(q => {
       const qDan = _poziDanUTC(q);
-      if (dan === null || qDan === null || dan - qDan < 0 || dan - qDan > 1) return false;
+      // Do 2 dana bez detekcije (oblaci/dim nad požarom) je isti požar;
+      // 3+ dana tišine na istom mjestu je novi.
+      if (dan === null || qDan === null || dan - qDan < 0 || dan - qDan > 2) return false;
       const pp = _poziPragIzmedju(q, p, prag, prepreke);
       return pp > 0 && dst(q.la, q.lo, p.la, p.lo) <= pp;
       });
@@ -4991,6 +4993,16 @@ function _poziGreskaTxt(e) {
   if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return 'nema odgovora na vrijeme (veza visi)';
   return e?.message || 'greška';
 }
+// Kratak razlog iz tijela odgovora (GFW JSON "message"/"detail", FIRMS tekst)
+// — bez ovoga je u statusu stajalo samo "HTTP 403" ili "neočekivan odgovor".
+function _poziServerPoruka(txt) {
+  const t = String(txt || '').trim();
+  if (!t) return '';
+  let m = '';
+  try { const j = JSON.parse(t); m = j.message || j.detail || j.error || j.status || ''; if (typeof m !== 'string') m = JSON.stringify(m); } catch(e) { m = t; }
+  m = m.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+  return m ? ' — ' + m : '';
+}
 async function _poziDohvatiJedan(naziv, url, ms, opts) {
   opts = opts || {};
   const parser = opts.parser || _poziParseCsv;
@@ -4998,13 +5010,13 @@ async function _poziDohvatiJedan(naziv, url, ms, opts) {
   const zaglavlja = opts.headers || null;
   const ocijeni = (txt, native, status) => {
     const pts = parser(txt);
-    if (!pts.length && !provjera.test(txt)) return { ok:false, naziv, greska:'neočekivan odgovor', native:!!native };
+    if (!pts.length && !provjera.test(txt)) return { ok:false, naziv, greska:'neočekivan odgovor' + _poziServerPoruka(txt), native:!!native };
     return { ok:true, naziv, pts, native:!!native };
   };
   if (_nativeNetDostupan()) {
     try {
       const r = await _nativeNetFetch(url, ms || 20000, zaglavlja, null);
-      if (r.status && r.status >= 400) return { ok:false, naziv, greska:'HTTP ' + r.status, native:true };
+      if (r.status && r.status >= 400) return { ok:false, naziv, greska:'HTTP ' + r.status + _poziServerPoruka(r.text), native:true };
       return ocijeni(r.text, true, r.status);
     } catch(e) { return { ok:false, naziv, greska:_poziGreskaTxt(e), native:true }; }
   }
@@ -5015,7 +5027,7 @@ async function _poziDohvatiJedan(naziv, url, ms, opts) {
     const o = { mode:'cors' };
     if (zaglavlja) o.headers = zaglavlja;
     const r = await _fetchT(url, ms || 15000, o);
-    if (!r.ok) return { ok:false, naziv, greska:'HTTP ' + r.status };
+    if (!r.ok) { let t = ''; try { t = await r.text(); } catch(e) {} return { ok:false, naziv, greska:'HTTP ' + r.status + _poziServerPoruka(t) }; }
     return ocijeni(await r.text(), false, r.status);
   } catch(e) { return { ok:false, naziv, greska:_poziGreskaTxt(e) }; }
 }
@@ -5128,6 +5140,7 @@ function _povGodGrupisiPoMjesecu(grupe) {
 
 // Tekuća i četiri prethodne godine; podrazumijevano je uključena samo tekuća.
 const _POV_GOD_BROJ_GODINA = 5;
+const _POV_GOD_FIRMS_DANA = 60;
 const _POV_GOD_GODINE_KEY = 'usf_pozari_god_godine';
 const _POV_GOD_CACHE_PFX = 'usf_pozari_god_kes_';
 let _povGodPodaci = {}; // godina(broj) -> { evts, meta, busy }
@@ -5173,24 +5186,35 @@ function _povGodToggleGodina(godina, on) {
 async function _povGodLoadGodina(godina, tiho) {
   const stanje = _povGodPodaci[godina] || (_povGodPodaci[godina] = { evts: [], meta: null, busy: false });
   if (stanje.busy) return;
-  const gfwKljuc = (_poziKljucevi.gfw || '').trim();
-  if (!gfwKljuc) { stanje.meta = { greska: 'nema-kljuca' }; _povGodRenderSve(); return; }
+  const gfwKljuc = (_poziKljucevi.gfw || '').trim(), firmsKljuc = (_poziKljucevi.firms || '').trim();
+  // FIRMS Area API pokriva samo zadnjih ~2 mjeseca (NRT) — dopuna tekuće
+  // godine, da se nedavni požar vidi i kad GFW upit ne prođe.
+  const firmsDopuna = firmsKljuc && godina === new Date().getUTCFullYear();
+  if (!gfwKljuc && !firmsDopuna) { stanje.meta = { greska: 'nema-kljuca' }; _povGodRenderSve(); return; }
   stanje.busy = true;
   _povGodRenderSve();
   try {
     const ref = _poziRefTacka();
-    const r = await _poziDohvatiJedan('GFW ' + godina + '. godina', _povGodUrl(godina), 35000,
-      { headers: { 'x-api-key': gfwKljuc }, parser: _poziParseGfwJson, provjera: /"data"\s*:/ });
-    if (!r.ok) {
-      if (!stanje.evts.length) stanje.meta = { greska: r.greska };
-      if (!tiho) showToast('❌ Požari ' + godina + '. godina: ' + r.greska);
+    const [g, f] = await Promise.all([
+      gfwKljuc ? _poziDohvatiJedan('GFW ' + godina + '. godina', _povGodUrl(godina), 35000,
+        { headers: { 'x-api-key': gfwKljuc }, parser: _poziParseGfwJson, provjera: /"data"\s*:/ }) : null,
+      firmsDopuna ? _poziFirmsPeriod(firmsKljuc, _POV_GOD_FIRMS_DANA) : null
+    ]);
+    const uspjeh = [g, f].filter(r => r && r.ok);
+    const greske = [...(f?.greske || []), ...[g, f].filter(r => r && !r.ok).map(r => (r === g ? 'GFW: ' : '') + r.greska)];
+    if (!uspjeh.length) {
+      if (!stanje.evts.length) stanje.meta = { greska: greske.join(' · ') };
+      else stanje.meta = { ...(stanje.meta || {}), greske };
+      if (!tiho) showToast('❌ Požari ' + godina + '. godina: ' + greske.join(' · '));
       return;
     }
     // Kanton, ne radijus oko ref tačke — vidi napomenu uz _povGodUrl.
-    const pts = r.pts.filter(p => _uskUnutar(p.la, p.lo));
+    const sviPts = _poziBezDuplikata(uspjeh.flatMap(r => r.pts));
+    const pts = sviPts.filter(p => _uskUnutar(p.la, p.lo));
     const grupe = _poziGrupeBlizu(_poziGrupisi(pts), ref);
     stanje.evts = grupe;
-    stanje.meta = { dohvacenoMs: Date.now(), ukupno: r.pts.length, kes: false };
+    stanje.meta = { dohvacenoMs: Date.now(), ukupno: sviPts.length, kes: false, izvori: uspjeh.map(r => r.naziv), greske,
+      samoFirms: !(g && g.ok) };
     _povGodSaveCache(godina, grupe);
   } catch(e) {
     if (!stanje.evts.length) stanje.meta = { greska: e?.message || 'greška' };
@@ -5273,8 +5297,9 @@ function _povGodKpiHtml() {
   const kartica = (label, value, sub) => `<div class="poz-kpi-card"><span class="poz-kpi-label">${label}</span><span class="poz-kpi-value">${value}</span>${sub ? `<span class="poz-kpi-sub">${sub}</span>` : ''}</div>`;
   if (!stanje || (stanje.busy && !stanje.evts.length)) return kartica('Opožareno ' + godina + '.', 'Učitavam…', 'GFW godišnji podaci') + kartica('Satelitske detekcije', '—', 'VIIRS tačke');
   if (stanje.meta?.greska) {
-    const poruka = stanje.meta.greska === 'nema-kljuca' ? 'Treba GFW ključ' : 'Podaci nedostupni';
-    return kartica('Opožareno ' + godina + '.', '—', poruka) + kartica('Satelitske detekcije', '—', poruka);
+    if (stanje.meta.greska === 'nema-kljuca') return kartica('Opožareno ' + godina + '.', '—', 'Treba GFW ili FIRMS ključ') + kartica('Satelitske detekcije', '—', 'Treba GFW ili FIRMS ključ');
+    return kartica('Opožareno ' + godina + '.', '—', 'Podaci nedostupni')
+      + `<div class="poz-kpi-card" style="grid-column:1/-1;"><span class="poz-kpi-label">Razlog</span><span class="poz-kpi-sub" style="word-break:break-word;">${_escHtml(stanje.meta.greska)}</span></div>`;
   }
   const evts = stanje.evts || [];
   const det = evts.reduce((s,g) => s + (g.pts?.length || g.broj || 0), 0);
@@ -5283,23 +5308,70 @@ function _povGodKpiHtml() {
   return kartica('Opožareno ' + godina + '.', _poziPovrsTxt(ha), 'procjena iz jedinstvenih piksela')
     + kartica('Požari', String(evts.length), 'grupisani događaji')
     + kartica('Satelitske detekcije', String(det), 'pojedinačne tačke')
-    + kartica('Ažurirano', zadnje, stanje.meta?.kes ? 'podaci iz keša' : 'GFW podaci');
+    + kartica('Ažurirano', zadnje, stanje.meta?.kes ? 'podaci iz keša' : stanje.meta?.samoFirms ? 'FIRMS · zadnjih ' + _POV_GOD_FIRMS_DANA + ' dana' : (stanje.meta?.izvori || ['GFW']).length > 1 ? 'GFW + FIRMS' : 'GFW podaci')
+    + (stanje.meta?.greske?.length ? `<div class="poz-kpi-card" style="grid-column:1/-1;"><span class="poz-kpi-label">Djelimično</span><span class="poz-kpi-sub" style="word-break:break-word;">${_escHtml(stanje.meta.greske.join(' · '))}</span></div>` : '');
 }
 
 // BEZ ključa nema izbora nego evropski izvozi — besplatni, bez naloga.
 // Timeout je duži (30s) — ovo su veliki fajlovi za cijelu Evropu. GFW je
 // DRUGI SERVER za iste NASA detekcije — pita se paralelno (opt-in, treba
 // admin ključ) jer je bbox upit mali, korisno kad FIRMS arhiva ne prolazi.
+// ── FIRMS Area API (treba MAP_KEY): bbox kantona, bilo koji period iz zadnjih
+// ~2 mjeseca (NRT), u komadima od najviše 10 dana. Besplatna arhiva ide samo
+// 7 dana unazad, pa bez ovoga požar od prije 3–6 sedmica nije bio vidljiv. ──
+const _POZ_FIRMS_AREA = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv/';
+const _POZ_FIRMS_AREA_IZVORI = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'MODIS_NRT'];
+function _poziFirmsAreaUrl(kljuc, izvor, odDatum, dana) {
+  const bbox = [_USK_BBOX.lonMin, _USK_BBOX.latMin, _USK_BBOX.lonMax, _USK_BBOX.latMax].map(v => v.toFixed(3)).join(',');
+  return _POZ_FIRMS_AREA + encodeURIComponent(kljuc) + '/' + izvor + '/' + bbox + '/' + dana + '/' + odDatum;
+}
+// Komadi [odDatum, dana] od `danaUnazad` dana prije danas do danas, po ≤10 dana.
+function _poziFirmsKomadi(danaUnazad, sadaMs) {
+  const dan = 86400000, kraj = Math.floor((sadaMs || Date.now()) / dan) * dan;
+  const out = [];
+  for (let od = kraj - (danaUnazad - 1) * dan; od <= kraj; od += 10 * dan) {
+    out.push({ od: new Date(od).toISOString().slice(0, 10), dana: Math.min(10, Math.round((kraj - od) / dan) + 1) });
+  }
+  return out;
+}
+// Isti prelet viđen iz GFW-a i FIRMS-a je ista detekcija — broji se jednom.
+function _poziBezDuplikata(pts) {
+  const vidjeno = new Set();
+  return (pts || []).filter(p => {
+    const k = Number(p.la).toFixed(3) + ',' + Number(p.lo).toFixed(3) + ',' + String(p.dt).slice(0, 16);
+    if (vidjeno.has(k)) return false;
+    vidjeno.add(k); return true;
+  });
+}
+async function _poziFirmsPeriod(kljuc, danaUnazad) {
+  const poslovi = [];
+  _poziFirmsKomadi(danaUnazad).forEach(k => _POZ_FIRMS_AREA_IZVORI.forEach(izv => poslovi.push({ izv, k })));
+  const rez = [];
+  // Po 4 zahtjeva odjednom — terenska veza, ne gušiti je desetinama paralelnih.
+  for (let i = 0; i < poslovi.length; i += 4) {
+    rez.push(...await Promise.all(poslovi.slice(i, i + 4).map(({ izv, k }) =>
+      _poziDohvatiJedan('FIRMS ' + izv + ' ' + k.od, _poziFirmsAreaUrl(kljuc, izv, k.od, k.dana), 30000))));
+  }
+  const ok = rez.filter(r => r.ok);
+  const greske = [...new Set(rez.filter(r => !r.ok).map(r => r.greska))].map(g => 'FIRMS Area API: ' + g);
+  if (!ok.length) return { ok:false, greska: greske.join(' · ') || 'FIRMS Area API bez odgovora' };
+  return { ok:true, pts: ok.flatMap(r => r.pts), naziv: 'NASA FIRMS (Area API)', greske };
+}
 async function _poziDohvatiArhive(okvir) {
   // "30 dana" nema odgovarajući FIRMS CSV (arhiva ide samo do 7 dana) —
   // ide isključivo preko GFW-a, kanton bbox, treba admin ključ.
   if (okvir === '30d') {
-    const gfwKljuc = (_poziKljucevi.gfw || '').trim();
-    if (!gfwKljuc) return { ok:false, greska:'30 dana treba GFW admin ključ (unesi ispod, "Sačuvaj ključeve")' };
-    const r = await _poziDohvatiJedan('GFW (30 dana, kanton)', _poziGfw30Url(), 30000,
-      { headers:{ 'x-api-key': gfwKljuc }, parser:_poziParseGfwJson, provjera:/"data"\s*:/ });
-    if (!r.ok) return { ok:false, greska: r.greska };
-    return { ok:true, pts: r.pts, izvori: [r.naziv] };
+    const gfwKljuc = (_poziKljucevi.gfw || '').trim(), firmsKljuc = (_poziKljucevi.firms || '').trim();
+    if (!gfwKljuc && !firmsKljuc) return { ok:false, greska:'30 dana treba FIRMS ili GFW ključ (unesi ispod, "Sačuvaj ključeve")' };
+    const [f, g] = await Promise.all([
+      firmsKljuc ? _poziFirmsPeriod(firmsKljuc, 30) : null,
+      gfwKljuc ? _poziDohvatiJedan('Global Forest Watch (30 dana)', _poziGfw30Url(), 30000,
+        { headers:{ 'x-api-key': gfwKljuc }, parser:_poziParseGfwJson, provjera:/"data"\s*:/ }) : null
+    ]);
+    const uspjeh = [f, g].filter(r => r && r.ok);
+    const greske = [...(f?.greske || []), ...[f, g].filter(r => r && !r.ok).map(r => (r === g ? 'Global Forest Watch: ' : '') + r.greska)];
+    if (!uspjeh.length) return { ok:false, greska: greske.join(' · ') };
+    return { ok:true, pts: _poziBezDuplikata(uspjeh.flatMap(r => r.pts)), izvori: uspjeh.map(r => r.naziv), djelomicno: greske.length > 0, greske };
   }
   const zahtjevi = _POZ_IZVORI.map(izv => ({ naziv:izv.naziv, url:_poziUrl(izv, okvir) }));
   const proms = zahtjevi.map(z => _poziDohvatiJedan(z.naziv, z.url, 30000));
@@ -5374,7 +5446,8 @@ async function _poziLoad(tiho) {
         return;
       }
       _poziPts = _poziFilterZaOkvir(c.pts || [], ref);
-      _poziMeta = { izvori:c.izvori || [], dohvacenoMs:c.ts, ukupno:(c.pts||[]).length, kes:true, okvir, refGps:ref.gps };
+      // Greška se čuva i uz keš — inače je status pokazivao samo "podaci iz keša".
+      _poziMeta = { izvori:c.izvori || [], dohvacenoMs:c.ts, ukupno:(c.pts||[]).length, kes:true, okvir, refGps:ref.gps, greske:[r.greska] };
     }
     _poziEvts = _poziOznaciNove(_poziGrupeBlizu(_poziGrupisi(_poziPts), ref));
     _poziRender();
@@ -6084,15 +6157,16 @@ function _poziSourceStatusHtml() {
   const oznaka = (txt, cls) => `<span class="${cls}">${txt}</span>`;
   const statusPodatkovnogIzvora = (ukljucen, radi, greska) => {
     if (!ukljucen) return oznaka('isključeno','poz-source-off');
+    if (m.kes && greska) return oznaka('● greška — prikazan keš','poz-source-bad');
     if (m.kes) return radi ? oznaka('● podaci iz keša','poz-source-warn') : oznaka('nema u kešu','poz-source-off');
     if (radi) return oznaka('● odgovor primljen','poz-source-ok');
     if (greska) return oznaka('● greška dohvata','poz-source-bad');
     if (_poziBusy) return oznaka('● učitavanje…','poz-source-warn');
     return oznaka('bez podataka','poz-source-off');
   };
-  const firmsRadi = ima(/VIIRS|MODIS/i);
+  const firmsRadi = ima(/VIIRS|MODIS|FIRMS/i);
   const firmsGreska = imaGresku(/VIIRS|MODIS|FIRMS/i);
-  const firmsStatus = m.okvir === '30d' ? oznaka('nije dostupno za 30 dana','poz-source-off')
+  const firmsStatus = m.okvir === '30d' && !(_poziKljucevi.firms || '').trim() ? oznaka('30 dana treba FIRMS ključ','poz-source-off')
     : statusPodatkovnogIzvora(true,firmsRadi,firmsGreska);
   const gfwUkljucen = _poziGfwOn() || m.okvir === '30d';
   const gfwRadi = ima(/Global Forest Watch|GFW/i);
