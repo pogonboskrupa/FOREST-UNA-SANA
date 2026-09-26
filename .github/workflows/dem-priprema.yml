@@ -1,0 +1,32 @@
+name: DEM priprema
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/practical-pasteur-p2npth]
+    paths: ['.github/workflows/dem-priprema.yml', 'tools/dem_priprema.py']
+
+permissions:
+  contents: write
+
+jobs:
+  priprema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: GDAL
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y gdal-bin python3-gdal python3-numpy >/dev/null
+      - name: Copernicus DEM za 5 općina
+        run: |
+          set -eu
+          /usr/bin/python3 tools/dem_priprema.py static/data/opcine5.geojson static/data/dem_opcine.tif
+          ls -la static/data/dem_opcine.tif
+          gdalinfo static/data/dem_opcine.tif | grep -E 'Size is|Pixel Size|LAYOUT|COMPRESSION|NoData|Upper Left|Lower Right'
+      - name: Sačuvaj rezultat na granu
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/data/dem_opcine.tif
+          git commit -m "data: Copernicus DEM 30 m za 5 općina (automatski)" || echo "nema promjena"
+          git push origin HEAD:${GITHUB_REF_NAME}
