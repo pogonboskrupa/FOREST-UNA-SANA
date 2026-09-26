@@ -281,7 +281,15 @@ public class MainActivity extends Activity {
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                             | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                 } else {
-                    intent = fileChooserParams.createIntent();
+                    // fileChooserParams.createIntent() ograniči MIME tip na
+                    // application/vnd.google-earth.kml+xml što mnogi file manageri
+                    // ne prepoznaju — KML/SHP fajlovi ostanu skriveni. Koristimo
+                    // ACTION_OPEN_DOCUMENT s */* pa korisnik vidi sve fajlove.
+                    intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 }
                 try {
                     startActivityForResult(intent, REQ_FILE);

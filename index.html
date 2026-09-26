@@ -1319,7 +1319,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div class="up-hdr"><h2>📥 KML / SHP <span id="kml-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
     <div style="font-size:11px;color:#80958a;line-height:1.5;margin-bottom:10px;">KML se bira direktno. Za SHP označi zajedno istoimene <b>.shp</b>, <b>.dbf</b> i <b>.prj</b> fajlove; .prj je potreban za karte u lokalnoj projekciji.</div>
-    <input type="file" id="kml-file-input" accept=".kml,.shp,.dbf,.prj,.shx" multiple style="display:none;" onchange="_vectorFileChosen(event)">
+    <input type="file" id="kml-file-input" accept=".kml,.kmz,.shp,.dbf,.prj,.shx" multiple style="display:none;" onchange="_vectorFileChosen(event)">
     <button class="loc-btn" style="margin-bottom:14px;" onclick="document.getElementById('kml-file-input').click()">📂 Izaberi KML ili SHP fajlove</button>
     <div id="kml-list"></div>
   </div>
@@ -3603,9 +3603,22 @@ function _kmlFileChosen(e) { [...e.target.files].forEach(_kmlLoadFile); e.target
 async function _vectorFileChosen(e) {
   const files = [...e.target.files];
   e.target.value = '';
-  files.filter(f => /\.kml$/i.test(f.name)).forEach(_kmlLoadFile);
+  let handled = 0;
+  files.filter(f => /\.kml$/i.test(f.name)).forEach(f => { _kmlLoadFile(f); handled++; });
+  // .kmz je ZIP arhiva s .kml unutra — raspakuj i učitaj prvu .kml
+  for (const f of files.filter(f => /\.kmz$/i.test(f.name))) {
+    handled++;
+    try {
+      const buf = await f.arrayBuffer();
+      const kmlText = await _kmzExtractKml(buf);
+      if (!kmlText) { showToast('⚠ KMZ ne sadrži .kml: ' + f.name); continue; }
+      const blob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
+      _kmlLoadFile(new File([blob], f.name.replace(/\.kmz$/i, '.kml')));
+    } catch(err) { showToast('⚠ KMZ greška: ' + (err.message || f.name)); }
+  }
   const shpFiles = files.filter(f => /\.shp$/i.test(f.name));
   for (const shpFile of shpFiles) {
+    handled++;
     const base = shpFile.name.replace(/\.shp$/i, '').toLowerCase();
     const find = ext => files.find(f => f.name.toLowerCase() === base + ext);
     try {
@@ -3614,7 +3627,40 @@ async function _vectorFileChosen(e) {
       showToast('⚠ SHP nije učitan: ' + (err.message || 'nepoznata greška'));
     }
   }
-  if (!files.some(f => /\.(kml|shp)$/i.test(f.name))) showToast('⚠ Izaberi .kml ili .shp fajl');
+  if (!handled) showToast('⚠ Izaberi .kml, .kmz ili .shp fajl');
+}
+// Minimalni ZIP parser za .kmz — vraća sadržaj prve .kml datoteke
+async function _kmzExtractKml(buf) {
+  const bytes = new Uint8Array(buf);
+  let off = 0;
+  while (off + 30 < bytes.length) {
+    if (bytes[off] !== 0x50 || bytes[off+1] !== 0x4b || bytes[off+2] !== 0x03 || bytes[off+3] !== 0x04) break;
+    const flags = bytes[off+6] | (bytes[off+7] << 8);
+    const comp = bytes[off+8] | (bytes[off+9] << 8);
+    const compLen = bytes[off+18] | (bytes[off+19]<<8) | (bytes[off+20]<<16) | (bytes[off+21]<<24);
+    const fnLen = bytes[off+26] | (bytes[off+27] << 8);
+    const exLen = bytes[off+28] | (bytes[off+29] << 8);
+    const fnBytes = bytes.slice(off+30, off+30+fnLen);
+    const fname = new TextDecoder().decode(fnBytes);
+    const dataOff = off + 30 + fnLen + exLen;
+    if (/\.kml$/i.test(fname) && compLen > 0) {
+      const chunk = bytes.slice(dataOff, dataOff + compLen);
+      if (comp === 0) return new TextDecoder('utf-8').decode(chunk);
+      if (comp === 8) {
+        try {
+          const ds = new DecompressionStream('deflate-raw');
+          const wr = ds.writable.getWriter(); wr.write(chunk); wr.close();
+          const out = []; const rd = ds.readable.getReader();
+          for(;;) { const {done,value} = await rd.read(); if(done) break; out.push(value); }
+          const total = out.reduce((a,b)=>a+b.length,0), merged = new Uint8Array(total);
+          let p=0; for(const c of out){merged.set(c,p);p+=c.length;}
+          return new TextDecoder('utf-8').decode(merged);
+        } catch(e) { throw new Error('Dekompresija KMZ nije uspjela'); }
+      }
+    }
+    off = dataOff + compLen;
+  }
+  return null;
 }
 
 function _shpReadDbf(buf) {
@@ -3726,22 +3772,60 @@ async function _shpLoadFiles(shpFile, dbfFile, prjFile) {
   try { const b=grp.getBounds(); if(b.isValid()) map.fitBounds(b,{padding:[20,20]}); } catch(e) {}
   showToast('✅ SHP učitan: ' + shpFile.name);
 }
+function _kmlParseDoc(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  // DOMParser ne baca za neispravan XML — vraća <parseerror> element
+  const err = doc.querySelector('parseerror');
+  if (err) throw new Error(err.textContent.split('\n')[0].slice(0, 120));
+  return doc;
+}
 function _kmlLoadFile(file) {
-  const r = new FileReader();
-  r.onload = ev => {
+  // Pokušaj UTF-8, pa Windows-1252 kao fallback za starije GIS izvore
+  const tryLoad = (encoding) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = ev => { try { res(_kmlParseDoc(ev.target.result)); } catch(e) { rej(e); } };
+    r.onerror = () => rej(new Error('Čitanje fajla nije uspjelo'));
+    r.readAsText(file, encoding);
+  });
+  (async () => {
+    let doc, usedText;
+    try {
+      // FileReader ne daje pristup tekstu poslije onload; čitamo dva puta
+      const r1 = new FileReader();
+      usedText = await new Promise((res, rej) => {
+        r1.onload = e => res(e.target.result);
+        r1.onerror = () => rej(new Error('Čitanje fajla nije uspjelo'));
+        r1.readAsText(file, 'utf-8');
+      });
+      doc = _kmlParseDoc(usedText);
+    } catch(e) {
+      // Pokušaj Windows-1252 (čest u starijim GIS alatima)
+      try {
+        const r2 = new FileReader();
+        usedText = await new Promise((res, rej) => {
+          r2.onload = ev => res(ev.target.result);
+          r2.onerror = () => rej(e);
+          r2.readAsText(file, 'windows-1252');
+        });
+        doc = _kmlParseDoc(usedText);
+      } catch(e2) {
+        showToast('⚠ Greška KML: ' + e.message);
+        return;
+      }
+    }
     try {
       const col = KCOLS[kmlCI % KCOLS.length]; kmlCI++;
-      const doc = new DOMParser().parseFromString(ev.target.result, 'text/xml');
       const grp = pkml(doc, col);
+      const cnt = grp.getLayers().length;
+      if (!cnt) { showToast('⚠ KML nema prepoznatih geometrija: ' + file.name); return; }
       grp.addTo(map);
       kmlLs.push({ id: 'kml_' + Date.now() + '_' + kmlCI, name: file.name, grp, col, vis: true });
-      _kmlSaveContent(file.name, ev.target.result, col);
+      _kmlSaveContent(file.name, usedText, col);
       _kmlRegRender();
       try { const b = grp.getBounds(); if (b.isValid()) map.fitBounds(b, { padding: [20,20] }); } catch(x) {}
-      showToast('✅ Učitano: ' + file.name);
+      showToast('✅ Učitano: ' + file.name + ' (' + cnt + ' objekata)');
     } catch(x) { showToast('⚠ Greška KML: ' + x.message); }
-  };
-  r.readAsText(file);
+  })();
 }
 function _kmlSaveContent(name, content, col) {
   try {
