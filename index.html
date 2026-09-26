@@ -703,6 +703,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .poz-filter-akt input { width:18px; height:18px; flex:none; accent-color:#ef4444; }
 .poz-layer-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
 .poz-layer-grid .loc-row { margin:0; min-height:38px; padding:8px 9px; }
+.poz-proz { margin-top:9px; display:grid; gap:6px; }
+.poz-proz label { display:grid; grid-template-columns:96px 1fr 38px; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; }
+.poz-proz input[type=range] { width:100%; accent-color:#d99a32; }
+.poz-proz b { font-weight:600; color:#94a3b8; text-align:right; font-variant-numeric:tabular-nums; }
 .poz-source-grid { display:grid; gap:6px; }
 .poz-source-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 9px; border-radius:10px; background:rgba(15,23,42,.52); font-size:10px; }
 .poz-source-row span:first-child { color:#cbd5e1; }
@@ -1056,6 +1060,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <label class="loc-row"><span>Grupne oznake požara</span><input id="poz-layer-main" type="checkbox" onchange="_poziSlojToggle('oznake',this.checked)"></label>
         <label class="loc-row"><span>Lokalna oker opožarena ploha</span><input id="poz-layer-area" type="checkbox" onchange="_poziOpozToggle(this.checked)"></label>
         <label class="loc-row"><span>Legenda</span><input type="checkbox" id="poz-legend-check" checked onchange="_poziLegendaToggle(this.checked)"></label>
+      </div>
+      <div class="poz-proz">
+        <label><span>Ispuna ploha</span><input id="poz-proz-fill" type="range" min="0" max="100" step="5" oninput="_poziProzirnostPostavi('fill',this.value)"><b id="poz-proz-fill-v"></b></label>
+        <label><span>Vanjske linije</span><input id="poz-proz-line" type="range" min="0" max="100" step="5" oninput="_poziProzirnostPostavi('line',this.value)"><b id="poz-proz-line-v"></b></label>
       </div>
     </div>
     <div class="poz-timeframes" style="display:flex;gap:6px;margin-bottom:10px;">
@@ -5513,7 +5521,7 @@ function _povGodRenderSve() {
         _poziPlohe(pts).forEach(({ f }) => {
           try {
             L.geoJSON(f, { pane:'pozariProjectionPane', smoothFactor:0, renderer:_pozProjRenderer,
-              style:{ color:bojaPlohe, weight:1.4, opacity:0.8, fillColor:bojaPlohe, fillOpacity:0.2 } }).addTo(grp);
+              style:{ color:bojaPlohe, weight:1.4, ..._poziProzStil(), fillColor:bojaPlohe } }).addTo(grp);
           } catch(e) {}
         });
       }
@@ -5976,6 +5984,32 @@ function _poziPlohe(pts) {
 const _POZ_OPOZ_KEY = 'usf_pozari_opoz_on';
 const _POZ_DUPLIKAT_M = 1500;
 const _POZ_OPOZ_BOJE = { h6: '#f6c667', h24: '#e6aa42', d3: '#c98527', st: '#95611d' };
+// Prozirnost opožarenih ploha (%), odvojeno za ispunu i obrub; čuva se po uređaju.
+const _POZ_PROZ_KEY = 'usf_pozari_prozirnost';
+function _poziProzirnost() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(_POZ_PROZ_KEY) || '{}') || {}; } catch(e) {}
+  const n = (v, d) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(100, Number(v))) : d;
+  return { fill: n(s.fill, 20), line: n(s.line, 80) };
+}
+function _poziProzStil() { const p = _poziProzirnost(); return { fillOpacity: p.fill / 100, opacity: p.line / 100 }; }
+function _poziProzirnostUi() {
+  const p = _poziProzirnost();
+  ['fill', 'line'].forEach(k => {
+    const i = document.getElementById('poz-proz-' + k), v = document.getElementById('poz-proz-' + k + '-v');
+    if (i) i.value = p[k]; if (v) v.textContent = p[k] + '%';
+  });
+}
+// Mijenja samo stil već nacrtanih ploha — bez ponovnog računanja zatvaranja.
+function _poziProzirnostPostavi(k, v) {
+  const p = _poziProzirnost(); p[k] = Number(v);
+  try { localStorage.setItem(_POZ_PROZ_KEY, JSON.stringify(p)); } catch(e) {}
+  _poziProzirnostUi();
+  const stil = _poziProzStil();
+  [_poziOpozLayer, _povGodLayer].forEach(grp => grp && grp.eachLayer(l => {
+    if (l.options?.renderer === _pozProjRenderer && l.setStyle) l.setStyle(stil);
+  }));
+}
 function _poziOpozOn() { try { const v = localStorage.getItem(_POZ_OPOZ_KEY); return v === null ? true : v === '1'; } catch(e) { return true; } }
 function _poziOpozToggle(on) {
   try { localStorage.setItem(_POZ_OPOZ_KEY, on ? '1' : '0'); } catch(e) {}
@@ -6002,7 +6036,7 @@ function _poziOpozAzuriraj() {
     const boja = _POZ_OPOZ_BOJE[_poziMkStarost(naj || najnovijeUkupno).id] || _POZ_OPOZ_BOJE.st;
     try {
       L.geoJSON(f, { pane: 'pozariProjectionPane', smoothFactor: 0, renderer: _pozProjRenderer,
-        style: { color: boja, weight: 1.4, opacity: 0.8, fillColor: boja, fillOpacity: 0.2 } }).addTo(grp);
+        style: { color: boja, weight: 1.4, ..._poziProzStil(), fillColor: boja } }).addTo(grp);
     } catch(e) {}
   });
   _poziOpozLayer = grp.addTo(map);
@@ -6655,6 +6689,7 @@ function _poziRenderPanel() {
   const heatSw = document.getElementById('poz-heat-switch');
   if (heatSw) { const ima = (_poziPts || []).length > 0; heatSw.classList.toggle('on', _poziHeatOn()); heatSw.style.opacity = ima ? '1' : '.6'; heatSw.title = ima ? '' : 'Heatmap će se prikazati kad stignu detekcije'; }
   const tacke = document.getElementById('poz-layer-points'); if (tacke) tacke.checked = _poziSlojOn('tacke');
+  _poziProzirnostUi();
   const oznake = document.getElementById('poz-layer-main'); if (oznake) oznake.checked = _poziSlojOn('oznake');
   const ploha = document.getElementById('poz-layer-area'); if (ploha) ploha.checked = _poziOpozOn();
   document.querySelectorAll('.poz-okvir-btn').forEach(b => b.classList.toggle('on', b.dataset.okvir === _poziOkvir()));

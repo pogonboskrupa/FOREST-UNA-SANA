@@ -657,4 +657,23 @@ t('naziv aplikacije je Grmeč Navigator', () => {
   assert.ok(fs.readFileSync(path.join(__dirname, '../../android/app/src/main/res/values/strings.xml'), 'utf8').includes('<string name="app_name">Grmeč Navigator</string>'));
 });
 
+t('prozirnost ploha: dva klizača, zadano 20/80 %, stil se mijenja bez ponovnog računanja', () => {
+  assert.ok(HTML.includes('id="poz-proz-fill"') && HTML.includes('id="poz-proz-line"'));
+  const src = HTML.slice(HTML.indexOf('const _POZ_PROZ_KEY'), HTML.indexOf('function _poziOpozOn()'));
+  const mem = {};
+  const ctx = { localStorage: { getItem: k => mem[k] ?? null, setItem: (k, v) => { mem[k] = String(v); } }, document: { getElementById: () => null } };
+  const f = new Function('localStorage', 'document', '_poziOpozLayer', '_povGodLayer', '_pozProjRenderer',
+    src + '; return { _poziProzirnost, _poziProzStil, _poziProzirnostPostavi };');
+  const stil = [];
+  const R = {};
+  const sloj = { options: { renderer: R }, setStyle: s => stil.push(s) };
+  const grp = { eachLayer: fn => fn(sloj) };
+  const P = f(ctx.localStorage, ctx.document, grp, null, R);
+  assert.deepStrictEqual(P._poziProzStil(), { fillOpacity: 0.2, opacity: 0.8 });
+  P._poziProzirnostPostavi('fill', 45);
+  assert.deepStrictEqual(P._poziProzirnost(), { fill: 45, line: 80 });
+  assert.deepStrictEqual(stil.pop(), { fillOpacity: 0.45, opacity: 0.8 });
+  assert.strictEqual((HTML.match(/\.\.\._poziProzStil\(\)/g) || []).length, 2, 'tekuće i godišnje plohe');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — požari');
