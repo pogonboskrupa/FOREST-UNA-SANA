@@ -5513,7 +5513,7 @@ function _povGodRenderSve() {
         _poziPlohe(pts).forEach(({ f }) => {
           try {
             L.geoJSON(f, { pane:'pozariProjectionPane', smoothFactor:0, renderer:_pozProjRenderer,
-              style:{ color:bojaPlohe, weight:1.7, fillColor:bojaPlohe, fillOpacity:0.42 } }).addTo(grp);
+              style:{ color:bojaPlohe, weight:1.4, opacity:0.8, fillColor:bojaPlohe, fillOpacity:0.2 } }).addTo(grp);
           } catch(e) {}
         });
       }
@@ -6002,7 +6002,7 @@ function _poziOpozAzuriraj() {
     const boja = _POZ_OPOZ_BOJE[_poziMkStarost(naj || najnovijeUkupno).id] || _POZ_OPOZ_BOJE.st;
     try {
       L.geoJSON(f, { pane: 'pozariProjectionPane', smoothFactor: 0, renderer: _pozProjRenderer,
-        style: { color: boja, weight: 1.6, fillColor: boja, fillOpacity: 0.42 } }).addTo(grp);
+        style: { color: boja, weight: 1.4, opacity: 0.8, fillColor: boja, fillOpacity: 0.2 } }).addTo(grp);
     } catch(e) {}
   });
   _poziOpozLayer = grp.addTo(map);
