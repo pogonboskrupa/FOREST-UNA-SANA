@@ -28,11 +28,16 @@ console.log('Požari — CSV parsiranje, pouzdanost, grupisanje detekcija:');
 const dstSrc = extractFn('dst');
 
 t('modularni FIRMS stil i odvojeni oker poligoni', () => {
-  const src = extractFn('_poziPouzdanost') + '\n' + extractFn('_poziTackaStil') + '\nreturn _poziTackaStil;';
-  const fn = new Function(src)();
-  assert.strictEqual(fn({ conf:'h' }).fillColor, '#f97316');
-  assert.strictEqual(fn({ conf:'n' }).fillColor, '#f59e0b');
-  assert.strictEqual(fn({ conf:'l' }).fillColor, '#fde047');
+  const src = extractFn('_poziPouzdanost') + '\n' + extractFn('_poziGodBoja') + '\n' + extractFn('_poziTackaStil') + '\nreturn [_poziTackaStil, _poziGodBoja];';
+  const [fn, godBoja] = new Function('_POZ_BOJA_TEKUCA', '_POZ_GOD_BOJE_PROSLE', src)('#d99a32', ['#38bdf8', '#a78bfa', '#94a3b8']);
+  const ove = new Date().getUTCFullYear();
+  assert.strictEqual(fn({ conf:'h', dt:new Date().toISOString() }).fillColor, '#d99a32', 'tekuća godina = oker');
+  assert.strictEqual(fn({ conf:'l', dt:(ove - 1) + '-08-20T10:00:00Z' }).fillColor, '#38bdf8', 'prošla godina svoja boja');
+  assert.strictEqual(fn({ conf:'h' }, '#a78bfa').fillColor, '#a78bfa', 'eksplicitna boja godišnjeg sloja');
+  assert.ok(fn({ conf:'h' }).radius > fn({ conf:'l' }).radius, 'pouzdanost mijenja veličinu, ne boju');
+  assert.strictEqual(godBoja(ove - 2), '#a78bfa');
+  assert.strictEqual(godBoja(ove - 10), '#94a3b8');
+  assert.ok(!/_POZ_GOD_BOJE_PROSLE\s*=\s*\[[^\]]*#(?:dc2626|ef4444|f97316)/i.test(HTML), 'bez crvene u paleti godina');
   assert.ok(HTML.includes('Lokalna oker opožarena ploha'));
   assert.ok(!/_POZ_OPOZ_BOJE\s*=\s*\{[^}]*#(?:dc2626|ef4444)/i.test(HTML));
 });
@@ -378,12 +383,12 @@ t('_povGodDostupneGodine nudi tekuću i četiri prethodne godine', () => {
 
 t('_povGodBoja razlikuje svježe, sedmične, tekuće i prošlogodišnje plohe', () => {
   const src = extractFn('_povGodBoja') + '\nreturn _povGodBoja;';
-  const fn = new Function('_POZ_GOD_BOJA_OVE','_POZ_GOD_BOJA_PROSLE',src)('#b9781d','#95611d');
+  const fn = new Function('_poziGodBoja',src)(g => '#god' + g);
   const sada = Date.now(), godina = new Date().getUTCFullYear();
   assert.strictEqual(fn({ zadnji:sada - 2*3600000 }, godina), '#d99a32');
   assert.strictEqual(fn({ zadnji:sada - 3*86400000 }, godina), '#c98527');
   assert.strictEqual(fn({ zadnji:sada - 30*86400000 }, godina), '#b9781d');
-  assert.strictEqual(fn({ zadnji:Date.UTC(godina-1,5,1) }, godina-1), '#95611d');
+  assert.strictEqual(fn({ zadnji:Date.UTC(godina-1,5,1) }, godina-1), '#god' + (godina-1));
 });
 
 t('projekcija plohe je uključena po defaultu i stari završni tekst je uklonjen', () => {
@@ -581,7 +586,7 @@ t('projekcija: plohe iz svih detekcija zajedno, canvas u vlastitom pane-u, bez d
 t('heatmap normalizuje gustinu (par detekcija nije blijed) i ima izraženu paletu', () => {
   const heat = HTML.slice(HTML.indexOf('const _PoziHeat'), HTML.indexOf('let _poziHeatLayer'));
   assert.ok(heat.includes('maxA') && heat.includes('255 / maxA'));
-  assert.ok(HTML.includes("0.75:'#ef4444'"));
+  assert.ok(HTML.includes("0.75:'#d99a32'") && !HTML.includes("0.75:'#ef4444'"), 'oker heatmap, bez crvene');
 });
 
 t('ploha iz detekcija: susjedni pikseli se spajaju u jednu plohu, udaljeni požari ostaju odvojeni', () => {

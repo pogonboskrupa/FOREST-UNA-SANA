@@ -775,7 +775,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#d99a32;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnja 24 sata</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#c98527;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">zadnjih 7 dana</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#b9781d;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">tekuća godina</span></div>
-  <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:#64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">prošlih godina</span></div>
+  <div id="poz-god-legend-godine"></div>
   <div style="display:flex;align-items:center;gap:7px;padding:4px 0 1px;border-top:1px solid #334155;margin-top:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1px solid #64748b;flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">satelitska detekcija</span></div>
   <div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="font-size:14px;color:#fb923c;line-height:12px;">▲</span><span style="font-size:10.5px;color:#cbd5e1;">veći požar · detalji / simulacija</span></div>
 </div>
@@ -4640,6 +4640,9 @@ function _poziLegendeAzuriraj() {
   if (!legEl) return;
   const imaGodina = _povGodOznaceneGodine().some(g => _povGodPodaci[g]?.evts?.length);
   legEl.style.display = _poziOn && imaGodina ? 'block' : 'none';
+  const god = document.getElementById('poz-god-legend-godine');
+  if (god) god.innerHTML = _povGodOznaceneGodine().filter(g => g < new Date().getUTCFullYear()).sort((a, b) => b - a)
+    .map(g => `<div style="display:flex;align-items:center;gap:7px;padding:1px 0;"><span style="width:14px;height:11px;border-radius:2px;background:${_poziGodBoja(g)};flex-shrink:0;"></span><span style="font-size:10.5px;color:#cbd5e1;">${g}.</span></div>`).join('');
 }
 
 // ── Šumarstvo — Hansen/UMD Global Forest Change preko GFW dinamičkih tile
@@ -5040,11 +5043,21 @@ function _poziPouzdanost(conf) {
   }
   return { txt:'nepoznata', boja:'#f97316', rang:2 };
 }
-// Modularni stil aktivnih FIRMS/GFW tačaka; lokalni poligoni koriste zasebnu oker paletu.
-function _poziTackaStil(p) {
+// Boja po godini: tekuća godina oker, svaka prethodna svoja (bez crvene —
+// crvena uz tačku je izgledala kao aktivna vatra i kod starih požara).
+const _POZ_BOJA_TEKUCA = '#d99a32';
+const _POZ_GOD_BOJE_PROSLE = ['#38bdf8', '#a78bfa', '#2dd4bf', '#a3e635', '#f472b6', '#94a3b8'];
+function _poziGodBoja(godina) {
+  const raz = new Date().getUTCFullYear() - Number(godina);
+  if (!(raz > 0)) return _POZ_BOJA_TEKUCA;
+  return _POZ_GOD_BOJE_PROSLE[Math.min(raz, _POZ_GOD_BOJE_PROSLE.length) - 1];
+}
+// Tačka detekcije: boja = godina, pouzdanost samo mijenja veličinu.
+function _poziTackaStil(p, boja) {
   const rang = _poziPouzdanost(p?.conf).rang;
-  const fillColor = rang >= 3 ? '#f97316' : (rang === 2 ? '#f59e0b' : '#fde047');
-  return { radius:rang >= 3 ? 5 : 4.2, color:'#0f172a', weight:1.3, fillColor, fillOpacity:0.96, opacity:1 };
+  const t = Date.parse(p?.dt);
+  const fillColor = boja || _poziGodBoja(isFinite(t) ? new Date(t).getUTCFullYear() : NaN);
+  return { radius:rang >= 3 ? 5 : (rang === 2 ? 4.4 : 3.8), color:'#1c1917', weight:1, fillColor, fillOpacity:0.95, opacity:0.9 };
 }
 // Referentna tačka za "blizu mene": GPS ako ga ima, inače centar karte.
 function _poziRefTacka() {
@@ -5513,7 +5526,7 @@ function _povGodRenderSve() {
       // se računaju nad svim detekcijama godine zajedno (vidi _poziPlohe).
       // Požar koji je već nacrtan iz trenutnih detekcija se preskače — druga
       // ploha preko njega je davala "više prikaza jedan preko drugog".
-      const bojaPlohe = godina < new Date().getUTCFullYear() ? '#a97425' : '#d99a32';
+      const bojaPlohe = _poziGodBoja(godina);
       if (_poziOpozOn()) {
         const pts = _povGodPodaci[godina].evts
           .filter(g => !(_poziEvts || []).some(e => dst(e.la, e.lo, g.la, g.lo) < _POZ_DUPLIKAT_M))
@@ -5528,7 +5541,7 @@ function _povGodRenderSve() {
       _povGodPodaci[godina].evts.forEach(g => {
         // Svaka stvarna satelitska detekcija ostaje vidljiva po defaultu i stilizovana je prema pouzdanosti.
         if (_poziSlojOn('tacke')) (g.pts || []).forEach(p => {
-          L.circleMarker([p.la,p.lo], { ..._poziTackaStil(p), pane:'pozariDetectionsPane' })
+          L.circleMarker([p.la,p.lo], { ..._poziTackaStil(p, bojaPlohe), pane:'pozariDetectionsPane' })
             .bindPopup(() => _poziPopupHtml(p, ref), { maxWidth:280 }).addTo(grp);
         });
         // Glavna oznaka samo za veći požar; pojedinačne detekcije su već bijele tačke.
@@ -6061,15 +6074,12 @@ function _poziIconGrupa(g) {
 // godine i prošle godine ne bi mogle razlikovati na karti.
 // Jedinstvena oker paleta: godišnji sloj je iznad ostalih požarnih slojeva,
  // pa ne smije vraćati crvenu/narandžastu boju za svježe događaje.
-const _POZ_GOD_BOJA_24H = '#d99a32';
-const _POZ_GOD_BOJA_7D = '#c98527';
-const _POZ_GOD_BOJA_OVE = '#b9781d';
-const _POZ_GOD_BOJA_PROSLE = '#95611d';
 function _povGodBoja(g, godina) {
+  if (godina < new Date().getUTCFullYear()) return _poziGodBoja(godina);
   const h = (Date.now() - Number(g?.zadnji ?? Date.parse(g?.dt))) / 3600000;
   if (isFinite(h) && h <= 24) return '#d99a32';
   if (isFinite(h) && h <= 168) return '#c98527';
-  return godina < new Date().getUTCFullYear() ? '#95611d' : '#b9781d';
+  return '#b9781d';
 }
 function _poziIconGodina(g, godina) {
   const boja = _povGodBoja(g, godina);
@@ -6232,7 +6242,7 @@ function _poziRender() {
   if (_poziHeatLayer) { try { map.removeLayer(_poziHeatLayer); } catch(e) {} }
   const heatPts = _poziSamoAktivni() ? prikazane.flatMap(g => g.pts || []) : (_poziPts || []);
   if (_poziOn && _poziHeatOn() && heatPts.length) {
-    if (!_poziHeatLayer) _poziHeatLayer = new _PoziHeat([], { pane:'pozariHeatPane', gradient:{ 0.15:'#fde047', 0.45:'#fb923c', 0.75:'#ef4444', 1:'#7f1d1d' } });
+    if (!_poziHeatLayer) _poziHeatLayer = new _PoziHeat([], { pane:'pozariHeatPane', gradient:{ 0.15:'#fde68a', 0.45:'#f0b44c', 0.75:'#d99a32', 1:'#7c4a0e' } });
     _poziHeatLayer.setLatLngs(heatPts.map(p => [p.la, p.lo]));
     _poziHeatLayer.addTo(map);
   }
