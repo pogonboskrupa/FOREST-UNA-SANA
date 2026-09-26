@@ -35,6 +35,7 @@
 <script src="static/js/road-design.js" onerror="_libErr('Projektovanje puta')"></script>
 <script src="static/js/deadtrees-layer.js" onerror="_libErr('Sušenje (deadtrees)')"></script>
 <script src="static/js/efda-layer.js" onerror="_libErr('Poremećaji šume (EFDA)')"></script>
+<script src="static/js/dem-local.js" onerror="_libErr('Lokalni DEM')"></script>
 <script>
 window.addEventListener('DOMContentLoaded',function(){
   if(!_libErrNames.length)return;
@@ -662,6 +663,42 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .sum-por-tab th, .sum-por-tab td { padding:5px 4px; border-top:1px solid #1e293b; text-align:right; }
 .sum-por-tab th:first-child, .sum-por-tab td:first-child { text-align:left; }
 .sum-por-tab th { color:#80958a; font-weight:600; font-size:10px; }
+.izvoz-red { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:8px 0 10px; font-size:11px; color:#94a3b8; }
+.izvoz-red span { margin-right:auto; }
+.izvoz-red button { padding:6px 10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#cbd5e1; font-size:11px; font-weight:700; cursor:pointer; }
+.odjeli-pracenje { margin-top:14px; padding:10px 11px; border-radius:12px; background:#0f172a; border:1px solid #1e293b; font-size:11px; color:#cbd5e1; }
+.odjeli-pracenje .op-nas { font-size:12px; font-weight:800; color:#e2e8f0; margin-bottom:6px; }
+.odjeli-pracenje .op-red { display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid #1e293b; }
+.odjeli-pracenje .op-red span:first-child { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.odjeli-pracenje .op-n { color:#fbbf24; white-space:nowrap; }
+.odjeli-pracenje .op-red button { border:none; background:none; color:#64748b; font-size:14px; cursor:pointer; }
+.odjeli-pracenje .op-prazno { color:#80958a; padding:4px 0; }
+.odjeli-pracenje .op-dno { display:flex; align-items:center; gap:8px; margin-top:6px; color:#71857b; font-size:10px; }
+.odjeli-pracenje .op-dno span { flex:1; }
+.odjeli-pracenje .op-dno button { padding:6px 9px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font-size:11px; }
+#odjel-modal { display:none; position:fixed; inset:0 0 calc(74px + env(safe-area-inset-bottom,0px)) 0; z-index:900; background:rgba(0,0,0,.6); align-items:flex-end; justify-content:center; padding:10px; box-sizing:border-box; }
+#odjel-modal.show { display:flex; }
+#odjel-modal .om-card { width:100%; max-width:440px; max-height:100%; overflow:auto; background:#0b1512; border:1px solid rgba(134,239,172,.22); border-radius:16px; padding:12px 12px 4px; color:#d8e8df; box-shadow:0 12px 32px rgba(0,0,0,.5); }
+#odjel-modal .om-head { display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }
+#odjel-modal .om-head > div { flex:1; }
+#odjel-modal .om-ime { font-size:16px; font-weight:800; color:#f0fdf4; }
+#odjel-modal .om-pod { font-size:11px; color:#80958a; margin-top:2px; }
+#odjel-modal .om-x { border:none; background:#1e293b; color:#cbd5e1; border-radius:9px; width:34px; height:34px; font-size:15px; }
+#odjel-modal .om-sek { padding:9px 10px; margin-bottom:8px; border-radius:12px; background:#0f172a; border:1px solid #1e293b; }
+#odjel-modal .om-nas { font-size:11px; font-weight:800; color:#94a3b8; margin-bottom:6px; }
+#odjel-modal .om-red { display:flex; justify-content:space-between; gap:10px; font-size:12px; padding:2px 0; }
+#odjel-modal .om-red span { color:#94a3b8; }
+#odjel-modal .om-gr { font-size:11px; color:#80958a; }
+#odjel-modal .om-traka { display:flex; height:10px; border-radius:5px; overflow:hidden; margin:7px 0 5px; }
+#odjel-modal .om-leg { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:10.5px; color:#cbd5e1; margin-top:3px; }
+#odjel-modal .om-leg i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px; }
+#odjel-modal .om-tab { width:100%; border-collapse:collapse; font-size:11px; }
+#odjel-modal .om-tab th, #odjel-modal .om-tab td { padding:4px 3px; border-top:1px solid #1e293b; text-align:right; }
+#odjel-modal .om-tab th:first-child, #odjel-modal .om-tab td:first-child { text-align:left; }
+#odjel-modal .om-tab th { color:#80958a; font-weight:600; font-size:10px; }
+#odjel-modal .om-akcije { display:flex; gap:6px; margin:4px 0; }
+#odjel-modal .om-btn { flex:1; padding:9px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#cbd5e1; font-size:12px; font-weight:700; cursor:pointer; }
+#odjel-modal .om-btn.on { background:rgba(245,158,11,.18); border-color:#f59e0b; color:#fde68a; }
 .poz-filter-akt { display:flex; align-items:center; gap:9px; margin:-2px 0 10px; padding:9px 11px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; color:#cbd5e1; font-size:11px; cursor:pointer; }
 .poz-filter-akt input { width:18px; height:18px; flex:none; accent-color:#ef4444; }
 .poz-layer-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
@@ -1035,6 +1072,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
     </div>
     <div id="poz-status" style="color:#94a3b8;font-size:12px;margin-bottom:10px;"></div>
     <div id="poz-source-status"></div>
+    <div class="izvoz-red"><span>⤓ Izvoz požara</span><button onclick="_izvoz('pozari','kml')">KML</button><button onclick="_izvoz('pozari','geojson')">GeoJSON</button><button onclick="_izvoz('pozari','csv')">CSV</button></div>
     <div class="loc-row" style="margin-top:14px;">
       <span>🌡 Toplotna karta (heatmap)</span>
       <div class="loc-switch" id="poz-heat-switch" onclick="this.classList.toggle('on');_poziHeatSet(this.classList.contains('on'))"></div>
@@ -1161,7 +1199,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         </select>
       </div>
       <div id="sum-por-stat"></div>
+      <div class="izvoz-red"><span>⤓ Izvoz (vidljivi dio karte)</span><button onclick="_izvoz('poremecaji','kml')">KML</button><button onclick="_izvoz('poremecaji','geojson')">GeoJSON</button><button onclick="_izvoz('poremecaji','csv')">CSV</button></div>
     </div>
+    <div id="odjeli-pracenje" class="odjeli-pracenje"></div>
     <div class="loc-row" style="margin-top:10px;">
       <span>🟨 Sušenje šume (deadtrees.earth)</span>
       <div class="loc-switch" id="sum-susenje-switch" onclick="_sumToggle('susenje',!_sumOn('susenje'))"></div>
@@ -3038,6 +3078,9 @@ function _fetchT(url, ms = 12000, opts = {}) {
 async function _msrFetchElev(lat, lng) {
   const key = lat.toFixed(5)+','+lng.toFixed(5);
   if (_msrElevCache[key] != null) return _msrElevCache[key];
+  if (window.USFDem) {
+    try { const h = USFDem.visina(await USFDem.ucitaj(), lat, lng); if (h !== null) return (_msrElevCache[key] = Math.round(h)); } catch(e) {}
+  }
   try {
     const r = await _fetchT(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(5)}&longitude=${lng.toFixed(5)}`, 8000);
     const d = await r.json();
@@ -3504,6 +3547,9 @@ function _kmlPopupHtml(layer) {
   if (extKeys.length) {
     html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;">` +
       extKeys.map(k => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;"><span style="color:#94a3b8;">${_escHtml(k)}</span><span style="color:#374151;text-align:right;">${_escHtml(ext[k])}</span></div>`).join('') + `</div>`;
+  }
+  if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') {
+    html += `<button onclick="_odjelIzvjestaj(${L.stamp(layer)})" style="margin-top:8px;width:100%;padding:8px;border:none;border-radius:8px;background:#14532d;color:#dcfce7;font-size:12px;font-weight:700;cursor:pointer;">📊 Izvještaj odjela</button>`;
   }
   html += '</div>';
   return html;
@@ -4830,6 +4876,7 @@ function _sumProjPanel() {
     ${grubo}
     ${redovi ? `<div style="font-size:10px;color:#80958a;margin:8px 0 2px;">Najveće parcele (dodir → karta)</div>${redovi}` : '<div style="font-size:11px;color:#80958a;margin-top:8px;">Nema parcela iznad praga u vidljivom dijelu.</div>'}
     ${r.broj > _SUM_PROJ_MAX_PARCELA ? `<div style="font-size:10px;color:#64748b;margin-top:6px;">Na karti je nacrtano ${_SUM_PROJ_MAX_PARCELA} najvećih.</div>` : ''}
+    ${r.lista.length && typeof _izvozDugmad === 'function' ? _izvozDugmad('susenje') : ''}
   </div>`;
 }
 if (_sumProjOn() && _SUM_LAYERS.susenje) { map.on('moveend', _sumProjZakazi); map.whenReady(() => setTimeout(_sumProjRacunaj, 1500)); }
@@ -4853,6 +4900,7 @@ function openSumarstvoSection() {
   _sumProjPanel();
   _sumPorPanel();
   if (_sumOn('poremecaji')) _sumPorUcitajDodatke();
+  if (typeof _odjeliPracenjeRender === 'function') _odjeliPracenjeRender();
 }
 
 function _poziParseCsv(txt) {
@@ -7079,21 +7127,25 @@ async function _getTerrariumTile(z, x, y) {
   const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
   const sig = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(10000) : undefined;
   const fetchOpts = sig ? { mode: 'cors', signal: sig } : { mode: 'cors' };
+  // Redoslijed: keš → lokalni DEM (bez mreže/slaba veza) → internet → lokalni DEM.
+  const lokalno = () => (window.USFDem ? USFDem.terrariumPlocica(z, x, y).catch(() => null) : Promise.resolve(null));
   let blob = null;
   if ('caches' in window) {
-    try {
-      const cache = await caches.open(_TERR_CACHE);
-      let resp = await cache.match(url);
-      if (!resp) {
-        resp = await fetch(url, fetchOpts);
-        if (resp?.ok) { try { await cache.put(url, resp.clone()); } catch(e) {} } else return null;
-      }
-      blob = await resp.blob();
-    } catch(e) { return null; }
-  } else {
-    blob = await fetch(url, fetchOpts).then(r => r.ok ? r.blob() : null).catch(() => null);
+    try { const cache = await caches.open(_TERR_CACHE); const m = await cache.match(url); if (m) blob = await m.blob(); } catch(e) {}
   }
-  if (!blob) return null;
+  if (!blob) {
+    if (navigator.onLine === false || (typeof _vezaLoša === 'function' && _vezaLoša())) {
+      const l = await lokalno(); if (l) return l;
+    }
+    try {
+      const resp = await fetch(url, fetchOpts);
+      if (resp?.ok) {
+        if ('caches' in window) { try { const cache = await caches.open(_TERR_CACHE); await cache.put(url, resp.clone()); } catch(e) {} }
+        blob = await resp.blob();
+      }
+    } catch(e) {}
+    if (!blob) return lokalno();
+  }
   if (typeof createImageBitmap !== 'undefined') return createImageBitmap(blob);
   return new Promise(res => {
     const img = new Image();
@@ -8515,5 +8567,6 @@ window.addEventListener('load', () => {
 });
 </script>
 <script src="static/js/terrain-layers.js"></script>
+<script src="static/js/odjeli.js"></script>
 </body>
 </html>

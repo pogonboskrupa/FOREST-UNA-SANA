@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '1.4.34';
+const APP_VERSION = '1.4.35';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -28,6 +28,10 @@ const APP_SHELL = [
   './static/js/road-design.js',
   './static/js/deadtrees-layer.js',
   './static/js/efda-layer.js',
+  './static/js/dem-local.js',
+  './static/js/odjeli.js',
+  './geo/odjeli.kml',
+  './static/data/dem_opcine.tif',
   './static/data/efda_opcine.tif',
   './static/data/efda_opcine.json',
   './static/data/opcine5.geojson',

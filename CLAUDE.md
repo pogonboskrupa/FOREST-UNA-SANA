@@ -14,3 +14,9 @@
   [`docs/offline-karte-sqlitedb.md`](docs/offline-karte-sqlitedb.md).
 - Leaflet: svaki `pane: 'x'` mora imati `map.createPane('x')`; sloj koji treba
   biti iznad offline podloge (`offlineBasePane`, z 210) mora imati vlastiti pane.
+- **Ugrađeni podaci (static/data, 5 općina USK)**: `efda_opcine.*` (poremećaji
+  šume, EFDA v3.0) i `dem_opcine.tif` (Copernicus DEM 30 m) prave se u CI-ju
+  na grani `claude/practical-pasteur-p2npth` (`tools/efda_priprema.py`,
+  `tools/dem_priprema.py`, workflowi `efda-priprema` / `dem-priprema`) —
+  ovo okruženje nema pristup Zenodu/AWS-u. Granice odjela: `geo/odjeli.kml`
+  (učitava `static/js/odjeli.js`; bez fajla rade KML-ovi iz "Učitaj KML").
