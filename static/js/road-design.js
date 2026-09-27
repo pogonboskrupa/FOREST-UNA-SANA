@@ -431,6 +431,63 @@ function rdPoprecniNagib(path, sampleElev, pola) {
   return { seg, ukupno, poKlasi: po, max: qs.length ? Math.max(...qs) : 0, sr: ukupno ? seg.reduce((s, x) => s + x.q * x.distM, 0) / ukupno : 0 };
 }
 
+// ─── Zemljani radovi (gruba procjena iz poprečnog nagiba) ───
+// Poprečni profil: teren y = q·x, kolovoz širine B. Pokos usjeka sc (3:2 →
+// 1,5; šumski putevi u tlu s kamenom), nasipa sf (1:1,5 → 0,667). Mješoviti
+// profil (pola usjek, pola nasip): A = B²·q·s / (8·(s − q)) do 50 %; strmije
+// se nasip ne drži (preblizu nagibu pokosa) → puni usjek: A = B²·q·sc /
+// (2·(sc − q)). Od 70 % potporni zid, bez m³ — iste granice kao RD_POPRECNI_KLASE.
+function rdPresjek(q, B, sc, sf, zidOd) {
+  sc = sc || 1.5; sf = sf || 2 / 3; zidOd = zidOd || 0.7;
+  if (q <= 0) return { iskop: 0, nasip: 0, tip: 'ravno' };
+  if (q >= zidOd || q >= sc) return { iskop: NaN, nasip: 0, tip: 'zid' };
+  if (q < 0.5 && q < sf) return { iskop: B * B * q * sc / (8 * (sc - q)), nasip: B * B * q * sf / (8 * (sf - q)), tip: 'mjesoviti' };
+  return { iskop: B * B * q * sc / (2 * (sc - q)), nasip: 0, tip: 'usjek' };
+}
+function rdZemljaniRadovi(popSeg, B, sc, sf) {
+  let iskop = 0, nasip = 0, zidM = 0, usjekM = 0;
+  (popSeg || []).forEach(sg => {
+    const p = rdPresjek(sg.q / 100, B, sc, sf);
+    if (p.tip === 'zid') zidM += sg.distM;
+    else { iskop += p.iskop * sg.distM; nasip += p.nasip * sg.distM; if (p.tip === 'usjek') usjekM += sg.distM; }
+  });
+  return { iskop, nasip, zidM, usjekM };
+}
+
+// ─── Kritične dionice: uzastopni segmenti preko nagiba ili na strmoj padini ───
+function rdKriticneDionice(path, val, pop, params, popPrag) {
+  popPrag = popPrag || 50;
+  const q = new Map((pop && pop.seg || []).map(x => [x.i, x.q]));
+  const kum = [0];
+  for (let i = 1; i < path.length; i++) kum[i] = kum[i-1] + rdHaversine(path[i-1].lat, path[i-1].lon, path[i].lat, path[i].lon);
+  const out = [];
+  let cur = null;
+  (val.segments || []).forEach(sg => {
+    const qq = q.get(sg.i) || 0;
+    const uzd = sg.slopePct > params.nagibMax, pp = qq >= popPrag;
+    if (!uzd && !pp) { cur = null; return; }
+    if (cur && cur.i1 === sg.i - 1) { cur.i1 = sg.i; cur.do = kum[sg.i]; cur.maxUzd = Math.max(cur.maxUzd, sg.slopePct); cur.maxPop = Math.max(cur.maxPop, qq); cur.uzd = cur.uzd || uzd; cur.pop = cur.pop || pp; return; }
+    cur = { i0: sg.i - 1, i1: sg.i, od: kum[sg.i - 1], do: kum[sg.i], maxUzd: sg.slopePct, maxPop: qq, uzd, pop: pp };
+    out.push(cur);
+  });
+  return out;
+}
+
+// Najbliža tačka trase dodiru: stacionaža, indeks segmenta, interpolirana visina.
+function rdNaTrasi(path, lat, lon) {
+  let best = null, kum = 0;
+  const cos = Math.cos(lat * Math.PI / 180);
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i-1], b = path[i], d = rdHaversine(a.lat, a.lon, b.lat, b.lon);
+    const ax = (a.lon - lon) * cos, ay = a.lat - lat, bx = (b.lon - lon) * cos, by = b.lat - lat;
+    const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+    const r = Math.hypot(ax + t * dx, ay + t * dy) * 111320;
+    if (!best || r < best.r) best = { r, i, dist: kum + t * d, lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t, elev: a.elev + (b.elev - a.elev) * t, slopePct: d > 0.01 ? Math.abs(b.elev - a.elev) / d * 100 : 0, az: rdAzimuth(a.lat, a.lon, b.lat, b.lon) };
+    kum += d;
+  }
+  return best;
+}
+
 // ─── Izvoz trase ───
 function _rdXml(s) { return String(s).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c])); }
 function rdGpx(path, naziv) {
@@ -447,5 +504,5 @@ function rdKml(path, naziv, stacionaze, boja) {
 // Node.js test okruženje (tests/js/road-design.test.js) — browser globals se
 // ne diraju, isti obrazac kao offline-layer.js.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdValidateRoute, rdStacionaze, rdStacionazaTxt, RD_POPRECNI_KLASE, rdPoprecniNagib, rdGpx, rdKml };
+  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdValidateRoute, rdStacionaze, rdStacionazaTxt, RD_POPRECNI_KLASE, rdPoprecniNagib, rdGpx, rdKml, rdPresjek, rdZemljaniRadovi, rdKriticneDionice, rdNaTrasi };
 }

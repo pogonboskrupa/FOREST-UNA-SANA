@@ -140,4 +140,38 @@ t('rdGpx / rdKml: validni XML sa visinama i stacionažama', () => {
   assert.ok(kml.includes('<LineString>') && kml.includes('<name>0+100</name>') && kml.includes('<color>fffa8ba7</color>'));
 });
 
+t('zemljani radovi: mješoviti profil do 50 %, puni usjek 50–70 %, zid preko 70 %', () => {
+  const R = require('../../static/js/road-design.js');
+  const B = 4.5;
+  const m = R.rdPresjek(0.3, B);
+  assert.strictEqual(m.tip, 'mjesoviti');
+  assert.ok(Math.abs(m.iskop - B * B * 0.3 * 1.5 / (8 * 1.2)) < 1e-9 && m.nasip > 0);
+  assert.strictEqual(R.rdPresjek(0.6, B).tip, 'usjek');
+  assert.ok(Math.abs(R.rdPresjek(0.6, B).iskop - 10.125) < 1e-9);
+  assert.strictEqual(R.rdPresjek(0.75, B).tip, 'zid');
+  const zr = R.rdZemljaniRadovi([{ q: 30, distM: 100 }, { q: 60, distM: 50 }, { q: 80, distM: 20 }], B);
+  assert.ok(Math.abs(zr.iskop - (m.iskop * 100 + 10.125 * 50)) < 1e-6);
+  assert.strictEqual(zr.zidM, 20); assert.strictEqual(zr.usjekM, 50);
+});
+
+t('kritične dionice spajaju uzastopne segmente; rdNaTrasi daje stacionažu dodira', () => {
+  const R = require('../../static/js/road-design.js');
+  const path = [0, 1, 2, 3, 4].map(i => ({ lat: 44.7, lon: 16.3 + i * 0.00127, elev: 1000 + [0, 5, 20, 35, 36][i] }));
+  const val = R.rdValidateRoute(path, R.RD_DEFAULT_PARAMS);
+  const krit = R.rdKriticneDionice(path, val, { seg: [{ i: 4, q: 55 }] }, R.RD_DEFAULT_PARAMS);
+  assert.strictEqual(krit.length, 1, 'segmenti 2–4 su jedna dionica');
+  assert.ok(krit[0].uzd && krit[0].pop && krit[0].i0 === 1 && krit[0].i1 === 4);
+  const t0 = R.rdNaTrasi(path, 44.7001, 16.3 + 0.00127 * 1.5);
+  assert.strictEqual(t0.i, 2);
+  assert.ok(Math.abs(t0.dist - 1.5 * R.rdHaversine(44.7, 16.3, 44.7, 16.30127)) < 1);
+});
+
+t('UI: stacionaže crne s bijelim obrubom, crtice, dodir na trasu, zemljani radovi, kritične dionice', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../index.html'), 'utf8');
+  const css = html.slice(html.indexOf('.rd-st {'), html.indexOf('.rd-krit {'));
+  assert.ok(css.includes('color:#000') && css.includes('2px 2px 0 #fff'), 'crni broj, bijeli obrub');
+  assert.ok(css.includes('.rd-tick') && css.includes('background:#000') && css.includes('border:1.5px solid #fff'));
+  assert.ok(html.includes('_rdPopupNaTrasi(path, e.latlng)') && html.includes('rdZemljaniRadovi(pn.seg') && html.includes('_rdPokaziDionicu('));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — projektovanje šumskog puta');

@@ -298,8 +298,22 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .rd-akc button { flex:1; padding:9px 4px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
 .rd-akc button.on { background:#1e3a5f; border-color:#3b82f6; color:#dbeafe; }
 .rd-akc button.glavno { background:#14532d; border-color:#22c55e; color:#dcfce7; font-weight:700; flex:1.6; }
-.rd-st { transform:translate(-50%,-130%); white-space:nowrap; padding:1px 5px; border-radius:6px; background:rgba(11,18,32,.88); color:#fde68a; font:700 10px/14px ui-monospace,monospace; border:1px solid #475569; }
-.rd-st-t { width:8px; height:8px; border-radius:50%; background:#fde68a; border:1.5px solid #0b1220; box-sizing:border-box; transform:translate(-50%,-50%); }
+.rd-st { position:absolute; left:0; top:0; white-space:nowrap; color:#000; font:800 12px/1 system-ui,sans-serif; letter-spacing:.2px;
+  text-shadow:-2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0 -2px 0 #fff, 0 2px 0 #fff, -2px 0 0 #fff, 2px 0 0 #fff, 0 0 5px #fff; pointer-events:none; }
+.rd-st.glavna { font-size:13.5px; }
+.rd-tick { position:absolute; left:-2.5px; top:-11px; width:5px; height:22px; background:#000; border:1.5px solid #fff; border-radius:2px; box-sizing:border-box; box-shadow:0 0 2px rgba(0,0,0,.4); pointer-events:none; }
+.rd-tick.mala { top:-7px; height:14px; width:4px; left:-2px; }
+.rd-krit { display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; padding:7px 0; border-top:1px solid #1f3b2d; font-size:12px; color:#cbd5e1; }
+.rd-krit:first-of-type { border-top:none; }
+.rd-krit b { color:var(--text); font-family:ui-monospace,monospace; }
+.rd-krit small { display:block; color:#80958a; font-size:10.5px; }
+.rd-krit button { padding:6px 10px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:11.5px; cursor:pointer; }
+.rd-zr { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:4px 0 4px; }
+.rd-zr div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:7px 4px; text-align:center; }
+.rd-zr b { display:block; color:var(--text); font-size:14px; }
+.rd-zr small { color:#80958a; font-size:10px; }
+.rd-pop-tab { font-size:12px; line-height:1.55; min-width:170px; }
+.rd-pop-tab b { font-family:ui-monospace,monospace; }
 .rd-v { width:14px; height:14px; border-radius:50%; background:#fff; border:3px solid #7c3aed; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,.6); }
 #rd-ed-card { position:fixed; left:10px; right:10px; bottom:76px; z-index:700; max-width:440px; margin:0 auto; background:rgba(10,20,15,.96); border:1px solid #1f3b2d; border-radius:14px; padding:10px 12px; color:#e2e8f0; box-shadow:0 8px 28px rgba(0,0,0,.55); font-size:12.5px; display:none; }
 #rd-ed-card.show { display:block; }
@@ -7421,12 +7435,48 @@ function _rdCrtajTrasu(path, val, bezStac) {
     const a = path[sg.i - 1], b = path[sg.i];
     L.polyline([[a.lat, a.lon], [b.lat, b.lon]], { color: _RD_BOJE[sg.level], weight: 5, opacity: 1, pane: 'tragMsrLines', interactive: false }).addTo(g);
   });
-  if (_rdStacOn && !bezStac) rdStacionaze(path, 100).forEach(st => {
-    L.marker([st.lat, st.lon], { interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<div class="rd-st-t"></div>' }) }).addTo(g);
-    if (Math.round(st.dist) % 200 === 0 || st.kraj) L.marker([st.lat, st.lon], { interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="rd-st">${rdStacionazaTxt(st.dist)}</div>` }) }).addTo(g);
-  });
+  // Nevidljiv širok pojas za dodir: detalji na tom mjestu trase.
+  if (!bezStac) L.polyline(ll, { color: '#000', weight: 24, opacity: 0.01, pane: 'tragMsrLines', bubblingMouseEvents: false })
+    .on('click', e => { L.DomEvent.stopPropagation(e); _rdPopupNaTrasi(path, e.latlng); }).addTo(g);
+  if (_rdStacOn && !bezStac) {
+    // Gustina oznaka po zumu: crtica svakih 100 m, broj rjeđe kad je karta udaljena.
+    const z = map.getZoom();
+    const korakBroj = z >= 17 ? 100 : z >= 16 ? 200 : z >= 15 ? 500 : 1000, korakCrt = z >= 15 ? 100 : korakBroj;
+    rdStacionaze(path, korakCrt).forEach(st => {
+      const t = rdNaTrasi(path, st.lat, st.lon), az = t ? t.az : 0;
+      const broj = st.kraj || Math.round(st.dist) % korakBroj === 0;
+      L.marker([st.lat, st.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0],
+        html: `<div class="rd-tick${broj ? '' : ' mala'}" style="transform:rotate(${(az + 90) % 180}deg)"></div>` }) }).addTo(g);
+      if (broj) {
+        // Broj sa strane trase (okomito), da ne pokriva liniju.
+        const r = (az + 90) * Math.PI / 180, dx = Math.sin(r) * 16, dy = -Math.cos(r) * 16;
+        const lijevo = dx < 0;
+        L.marker([st.lat, st.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0],
+          html: `<div class="rd-st${Math.round(st.dist) % 1000 === 0 ? ' glavna' : ''}" style="transform:translate(${lijevo ? `calc(-100% + ${dx}px)` : dx + 'px'},calc(-50% + ${dy}px))">${rdStacionazaTxt(st.dist)}</div>` }) }).addTo(g);
+      }
+    });
+  }
   return g;
 }
+function _rdPopupNaTrasi(path, latlng) {
+  const t = rdNaTrasi(path, latlng.lat, latlng.lng); if (!t) return;
+  const pola = 20, l = rdDestPoint(t.lat, t.lon, (t.az + 270) % 360, pola), r = rdDestPoint(t.lat, t.lon, (t.az + 90) % 360, pola);
+  const hl = _rdVisina(l.lat, l.lon), hr = _rdVisina(r.lat, r.lon);
+  const q = Number.isFinite(hl) && Number.isFinite(hr) ? Math.abs(hl - hr) / (2 * pola) * 100 : NaN;
+  const prm = _rdResultParams || RD_DEFAULT_PARAMS;
+  const k = Number.isFinite(q) ? RD_POPRECNI_KLASE.find(x => q < x.max) : null;
+  const pr = Number.isFinite(q) ? rdPresjek(q / 100, prm.sirinaPuta) : null;
+  L.popup({ maxWidth: 240 }).setLatLng([t.lat, t.lon]).setContent(`<div class="rd-pop-tab">
+    Stacionaža <b>${rdStacionazaTxt(t.dist)}</b><br>Visina <b>${Math.round(t.elev)} m</b><br>
+    Uzdužni nagib <b style="color:${t.slopePct > prm.nagibMax ? '#dc2626' : t.slopePct > prm.nagibPreporuceni ? '#d97706' : '#16a34a'}">${t.slopePct.toFixed(1)} %</b><br>
+    Poprečni nagib <b>${Number.isFinite(q) ? q.toFixed(0) + ' %' : '—'}</b>${k ? ` <small>(${k.opis})</small>` : ''}
+    ${pr && pr.tip !== 'zid' && pr.tip !== 'ravno' ? `<br>Presjek: iskop <b>${pr.iskop.toFixed(1)}</b>${pr.nasip ? `, nasip <b>${pr.nasip.toFixed(1)}</b>` : ''} m²/m` : pr && pr.tip === 'zid' ? '<br><b style="color:#dc2626">Potporni zid</b>' : ''}</div>`).openOn(map);
+}
+let _rdZoomZadnji = null;
+map.on('zoomend', () => {
+  const z = map.getZoom(); if (z === _rdZoomZadnji) return; _rdZoomZadnji = z;
+  if (_rdResultLayer && _rdResultPath && !_rdEd) { map.removeLayer(_rdResultLayer); _rdResultLayer = _rdCrtajTrasu(_rdResultPath, _rdResultVal).addTo(map); }
+});
 function _rdDiscardResult() {
   _rdUrediKraj(false);
   if (_rdResultLayer) { map.removeLayer(_rdResultLayer); _rdResultLayer = null; }
@@ -7453,6 +7503,27 @@ function _rdSazetakHtml(path, val, params) {
 function _rdPoprecniHtml(path) {
   const pn = rdPoprecniNagib(path, _rdVisina, 20);
   if (!pn.ukupno) return '';
+  const prm = _rdResultParams || RD_DEFAULT_PARAMS;
+  const zr = rdZemljaniRadovi(pn.seg, prm.sirinaPuta);
+  const krit = rdKriticneDionice(path, _rdResultVal, pn, prm);
+  const m3 = v => Math.round(v).toLocaleString('bs-BA') + ' m³';
+  const zrHtml = `<div class="ng-podnaslov">Zemljani radovi <small>(gruba procjena, širina ${prm.sirinaPuta} m)</small></div>
+    <div class="rd-zr"><div><b>${m3(zr.iskop)}</b><small>iskop</small></div><div><b>${m3(zr.nasip)}</b><small>nasip</small></div><div><b style="color:${zr.zidM ? '#f87171' : 'var(--text)'}">${_msrFmt(zr.zidM)}</b><small>potporni zid</small></div></div>
+    <div class="rd-pop-nap">Pokos usjeka 3:2, nasipa 1:1,5; mješoviti profil do 50 %, puni usjek 50–70 % (${_msrFmt(zr.usjekM)}), preko 70 % zid.</div>`;
+  const kritHtml = krit.length ? `<div class="ng-podnaslov">Kritične dionice (${krit.length})</div>
+    ${krit.slice(0, 10).map((k, n) => `<div class="rd-krit"><div><b>${rdStacionazaTxt(k.od)} – ${rdStacionazaTxt(k.do)}</b><small>${[k.uzd ? 'uzdužni do ' + k.maxUzd.toFixed(1) + ' %' : '', k.pop ? 'poprečni do ' + k.maxPop.toFixed(0) + ' %' : ''].filter(Boolean).join(' · ')}</small></div><button onclick="_rdPokaziDionicu(${k.i0},${k.i1})">🔍 Pokaži</button></div>`).join('')}` : '';
+  return _rdPoprecniKlaseHtml(pn) + zrHtml + kritHtml;
+}
+function _rdPokaziDionicu(i0, i1) {
+  if (!_rdResultPath) return;
+  const seg = _rdResultPath.slice(i0, i1 + 1).map(p => [p.lat, p.lon]);
+  document.getElementById('put-panel').classList.remove('show');
+  try { map.fitBounds(L.latLngBounds(seg).pad(0.6), { maxZoom: 17 }); } catch(e) {}
+  const hl = L.polyline(seg, { color: '#fff', weight: 14, opacity: 0.9, pane: 'tragMsrLines', interactive: false }).addTo(map);
+  setTimeout(() => map.removeLayer(hl), 2500);
+  showToast('🔍 Dionica istaknuta na karti');
+}
+function _rdPoprecniKlaseHtml(pn) {
   return `<div class="ng-podnaslov">Poprečni nagib terena <small>(zemljani radovi)</small></div>
     ${pn.poKlasi.map(p => `<div class="rd-pop"><i style="background:${p.k.boja}"></i><span>${p.k.naziv}</span><span class="bar"><u style="width:${(p.m / pn.ukupno * 100).toFixed(1)}%;background:${p.k.boja}"></u></span><span>${_msrFmt(p.m)}</span></div>`).join('')}
     <div class="rd-pop-nap">Prosjek ${pn.sr.toFixed(0)} %, maks. ${pn.max.toFixed(0)} %. ${pn.poKlasi[3].m > 0 ? '⚠ Dionice preko 70 % traže potporne zidove ili pomjeranje trase. ' : ''}${pn.poKlasi[2].m > 0 ? 'Na 50–70 % računaj s punim usjekom.' : ''}</div>`;
@@ -7595,6 +7666,7 @@ async function _rdSaveRoute() {
     azimuthDeg: rdAzimuth(first.lat, first.lon, last.lat, last.lon),
     deltaH: last.elev - first.elev,
     poprecniSr: pn.ukupno ? pn.sr : null,
+    zemljani: pn.ukupno ? rdZemljaniRadovi(pn.seg, _rdResultParams?.sirinaPuta ?? RD_DEFAULT_PARAMS.sirinaPuta) : null,
     uredjeno: !!_rdResultPath._uredjeno,
     color: _RD_ROUTE_DEFAULT_COLOR,
     nagibMax: _rdResultParams?.nagibMax ?? RD_DEFAULT_PARAMS.nagibMax,
@@ -7623,7 +7695,7 @@ function _rdRenderSavedRoutes() {
     return `<div class="ul-red${shown ? '' : ' skriven'}" style="opacity:1">
       <label class="ul-boja" style="background:${col};position:relative;overflow:hidden" title="Boja trase"><input type="color" value="${col}" onchange="_rdSetRouteColor('${r.id}',this.value)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
       <div class="ul-info" onclick="_rdToggleSavedRouteOnMap('${r.id}')"><b>${_escHtml(r.nm)}${r.uredjeno ? '<span class="ul-oznaka">uređeno</span>' : ''}</b>
-        <small>${_msrFmt(r.totalDist)} · Δh ${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m · maks. <span style="color:${preko ? '#f87171' : '#4ade80'}">${r.maxSlopePct.toFixed(1)} %</span> · prosj. ${r.avgSlopePct.toFixed(1)} %${r.poprecniSr != null ? ' · poprečni ' + r.poprecniSr.toFixed(0) + ' %' : ''}</small></div>
+        <small>${_msrFmt(r.totalDist)} · Δh ${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m · maks. <span style="color:${preko ? '#f87171' : '#4ade80'}">${r.maxSlopePct.toFixed(1)} %</span> · prosj. ${r.avgSlopePct.toFixed(1)} %${r.poprecniSr != null ? ' · poprečni ' + r.poprecniSr.toFixed(0) + ' %' : ''}${r.zemljani ? ' · iskop ~' + Math.round(r.zemljani.iskop).toLocaleString('bs-BA') + ' m³' + (r.zemljani.zidM ? ' · zid ' + _msrFmt(r.zemljani.zidM) : '') : ''}</small></div>
       <label class="ng-switch" aria-label="Prikaži trasu na karti"><input type="checkbox" ${shown ? 'checked' : ''} onchange="_rdToggleSavedRouteOnMap('${r.id}')"><span></span></label>
       <div class="ul-akc"><button onclick="_rdShowSavedRouteProfile('${r.id}')">↕ Profil</button><button onclick="_rdIzvozSacuvane('${r.id}','kml')">⤓ KML</button><button onclick="_rdIzvozSacuvane('${r.id}','gpx')">⤓ GPX</button><button onclick="_rdRenameSavedRoute('${r.id}')" aria-label="Preimenuj">✎</button><button class="brisi" onclick="_rdDeleteSavedRoute('${r.id}')" aria-label="Obriši">🗑</button></div>
     </div>`;
