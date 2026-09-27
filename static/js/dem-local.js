@@ -43,8 +43,15 @@
   // Terrarium RGBA za web-merkator pločicu z/x/y; null ako pločica nema
   // nijednu važeću visinu. Rupe (van općina) se pune najbližom visinom u redu,
   // da rub područja ne izgleda kao litica na karti nagiba.
-  function terrariumRGBA(d, z, x, y) {
+  // puna=true: samo pločica potpuno unutar obuhvata DEM-a (bez rupa), inače null.
+  function terrariumRGBA(d, z, x, y, puna) {
     const n = 2 ** z, out = new Uint8ClampedArray(256 * 256 * 4), v = new Float32Array(256 * 256);
+    if (puna) {
+      const lonW = x / n * 360 - 180, lonE = (x + 1) / n * 360 - 180;
+      const latN = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+      const latS = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 1) / n))) * 180 / Math.PI;
+      if (!uObuhvatu(d, latN, lonW) || !uObuhvatu(d, latS, lonE)) return null;
+    }
     let ima = false;
     for (let py = 0; py < 256; py++) {
       const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + (py + 0.5) / 256) / n))) * 180 / Math.PI;
@@ -56,6 +63,7 @@
       }
     }
     if (!ima) return null;
+    if (puna) { for (let i = 0; i < v.length; i++) if (isNaN(v[i])) return null; }
     let zadnja = NaN;
     for (let i = 0; i < v.length; i++) { if (!isNaN(v[i])) zadnja = v[i]; else if (!isNaN(zadnja)) v[i] = zadnja; }
     zadnja = NaN;
@@ -68,9 +76,9 @@
     return out;
   }
 
-  async function terrariumPlocica(z, x, y) {
+  async function terrariumPlocica(z, x, y, puna) {
     const d = await ucitaj();
-    const rgba = terrariumRGBA(d, z, x, y);
+    const rgba = terrariumRGBA(d, z, x, y, puna);
     if (!rgba) return null;
     const c = document.createElement('canvas');
     c.width = c.height = 256;
@@ -78,18 +86,26 @@
     return c;
   }
 
-  // Nagib (°) i ekspozicija (° od sjevera) u pikselu DEM-a — za statistiku odjela.
+  // Nagib (°) i ekspozicija (° od sjevera) u pikselu DEM-a — Horn 3×3 (isto
+  // kao GDAL/QGIS "Slope"), manje osjetljiv na šum od prostih razlika.
   function nagibEkspozicija(d, ix, iy, lat) {
     if (ix < 1 || iy < 1 || ix >= d.W - 1 || iy >= d.H - 1) return null;
     const g = (x, y) => d.data[y * d.W + x];
-    const l = g(ix - 1, iy), r = g(ix + 1, iy), u = g(ix, iy - 1), dn = g(ix, iy + 1);
-    if ([l, r, u, dn].includes(NODATA)) return null;
-    const mx = Math.abs(d.rx) * 111320 * Math.cos(lat * Math.PI / 180), my = Math.abs(d.ry) * 110540;
-    const dzx = (r - l) / (2 * mx), dzy = (u - dn) / (2 * my);
+    const z = [g(ix - 1, iy - 1), g(ix, iy - 1), g(ix + 1, iy - 1), g(ix - 1, iy), g(ix + 1, iy), g(ix - 1, iy + 1), g(ix, iy + 1), g(ix + 1, iy + 1)];
+    if (z.includes(NODATA)) return null;
+    const [a, b, c, dd, f, gg, h, i] = z;
+    const mx = Math.abs(d.rx) * 111320 * Math.cos(lat * Math.PI / 180), my = Math.abs(d.ry) * 111132;
+    const dzx = ((c + 2 * f + i) - (a + 2 * dd + gg)) / (8 * mx), dzy = ((a + 2 * b + c) - (gg + 2 * h + i)) / (8 * my);
     const nagib = Math.atan(Math.hypot(dzx, dzy)) * 180 / Math.PI;
     const eksp = (Math.atan2(-dzx, -dzy) * 180 / Math.PI + 360) % 360;
     return { nagib, eksp };
   }
 
-  root.USFDem = { FAJL, NODATA, ucitaj, visina, uObuhvatu, terrariumRGBA, terrariumPlocica, nagibEkspozicija };
+  // Ćelija DEM-a u kojoj je tačka (za nagib tačke).
+  function celija(d, lat, lon) {
+    const ix = Math.floor((lon - d.ox) / d.rx), iy = Math.floor((lat - d.oy) / d.ry);
+    return ix >= 0 && iy >= 0 && ix < d.W && iy < d.H ? { ix, iy } : null;
+  }
+
+  root.USFDem = { FAJL, NODATA, ucitaj, visina, uObuhvatu, terrariumRGBA, terrariumPlocica, nagibEkspozicija, celija };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -6768,8 +6768,14 @@ async function _getTerrariumTile(z, x, y) {
   const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
   const sig = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(10000) : undefined;
   const fetchOpts = sig ? { mode: 'cors', signal: sig } : { mode: 'cors' };
-  // Redoslijed: keš → lokalni DEM (bez mreže/slaba veza) → internet → lokalni DEM.
+  // Redoslijed: lokalni DEM (pločica potpuno u obuhvatu) → keš → lokalni DEM (bez mreže/slaba veza) → internet → lokalni DEM.
   const lokalno = () => (window.USFDem ? USFDem.terrariumPlocica(z, x, y).catch(() => null) : Promise.resolve(null));
+  // Unutar obuhvata Copernicus DEM-a (30 m) on ima prednost nad AWS Terrarium
+  // (izglađeni SRTM daje ~1,5° manji nagib); rubne pločice idu online.
+  if (window.USFDem && z >= 10) {
+    const puna = await USFDem.terrariumPlocica(z, x, y, true).catch(() => null);
+    if (puna) return puna;
+  }
   let blob = null;
   if ('caches' in window) {
     try { const cache = await caches.open(_TERR_CACHE); const m = await cache.match(url); if (m) blob = await m.blob(); } catch(e) {}

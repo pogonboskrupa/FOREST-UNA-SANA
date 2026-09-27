@@ -75,4 +75,24 @@ t('integracija: urednik raspona, dugme u terenu, KML i mjerenje, keš i APK', ()
   assert.ok(js.includes('draggable: true'), 'tačke i tjemena su pomjerivi');
 });
 
+t('statistika iz svih ćelija DEM-a u poligonu (ne samo iz tačaka)', () => {
+  const d = { W: 10, H: 10, ox: 16, oy: 45, rx: 0.001, ry: -0.001 };
+  const ring = [[44.9975, 16.0025], [44.9975, 16.0075], [44.9925, 16.0075], [44.9925, 16.0025]];
+  const r = N.npCelije(d, ring, (ix, iy) => ({ nagib: ix }));
+  assert.strictEqual(r.ukupno, 25, '5×5 ćelija s centrom u poligonu');
+  assert.deepStrictEqual([...new Set(r.nagibi)].sort((a, b) => a - b), [2, 3, 4, 5, 6]);
+  const bez = N.npCelije(d, ring, () => null);
+  assert.strictEqual(bez.nagibi.length, 0);
+});
+
+t('lokalni DEM: Horn nagib i prednost pred AWS pločicama kad je pločica potpuno pokrivena', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+  const terr = html.slice(html.indexOf('async function _getTerrariumTile'), html.indexOf('function _terrariumDecodeTile'));
+  assert.ok(terr.indexOf('terrariumPlocica(z, x, y, true)') < terr.indexOf('caches.open'), 'lokalni DEM prije keša/interneta');
+  const dem = fs.readFileSync(path.join(__dirname, '../../static/js/dem-local.js'), 'utf8');
+  assert.ok(dem.includes('(8 * mx)') && dem.includes('(8 * my)'), 'Horn 3×3');
+  const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
+  assert.ok(js.includes('celijeStat(s.ring)') && js.includes('USFDem.nagibEkspozicija(d, c.ix, c.iy, la)'));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — nagib u poligonu');

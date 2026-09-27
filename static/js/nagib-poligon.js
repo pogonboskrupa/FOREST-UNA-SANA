@@ -67,7 +67,26 @@ function npNagibIzVisina(e, w, s, n, razmakM) {
   return { slope, aspect };
 }
 
-if (typeof module !== 'undefined') module.exports = { npUnutra, npPovrsina, npAutoRazmak, npMreza, npStatistika, npNagibIzVisina };
+// Nagib svih ćelija DEM-a čiji je centar u poligonu (statistika po površini,
+// ne samo po prikazanim tačkama). nagibFn(ix, iy, lat) → {nagib} | null.
+function npCelije(d, ring, nagibFn) {
+  const la = ring.map(p => p[0]), lo = ring.map(p => p[1]);
+  const x0 = Math.max(1, Math.floor((Math.min(...lo) - d.ox) / d.rx)), x1 = Math.min(d.W - 2, Math.ceil((Math.max(...lo) - d.ox) / d.rx));
+  const y0 = Math.max(1, Math.floor((Math.max(...la) - d.oy) / d.ry)), y1 = Math.min(d.H - 2, Math.ceil((Math.min(...la) - d.oy) / d.ry));
+  const nagibi = []; let ukupno = 0;
+  for (let iy = y0; iy <= y1; iy++) {
+    const lat = d.oy + (iy + 0.5) * d.ry;
+    for (let ix = x0; ix <= x1; ix++) {
+      if (!npUnutra(lat, d.ox + (ix + 0.5) * d.rx, ring)) continue;
+      ukupno++;
+      const g = nagibFn(ix, iy, lat);
+      if (g) nagibi.push(g.nagib);
+    }
+  }
+  return { nagibi, ukupno };
+}
+
+if (typeof module !== 'undefined') module.exports = { npUnutra, npPovrsina, npAutoRazmak, npMreza, npStatistika, npNagibIzVisina, npCelije };
 
 if (typeof window !== 'undefined' && typeof map !== 'undefined') (function () {
   map.createPane('nagibPolPane');
@@ -140,7 +159,22 @@ body.np-open #terrain-map-legend { display:none !important; }
     const t = await plocica(tx, ty);
     return t[(py - ty * 256) * 256 + (px - tx * 256)];
   }
+  let demP = null;
+  const dem = () => demP || (demP = window.USFDem ? USFDem.ucitaj().catch(() => { demP = null; return null; }) : Promise.resolve(null));
   async function nagibNa(la, lo) {
+    const d = await dem();
+    const c = d && USFDem.celija(d, la, lo);
+    const g = c && USFDem.nagibEkspozicija(d, c.ix, c.iy, la);
+    if (g) return { nagib: g.nagib, eksp: g.eksp, h: USFDem.visina(d, la, lo), izvor: 'dem' };
+    return nagibTerrarium(la, lo);
+  }
+  // Statistika iz svih 30 m ćelija u poligonu; null ako DEM ne pokriva ≥90 %.
+  async function celijeStat(ring) {
+    const d = await dem(); if (!d) return null;
+    const r = npCelije(d, ring, (ix, iy, lat) => USFDem.nagibEkspozicija(d, ix, iy, lat));
+    return r.ukupno >= 3 && r.nagibi.length >= 0.9 * r.ukupno ? r : null;
+  }
+  async function nagibTerrarium(la, lo) {
     const n = 256 * 2 ** NP_Z;
     const px = Math.floor((lo + 180) / 360 * n);
     const r = la * Math.PI / 180;
@@ -194,6 +228,8 @@ body.np-open #terrain-map-legend { display:none !important; }
   async function uzorkuj() {
     const s = stanje; s.gen++;
     const gen = s.gen;
+    s.celije = null;
+    celijeStat(s.ring).then(r => { if (stanje === s && gen === s.gen) { s.celije = r; prikazi(); } });
     s.tacke.filter(t => !t.rucno).forEach(t => grp.removeLayer(t.m));
     s.tacke = s.tacke.filter(t => t.rucno);
     const pov = npPovrsina(s.ring);
@@ -298,12 +334,13 @@ body.np-open #terrain-map-legend { display:none !important; }
     }
     const s = stanje; if (!s) return;
     const pov = npPovrsina(s.ring), kl = klase();
-    const stat = npStatistika(s.tacke.map(t => t.nagib), kl, pov);
+    const stat = npStatistika(s.celije ? s.celije.nagibi : s.tacke.map(t => t.nagib), kl, pov);
+    const izvor = s.celije ? `statistika iz ${s.celije.nagibi.length} ćelija Copernicus DEM 30 m` : 'statistika iz prikazanih tačaka (AWS Terrarium)';
     const gotovo = s.racuna ? Math.min(s.gotovo || 0, s.tacke.length) : 0;
     const gustine = [0, 20, 40, 80, 150];
     card.innerHTML = `<div class="np-hdr" data-a="mini"><span>📐 ${s.naziv.replace(/[<>&]/g, '')}</span><button data-a="x" aria-label="Zatvori">✕</button></div>
       <div class="np-tijelo">
-      <div class="np-sub">${fmt(pov / 10000, 2)} ha · ${s.tacke.length} tačaka · razmak ${s.razmak} m${s.racuna ? ' · računam ' + gotovo + '/' + s.tacke.length + '…' : ''}</div>
+      <div class="np-sub">${fmt(pov / 10000, 2)} ha · ${s.tacke.length} tačaka · razmak ${s.razmak} m${s.racuna ? ' · računam ' + gotovo + '/' + s.tacke.length + '…' : ''}<br>${izvor}</div>
       ${stat ? `<div class="np-kpi"><div><b>${fmt(stat.sr)}°</b><small>prosjek</small></div><div><b>${fmt(stat.med)}°</b><small>medijan</small></div><div><b>${fmt(stat.min, 0)}°</b><small>min</small></div><div><b>${fmt(stat.max, 0)}°</b><small>max</small></div></div>
       ${stat.poKlasi.map(p => `<div class="np-kl${p.k.on === false ? ' off' : ''}"><i style="background:${p.k.color}"></i><span>${p.k.label}</span><span class="bar"><u style="width:${(p.udio * 100).toFixed(1)}%;background:${p.k.color}"></u></span><span>${fmt(p.udio * 100, 0)} %</span><span>${fmt(p.ha, 2)} ha</span></div>`).join('')}` : '<div class="np-sub">Čekam visinske podatke…</div>'}
       <div class="np-akc">
@@ -312,7 +349,7 @@ body.np-open #terrain-map-legend { display:none !important; }
         <button data-a="dodaj" class="${dodaj ? 'on' : ''}">+ Tačka</button>
         <button data-a="csv">⤓ CSV</button>
       </div>
-      <div class="np-nap">${dodaj ? 'Dodirni kartu gdje želiš novu tačku.' : `Vuci tačku da je pomjeriš${s.rubovi ? ', ili bijelo tjeme da pomjeriš rub (tačke se ponovo rasporede)' : ''}. Ručne tačke imaju bijeli rub i ostaju pri promjeni razmaka.`}</div>
+      <div class="np-nap">${dodaj ? 'Dodirni kartu gdje želiš novu tačku.' : `${s.celije ? 'Statistika je iz cijele površine; tačke služe za provjeru na terenu. ' : ''}Vuci tačku da je pomjeriš${s.rubovi ? ', ili bijelo tjeme da pomjeriš rub (sve se preračuna)' : ''}. Ručne tačke imaju bijeli rub.`}</div>
       </div>`;
   }
 
