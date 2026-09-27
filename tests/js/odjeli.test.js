@@ -78,7 +78,7 @@ t('integracija: DEM rezerva u Terrarium dohvatu, dugme izvještaja, izvoz u pane
   const terr = HTML.slice(HTML.indexOf('async function _getTerrariumTile'), HTML.indexOf('function _terrariumDecodeTile'));
   assert.ok(terr.includes('USFDem.terrariumPlocica') && terr.includes('if (!blob) return lokalno();'));
   assert.ok(HTML.includes('📊 Izvještaj odjela') && HTML.includes('_odjelIzvjestaj(${L.stamp(layer)})'));
-  ["_izvoz('pozari','kml')", "_izvoz('poremecaji','geojson')", "_izvozDugmad('susenje')", 'id="odjeli-pracenje"'].forEach(x => assert.ok(HTML.includes(x), x));
+  ["_izvoz('pozari','kml')", "_izvoz('poremecaji','geojson')", "_izvozDugmad('susenje')"].forEach(x => assert.ok(HTML.includes(x), x));
   const sw = fs.readFileSync(path.join(__dirname, '../../sw.js'), 'utf8');
   const kop = fs.readFileSync(path.join(__dirname, '../../android/copy-assets.sh'), 'utf8');
   ['static/js/dem-local.js', 'static/js/odjeli.js', 'static/data/dem_opcine.tif'].forEach(f => {
@@ -86,6 +86,24 @@ t('integracija: DEM rezerva u Terrarium dohvatu, dugme izvještaja, izvoz u pane
     assert.ok(kop.includes(f), 'APK: ' + f);
   });
   assert.ok(sw.includes("'./geo/odjeli.kml'"), 'ugrađeni odjeli se keširaju ako postoje');
+});
+
+t('GFW alarmi za praćenje odjela: parser bez sekcije Sječa', () => {
+  const pts = O._gfwAlarmParse(JSON.stringify({ data: [
+    { latitude: '44.88', longitude: '16.15', gfw_integrated_alerts__date: '2026-09-20', gfw_integrated_alerts__confidence: 'high' },
+    { latitude: 'x', longitude: '16.1' }
+  ] }));
+  assert.deepStrictEqual(pts, [{ la: 44.88, lo: 16.15, dt: '2026-09-20T00:00:00Z', conf: 'high' }]);
+  assert.deepStrictEqual(O._gfwAlarmParse('nije json'), []);
+  assert.ok(!HTML.includes('sjeca-panel') && !HTML.includes('mc-sjeca') && !HTML.includes('_sje'), 'Sječa sekcija uklonjena');
+  assert.ok(!HTML.includes('id="odjeli-pracenje"'), 'bez okvira praćenih odjela u Šumarstvu');
+});
+
+t('Karte: prvo Učitaj kartu, zatim Dodaj KML fajl; bez starog opisa formata', () => {
+  const grid = HTML.slice(HTML.indexOf('<div class="karta-hub-grid">'));
+  const a = grid.indexOf('Učitaj kartu</h3>'), b = grid.indexOf('Dodaj KML fajl</h3>'), c = grid.indexOf('Bazna karta</h3>');
+  assert.ok(a > 0 && a < b && b < c);
+  assert.ok(!HTML.includes('Učitaj velike lokalne karte u formatima'));
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — odjeli');

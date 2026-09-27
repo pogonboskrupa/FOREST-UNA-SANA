@@ -349,12 +349,18 @@ function _odjelPratiToggle() {
   const k = _odjelKljuc(o), set = new Set(_odjeliPraceni());
   if (set.has(k)) set.delete(k); else set.add(k);
   try { localStorage.setItem(_ODJ_PRATI_KEY, JSON.stringify([...set])); } catch (e) {}
-  _odjelRender(); _odjeliPracenjeRender();
+  _odjelRender();
   if (set.has(k)) { showToast('🔔 Odjel ' + o.ime + ' se prati'); _odjeliProvjeriAlarme(true); }
 }
-function _odjelPrestaniPratiti(k) {
-  try { localStorage.setItem(_ODJ_PRATI_KEY, JSON.stringify(_odjeliPraceni().filter(x => x !== k))); } catch (e) {}
-  _odjeliPracenjeRender();
+// GFW integrated-alerts JSON → tačke istog oblika kao požari (la/lo/dt/conf).
+function _gfwAlarmParse(txt) {
+  let j;
+  try { j = JSON.parse(txt); } catch (e) { return []; }
+  return (j && Array.isArray(j.data) ? j.data : []).map(r => ({
+    la: parseFloat(r.latitude), lo: parseFloat(r.longitude),
+    dt: String(r.gfw_integrated_alerts__date || '').slice(0, 10) + 'T00:00:00Z',
+    conf: String(r.gfw_integrated_alerts__confidence || '').trim()
+  })).filter(p => isFinite(p.la) && isFinite(p.lo));
 }
 function _odjeliAlarmUrl(b, od) {
   const sql = 'SELECT longitude, latitude, gfw_integrated_alerts__date, gfw_integrated_alerts__confidence FROM results'
@@ -390,7 +396,7 @@ async function _odjeliProvjeriAlarme(rucno) {
     const b = turf.bbox(turf.featureCollection(pol.map(o => o.gj)));
     const od = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const r = await _poziDohvatiJedan('GFW alarmi (odjeli)', _odjeliAlarmUrl(b, od), 30000,
-      { headers: { 'x-api-key': kljuc }, parser: _sjeParse, provjera: /"data"\s*:/ });
+      { headers: { 'x-api-key': kljuc }, parser: _gfwAlarmParse, provjera: /"data"\s*:/ });
     if (!r.ok) { if (rucno) showToast('⚠ Provjera alarma: ' + r.greska); return; }
     const kes = _odjeliAlarmKes(), novi = [];
     pol.forEach(o => {
@@ -406,7 +412,6 @@ async function _odjeliProvjeriAlarme(rucno) {
     } else if (rucno) showToast('✓ Nema novih promjena u praćenim odjelima');
   } finally {
     _odjeliProvjeraTece = false;
-    _odjeliPracenjeRender();
     if (_odjelAkt && _odjelRez && !_odjelRez.ucitava) { _odjelRez.alarmi = _odjelAlarmiIzKesa(_odjelAkt); _odjelRender(); }
   }
 }
@@ -417,21 +422,6 @@ function _odjeliObavijest(naslov, tijelo) {
     if (sw) sw.postMessage({ type: 'show-pozar-notification', naslov, tijelo });
   }
   showToast(naslov);
-}
-function _odjeliPracenjeRender() {
-  const el = document.getElementById('odjeli-pracenje');
-  if (!el) return;
-  const praceni = _odjeliPraceni(), kes = _odjeliAlarmKes();
-  const zadnja = Number(localStorage.getItem(_ODJ_PROVJERA_KEY)) || 0;
-  const od = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-  const redovi = praceni.map(k => {
-    const n = ((kes[k] || {}).pts || []).filter(p => String(p.dt).slice(0, 10) >= od).length;
-    return `<div class="op-red"><span>🔔 ${_escHtml(k.split('|').slice(1).join('|'))}</span><span class="op-n">${n ? n + ' alarma / 30 d' : 'bez alarma'}</span><button onclick="_odjelPrestaniPratiti('${k.replace(/'/g, "\\'")}')">✕</button></div>`;
-  }).join('');
-  el.innerHTML = `<div class="op-nas">🔔 Praćeni odjeli</div>
-    ${redovi || '<div class="op-prazno">Dodirni odjel na karti → 📊 Izvještaj → 🔔 Prati odjel.</div>'}
-    <div class="op-dno"><span>${zadnja ? 'Zadnja provjera: ' + new Date(zadnja).toLocaleString('bs-BA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Još nije provjereno'} · svakih 6 h dok je aplikacija otvorena</span>
-    ${praceni.length ? '<button onclick="_odjeliProvjeriAlarme(true)">Provjeri sada</button>' : ''}</div>`;
 }
 function _odjeliAutoProvjera() {
   const zadnja = Number(localStorage.getItem(_ODJ_PROVJERA_KEY)) || 0;
@@ -444,4 +434,4 @@ if (typeof window !== 'undefined' && typeof map !== 'undefined') {
   setInterval(_odjeliAutoProvjera, 30 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) _odjeliAutoProvjera(); });
 }
-if (typeof module !== 'undefined') module.exports = { _gjUKml, _uCsv, _kmlGeom, _odjeliNoviAlarmi, _odjeliAlarmUrl };
+if (typeof module !== 'undefined') module.exports = { _gjUKml, _uCsv, _kmlGeom, _odjeliNoviAlarmi, _odjeliAlarmUrl, _gfwAlarmParse };

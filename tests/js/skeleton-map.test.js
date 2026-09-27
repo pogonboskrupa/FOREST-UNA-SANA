@@ -166,7 +166,7 @@ t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
   const meni = HTML.slice(a, b);
   assert.ok((meni.match(/class="meni-grp"/g) || []).length >= 4);
   const kartice = meni.match(/<button type="button" class="meni-card"[\s\S]*?<\/button>/g) || [];
-  assert.strictEqual(kartice.length, 9);
+  assert.strictEqual(kartice.length, 8, 'Sječa i vjetroizvale uklonjena (pokriva Šumarstvo)');
   for (const k of kartice) {
     assert.ok(/<span class="mc-ico"><svg/.test(k), 'ikona mora biti SVG');
     assert.ok(!/\p{Extended_Pictographic}/u.test(k), 'bez emoji u kartici');
@@ -177,9 +177,9 @@ t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
 t('_meniStatusi: statusi i bosanska množina', () => {
   const src = extractFn('_meniStatusi') + '\nreturn _meniStatusi;';
   const f = new Function(src)();
-  const prazno = f({ poziOn: false, sjeOn: false, sumSlojeva: 0, tragova: 0, mjerenja: 0 });
+  const prazno = f({ poziOn: false, sumSlojeva: 0, tragova: 0, mjerenja: 0 });
   assert.ok(Object.values(prazno).every(x => x.t === '' && !x.on));
-  const r = f({ poziOn: true, sjeOn: false, sumSlojeva: 2, tragova: 1, mjerenja: 5 });
+  const r = f({ poziOn: true, sumSlojeva: 2, tragova: 1, mjerenja: 5 });
   assert.deepStrictEqual(r.pozari, { t: 'Uključeno', on: true });
   assert.strictEqual(r.sumarstvo.t, '2 sloja');
   assert.strictEqual(r.tragovi.t, '1 trag');
