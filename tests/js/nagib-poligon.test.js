@@ -92,7 +92,49 @@ t('lokalni DEM: Horn nagib i prednost pred AWS pločicama kad je pločica potpun
   const dem = fs.readFileSync(path.join(__dirname, '../../static/js/dem-local.js'), 'utf8');
   assert.ok(dem.includes('(8 * mx)') && dem.includes('(8 * my)'), 'Horn 3×3');
   const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
-  assert.ok(js.includes('celijeStat(s.ring)') && js.includes('USFDem.nagibEkspozicija(d, c.ix, c.iy, la)'));
+  assert.ok(js.includes('celijeStat(s.ring)') && js.includes('USFDem.visina(d, la, lo)'), 'linije i površina iz Copernicus DEM-a');
 });
 
-console.log('\n' + pass + ' prošlo, 0 palo — nagib u poligonu');
+t('linije niz padinu: smjer najvećeg pada, nagib linije kao ručno mjerenje', () => {
+  const g = N.npAzimutPada(100, 120, 110, 110, 45);
+  assert.ok(Math.abs(g.azimut - 90) < 1e-9, 'teren raste prema zapadu → pad prema istoku (90°)');
+  const nl = N.npNagibLinije(1250, 1200, 100);
+  assert.ok(Math.abs(nl.st - 26.565) < 0.01 && nl.pct === 50 && nl.dh === 50);
+  assert.ok(Math.abs(N.npDist([44.8, 16.1], N.npPomak([44.8, 16.1], 37, 250)) - 250) < 0.5, 'pomak i udaljenost u metrima');
+});
+
+t('sjemena: tačan broj, unutar poligona, raširena; linija u smjeru pada ostaje u poligonu', () => {
+  for (const n of [5, 8, 10, 12]) {
+    const sj = N.npSjemena(ring, n);
+    assert.strictEqual(sj.length, n);
+    assert.ok(sj.every(p => N.npUnutra(p[0], p[1], ring)));
+    let min = Infinity;
+    for (let i = 0; i < sj.length; i++) for (let j = i + 1; j < sj.length; j++) min = Math.min(min, N.npDist(sj[i], sj[j]));
+    assert.ok(min > 150, n + ' linija: sjemena nisu zbijena (' + Math.round(min) + ' m)');
+  }
+  const [a, b] = N.npLinijaKroz([44.8095, 16.105], 0, 400, ring);
+  assert.ok(N.npUnutra(a[0], a[1], ring) && N.npUnutra(b[0], b[1], ring), 'krajevi skraćeni do ruba');
+  assert.ok(b[0] > a[0], 'kraj b je u smjeru pada (sjever)');
+  assert.strictEqual(N.npAutoDuzina(38e4), 280);
+});
+
+t('UI: izbor 5/8/10/12 linija, pomjerivi krajevi i cijela linija, ručna linija, CSV linija', () => {
+  const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
+  assert.ok(js.includes('[5, 8, 10, 12]'));
+  assert.ok(js.includes("l.lbl.on('drag'") && js.includes("m.on('dragend'"), 'vuku se krajevi i oznaka');
+  assert.ok(js.includes("'+ Linija'") || js.includes('+ Linija'));
+  assert.ok(js.includes("'nagib_pct'"));
+});
+
+(async () => {
+  // Greben na lon 16.105 (1200 m), padine 20 % na obje strane; tačka na istočnoj padini.
+  const m = 111320 * Math.cos(44.805 * Math.PI / 180);
+  const h = (la, lo) => 1200 - 0.2 * Math.abs(lo - 16.105) * m;
+  const [vrh, dno] = await N.npPratiPad([44.805, 16.107], h, ring, 400);
+  assert.ok(Math.abs(vrh[1] - 16.105) * m < 20, 'vrh linije je na grebenu, ne preko njega');
+  assert.ok(dno[1] > 16.107 && dno[1] <= 16.11, 'dno ide niz istočnu padinu do ruba');
+  const nl = N.npNagibLinije(h(...vrh), h(...dno), N.npDist(vrh, dno));
+  assert.ok(Math.abs(nl.pct - 20) < 0.5, 'linija mjeri stvarni nagib padine (' + nl.pct.toFixed(1) + ' %)');
+  pass++; console.log('  ✔ praćenje pada: linija staje na grebenu, mjeri stvarni nagib padine');
+  console.log('\n' + pass + ' prošlo, 0 palo — nagib u poligonu');
+})().catch(e => { console.error(e); process.exitCode = 1; });
