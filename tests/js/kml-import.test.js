@@ -59,4 +59,16 @@ t('_parseKmlExtData čita ExtendedData Data name/value parove', () => {
   assert.strictEqual(ext.povrsina, '2.5');
 });
 
+t('redizajn: KML i offline karte imaju zaglavlje s formatima, sažetak, prekidač i istaknutu aktivnu kartu', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../index.html'), 'utf8');
+  const kml = html.slice(html.indexOf('<div id="ucitajkml-panel"'), html.indexOf('<div id="nagib-panel"'));
+  const karta = html.slice(html.indexOf('<div id="ucitajkartu-panel"'), html.indexOf('<div id="ucitajkml-panel"'));
+  [kml, karta].forEach(x => assert.ok(x.includes('class="ul-chips"') && x.includes('class="ng-glavno"')));
+  const rk = html.slice(html.indexOf('function _kmlRegRender()'), html.indexOf('_kmlRestore();\n'));
+  assert.ok(rk.includes('class="ul-sum"') && rk.includes('_kmlPromijeniBoju') && rk.includes('class="ng-switch"'));
+  const rs = html.slice(html.indexOf('async function _sqlmapRegRender()'), html.indexOf('async function _sqlmapRestoreManual'));
+  assert.ok(rs.includes('✓ AKTIVNA KARTA') && rs.includes('zoom ${r.zmin}–${r.zmax}'));
+  assert.ok(!require('node:fs').readFileSync(require('node:path').join(__dirname, '../../static/js/terrain-layers.js'), 'utf8').includes('__usfZoomFix'), 'stari omotač liste karata uklonjen');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — učitaj KML');

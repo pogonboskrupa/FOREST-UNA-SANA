@@ -181,44 +181,22 @@ if (typeof window !== 'undefined') {
   if(key && startupChoice?.type==='online' && startupChoice.name===protoName)_selectBaseLayer(protoName);
 }
 
-// Offline SQLite/MBTiles UI — aktivna karta je već vidljiva; drugi prekidač
-// zato nije Sakrij nego Zoom. Veže se poslije glavnog runtime-a.
+// Oznaka verzije u Postavkama i meniju. Veže se poslije glavnog runtime-a.
 (function _usfOfflineMapUiFix() {
   // Node testovi učitavaju isti fajl bez DOM-a; UI patch je samo za WebView.
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  const apply = () => {
-    const previous = window._sqlmapRegRender;
-    if (typeof previous !== 'function' || previous.__usfZoomFix) return false;
-    const wrapped = async function() {
-      await previous.apply(this, arguments);
-      const list = document.getElementById('sqlmap-list');
-      if (!list) return;
-      list.querySelectorAll('.treg-row').forEach(row => {
-        const buttons = row.querySelectorAll('.treg-btns button');
-        if (buttons.length < 2 || !/Aktivna/.test(buttons[0].textContent)) return;
-        const useButton = buttons[0], zoomButton = buttons[1];
-        zoomButton.textContent = '🔍 Zoom';
-        zoomButton.title = 'Zumiraj na granice aktivne karte';
-        zoomButton.onclick = () => useButton.click();
-      });
-    };
-    wrapped.__usfZoomFix = true;
-    window._sqlmapRegRender = wrapped;
-    return true;
-  };
-  if (!apply()) setTimeout(apply, 0);
   const oldSettings = window._renderPostavke;
   if (typeof oldSettings === 'function' && !oldSettings.__usfVersionFix) {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.4.43';
+      if (label) label.textContent = 'v1.4.44';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v1.4.43';
+  if (badge) badge.textContent = 'Grmeč Navigator v1.4.44';
 })();
 
 

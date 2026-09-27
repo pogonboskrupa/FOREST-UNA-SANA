@@ -260,6 +260,40 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   background:rgba(10,24,18,.92); border:1px solid rgba(134,239,172,.22);
   box-shadow:0 6px 18px rgba(0,0,0,.35); color:#d8e8df; cursor:pointer;
 }
+.ul-hero-top { display:flex; gap:12px; align-items:flex-start; }
+.ul-hero-top h3 { margin:1px 0 3px; }
+.ul-hero-top p { margin:0 0 10px; color:#80958a; font-size:11.5px; line-height:1.45; }
+.ul-ico { width:40px; height:40px; flex:none; border-radius:12px; display:grid; place-items:center; font-size:20px; background:rgba(74,222,128,.12); border:1px solid rgba(74,222,128,.25); }
+.ul-chips { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 12px; }
+.ul-chips span { padding:3px 8px; border-radius:999px; background:#0b1a13; border:1px solid #1f3b2d; color:#9db0a7; font-size:10.5px; font-family:ui-monospace,monospace; }
+.ul-status { color:#94a3b8; font-size:12px; margin-top:8px; }
+.ul-status:empty { display:none; }
+.ul-nap { margin:9px 0 0; color:#71857b; font-size:10.5px; line-height:1.4; text-align:center; }
+.ul-sum { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:0 0 10px; }
+.ul-sum div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:7px 4px; text-align:center; }
+.ul-sum b { display:block; color:var(--text); font-size:16px; }
+.ul-sum small { color:#80958a; font-size:10px; }
+.ul-naslov { font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#91a69b; margin:12px 2px 6px; }
+.ul-red { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; background:#12241b; border:1px solid #1f3b2d; border-radius:14px; padding:10px; margin-bottom:8px; }
+.ul-red.skriven { opacity:.6; }
+.ul-boja { width:34px; height:34px; border-radius:10px; border:2px solid rgba(255,255,255,.85); cursor:pointer; padding:0; box-shadow:inset 0 0 0 3px rgba(0,0,0,.25); }
+.ul-thumb { width:64px; height:46px; border-radius:8px; object-fit:cover; border:1px solid #334155; background:#172b2a; display:block; }
+.ul-info { min-width:0; cursor:pointer; }
+.ul-info b { display:block; color:var(--text); font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ul-info small { display:block; color:#80958a; font-size:11px; margin-top:2px; line-height:1.35; }
+.ul-info .ul-oznaka { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:6px; background:#1e3a5f; color:#bfdbfe; font-size:9.5px; font-weight:800; vertical-align:2px; }
+.ul-akc { grid-column:1 / -1; display:flex; gap:6px; }
+.ul-akc button { flex:1; padding:8px 4px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
+.ul-akc button.glavno { background:#14532d; border-color:#22c55e; color:#dcfce7; font-weight:700; flex:1.5; }
+.ul-akc button.brisi { flex:0 0 44px; color:#f87171; border-color:#7f1d1d; }
+.ul-aktivna { background:linear-gradient(145deg,rgba(22,101,52,.35),rgba(16,32,25,.95)); border:1px solid #22c55e; border-radius:16px; overflow:hidden; margin-bottom:10px; }
+.ul-aktivna .ul-slika { position:relative; height:120px; background:#172b2a; }
+.ul-aktivna .ul-slika img { width:100%; height:100%; object-fit:cover; display:block; }
+.ul-aktivna .ul-slika span { position:absolute; left:10px; top:10px; padding:3px 9px; border-radius:999px; background:#16a34a; color:#fff; font-size:10.5px; font-weight:800; letter-spacing:.3px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+.ul-aktivna .ul-tijelo { padding:10px 12px 12px; display:grid; gap:8px; }
+.ul-prazno { text-align:center; padding:26px 16px; color:#80958a; font-size:12.5px; line-height:1.5; border:1.5px dashed #1f3b2d; border-radius:14px; }
+.ul-prazno b { display:block; font-size:26px; margin-bottom:4px; }
+.ul-savjet { color:#71857b; font-size:11px; line-height:1.45; margin:10px 2px 0; }
 .ng-card { background:linear-gradient(145deg,rgba(30,55,43,.95),rgba(16,32,25,.95)); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:10px; }
 .ng-card h3 { margin:0 0 4px; color:var(--text); font-size:14px; }
 .ng-card h3 span { color:#80958a; font-weight:600; }
@@ -1294,10 +1328,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="ucitajkartu-panel" class="usf-panel">
   <div class="up-hdr"><h2>🗂 Učitaj kartu <span id="sqlmap-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
-    <div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:10px;">Više offline karata može ostati na uređaju. Aktivna karta se pamti i automatski vraća pri sljedećem pokretanju.</div>
-    <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlitedb,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
-    <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('sqlmap-file-input').click()">📂 Izaberi MBTiles/SQLite fajl</button>
-    <div id="sqlmap-status" style="color:#94a3b8;font-size:12px;margin-bottom:14px;min-height:16px;"></div>
+    <section class="ng-card ul-hero">
+      <div class="ul-hero-top"><span class="ul-ico">🗺</span><div><h3>Offline karte</h3><p>Velike rasterske karte za rad bez signala. Ostaju na uređaju; aktivna se sama vraća pri pokretanju.</p></div></div>
+      <div class="ul-chips"><span>.mbtiles</span><span>.sqlitedb</span><span>.sqlite</span><span>.sqlmap</span><span>.db</span></div>
+      <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlitedb,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
+      <button class="ng-glavno" onclick="document.getElementById('sqlmap-file-input').click()">📂 Izaberi kartu</button>
+      <div id="sqlmap-status" class="ul-status" role="status"></div>
+    </section>
     <div id="sqlmap-list"></div>
   </div>
 </div>
@@ -1306,9 +1343,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="ucitajkml-panel" class="usf-panel">
   <div class="up-hdr"><h2>📥 KML / SHP <span id="kml-count" style="color:#64748b;font-weight:400;"></span></h2><button class="up-close" onclick="switchMainTab('karte')">✕</button></div>
   <div class="up-body">
-    <div style="font-size:11px;color:#80958a;line-height:1.5;margin-bottom:10px;">KML se bira direktno. Za SHP označi zajedno istoimene <b>.shp</b>, <b>.dbf</b> i <b>.prj</b> fajlove; .prj je potreban za karte u lokalnoj projekciji.</div>
-    <input type="file" id="kml-file-input" accept=".kml,.kmz,.shp,.dbf,.prj,.shx" multiple style="display:none;" onchange="_vectorFileChosen(event)">
-    <button class="loc-btn" style="margin-bottom:14px;" onclick="document.getElementById('kml-file-input').click()">📂 Izaberi KML ili SHP fajlove</button>
+    <section class="ng-card ul-hero">
+      <div class="ul-hero-top"><span class="ul-ico">📥</span><div><h3>Vektorski slojevi</h3><p>Granice odjela, putevi, tačke… Poligoni se mogu dodirnuti za izvještaj odjela i nagib.</p></div></div>
+      <div class="ul-chips"><span>.kml</span><span>.kmz</span><span>.shp + .dbf + .prj</span></div>
+      <input type="file" id="kml-file-input" accept=".kml,.kmz,.shp,.dbf,.prj,.shx" multiple style="display:none;" onchange="_vectorFileChosen(event)">
+      <button class="ng-glavno" onclick="document.getElementById('kml-file-input').click()">📂 Izaberi fajlove</button>
+      <p class="ul-nap">Za SHP označi zajedno istoimene .shp, .dbf i .prj (.prj treba za lokalnu projekciju).</p>
+    </section>
     <div id="kml-list"></div>
   </div>
 </div>
@@ -3913,20 +3954,55 @@ function _kmlZoom(id) {
   if (!k) return;
   try { const b = k.grp.getBounds(); if (b.isValid()) { map.fitBounds(b, { padding: [30,30] }); switchMainTab('karta'); } } catch(e) {}
 }
+// Brojevi geometrija i površina poligona (ha) — računa se jednom po sloju.
+function _kmlStat(k) {
+  if (k._stat) return k._stat;
+  const st = { pol: 0, lin: 0, tac: 0, ha: 0 };
+  try {
+    k.grp.eachLayer(l => {
+      if (l._kmlIsPolygon) { st.pol++; if (typeof turf !== 'undefined') { try { st.ha += turf.area(l.toGeoJSON()) / 10000; } catch(e) {} } }
+      else if (l._kmlIsPoint) st.tac++;
+      else if (l.getLatLngs) st.lin++;
+    });
+  } catch(e) {}
+  return (k._stat = st);
+}
+function _kmlPromijeniBoju(id) {
+  const k = kmlLs.find(x => x.id === id);
+  if (!k) return;
+  const c = KCOLS[(KCOLS.indexOf(k.col) + 1) % KCOLS.length];
+  k.col = c;
+  k.grp.eachLayer(l => { if (l.setStyle) l.setStyle(l._kmlIsPoint ? { color: c, fillColor: c } : { color: c }); });
+  try {
+    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
+    if (store[k.name]) { store[k.name].col = c; localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store)); }
+  } catch(e) {}
+  _kmlRegRender();
+}
 function _kmlRegRender() {
   const el = document.getElementById('kml-list');
   const cnt = document.getElementById('kml-count');
   if (!el) return;
   if (cnt) cnt.textContent = kmlLs.length ? `(${kmlLs.length})` : '';
-  if (!kmlLs.length) { el.innerHTML = '<div class="treg-empty">Nema učitanih KML/SHP slojeva.</div>'; return; }
-  el.innerHTML = kmlLs.map(k => `<div class="treg-row" style="border-left:3px solid ${k.col};">
-    <div class="treg-name" onclick="_kmlZoom('${k.id}')">${_escHtml(k.name)}</div>
-    <div class="treg-btns">
-      <button onclick="_kmlZoom('${k.id}')">🔍 Zoom</button>
-      <button onclick="_kmlToggle('${k.id}')">${k.vis !== false ? '🙈 Sakrij' : '👁 Prikaži'}</button>
-      <button class="del-btn" onclick="_kmlDeleteConfirm('${k.id}')">🗑 Ukloni</button>
-    </div>
-  </div>`).join('');
+  if (!kmlLs.length) { el.innerHTML = '<div class="ul-prazno"><b>🗺</b>Još nema učitanih slojeva.<br>Dodaj granice odjela, puteve ili tačke iz KML/SHP fajla.</div>'; return; }
+  const ukupno = kmlLs.reduce((a, k) => { const s = _kmlStat(k); a.pol += s.pol; a.lin += s.lin; a.tac += s.tac; return a; }, { pol: 0, lin: 0, tac: 0 });
+  const oblik = (n, j, d, m) => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? j : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? d : m);
+  const plit = (n, j, d, m) => `<div><b>${n}</b><small>${oblik(n, j, d, m).replace(/^\d+ /, '')}</small></div>`;
+  el.innerHTML = `<div class="ul-sum">${plit(kmlLs.length, 'sloj', 'sloja', 'slojeva')}${plit(ukupno.pol, 'poligon', 'poligona', 'poligona')}${plit(ukupno.lin, 'linija', 'linije', 'linija')}${plit(ukupno.tac, 'tačka', 'tačke', 'tačaka')}</div>
+    <div class="ul-naslov">Učitani slojevi</div>` + kmlLs.map(k => {
+    const s = _kmlStat(k), dijelovi = [];
+    if (s.pol) dijelovi.push(oblik(s.pol, 'poligon', 'poligona', 'poligona'));
+    if (s.lin) dijelovi.push(oblik(s.lin, 'linija', 'linije', 'linija'));
+    if (s.tac) dijelovi.push(oblik(s.tac, 'tačka', 'tačke', 'tačaka'));
+    if (s.ha) dijelovi.push((s.ha >= 100 ? Math.round(s.ha) : s.ha.toFixed(1)).toLocaleString('bs-BA') + ' ha');
+    const tip = k._shp ? 'SHP' : k._ugradjeno ? 'ugrađeno' : 'KML';
+    return `<div class="ul-red${k.vis === false ? ' skriven' : ''}">
+    <button class="ul-boja" style="background:${k.col}" onclick="_kmlPromijeniBoju('${k.id}')" title="Promijeni boju" aria-label="Promijeni boju sloja"></button>
+    <div class="ul-info" onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}<span class="ul-oznaka">${tip}</span></b><small>${dijelovi.join(' · ') || 'bez geometrija'}</small></div>
+    <label class="ng-switch" aria-label="Prikaži sloj"><input type="checkbox" ${k.vis !== false ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label>
+    <div class="ul-akc"><button class="glavno" onclick="_kmlZoom('${k.id}')">🔍 Prikaži na karti</button>${k._ugradjeno ? '' : `<button class="brisi" onclick="_kmlDeleteConfirm('${k.id}')" aria-label="Ukloni sloj">🗑</button>`}</div>
+  </div>`;
+  }).join('') + '<p class="ul-savjet">Dodir na boju mijenja boju sloja. Dodir na poligon na karti otvara 📊 izvještaj odjela i 📐 nagib.</p>';
 }
 _kmlRestore();
 
@@ -4041,7 +4117,7 @@ function _nativeSqlmapAdd(info) {
   });
   const active = _sqlmapActiveName() === info.name;
   const rec = { id:'native_' + info.id, nativeId:info.id, native:true, name:info.name,
-    db:null, layer, bounds, thumb:_SQL_THUMB, active, vis:active };
+    db:null, layer, bounds, thumb:_SQL_THUMB, active, vis:active, zmin:Number(info.minzoom), zmax:Number(info.maxzoom) };
   if (active) _sqlLayers.forEach(x => { x.active = false; });
   _sqlLayers.push(rec);
   if (active) layer.addTo(map);
@@ -4197,7 +4273,7 @@ async function _sqlmapAddLayer(name, db, opts) {
     tileSize: 256
   });
   const active = (_sqlmapActiveName() === name) || opts?.active === true;
-  const rec = { id: 'sqlmap_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name, db, layer, bounds, thumb: opts?.thumb || _SQL_THUMB, active, vis: opts?.vis !== false };
+  const rec = { id: 'sqlmap_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name, db, layer, bounds, thumb: opts?.thumb || _SQL_THUMB, active, vis: opts?.vis !== false, zmin: Number(meta.minzoom), zmax: Number(meta.maxzoom) };
   if (active) _sqlLayers.forEach(x => { x.active = false; });
   _sqlLayers.push(rec);
   if (rec.vis && active) layer.addTo(map);
@@ -4384,27 +4460,32 @@ async function _sqlmapRegRender() {
   try { stored = await _sqlIdbGetAll(); } catch(e) {}
   const activeNames = new Set(_sqlLayers.map(r => r.name));
   const pending = stored.filter(s => !activeNames.has(s.name));
-  if (cnt) cnt.textContent = (_sqlLayers.length + pending.length) ? `(${_sqlLayers.length + pending.length})` : '';
-  if (!_sqlLayers.length && !pending.length) { el.innerHTML = '<div class="treg-empty">Nema učitanih offline karata.</div>'; return; }
-  let html = _sqlLayers.map(r => `<div class="treg-row" style="display:grid;grid-template-columns:88px 1fr;gap:10px;align-items:center;border-left:3px solid ${r.active ? '#4ade80' : '#334155'};padding:9px;">
-    <img src="${r.thumb || _SQL_THUMB}" alt="Pregled karte" style="width:88px;height:58px;object-fit:cover;border-radius:7px;border:1px solid ${r.active ? '#4ade80' : '#334155'};background:#172b2a;">
-    <div><div class="treg-name" onclick="_sqlmapSelect('${r.id}',true)">${_escHtml(r.name)}</div>
-    <div class="treg-meta">${r.active ? '✓ Aktivna karta · ' : ''}${r.bounds ? 'granice poznate' : 'bez granica u metapodacima'}</div>
-    <div class="treg-btns">
-      <button onclick="_sqlmapSelect('${r.id}',true)">${r.active ? '✓ Aktivna' : '▶ Koristi'}</button>
-      <button onclick="_sqlmapToggle('${r.id}')">${r.vis !== false ? '🙈 Sakrij' : '👁 Prikaži'}</button>
-      ${r.bounds ? `<button onclick="_sqlmapZoom('${r.id}')">⤢ Obuhvat</button>` : ''}
-      <button class="del-btn" onclick="_sqlmapDeleteConfirm('${r.id}')">🗑 Ukloni</button>
-    </div></div>
+  const ukupno = _sqlLayers.length + pending.length;
+  if (cnt) cnt.textContent = ukupno ? `(${ukupno})` : '';
+  if (!ukupno) { el.innerHTML = '<div class="ul-prazno"><b>🗂</b>Još nema offline karata.<br>Učitaj .mbtiles ili .sqlitedb kartu za rad bez signala.</div>'; return; }
+  const zoomTxt = r => (Number.isFinite(r.zmin) && Number.isFinite(r.zmax)) ? `zoom ${r.zmin}–${r.zmax}` : '';
+  const meta = r => [zoomTxt(r), r.bounds ? 'granice poznate' : 'bez granica u metapodacima', r.native ? 'brzo spremište' : ''].filter(Boolean).join(' · ');
+  const akt = _sqlLayers.find(r => r.active), ostale = _sqlLayers.filter(r => !r.active);
+  let html = '';
+  if (akt) html += `<div class="ul-aktivna">
+    <div class="ul-slika"><img src="${akt.thumb || _SQL_THUMB}" alt="Pregled aktivne karte"><span>✓ AKTIVNA KARTA</span></div>
+    <div class="ul-tijelo"><div class="ul-info" onclick="_sqlmapSelect('${akt.id}',true)"><b>${_escHtml(akt.name)}</b><small>${meta(akt)}</small></div>
+    <div class="ul-akc"><button class="glavno" onclick="_sqlmapSelect('${akt.id}',true)">🔍 Zumiraj na kartu</button><button class="brisi" onclick="_sqlmapDeleteConfirm('${akt.id}')" aria-label="Ukloni kartu">🗑</button></div></div>
+  </div>`;
+  if (ostale.length || pending.length) html += `<div class="ul-naslov">${akt ? 'Ostale karte na uređaju' : 'Karte na uređaju'}</div>`;
+  html += ostale.map(r => `<div class="ul-red${r.vis === false ? ' skriven' : ''}">
+    <img class="ul-thumb" src="${r.thumb || _SQL_THUMB}" alt="Pregled karte">
+    <div class="ul-info" onclick="_sqlmapSelect('${r.id}',true)"><b>${_escHtml(r.name)}</b><small>${meta(r)}</small></div>
+    <label class="ng-switch" aria-label="Prikaži kartu"><input type="checkbox" ${r.vis !== false ? 'checked' : ''} onchange="_sqlmapToggle('${r.id}')"><span></span></label>
+    <div class="ul-akc"><button class="glavno" onclick="_sqlmapSelect('${r.id}',true)">▶ Koristi</button>${r.bounds ? `<button onclick="_sqlmapZoom('${r.id}')">⤢ Obuhvat</button>` : ''}<button class="brisi" onclick="_sqlmapDeleteConfirm('${r.id}')" aria-label="Ukloni kartu">🗑</button></div>
   </div>`).join('');
-  html += pending.map(s => `<div class="treg-row" style="display:grid;grid-template-columns:88px 1fr;gap:10px;align-items:center;border-left:3px solid #334155;padding:9px;">
-    <img src="${s.thumb || _SQL_THUMB}" alt="Pregled karte" style="width:88px;height:58px;object-fit:cover;border-radius:7px;border:1px solid #334155;background:#172b2a;">
-    <div><div class="treg-name">${_escHtml(s.name)}</div>
-    <div class="treg-meta">${(s.failCount||0) >= 3 ? '⚠ auto-učitavanje isključeno (3 neuspjela pokušaja) — otvori ručno' : 'učitavanje u toku ili čeka red'}</div>
-    <div class="treg-btns">
-      <button onclick="_sqlmapRestoreManual('${_escHtml(s.name).replace(/'/g, "\\'")}')">▶ Učitaj</button>
-    </div></div>
+  html += pending.map(s => `<div class="ul-red">
+    <img class="ul-thumb" src="${s.thumb || _SQL_THUMB}" alt="Pregled karte">
+    <div class="ul-info"><b>${_escHtml(s.name)}</b><small>${(s.failCount||0) >= 3 ? '⚠ auto-učitavanje isključeno (3 neuspjela pokušaja) — otvori ručno' : '⏳ učitavanje u toku ili čeka red'}</small></div>
+    <span></span>
+    <div class="ul-akc"><button class="glavno" onclick="_sqlmapRestoreManual('${_escHtml(s.name).replace(/'/g, "\\'")}')">▶ Učitaj</button></div>
   </div>`).join('');
+  html += '<p class="ul-savjet">Aktivna karta se crta ispod slojeva (požari, KML, nagib) i pamti se za sljedeće pokretanje.</p>';
   el.innerHTML = html;
 }
 async function _sqlmapRestoreManual(name) {
