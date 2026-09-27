@@ -1,0 +1,78 @@
+'use strict';
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+const N = require('../../static/js/nagib-poligon.js');
+const T = require('../../static/js/terrain-layers.js');
+const HTML = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+
+let pass = 0;
+const t = (name, fn) => { fn(); pass++; console.log('  ✔ ' + name); };
+console.log('Nagib — rasponi od–do i nagib u poligonu:');
+
+t('rasponi: sortirane granice, od = prethodna granica, zadnji do beskonačnosti', () => {
+  const k = T.terrainSlopeNormalize([{ max: 30 }, { max: 10 }, { max: 30 }, { max: 95 }, { max: null }]);
+  assert.deepStrictEqual(k.map(x => x.label), ['0–10°', '10–30°', '>30°']);
+  assert.strictEqual(k[2].max, Infinity);
+  assert.ok(k.every(x => /^#[0-9a-f]{6}$/i.test(x.color) && x.on));
+});
+
+t('rasponi: isključen raspon je proziran, korisnička boja ostaje', () => {
+  T.terrainSetSlopeKlase([{ max: 20, color: '#123456' }, { max: 40, on: false }, { max: Infinity }]);
+  const nag = d => T.terrainColor('slope', Math.tan(d * Math.PI / 180), 0);
+  assert.strictEqual(nag(10), '#123456');
+  assert.strictEqual(nag(30), null, 'isključen raspon se ne crta');
+  assert.ok(nag(60));
+  assert.strictEqual(T.terrainSlopeKlasa(30).label, '20–40°');
+  T.terrainSetSlopeKlase(null);
+  assert.strictEqual(nag(30), '#f97316', 'vraćanje na zadane klase');
+});
+
+const ring = [[44.80, 16.10], [44.80, 16.11], [44.81, 16.11], [44.81, 16.10]];
+
+t('poligon: tačka unutra/van i površina (~0,79 × 1,11 km)', () => {
+  assert.ok(N.npUnutra(44.805, 16.105, ring));
+  assert.ok(!N.npUnutra(44.815, 16.105, ring));
+  const a = N.npPovrsina(ring);
+  assert.ok(a > 85e4 && a < 90e4, String(a));
+});
+
+t('mreža: automatski razmak daje ~80 tačaka, sve unutar; gornja granica 400', () => {
+  const a = N.npPovrsina(ring), r = N.npAutoRazmak(a);
+  const m = N.npMreza(ring, r);
+  assert.ok(m.tacke.length > 50 && m.tacke.length < 120, String(m.tacke.length));
+  assert.ok(m.tacke.every(([la, lo]) => N.npUnutra(la, lo, ring)));
+  const gusta = N.npMreza(ring, 5);
+  assert.ok(gusta.tacke.length <= 400 && gusta.razmak > 5);
+  const mali = N.npMreza([[44.8, 16.1], [44.8, 16.10001], [44.80001, 16.1]], 50);
+  assert.strictEqual(mali.tacke.length, 1, 'mali poligon dobije bar jednu tačku');
+});
+
+t('nagib iz visina: ±10 m pomak, razlika 10 m na 20 m = 26,6°, strana okrenuta zapadu', () => {
+  const g = N.npNagibIzVisina(110, 100, 105, 105, 10);
+  assert.ok(Math.abs(g.slope - 26.565) < 0.01);
+  assert.ok(Math.abs(g.aspect - 270) < 0.01);
+  const c = T.terrainGradient((110 - 100) / 20, 0);
+  assert.ok(Math.abs(c.slope - g.slope) < 1e-9, 'isti obrazac kao sloj nagiba');
+});
+
+t('statistika po rasponima: prosjek, medijan, udio i ha', () => {
+  const kl = T.terrainSlopeNormalize([{ max: 15 }, { max: 30 }, { max: Infinity }]);
+  const s = N.npStatistika([5, 10, 20, 40, NaN], kl, 40000);
+  assert.strictEqual(s.n, 4);
+  assert.strictEqual(s.sr, 18.75); assert.strictEqual(s.med, 15);
+  assert.deepStrictEqual(s.poKlasi.map(p => p.n), [2, 1, 1]);
+  assert.strictEqual(s.poKlasi[0].ha, 2);
+});
+
+t('integracija: urednik raspona, dugme u terenu, KML i mjerenje, keš i APK', () => {
+  ['id="terrain-slope-editor"', 'onclick="npNacrtaj()"', 'npIzKml(${L.stamp(layer)})', "npIzMjerenja('${m.id}')", '<script src="static/js/nagib-poligon.js">', 'window._npHvataKlik'].forEach(x => assert.ok(HTML.includes(x), x));
+  const sw = fs.readFileSync(path.join(__dirname, '../../sw.js'), 'utf8');
+  const kop = fs.readFileSync(path.join(__dirname, '../../android/copy-assets.sh'), 'utf8');
+  assert.ok(sw.includes("'./static/js/nagib-poligon.js'") && kop.includes('static/js/nagib-poligon.js'));
+  const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
+  assert.ok(js.includes("map.createPane('nagibPolPane')") && js.includes("pane: 'nagibPolPane'"), 'pane mora postojati');
+  assert.ok(js.includes('draggable: true'), 'tačke i tjemena su pomjerivi');
+});
+
+console.log('\n' + pass + ' prošlo, 0 palo — nagib u poligonu');

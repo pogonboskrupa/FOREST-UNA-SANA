@@ -260,6 +260,18 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   background:rgba(10,24,18,.92); border:1px solid rgba(134,239,172,.22);
   box-shadow:0 6px 18px rgba(0,0,0,.35); color:#d8e8df; cursor:pointer;
 }
+.tse { margin:2px 0 8px; border:1px solid #1e3a2c; border-radius:10px; padding:6px 9px; background:rgba(8,20,14,.5); }
+.tse summary { cursor:pointer; font-size:12.5px; color:#cbd5e1; padding:4px 0; }
+.tse-red { display:flex; align-items:center; gap:7px; padding:5px 0; border-top:1px solid #16261e; font-size:12.5px; color:#cbd5e1; }
+.tse-red input[type=checkbox] { width:18px; height:18px; flex:none; }
+.tse-red input[type=color] { width:28px; height:24px; padding:0; border:1px solid #334155; border-radius:6px; background:none; flex:none; }
+.tse-red input[type=number] { width:54px; padding:5px 6px; border-radius:7px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; }
+.tse-od { min-width:30px; text-align:right; font-variant-numeric:tabular-nums; }
+.tse-inf { color:#94a3b8; }
+.tse-red button { margin-left:auto; border:none; background:none; color:#64748b; font-size:15px; cursor:pointer; padding:2px 6px; }
+.tse-akcije { display:flex; gap:8px; padding-top:7px; border-top:1px solid #16261e; }
+.tse-akcije button { flex:1; padding:7px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
+.tse-nap { font-size:11px; color:#80958a; line-height:1.4; margin:4px 0 0; }
 #terrain-map-legend .tml-title { font-size:10px; font-weight:800; letter-spacing:.3px; color:#91a69b; text-transform:uppercase; margin-bottom:5px; }
 #terrain-map-legend .tml-row { display:grid; gap:4px 6px; }
 #terrain-map-legend .tml-slope { grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px 3px; }
@@ -950,7 +962,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
       </section>
       <section class="karta-hub-card">
         <h3>🏔 Analiza terena</h3>
-        <label style="display:block;padding:10px 0"><input id="terrain-slope" type="checkbox" onchange="_terrainToggle('slope',this.checked)"> Nagib terena (0–15, 15–25, 25–35, 35–50, &gt;50°)</label>
+        <label style="display:block;padding:10px 0"><input id="terrain-slope" type="checkbox" onchange="_terrainToggle('slope',this.checked)"> Nagib terena</label>
+        <details class="tse"><summary>Rasponi nagiba (od–do)</summary><div id="terrain-slope-editor"></div><p class="tse-nap">Isključi raspon da se ne prikazuje na karti — npr. ostavi samo 25–35°.</p></details>
+        <button class="karta-hub-action" style="margin:6px 0 4px" onclick="npNacrtaj()">📐 Nagib u poligonu</button>
+        <p class="tse-nap">Nacrtaj poligon ili dodirni KML poligon / mjerenje površine → 📐. Tačke i tjemena se mogu pomjerati.</p>
         <label style="display:block;padding:10px 0"><input id="terrain-aspect" type="checkbox" onchange="_terrainToggle('aspect',this.checked)"> Ekspozicija — strane svijeta</label>
         <label style="display:block;padding:10px 0"><input id="terrain-shade" type="checkbox" onchange="_terrainToggle('shade',this.checked)"> Hillshade — sjenčenje reljefa</label>
         <label>Prozirnost dodataka <input type="range" min="15" max="85" value="55" oninput="_terrainOpacity(this.value)" aria-label="Prozirnost slojeva terena"></label>
@@ -3274,6 +3289,9 @@ function _msrPopupHtml(m) {
   } else {
     html += `<div style="font-size:13px;color:#374151;">📏 ${_msrFmt(totalDist)}</div>`;
   }
+  if (mode === 'area' && m.pts.length >= 3 && typeof npIzMjerenja === 'function') {
+    html += `<button onclick="npIzMjerenja('${m.id}')" style="margin-top:8px;width:100%;padding:6px 8px;background:#1e3a5f;color:#dbeafe;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">📐 Nagib poligona</button>`;
+  }
   html += `<div style="margin-top:10px;display:flex;gap:6px;">
     <button onclick="_msrRegZoom('${m.id}')" style="flex:1;padding:5px 8px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">✏ Edituj</button>
     <button onclick="_msrRegDeleteConfirm('${m.id}')" style="padding:5px 8px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🗑</button>
@@ -3382,7 +3400,7 @@ function _msrHitTest(latlng) {
 function _msrOpenPopupNa(m, latlng) { if (!m || !window.map) return; try { L.popup({ maxWidth: 260 }).setLatLng(latlng).setContent(_msrPopupHtml(m)).openOn(map); } catch(e) {} }
 
 map.on('click', e => {
-  if (_msrOn) return; // izmjera preuzima klikove kroz vlastiti map.on('click')
+  if (_msrOn || window._npHvataKlik) return; // izmjera / nagib poligona preuzimaju klikove
   const mm = _msrHitTest(e.latlng);
   if (mm) { _msrOpenPopupNa(mm, e.latlng); return; }
   const kl = _kmlHitTest(e.latlng);
@@ -3458,7 +3476,7 @@ function pkml(doc, col, op) {
   return g;
 }
 function _bindKmlPopup(layer) {
-  const onClick = e => { L.DomEvent.stopPropagation(e); _kmlOpenPopup(layer, e.latlng); };
+  const onClick = e => { if (window._npHvataKlik) return; L.DomEvent.stopPropagation(e); _kmlOpenPopup(layer, e.latlng); };
   layer.on('click', onClick);
   // Tanke/isprekidane linije rijetko pogode prst na terenu — širi nevidljiv
   // hit-sloj (isti obrazac kao attachPolyClick za trag). Poligoni (fill hit-
@@ -3484,6 +3502,9 @@ function _kmlPopupHtml(layer) {
   if (extKeys.length) {
     html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;">` +
       extKeys.map(k => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;"><span style="color:#94a3b8;">${_escHtml(k)}</span><span style="color:#374151;text-align:right;">${_escHtml(ext[k])}</span></div>`).join('') + `</div>`;
+  }
+  if (layer._kmlIsPolygon && typeof npIzKml === 'function') {
+    html += `<button onclick="npIzKml(${L.stamp(layer)})" style="margin-top:8px;width:100%;padding:8px;border:none;border-radius:8px;background:#1e3a5f;color:#dbeafe;font-size:12px;font-weight:700;cursor:pointer;">📐 Nagib poligona</button>`;
   }
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') {
     html += `<button onclick="_odjelIzvjestaj(${L.stamp(layer)})" style="margin-top:8px;width:100%;padding:8px;border:none;border-radius:8px;background:#14532d;color:#dcfce7;font-size:12px;font-weight:700;cursor:pointer;">📊 Izvještaj odjela</button>`;
@@ -8186,5 +8207,6 @@ window.addEventListener('load', () => {
 </script>
 <script src="static/js/terrain-layers.js"></script>
 <script src="static/js/odjeli.js"></script>
+<script src="static/js/nagib-poligon.js"></script>
 </body>
 </html>
