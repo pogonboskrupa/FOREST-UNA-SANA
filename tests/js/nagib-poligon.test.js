@@ -126,6 +126,33 @@ t('UI: izbor 5/8/10/12 linija, pomjerivi krajevi i cijela linija, ručna linija,
   assert.ok(js.includes("'nagib_pct'"));
 });
 
+t('procenti su glavni prikaz, stepeni u zagradi; sažetak za pohranu', () => {
+  assert.ok(Math.abs(N.npPct(45) - 100) < 1e-9 && Math.abs(N.npSt(100) - 45) < 1e-9);
+  const sz = N.npSazetak([{ pct: 20, st: N.npSt(20) }, { pct: 40, st: N.npSt(40) }, { pct: NaN, st: NaN }]);
+  assert.strictEqual(sz.n, 2); assert.strictEqual(sz.pct, 30); assert.strictEqual(sz.min, 20);
+  const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
+  assert.ok(js.includes("`${Math.round(l.pct)} % (${Math.round(l.st)}°)`"), 'oznaka linije: % (°)');
+  assert.ok(js.includes("'nagib_pct', 'nagib_st'"), 'CSV: procenat prije stepeni');
+});
+
+t('pohrana: dugme Sačuvaj/Ažuriraj, lista s prikazom, CSV, preimenovanjem i brisanjem', () => {
+  const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
+  assert.ok(js.includes("'usf_nagib_mjerenja'") && js.includes("data-a=\"sacuvaj\""));
+  ['data-sv="prikazi"', 'data-sv="csv"', 'data-sv="ime"', 'data-sv="brisi"'].forEach(x => assert.ok(js.includes(x), x));
+  assert.ok(js.includes('pocni(z.ring, z.naziv, z)') && js.includes('if (sacuvano) obnovi(sacuvano); else generisi();'), 'sačuvane linije se vraćaju, ne generišu ponovo');
+});
+
+t('sekcija Nagib u Kartama: kartica, panel, prekidač karte, rasponi s %, mjerenje i lista', () => {
+  assert.ok(HTML.includes('onclick="openNagibSection()"') && HTML.includes('id="nagib-panel"'));
+  const panel = HTML.slice(HTML.indexOf('id="nagib-panel"'), HTML.indexOf('<!-- Custom dialog sheet'));
+  ['id="terrain-slope"', 'id="terrain-slope-editor"', 'onclick="npNacrtaj()"', 'id="ng-lista"', 'aria-label="Prozirnost slojeva terena"'].forEach(x => assert.ok(panel.includes(x), x));
+  const teren = HTML.slice(HTML.indexOf('<h3>🏔 Analiza terena</h3>'), HTML.indexOf('<h3>📊 Tematska GeoPackage karta</h3>'));
+  assert.ok(!teren.includes('terrain-slope'), 'nagib više nije u Analizi terena');
+  assert.ok(HTML.includes("'nagib-panel'") , 'panel je u _ALL_PANELS');
+  const tjs = fs.readFileSync(path.join(__dirname, '../../static/js/terrain-layers.js'), 'utf8');
+  assert.ok(tjs.includes('class="tse-pct"') && tjs.includes('querySelectorAll(\'input[aria-label="Prozirnost slojeva terena"]\')'));
+});
+
 (async () => {
   // Greben na lon 16.105 (1200 m), padine 20 % na obje strane; tačka na istočnoj padini.
   const m = 111320 * Math.cos(44.805 * Math.PI / 180);

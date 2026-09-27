@@ -51,7 +51,8 @@ if (typeof window !== 'undefined') {
   const layers = {}, decoded = new Map();
   let opacity = Math.max(.15,Math.min(.85,Number(saved.opacity)||.55));
   if (Array.isArray(saved.nagibKlase)) terrainSetSlopeKlase(saved.nagibKlase.map(k => ({ ...k, max: k.max === null ? Infinity : k.max })));
-  document.querySelector('input[aria-label="Prozirnost slojeva terena"]').value=Math.round(opacity*100);
+  const klizaci=()=>document.querySelectorAll('input[aria-label="Prozirnost slojeva terena"]');
+  klizaci().forEach(i=>{i.value=Math.round(opacity*100);});
   map.createPane('terrainShade'); map.getPane('terrainShade').style.zIndex='320';
   map.createPane('terrainColor'); map.getPane('terrainColor').style.zIndex='330';
   ['terrainShade','terrainColor'].forEach(p=>map.getPane(p).style.pointerEvents='none');
@@ -133,7 +134,8 @@ if (typeof window !== 'undefined') {
     const el=document.getElementById('terrain-slope-editor');if(!el)return;
     const k=terrainSlopeAktivne;
     el.innerHTML=k.map((r,i)=>{const od=i?k[i-1].max:0;
-      return `<div class="tse-red"><input type="checkbox" data-i="${i}" data-f="on" ${r.on!==false?'checked':''} aria-label="Prikaži raspon"><input type="color" data-i="${i}" data-f="color" value="${r.color}" aria-label="Boja raspona"><span class="tse-od">${od}°</span><span>–</span>${r.max===Infinity?'<span class="tse-inf">i više</span>':`<input type="number" inputmode="numeric" min="1" max="89" step="1" data-i="${i}" data-f="max" value="${r.max}" aria-label="Gornja granica">°`}${k.length>2&&r.max!==Infinity?`<button data-i="${i}" data-f="del" aria-label="Ukloni granicu">✕</button>`:''}</div>`;}).join('')
+      const pct=g=>Math.round(Math.tan(g*Math.PI/180)*100);
+      return `<div class="tse-red"><input type="checkbox" data-i="${i}" data-f="on" ${r.on!==false?'checked':''} aria-label="Prikaži raspon"><input type="color" data-i="${i}" data-f="color" value="${r.color}" aria-label="Boja raspona"><span class="tse-od">${od}°</span><span>–</span>${r.max===Infinity?'<span class="tse-inf">i više</span>':`<input type="number" inputmode="numeric" min="1" max="89" step="1" data-i="${i}" data-f="max" value="${r.max}" aria-label="Gornja granica">°`}<span class="tse-pct">${r.max===Infinity?'>'+pct(od):pct(od)+'–'+pct(r.max)} %</span>${k.length>2&&r.max!==Infinity?`<button data-i="${i}" data-f="del" aria-label="Ukloni granicu">✕</button>`:''}</div>`;}).join('')
       +`<div class="tse-akcije"><button data-f="add">+ Dodaj raspon</button><button data-f="reset">↺ Zadano</button></div>`;
   };
   const edEl=document.getElementById('terrain-slope-editor');
@@ -157,7 +159,7 @@ if (typeof window !== 'undefined') {
     });
   }
   urednik();
-  window._terrainOpacity=value=>{opacity=Number(value)/100;Object.values(layers).forEach(l=>l.setOpacity(opacity));persist();};
+  window._terrainOpacity=value=>{opacity=Number(value)/100;klizaci().forEach(i=>{if(Number(i.value)!==Number(value))i.value=value;});Object.values(layers).forEach(l=>l.setOpacity(opacity));persist();};
   for(const mode of ['shade','slope','aspect'])if(saved[mode])window._terrainToggle(mode,true);
   legend();
   const protoName='🌐 Protomaps';
@@ -210,13 +212,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.4.42';
+      if (label) label.textContent = 'v1.4.43';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v1.4.42';
+  if (badge) badge.textContent = 'Grmeč Navigator v1.4.43';
 })();
 
 

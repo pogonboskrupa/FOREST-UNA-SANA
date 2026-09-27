@@ -168,11 +168,20 @@ async function npPratiPad(p, visinaFn, ring, pola, korak = 15) {
   };
   return Promise.all([prati(true), prati(false)]);
 }
+const npPct = st => Math.tan(st * Math.PI / 180) * 100;
+const npSt = pct => Math.atan(pct / 100) * 180 / Math.PI;
+// Sažetak za pohranu/listu: prosjek linija u % i °.
+function npSazetak(linije) {
+  const ok = linije.filter(l => Number.isFinite(l.pct));
+  if (!ok.length) return null;
+  const pct = ok.reduce((a, l) => a + l.pct, 0) / ok.length, st = ok.reduce((a, l) => a + l.st, 0) / ok.length;
+  return { pct, st, n: ok.length, min: Math.min(...ok.map(l => l.pct)), max: Math.max(...ok.map(l => l.pct)) };
+}
 function npAutoDuzina(povrsina) {
   return Math.max(60, Math.min(300, Math.round(0.45 * Math.sqrt(povrsina) / 10) * 10));
 }
 
-if (typeof module !== 'undefined') module.exports = { npUnutra, npPovrsina, npAutoRazmak, npMreza, npStatistika, npNagibIzVisina, npCelije, npDist, npPomak, npAzimutPada, npNagibLinije, npKandidati, npSjemena, npLinijaKroz, npPratiPad, npAutoDuzina };
+if (typeof module !== 'undefined') module.exports = { npUnutra, npPovrsina, npAutoRazmak, npMreza, npStatistika, npNagibIzVisina, npCelije, npDist, npPomak, npAzimutPada, npNagibLinije, npKandidati, npSjemena, npLinijaKroz, npPratiPad, npAutoDuzina, npPct, npSt, npSazetak };
 
 if (typeof window !== 'undefined' && typeof map !== 'undefined') (function () {
   map.createPane('nagibPolPane');
@@ -193,10 +202,12 @@ body.np-open #terrain-map-legend { display:none !important; }
 #np-card .np-sub { color:#94a3b8; font-size:11.5px; margin:4px 0 6px; line-height:1.4; }
 #np-card .np-kpi { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:6px; margin:6px 0 8px; }
 #np-card .np-kpi div { background:#0f1f17; border-radius:8px; padding:6px 4px; text-align:center; }
-#np-card .np-kpi b { display:block; font-size:15px; }
+#np-card .np-kpi b { display:block; font-size:14px; line-height:1.25; }
+#np-card .np-kpi b small { display:block; font-size:10.5px; font-weight:600; color:#cbd5e1; }
+#np-card .np-kl small { color:#80958a; }
 #np-card .np-kpi div:first-child b { font-size:17px; color:#fbbf24; }
 #np-card .np-kpi small { color:#80958a; font-size:10px; }
-#np-card .np-kl { display:grid; grid-template-columns:14px 64px 1fr 58px; align-items:center; gap:6px; padding:2px 0; font-size:11.5px; }
+#np-card .np-kl { display:grid; grid-template-columns:14px 118px 1fr 44px; align-items:center; gap:6px; padding:2px 0; font-size:11.5px; }
 #np-card .np-kl i { width:12px; height:12px; border-radius:3px; }
 #np-card .np-kl .bar { height:7px; background:#1e293b; border-radius:4px; overflow:hidden; }
 #np-card .np-kl .bar u { display:block; height:100%; }
@@ -271,6 +282,11 @@ body.np-open #terrain-map-legend { display:none !important; }
   const klase = () => (typeof terrainSlopeAktivne !== 'undefined' ? terrainSlopeAktivne : [{ max: Infinity, color: '#22c55e', label: 'sve', on: true }]);
   const klasaOd = v => (typeof terrainSlopeKlasa === 'function' ? terrainSlopeKlasa(v) : null) || klase()[klase().length - 1];
   const fmt = (v, d = 1) => Number(v).toLocaleString('bs-BA', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pctSt = (pct, st, dSt = 1) => `${fmt(pct, 0)} % <small>(${fmt(st, dSt)}°)</small>`;
+  const klasaTxt = (k, i, kl) => {
+    const od = i ? kl[i - 1].max : 0;
+    return k.max === Infinity ? `>${Math.round(npPct(od))} % <small>(>${od}°)</small>` : `${Math.round(npPct(od))}–${Math.round(npPct(k.max))} % <small>(${od}–${k.max}°)</small>`;
+  };
   const ikona = (html, w, h) => L.divIcon({ className: '', iconSize: [w, h], iconAnchor: [w / 2, h / 2], html });
 
   // ── Linija: dvije pomjerive krajnje tačke + oznaka (vuče cijelu liniju)
@@ -281,7 +297,7 @@ body.np-open #terrain-map-legend { display:none !important; }
     const vrhA = Number.isFinite(l.ha) && Number.isFinite(l.hb) ? l.ha >= l.hb : true;
     l.ma.setLatLng(l.a).setIcon(ikona(`<div class="np-e${vrhA ? ' vrh' : ''}" style="background:${boja}"></div>`, 14, 14));
     l.mb.setLatLng(l.b).setIcon(ikona(`<div class="np-e${vrhA ? '' : ' vrh'}" style="background:${boja}"></div>`, 14, 14));
-    const txt = Number.isFinite(l.st) ? `${Math.round(l.st)}° · ${Math.round(l.pct)}%` : '…';
+    const txt = Number.isFinite(l.st) ? `${Math.round(l.pct)} % (${Math.round(l.st)}°)` : '…';
     l.lbl.setLatLng([(l.a[0] + l.b[0]) / 2, (l.a[1] + l.b[1]) / 2])
       .setIcon(L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="np-lbl${l.rucno ? ' rucno' : ''}${k && k.on === false ? ' skr' : ''}" style="background:${boja}">${txt}</div>` }));
   }
@@ -297,7 +313,7 @@ body.np-open #terrain-map-legend { display:none !important; }
   function popupLinije(l) {
     if (!Number.isFinite(l.st)) return 'Nema visinskih podataka za ovu liniju.';
     const [vrh, dno] = l.ha >= l.hb ? [l.ha, l.hb] : [l.hb, l.ha];
-    return `<b>Nagib ${fmt(l.st)}° (${fmt(l.pct, 0)} %)</b><br>Dužina ${Math.round(l.dist)} m · visinska razlika ${Math.round(l.dh)} m<br>Vrh ${Math.round(vrh)} m → dno ${Math.round(dno)} m${l.rucno ? '<br><i>ručno postavljena / pomjerena</i>' : ''}<br><button onclick="npObrisiLiniju(${l.id})" style="margin-top:6px;padding:4px 8px;border:none;border-radius:6px;background:#dc2626;color:#fff">🗑 Ukloni liniju</button>`;
+    return `<b>Nagib ${fmt(l.pct, 0)} % (${fmt(l.st)}°)</b><br>Dužina ${Math.round(l.dist)} m · visinska razlika ${Math.round(l.dh)} m<br>Vrh ${Math.round(vrh)} m → dno ${Math.round(dno)} m${l.rucno ? '<br><i>ručno postavljena / pomjerena</i>' : ''}<br><button onclick="npObrisiLiniju(${l.id})" style="margin-top:6px;padding:4px 8px;border:none;border-radius:6px;background:#dc2626;color:#fff">🗑 Ukloni liniju</button>`;
   }
   let idBr = 0;
   function dodajLiniju(a, b, rucno) {
@@ -373,7 +389,7 @@ body.np-open #terrain-map-legend { display:none !important; }
     prikazi();
   }
 
-  function pocni(ring, naziv) {
+  function pocni(ring, naziv, sacuvano) {
     zatvori(true);
     const r = ring.filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
     if (r.length > 2 && r[0][0] === r[r.length - 1][0] && r[0][1] === r[r.length - 1][1]) r.pop();
@@ -381,12 +397,92 @@ body.np-open #terrain-map-legend { display:none !important; }
     map.closePopup();
     let n = 8; try { n = Number(localStorage.getItem('usf_np_linija')) || 8; } catch (e) {}
     stanje = { ring: r, naziv: naziv || 'Poligon', linije: [], gen: 0, n, duzina: 0, vrhovi: [] };
+    if (sacuvano) Object.assign(stanje, { sid: sacuvano.id, n: sacuvano.n || n, duzina: sacuvano.duzina || 0 });
     stanje.poly = L.polygon(r, { pane: 'nagibPolPane', color: '#3b82f6', weight: 2.5, dashArray: '6 4', fillColor: '#3b82f6', fillOpacity: 0.05, interactive: false }).addTo(grp);
     document.body.classList.add('np-open');
     card.classList.add('show'); card.classList.remove('mini');
     try { map.fitBounds(stanje.poly.getBounds(), { paddingTopLeft: [24, 80], paddingBottomRight: [24, Math.min(400, window.innerHeight * 0.5) + 90], maxZoom: 17 }); } catch (e) {}
-    generisi();
+    if (sacuvano) obnovi(sacuvano); else generisi();
   }
+  // Sačuvano mjerenje: iste linije (bez ponovnog generisanja), visine se osvježe.
+  async function obnovi(sv) {
+    const s = stanje, gen = s.gen;
+    s.duzinaAkt = s.duzina || npAutoDuzina(npPovrsina(s.ring));
+    celijeStat(s.ring).then(r => { if (stanje === s && gen === s.gen) { s.celije = r; prikazi(); } });
+    const lin = (sv.linije || []).map(x => { const l = dodajLiniju(x.a, x.b, !!x.rucno); l.auto = !x.rucno; return l; });
+    s.racuna = true; prikazi();
+    await Promise.all(lin.map(l => izmjeriLiniju(l, gen)));
+    if (stanje === s && gen === s.gen) { s.racuna = false; prikazi(); }
+  }
+
+  // ── Pohrana mjerenja (na uređaju)
+  const SV_KEY = 'usf_nagib_mjerenja';
+  const svCitaj = () => { try { const v = JSON.parse(localStorage.getItem(SV_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+  const svPisi = list => { try { localStorage.setItem(SV_KEY, JSON.stringify(list)); return true; } catch (e) { showToast('⚠ Nema mjesta za pohranu'); return false; } };
+  const r6 = p => [Math.round(p[0] * 1e6) / 1e6, Math.round(p[1] * 1e6) / 1e6];
+  async function sacuvaj() {
+    const s = stanje; if (!s || s.racuna) { showToast('Sačekaj da se završi računanje'); return; }
+    const list = svCitaj();
+    let zapis = s.sid && list.find(x => x.id === s.sid);
+    if (!zapis) {
+      const ime = typeof _dlgPrompt === 'function' ? await _dlgPrompt('Naziv mjerenja', s.naziv === 'Nacrtani poligon' ? 'Nagib ' + new Date().toLocaleDateString('bs-BA') : s.naziv, { title: '💾 Sačuvaj mjerenje nagiba', okLabel: 'Sačuvaj' }) : s.naziv;
+      if (ime === null || ime === undefined || stanje !== s) return;
+      zapis = { id: 'ng_' + Date.now(), naziv: String(ime).trim() || s.naziv };
+      list.unshift(zapis); s.sid = zapis.id; s.naziv = zapis.naziv;
+    }
+    Object.assign(zapis, {
+      datum: new Date().toISOString(), ring: s.ring.map(r6), n: s.n, duzina: s.duzina,
+      ha: npPovrsina(s.ring) / 10000, sazetak: npSazetak(s.linije),
+      povrsina: s.celije ? { st: s.celije.nagibi.reduce((a, b) => a + b, 0) / s.celije.nagibi.length, pct: s.celije.nagibi.reduce((a, b) => a + npPct(b), 0) / s.celije.nagibi.length } : null,
+      linije: s.linije.map(l => ({ a: r6(l.a), b: r6(l.b), ha: l.ha, hb: l.hb, rucno: !!l.rucno }))
+    });
+    if (svPisi(list)) { showToast('💾 Sačuvano: ' + zapis.naziv); prikazi(); npRenderLista(); }
+  }
+  function linijeRedovi(linije) {
+    return linije.map((l, i) => {
+      const dist = npDist(l.a, l.b), n = npNagibLinije(l.ha, l.hb, dist), [v, d] = l.ha >= l.hb ? [l.a, l.b] : [l.b, l.a];
+      return [i + 1, v[0].toFixed(6), v[1].toFixed(6), d[0].toFixed(6), d[1].toFixed(6), Math.round(Math.max(l.ha, l.hb)), Math.round(Math.min(l.ha, l.hb)),
+        Math.round(dist), n.pct.toFixed(0), n.st.toFixed(1), l.rucno ? 'da' : ''];
+    }).filter(r => r[8] !== 'NaN');
+  }
+  function csvIz(naziv, linije) {
+    if (typeof _uCsv !== 'function' || typeof _izvozFajl !== 'function') return;
+    const ime = String(naziv || 'nagib').replace(/[^\w\-čćžšđČĆŽŠĐ]+/g, '_').slice(0, 40);
+    _izvozFajl('nagib_' + ime + '_' + new Date().toISOString().slice(0, 10) + '.csv',
+      _uCsv(['br', 'vrh_lat', 'vrh_lon', 'dno_lat', 'dno_lon', 'vrh_m', 'dno_m', 'duzina_m', 'nagib_pct', 'nagib_st', 'rucno'], linijeRedovi(linije)), 'text/csv', 'Nagib — ' + naziv);
+  }
+  function npRenderLista() {
+    const el = document.getElementById('ng-lista'); if (!el) return;
+    const list = svCitaj();
+    const br = document.getElementById('ng-broj'); if (br) br.textContent = list.length ? '(' + list.length + ')' : '';
+    const hub = document.getElementById('nagib-hub-stat');
+    if (hub) hub.textContent = list.length ? list.length + ' ' + (list.length === 1 ? 'sačuvano mjerenje' : list.length < 5 ? 'sačuvana mjerenja' : 'sačuvanih mjerenja') : '';
+    const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    el.innerHTML = list.length ? list.map(z => {
+      const sz = z.sazetak, k = sz ? klasaOd(sz.st) : null;
+      return `<div class="ng-red"><i style="background:${k ? k.color : '#475569'}"></i>
+        <div><b>${esc(z.naziv)}</b><small>${new Date(z.datum).toLocaleDateString('bs-BA')} · ${fmt(z.ha || 0, 2)} ha · ${(z.linije || []).length} linija</small></div>
+        <div class="ng-prosjek">${sz ? fmt(sz.pct, 0) + ' %' : '—'}<small>${sz ? '(' + fmt(sz.st) + '°)' : ''}</small></div>
+        <div class="ng-akc"><button class="prikazi" data-sv="prikazi" data-id="${z.id}">👁 Prikaži</button><button data-sv="csv" data-id="${z.id}">⤓ CSV</button><button data-sv="ime" data-id="${z.id}" aria-label="Preimenuj">✎</button><button data-sv="brisi" data-id="${z.id}" aria-label="Obriši">🗑</button></div></div>`;
+    }).join('') : '<div class="ng-prazno">Još nema sačuvanih mjerenja. Poslije mjerenja dodirni 💾 Sačuvaj.</div>';
+  }
+  document.getElementById('ng-lista')?.addEventListener('click', async e => {
+    const b = e.target.closest('[data-sv]'); if (!b) return;
+    const list = svCitaj(), z = list.find(x => x.id === b.dataset.id); if (!z) return;
+    const a = b.dataset.sv;
+    if (a === 'prikazi') { if (typeof switchMainTab === 'function') switchMainTab('karta'); pocni(z.ring, z.naziv, z); }
+    else if (a === 'csv') csvIz(z.naziv, z.linije || []);
+    else if (a === 'ime') {
+      const ime = typeof _dlgPrompt === 'function' ? await _dlgPrompt('Novi naziv', z.naziv, { title: 'Preimenuj mjerenje', okLabel: 'Sačuvaj' }) : null;
+      if (ime) { z.naziv = String(ime).trim() || z.naziv; svPisi(list); if (stanje && stanje.sid === z.id) { stanje.naziv = z.naziv; prikazi(); } npRenderLista(); }
+    }
+    else if (a === 'brisi') {
+      const ok = typeof _dlgConfirm === 'function' ? await _dlgConfirm('Obrisati mjerenje "' + z.naziv + '"?', { title: 'Obriši', danger: true, okLabel: 'Obriši' }) : true;
+      if (ok) { svPisi(list.filter(x => x !== z)); if (stanje && stanje.sid === z.id) stanje.sid = null; npRenderLista(); prikazi(); }
+    }
+  });
+  window.npRenderLista = npRenderLista;
+  npRenderLista();
 
   function prekiniDodaj() { if (dodaj) { if (dodaj.mk) grp.removeLayer(dodaj.mk); map.off('click', klikDodaj); dodaj = null; window._npHvataKlik = false; } }
   function zatvori(tiho) {
@@ -437,16 +533,7 @@ body.np-open #terrain-map-legend { display:none !important; }
     prikazi();
   }
 
-  function csv() {
-    if (!stanje || typeof _uCsv !== 'function' || typeof _izvozFajl !== 'function') return;
-    const red = stanje.linije.map((l, i) => {
-      const [v, d] = l.ha >= l.hb ? [l.a, l.b] : [l.b, l.a];
-      return [i + 1, v[0].toFixed(6), v[1].toFixed(6), d[0].toFixed(6), d[1].toFixed(6), Math.round(Math.max(l.ha, l.hb)), Math.round(Math.min(l.ha, l.hb)),
-        Math.round(l.dist), Number.isFinite(l.st) ? l.st.toFixed(1) : '', Number.isFinite(l.pct) ? l.pct.toFixed(0) : '', Number.isFinite(l.st) ? klasaOd(l.st).label : '', l.rucno ? 'da' : ''];
-    });
-    _izvozFajl('nagib_linije_' + new Date().toISOString().slice(0, 10) + '.csv',
-      _uCsv(['br', 'vrh_lat', 'vrh_lon', 'dno_lat', 'dno_lon', 'vrh_m', 'dno_m', 'duzina_m', 'nagib_st', 'nagib_pct', 'raspon', 'rucno'], red), 'text/csv', 'Nagib poligona — linije');
-  }
+  function csv() { if (stanje) csvIz(stanje.naziv, stanje.linije.filter(l => Number.isFinite(l.st))); }
 
   function prikazi() {
     if (crt) {
@@ -459,20 +546,23 @@ body.np-open #terrain-map-legend { display:none !important; }
     const pov = npPovrsina(s.ring), kl = klase();
     const ok = s.linije.filter(l => Number.isFinite(l.st));
     const stat = npStatistika(ok.map(l => l.st), kl, pov);
-    const prPct = ok.length ? ok.reduce((a, l) => a + l.pct, 0) / ok.length : NaN;
-    const povr = s.celije ? npStatistika(s.celije.nagibi, kl, pov) : null;
+    const statPct = npStatistika(ok.map(l => l.pct), [], pov);
+    const sz = npSazetak(ok);
+    const povr = s.celije ? npStatistika(s.celije.nagibi.map(npPct), [], pov) : null;
+    const povrSt = s.celije ? s.celije.nagibi.reduce((a, b) => a + b, 0) / s.celije.nagibi.length : NaN;
     card.innerHTML = `<div class="np-hdr" data-a="mini"><span>📐 ${s.naziv.replace(/[<>&]/g, '')}</span><button data-a="x" aria-label="Zatvori">✕</button></div>
       <div class="np-tijelo">
       <div class="np-sub">${fmt(pov / 10000, 2)} ha · ${s.linije.length} linija niz padinu · do ${s.duzinaAkt} m (od vrha do podnožja padine)${s.racuna ? ' · računam…' : ''}</div>
-      ${stat ? `<div class="np-kpi"><div><b>${fmt(stat.sr)}° · ${fmt(prPct, 0)}%</b><small>prosjek linija</small></div><div><b>${fmt(stat.med)}°</b><small>medijan</small></div><div><b>${fmt(stat.min, 0)}°</b><small>min</small></div><div><b>${fmt(stat.max, 0)}°</b><small>max</small></div></div>
-      ${stat.poKlasi.map(p => `<div class="np-kl${p.k.on === false ? ' off' : ''}"><i style="background:${p.k.color}"></i><span>${p.k.label}</span><span class="bar"><u style="width:${(p.udio * 100).toFixed(1)}%;background:${p.k.color}"></u></span><span>${p.n} lin.</span></div>`).join('')}` : '<div class="np-sub">Čekam visinske podatke…</div>'}
-      ${povr ? `<div class="np-povr">Cijela površina (${povr.n} ćelija DEM 30 m): prosjek <b>${fmt(povr.sr)}°</b>, medijan ${fmt(povr.med)}°, max ${fmt(povr.max, 0)}°</div>` : ''}
+      ${stat ? `<div class="np-kpi"><div><b>${pctSt(sz.pct, sz.st)}</b><small>prosjek linija</small></div><div><b>${pctSt(statPct.med, npSt(statPct.med), 0)}</b><small>medijan</small></div><div><b>${pctSt(statPct.min, npSt(statPct.min), 0)}</b><small>min</small></div><div><b>${pctSt(statPct.max, npSt(statPct.max), 0)}</b><small>max</small></div></div>
+      ${stat.poKlasi.map((p, i) => `<div class="np-kl${p.k.on === false ? ' off' : ''}"><i style="background:${p.k.color}"></i><span>${klasaTxt(p.k, i, kl)}</span><span class="bar"><u style="width:${(p.udio * 100).toFixed(1)}%;background:${p.k.color}"></u></span><span>${p.n} lin.</span></div>`).join('')}` : '<div class="np-sub">Čekam visinske podatke…</div>'}
+      ${povr ? `<div class="np-povr">Cijela površina (${povr.n} ćelija DEM 30 m): prosjek <b>${fmt(povr.sr, 0)} % (${fmt(povrSt)}°)</b>, max ${fmt(povr.max, 0)} %</div>` : ''}
       <div class="np-broj"><span>Linija:</span>${[5, 8, 10, 12].map(n => `<button data-a="n" data-n="${n}" class="${n === s.n ? 'on' : ''}">${n}</button>`).join('')}</div>
       <div class="np-akc">
         <select data-a="duz" aria-label="Dužina linija">${[0, 100, 150, 200, 300].map(d => `<option value="${d}" ${d === s.duzina ? 'selected' : ''}>${d ? 'Najviše ' + d + ' m' : 'Dužina auto'}</option>`).join('')}</select>
         <button data-a="rub" class="${s.rubovi ? 'on' : ''}">✎ Rubovi</button>
         <button data-a="dodaj" class="${dodaj ? 'on' : ''}">+ Linija</button>
         <button data-a="csv">⤓ CSV</button>
+        <button data-a="sacuvaj" class="glavno">💾 ${s.sid ? 'Ažuriraj' : 'Sačuvaj'}</button>
       </div>
       <div class="np-nap">${dodaj ? (dodaj.prva ? 'Dodirni kraj linije (dno).' : 'Dodirni početak linije (vrh).') : `Vuci kraj linije da ga pomjeriš, ili oznaku s nagibom da pomjeriš cijelu liniju. Tamni kraj = vrh. Dodir na oznaku: detalji i brisanje.${s.rubovi ? ' Bijela tjemena pomjeraju rub poligona.' : ''}`}</div>
       </div>`;
@@ -497,6 +587,7 @@ body.np-open #terrain-map-legend { display:none !important; }
       prikazi();
     }
     else if (a === 'csv') csv();
+    else if (a === 'sacuvaj') sacuvaj();
   });
   card.addEventListener('change', e => {
     if (e.target.dataset.a !== 'duz' || !stanje) return;
