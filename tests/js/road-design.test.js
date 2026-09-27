@@ -112,4 +112,32 @@ t('rdValidateRoute klasifikuje segmente po pragovima (ok/warn/bad)', () => {
   assert.strictEqual(v.anyExceedsMax, true);
 });
 
+t('rdStacionaze: tačke svakih 100 m + kraj, oznaka km+m', () => {
+  const R = require('../../static/js/road-design.js');
+  const path = [{ lat: 44.7, lon: 16.3, elev: 1000 }, { lat: 44.7, lon: 16.305, elev: 1020 }, { lat: 44.702, lon: 16.305, elev: 1030 }];
+  const st = R.rdStacionaze(path, 100);
+  assert.deepStrictEqual(st.map(x => R.rdStacionazaTxt(x.dist)), ['0+000', '0+100', '0+200', '0+300', '0+400', '0+500', '0+600', '0+618']);
+  assert.ok(st[st.length - 1].kraj && Math.abs(st[1].elev - (1000 + 20 * 100 / R.rdHaversine(44.7, 16.3, 44.7, 16.305))) < 0.01, 'visina interpolirana');
+  assert.strictEqual(R.rdStacionazaTxt(1250), '1+250');
+});
+
+t('rdPoprecniNagib: okomito na trasu, klase po dužini', () => {
+  const R = require('../../static/js/road-design.js');
+  const path = [{ lat: 44.7, lon: 16.3, elev: 1000 }, { lat: 44.7, lon: 16.305, elev: 1000 }, { lat: 44.702, lon: 16.305, elev: 1000 }];
+  // teren raste prema sjeveru 40 %: trasa istok–zapad siječe padinu (40 %), sjever–jug ide niz nju (0 %)
+  const pn = R.rdPoprecniNagib(path, (la) => 1000 + (la - 44.7) * 111320 * 0.4, 20);
+  assert.ok(Math.abs(pn.seg[0].q - 40) < 0.5 && pn.seg[1].q < 0.5);
+  assert.strictEqual(pn.seg[0].klasa, 1, '40 % → 30–50 % (usjek i nasip)');
+  assert.ok(Math.abs(pn.max - 40) < 0.5 && pn.poKlasi[0].m > 0 && pn.poKlasi[1].m > 0);
+});
+
+t('rdGpx / rdKml: validni XML sa visinama i stacionažama', () => {
+  const R = require('../../static/js/road-design.js');
+  const path = [{ lat: 44.7, lon: 16.3, elev: 1000 }, { lat: 44.7, lon: 16.305, elev: 1020 }];
+  const gpx = R.rdGpx(path, 'Put <A&B>');
+  assert.ok(gpx.includes('<trkpt lat="44.7000000" lon="16.3000000"><ele>1000.0</ele></trkpt>') && gpx.includes('Put &lt;A&amp;B&gt;'));
+  const kml = R.rdKml(path, 'Put', R.rdStacionaze(path, 100), '#a78bfa');
+  assert.ok(kml.includes('<LineString>') && kml.includes('<name>0+100</name>') && kml.includes('<color>fffa8ba7</color>'));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — projektovanje šumskog puta');

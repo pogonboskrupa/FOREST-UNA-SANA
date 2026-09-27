@@ -382,8 +382,70 @@ function rdValidateRoute(path, params) {
   };
 }
 
+// ─── Stacionaže: tačke svakih `korak` m duž trase (0+000, 0+100, …, kraj) ───
+function rdStacionaze(path, korak) {
+  const out = [];
+  if (!path || path.length < 2) return out;
+  let pred = 0, sljedeca = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i-1], b = path[i], d = rdHaversine(a.lat, a.lon, b.lat, b.lon);
+    while (sljedeca <= pred + d + 1e-9) {
+      const t = d > 0 ? (sljedeca - pred) / d : 0;
+      out.push({ dist: sljedeca, lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t, elev: a.elev + (b.elev - a.elev) * t });
+      sljedeca += korak;
+    }
+    pred += d;
+  }
+  const z = path[path.length - 1];
+  if (!out.length || pred - out[out.length - 1].dist > 1) out.push({ dist: pred, lat: z.lat, lon: z.lon, elev: z.elev, kraj: true });
+  return out;
+}
+function rdStacionazaTxt(m) { const km = Math.floor(m / 1000), r = Math.round(m - km * 1000); return km + '+' + String(r === 1000 ? 999 : r).padStart(3, '0'); }
+
+// ─── Poprečni nagib terena duž trase (usjek/nasip, potporni zidovi) ───
+// Na sredini svakog segmenta: visine ±pola m okomito na smjer trase.
+const RD_POPRECNI_KLASE = [
+  { max: 30, boja: '#22c55e', naziv: 'blag (<30 %)', opis: 'mješoviti profil, lako' },
+  { max: 50, boja: '#facc15', naziv: '30–50 %', opis: 'usjek i nasip' },
+  { max: 70, boja: '#f97316', naziv: '50–70 %', opis: 'pretežno puni usjek' },
+  { max: Infinity, boja: '#dc2626', naziv: '>70 %', opis: 'potporni zid / izbjegavati' }
+];
+function rdPoprecniNagib(path, sampleElev, pola) {
+  pola = pola || 20;
+  const seg = [];
+  let ukupno = 0;
+  const po = RD_POPRECNI_KLASE.map(k => ({ k, m: 0 }));
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i-1], b = path[i], d = rdHaversine(a.lat, a.lon, b.lat, b.lon);
+    if (d < 0.01) continue;
+    const az = rdAzimuth(a.lat, a.lon, b.lat, b.lon), mid = { lat: (a.lat + b.lat) / 2, lon: (a.lon + b.lon) / 2 };
+    const l = rdDestPoint(mid.lat, mid.lon, (az + 270) % 360, pola), r = rdDestPoint(mid.lat, mid.lon, (az + 90) % 360, pola);
+    const hl = sampleElev(l.lat, l.lon), hr = sampleElev(r.lat, r.lon);
+    if (!Number.isFinite(hl) || !Number.isFinite(hr)) continue;
+    const q = Math.abs(hl - hr) / (2 * pola) * 100;
+    const ki = RD_POPRECNI_KLASE.findIndex(k => q < k.max);
+    seg.push({ i, q, distM: d, klasa: ki });
+    po[ki].m += d; ukupno += d;
+  }
+  const qs = seg.map(x => x.q);
+  return { seg, ukupno, poKlasi: po, max: qs.length ? Math.max(...qs) : 0, sr: ukupno ? seg.reduce((s, x) => s + x.q * x.distM, 0) / ukupno : 0 };
+}
+
+// ─── Izvoz trase ───
+function _rdXml(s) { return String(s).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c])); }
+function rdGpx(path, naziv) {
+  const pts = path.map(p => `<trkpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}">${Number.isFinite(p.elev) ? `<ele>${p.elev.toFixed(1)}</ele>` : ''}</trkpt>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Grmec Navigator" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${_rdXml(naziv)}</name><trkseg>${pts}</trkseg></trk></gpx>`;
+}
+function rdKml(path, naziv, stacionaze, boja) {
+  const c = String(boja || '#a78bfa').replace('#', ''), kmlBoja = 'ff' + c.slice(4, 6) + c.slice(2, 4) + c.slice(0, 2);
+  const koord = path.map(p => `${p.lon.toFixed(7)},${p.lat.toFixed(7)},${Number.isFinite(p.elev) ? p.elev.toFixed(1) : 0}`).join(' ');
+  const st = (stacionaze || []).map(s => `<Placemark><name>${rdStacionazaTxt(s.dist)}</name><description>${Number.isFinite(s.elev) ? Math.round(s.elev) + ' m nv' : ''}</description><Point><coordinates>${s.lon.toFixed(7)},${s.lat.toFixed(7)}</coordinates></Point></Placemark>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${_rdXml(naziv)}</name><Style id="t"><LineStyle><color>${kmlBoja}</color><width>4</width></LineStyle></Style><Placemark><name>${_rdXml(naziv)}</name><styleUrl>#t</styleUrl><LineString><tessellate>1</tessellate><coordinates>${koord}</coordinates></LineString></Placemark><Folder><name>Stacionaže</name>${st}</Folder></Document></kml>`;
+}
+
 // Node.js test okruženje (tests/js/road-design.test.js) — browser globals se
 // ne diraju, isti obrazac kao offline-layer.js.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdValidateRoute };
+  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdValidateRoute, rdStacionaze, rdStacionazaTxt, RD_POPRECNI_KLASE, rdPoprecniNagib, rdGpx, rdKml };
 }

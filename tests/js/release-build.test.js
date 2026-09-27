@@ -17,7 +17,9 @@ assert.match(workflow, /tag_name: v\$\{\{ env\.APP_VERSION \}\}/);
 assert.doesNotMatch(workflow, /v1\.2\.4/);
 assert.match(builder, /\[string\]\$Branch\s*=\s*"codex-forest"/);
 assert.match(builder, /ValidateSet\("codex-forest", "apk-build-v1"\)/);
-assert.match(index, /_rdResultLayer = L\.polyline\([^\n]+pane:\s*'tragMsrLines'/);
+assert.match(index, /_rdResultLayer = _rdCrtajTrasu\(/);
+{ const crt = index.slice(index.indexOf('function _rdCrtajTrasu('), index.indexOf('function _rdDiscardResult()'));
+  assert.ok((crt.match(/pane: 'tragMsrLines'/g) || []).length >= 2, 'obojena trasa mora biti iznad offline podloge'); }
 assert.match(index, /const poly = L\.polyline\([^\n]+pane:\s*'tragMsrLines'/);
 assert.match(index, /id="set-update-progress"/);
 assert.match(index, /function _azurirajStatus\(msg, pct, phase, downloaded, total\)/);

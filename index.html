@@ -260,6 +260,50 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   background:rgba(10,24,18,.92); border:1px solid rgba(134,239,172,.22);
   box-shadow:0 6px 18px rgba(0,0,0,.35); color:#d8e8df; cursor:pointer;
 }
+.rd-tacka { display:grid; grid-template-columns:30px 1fr auto auto; gap:8px; align-items:center; padding:9px 0; border-top:1px solid #1f3b2d; }
+.rd-tacka:first-of-type { border-top:none; }
+.rd-oz { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; background:var(--c); color:#0b1220; font-weight:900; font-size:13px; box-shadow:0 0 0 3px rgba(255,255,255,.12); }
+.rd-tacka b { display:block; color:var(--text); font-size:13px; }
+.rd-tacka small { display:block; color:#80958a; font-size:10.5px; line-height:1.35; word-break:break-word; }
+.rd-tacka button { padding:7px 8px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:11.5px; cursor:pointer; white-space:nowrap; }
+.rd-tacka button.brisi { color:#f87171; border-color:#7f1d1d; }
+.rd-dodaj { width:100%; margin-top:6px; padding:9px; border-radius:10px; border:1px dashed #335744; background:transparent; color:#9db0a7; font:inherit; font-size:12px; cursor:pointer; }
+.rd-preview { margin-top:10px; background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:9px 11px; font-size:12px; grid-template-columns:auto 1fr; gap:4px 10px; color:#e2e8f0; }
+.rd-param summary { cursor:pointer; color:var(--text); font-size:14px; font-weight:700; }
+.rd-param summary small { color:#80958a; font-weight:600; font-size:11px; margin-left:4px; }
+.rd-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.rd-in span { display:block; color:#94a3b8; font-size:11px; margin-bottom:3px; }
+.rd-in input { width:100%; box-sizing:border-box; padding:8px 9px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:13px; }
+.rd-chk { display:flex; align-items:center; gap:8px; margin-top:10px; color:#cbd5e1; font-size:12px; }
+.rd-chk input { width:18px; height:18px; }
+.rd-badge { padding:8px 10px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:10px; }
+.rd-badge.ok { background:#14532d; border:1px solid #22c55e; color:#bbf7d0; }
+.rd-badge.warn { background:#422006; border:1px solid #d97706; color:#fde68a; }
+.rd-badge.bad { background:#450a0a; border:1px solid #dc2626; color:#fecaca; }
+.rd-kpi { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+.rd-kpi div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:7px 4px; text-align:center; }
+.rd-kpi b { display:block; color:var(--text); font-size:14.5px; }
+.rd-kpi small { color:#80958a; font-size:10px; }
+.rd-traka { display:flex; height:10px; border-radius:6px; overflow:hidden; background:#1e293b; margin:4px 0 5px; }
+.rd-traka i { display:block; height:100%; }
+.rd-leg { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:11px; color:#cbd5e1; margin-bottom:8px; }
+.rd-leg span::before { content:''; display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; background:var(--c); }
+.rd-pop { display:grid; grid-template-columns:12px 64px 1fr 52px; gap:6px; align-items:center; font-size:11.5px; color:#cbd5e1; padding:2px 0; }
+.rd-pop i { width:11px; height:11px; border-radius:3px; }
+.rd-pop .bar { height:7px; background:#1e293b; border-radius:4px; overflow:hidden; }
+.rd-pop .bar u { display:block; height:100%; }
+.rd-pop span:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+.rd-pop-nap { color:#80958a; font-size:10.5px; margin:4px 0 8px; line-height:1.4; }
+.rd-akc { display:flex; gap:6px; margin-top:6px; }
+.rd-akc button { flex:1; padding:9px 4px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
+.rd-akc button.on { background:#1e3a5f; border-color:#3b82f6; color:#dbeafe; }
+.rd-akc button.glavno { background:#14532d; border-color:#22c55e; color:#dcfce7; font-weight:700; flex:1.6; }
+.rd-st { transform:translate(-50%,-130%); white-space:nowrap; padding:1px 5px; border-radius:6px; background:rgba(11,18,32,.88); color:#fde68a; font:700 10px/14px ui-monospace,monospace; border:1px solid #475569; }
+.rd-st-t { width:8px; height:8px; border-radius:50%; background:#fde68a; border:1.5px solid #0b1220; box-sizing:border-box; transform:translate(-50%,-50%); }
+.rd-v { width:14px; height:14px; border-radius:50%; background:#fff; border:3px solid #7c3aed; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,.6); }
+#rd-ed-card { position:fixed; left:10px; right:10px; bottom:76px; z-index:700; max-width:440px; margin:0 auto; background:rgba(10,20,15,.96); border:1px solid #1f3b2d; border-radius:14px; padding:10px 12px; color:#e2e8f0; box-shadow:0 8px 28px rgba(0,0,0,.55); font-size:12.5px; display:none; }
+#rd-ed-card.show { display:block; }
+#rd-ed-card .rd-kpi { margin:8px 0; }
 .ul-hero-top { display:flex; gap:12px; align-items:flex-start; }
 .ul-hero-top h3 { margin:1px 0 3px; }
 .ul-hero-top p { margin:0 0 10px; color:#80958a; font-size:11.5px; line-height:1.45; }
@@ -1252,63 +1296,38 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="put-panel" class="usf-panel">
   <div class="up-hdr"><h2>🛣 Projektovanje šumskog puta</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Postavite tačke A i B (klikom na kartu) — algoritam preko modela terena (DEM) predlaže trasu koja nikad ne prelazi maksimalni dozvoljeni nagib (šestarski korak: L = ΔH/nagib).</div>
+    <section class="ng-card ul-hero">
+      <div class="ul-hero-top"><span class="ul-ico">🛣</span><div><h3>Trasa preko modela terena</h3><p>Postavi A i B — trasa nikad ne prelazi maksimalni uzdužni nagib (šestarski korak L = ΔH / nagib). Teren: Copernicus DEM 30 m (offline za 5 općina).</p></div></div>
+    </section>
 
-    <div class="treg-row" style="border-left:3px solid #4ade80;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <b style="color:#e2e8f0;font-size:12.5px;">📍 Tačka A (početak)</b>
-        <button onclick="_rdPickPoint('start')" style="padding:5px 10px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:11px;cursor:pointer;">Klikni na kartu</button>
-      </div>
-      <div id="rd-pt-a-info" style="color:#94a3b8;font-size:11px;margin-top:4px;">Nije postavljena</div>
-    </div>
+    <section class="ng-card">
+      <h3>Tačke trase</h3>
+      <div class="rd-tacka" style="--c:#4ade80"><span class="rd-oz">A</span><div><b>Početak</b><small id="rd-pt-a-info">Nije postavljena</small></div><button onclick="_rdPickPoint('start')">🗺 Karta</button><button onclick="_rdGpsPoint('start')">📍 GPS</button></div>
+      <div class="rd-tacka" style="--c:#f87171"><span class="rd-oz">B</span><div><b>Kraj</b><small id="rd-pt-b-info">Nije postavljena</small></div><button onclick="_rdPickPoint('end')">🗺 Karta</button><button onclick="_rdGpsPoint('end')">📍 GPS</button></div>
+      <div id="rd-pt-via" class="rd-tacka" style="--c:#fbbf24;display:none"><span class="rd-oz">M</span><div><b>Međutačka</b><small id="rd-pt-c-info">Nije postavljena</small></div><button onclick="_rdPickPoint('via')">🗺 Karta</button><button class="brisi" onclick="_rdRemoveVia()" aria-label="Ukloni međutačku">✕</button></div>
+      <button id="rd-pt-via-add" class="rd-dodaj" onclick="_rdPickPoint('via')">➕ Dodaj međutačku (duže / složenije trase)</button>
+      <div id="rd-preview" class="rd-preview" style="display:none;"></div>
+    </section>
 
-    <div class="treg-row" style="border-left:3px solid #f87171;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <b style="color:#e2e8f0;font-size:12.5px;">📍 Tačka B (kraj)</b>
-        <button onclick="_rdPickPoint('end')" style="padding:5px 10px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:11px;cursor:pointer;">Klikni na kartu</button>
-      </div>
-      <div id="rd-pt-b-info" style="color:#94a3b8;font-size:11px;margin-top:4px;">Nije postavljena</div>
-    </div>
-
-    <div id="rd-pt-via-add" style="margin-bottom:10px;">
-      <button onclick="_rdPickPoint('via')" style="width:100%;padding:8px;background:#1e293b;border:1px dashed #334155;border-radius:8px;color:#94a3b8;font-size:11.5px;cursor:pointer;">➕ Dodaj međutačku (za duže/složenije trase)</button>
-    </div>
-    <div id="rd-pt-via" class="treg-row" style="border-left:3px solid #fbbf24;display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <b style="color:#e2e8f0;font-size:12.5px;">📍 Međutačka</b>
-        <div style="display:flex;gap:4px;">
-          <button onclick="_rdPickPoint('via')" style="padding:5px 10px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:11px;cursor:pointer;">Klikni</button>
-          <button onclick="_rdRemoveVia()" style="padding:5px 8px;background:#3a1e1e;border:none;border-radius:6px;color:#f87171;font-size:11px;cursor:pointer;">✕</button>
+    <section class="ng-card">
+      <details class="rd-param"><summary>⚙ Parametri trase <small id="rd-param-sazetak"></small></summary>
+        <div class="rd-grid">
+          <label class="rd-in"><span>Maks. uzdužni nagib (%)</span><input id="rd-p-nagibMax" type="number" step="0.5" inputmode="decimal"></label>
+          <label class="rd-in"><span>Preporučeni nagib (%)</span><input id="rd-p-nagibPreporuceni" type="number" step="0.5" inputmode="decimal"></label>
+          <label class="rd-in"><span>Širina puta (m)</span><input id="rd-p-sirinaPuta" type="number" step="0.1" inputmode="decimal"></label>
+          <label class="rd-in"><span>Maks. dužina trase (m)</span><input id="rd-p-duzinaMax" type="number" step="100" inputmode="decimal"></label>
         </div>
-      </div>
-      <div id="rd-pt-c-info" style="color:#94a3b8;font-size:11px;margin-top:4px;">Nije postavljena</div>
-    </div>
+        <label class="rd-chk"><input id="rd-p-bezSerpentina" type="checkbox"> Ne pravi serpentine (zabrani oštre zaokrete)</label>
+      </details>
+    </section>
 
-    <div id="rd-preview" style="display:none;background:#111827;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;font-size:12px;grid-template-columns:auto 1fr;gap:4px 8px;color:#e2e8f0;margin-bottom:10px;"></div>
-
-    <div class="treg-meta-edit" style="margin-bottom:10px;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">⚙ Parametri trase</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;">
-        <label style="font-size:11px;color:#94a3b8;">Maks. nagib (%)<input id="rd-p-nagibMax" type="number" step="0.5" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
-        <label style="font-size:11px;color:#94a3b8;">Preporučeni nagib (%)<input id="rd-p-nagibPreporuceni" type="number" step="0.5" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
-        <label style="font-size:11px;color:#94a3b8;">Širina puta (m)<input id="rd-p-sirinaPuta" type="number" step="0.1" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
-        <label style="font-size:11px;color:#94a3b8;">Maks. dužina (m)<input id="rd-p-duzinaMax" type="number" step="100" style="display:block;width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;box-sizing:border-box;margin-top:2px;"></label>
-      </div>
-      <label style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:11px;margin-top:8px;"><input id="rd-p-bezSerpentina" type="checkbox"> Ne pravi serpentine (zabrani oštre zaokrete)</label>
-    </div>
-
-    <button id="rd-generate-btn" onclick="_rdGenerate()" style="width:100%;padding:11px;background:#059669;border:none;border-radius:10px;color:#fff;font-size:13.5px;font-weight:600;cursor:pointer;opacity:0.5;">🧭 Generiši trasu</button>
-
+    <button id="rd-generate-btn" class="ng-glavno" onclick="_rdGenerate()" style="opacity:0.5;">🧭 Generiši trasu</button>
     <div id="rd-result" style="display:none;margin-top:10px;"></div>
 
-    <div style="margin-top:16px;">
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">💾 Sačuvane trase <span id="rd-saved-routes-count" style="color:#4ade80;"></span></div>
+    <section class="ng-card" style="margin-top:10px;">
+      <h3>Sačuvane trase <span id="rd-saved-routes-count"></span></h3>
       <div id="rd-saved-routes-list"></div>
-    </div>
-
-    <div class="stub-section" style="padding:20px 12px 4px;">
-      <p style="font-size:12px;">Poprečni nagib/serpentine kao geometrijski elementi i izvještaj/PDF dolaze u sljedećoj fazi.</p>
-    </div>
+    </section>
   </div>
 </div>
 
@@ -6897,7 +6916,7 @@ setTimeout(() => {
 // =====================================================================
 
 // ─── DEM (model terena) preko Terrarium pločica, Open-Meteo fallback ──────
-const _DEM_RES = 60; // grid rezolucija u metrima
+const _DEM_RES = 30; // grid rezolucija u metrima (Copernicus 30 m gdje ga ima)
 const _TERR_CACHE = 'usf-terrarium-v1';
 
 function _termLon2x(lon, z) { return (lon + 180) / 360 * Math.pow(2, z); }
@@ -6957,15 +6976,15 @@ function _terrariumDecodeTile(bitmapOrImg) {
   return elev;
 }
 
-function _demGridBoundsAndStep(bounds, res) {
+function _demGridBoundsAndStep(bounds, res, maxN = 120) {
   const s = bounds.getSouth(), n = bounds.getNorth();
   const w = bounds.getWest(), e = bounds.getEast();
   const degPerM = 1 / 111320;
   let step = res * degPerM;
   let rows = Math.ceil((n - s) / step);
   let cols = Math.ceil((e - w) / step);
-  if (rows > 120 || cols > 120) {
-    const scale = Math.max(rows / 120, cols / 120);
+  if (rows > maxN || cols > maxN) {
+    const scale = Math.max(rows / maxN, cols / maxN);
     step = step * scale;
     rows = Math.ceil((n - s) / step);
     cols = Math.ceil((e - w) / step);
@@ -6974,7 +6993,7 @@ function _demGridBoundsAndStep(bounds, res) {
 }
 
 async function _demFetchGridTerrarium(bounds, res) {
-  const { s, n, w, e, step, rows, cols } = _demGridBoundsAndStep(bounds, res);
+  const { s, n, w, e, step, rows, cols } = _demGridBoundsAndStep(bounds, res, 220);
   const centerLat = (s + n) / 2;
   let z = Math.round(Math.log2(156543.03392 * Math.cos(centerLat * Math.PI/180) / res));
   z = Math.max(8, Math.min(14, z));
@@ -7003,19 +7022,20 @@ async function _demFetchGridTerrarium(bounds, res) {
   tileImgs.forEach((img, i) => tileElevs.set(tileKeys[i], img ? _terrariumDecodeTile(img) : null));
   if (![...tileElevs.values()].some(v => v !== null)) throw new Error('Terrarium DEM pločice nedostupne za ovu oblast');
 
+  // Bilinearno između piksela (i preko ruba pločice) — najbliži piksel je
+  // davao "stepenice" od ~10 m, na kojima pretraga odbacuje korake kao prestrme.
+  const pix = (gx, gy) => {
+    const tx = Math.max(txMin, Math.min(txMax, Math.floor(gx / 256))), ty = Math.max(tyMin, Math.min(tyMax, Math.floor(gy / 256)));
+    const t = tileElevs.get(tx + ':' + ty);
+    if (!t) return NaN;
+    return t[Math.max(0, Math.min(255, gy - ty * 256)) * 256 + Math.max(0, Math.min(255, gx - tx * 256))];
+  };
   const grid = new Float32Array(rows * cols);
   for (let r = 0; r < rows; r++) {
-    const lat = s + r * step;
-    const fy = _termLat2y(lat, z);
-    const ty = Math.max(tyMin, Math.min(tyMax, Math.floor(fy)));
-    const py = Math.max(0, Math.min(255, Math.round((fy - ty) * 256)));
+    const gyf = _termLat2y(s + r * step, z) * 256 - 0.5, gy = Math.floor(gyf), vy = gyf - gy;
     for (let c = 0; c < cols; c++) {
-      const lon = w + c * step;
-      const fx = _termLon2x(lon, z);
-      const tx = Math.max(txMin, Math.min(txMax, Math.floor(fx)));
-      const px = Math.max(0, Math.min(255, Math.round((fx - tx) * 256)));
-      const tileElev = tileElevs.get(tx + ':' + ty);
-      grid[r * cols + c] = tileElev ? tileElev[py * 256 + px] : NaN;
+      const gxf = _termLon2x(w + c * step, z) * 256 - 0.5, gx = Math.floor(gxf), vx = gxf - gx;
+      grid[r * cols + c] = (pix(gx, gy) * (1 - vx) + pix(gx + 1, gy) * vx) * (1 - vy) + (pix(gx, gy + 1) * (1 - vx) + pix(gx + 1, gy + 1) * vx) * vy;
     }
   }
   if (grid.some(v => Number.isNaN(v))) throw new Error('Nepotpuna Terrarium pokrivenost za ovu oblast');
@@ -7023,7 +7043,8 @@ async function _demFetchGridTerrarium(bounds, res) {
 }
 
 async function _demFetchGridOpenMeteo(bounds, res) {
-  const { s, n, w, e, step, rows, cols } = _demGridBoundsAndStep(bounds, res);
+  // Open-Meteo: 100 tačaka po zahtjevu — grublja mreža da ne bude stotine poziva.
+  const { s, n, w, e, step, rows, cols } = _demGridBoundsAndStep(bounds, Math.max(res, 60), 120);
   const lats = [], lons = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { lats.push((s + r * step).toFixed(5)); lons.push((w + c * step).toFixed(5)); }
   const batchSize = 100;
@@ -7178,10 +7199,22 @@ function openPutSection() {
     else el.value = p[k];
   });
   document.getElementById('rd-pt-via-add').style.display = _rdPoints.via ? 'none' : '';
-  document.getElementById('rd-pt-via').style.display = _rdPoints.via ? 'block' : 'none';
+  document.getElementById('rd-pt-via').style.display = _rdPoints.via ? '' : 'none';
   _rdRenderPoints();
   _rdRenderSavedRoutes();
+  _rdParamSazetak();
+  if (window.USFDem && !_rdCop) USFDem.ucitaj().then(d => { _rdCop = d; }).catch(() => {});
 }
+function _rdParamSazetak() {
+  const p = _rdReadParamsFromForm(), el = document.getElementById('rd-param-sazetak');
+  if (el) el.textContent = `max ${p.nagibMax} % · prep. ${p.nagibPreporuceni} % · ${p.sirinaPuta} m${p.bezSerpentina ? ' · bez serpentina' : ''}`;
+}
+// GPS pozicija kao tačka A/B (terenski rad: "odavde do tamo").
+function _rdGpsPoint(which) {
+  if (typeof lastP === 'undefined' || !lastP || !Number.isFinite(lastP.la)) { showToast('📍 Uključi GPS (Moja lokacija) pa pokušaj ponovo'); return; }
+  _rdSetPoint(which, lastP.la, lastP.lo);
+}
+document.getElementById('put-panel')?.addEventListener('change', e => { if ((e.target.id || '').startsWith('rd-p-')) _rdParamSazetak(); });
 
 function _rdReadParamsFromForm() {
   const p = {};
@@ -7219,6 +7252,7 @@ function _rdSetPoint(which, lat, lon) {
   _rdMarkers[which] = mk;
   map.getContainer().style.cursor = '';
   document.getElementById('put-panel').classList.add('show');
+  if (which === 'via') { document.getElementById('rd-pt-via-add').style.display = 'none'; document.getElementById('rd-pt-via').style.display = ''; }
   _rdRenderPoints();
   showToast('✓ Tačka ' + cfg.label + ' postavljena');
 }
@@ -7274,12 +7308,21 @@ async function _rdUpdatePreviewAndButton() {
   const viaPt = _rdPoints.via;
   const boundPts = [[a.lat, a.lon], [b.lat, b.lon]];
   if (viaPt) boundPts.push([viaPt.lat, viaPt.lon]);
-  const bounds = L.latLngBounds(boundPts).pad(0.3);
+  // Dovoljno široko područje i poprijeko na A–B: strm teren traži serpentine
+  // (šestarski korak), a uski pojas oko prave linije ih ne dozvoljava.
+  const b0 = L.latLngBounds(boundPts), c0 = b0.getCenter();
+  const dAB = rdHaversine(a.lat, a.lon, b.lat, b.lon);
+  const polaM = Math.min(4000, Math.max(400, dAB * 0.6 + 250));
+  const dLat = polaM / 111320, dLon = polaM / (111320 * Math.cos(c0.lat * Math.PI / 180));
+  const bounds = L.latLngBounds(
+    [Math.min(b0.getSouth() - dLat * 0.3, c0.lat - dLat), Math.min(b0.getWest() - dLon * 0.3, c0.lng - dLon)],
+    [Math.max(b0.getNorth() + dLat * 0.3, c0.lat + dLat), Math.max(b0.getEast() + dLon * 0.3, c0.lng + dLon)]);
   let dem = null, fetchErr = null;
   try {
     dem = await _demForBounds(bounds);
     if (!dem) { dem = await _demFetchGrid(bounds, _DEM_RES); if (dem) _demCacheStore(dem); }
   } catch(e) { fetchErr = e; }
+  if (window.USFDem && !_rdCop) { try { _rdCop = await USFDem.ucitaj(); } catch(e) {} }
   if (_rdPoints.start !== a || _rdPoints.end !== b) return; // tačke promijenjene u međuvremenu
   _rdDem = dem;
   if (!dem) {
@@ -7288,9 +7331,9 @@ async function _rdUpdatePreviewAndButton() {
     _rdNotReadyReason = 'Model terena nedostupan: ' + reason;
     return;
   }
-  a.elev = _demBilinearElev(dem, a.lat, a.lon);
-  b.elev = _demBilinearElev(dem, b.lat, b.lon);
-  if (_rdPoints.via) _rdPoints.via.elev = _demBilinearElev(dem, _rdPoints.via.lat, _rdPoints.via.lon);
+  a.elev = _rdVisina(a.lat, a.lon);
+  b.elev = _rdVisina(b.lat, b.lon);
+  if (_rdPoints.via) _rdPoints.via.elev = _rdVisina(_rdPoints.via.lat, _rdPoints.via.lon);
   _rdPaintPointInfo('start');
   _rdPaintPointInfo('end');
   if (_rdPoints.via) _rdPaintPointInfo('via');
@@ -7313,11 +7356,13 @@ function _rdRenderPreviewStats(a, b) {
 
 function _rdIterBudget(straightDistM) { return Math.max(6000, Math.min(100000, Math.round(straightDistM * 40))); }
 
+// Copernicus 30 m direktno gdje postoji (tačne visine), inače DEM grid trase.
+function _rdSample(lat, lon) { const h = _rdVisina(lat, lon); return Number.isFinite(h) ? h : null; }
 function _rdRouteLeg(dem, aLat, aLon, bLat, bLon, params) {
   const straightDist = rdHaversine(aLat, aLon, bLat, bLon);
   return rdFindRoute({
     startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon,
-    sampleElev: (lat, lon) => _demBilinearElev(dem, lat, lon),
+    sampleElev: _rdSample,
     params, maxIterations: _rdIterBudget(straightDist)
   });
 }
@@ -7356,7 +7401,34 @@ function _rdGenerate() {
   }, 30);
 }
 
+let _rdCop = null;          // Copernicus DEM (USFDem) — finije visine za poprečni nagib i uređivanje
+let _rdStacOn = true;       // stacionaže na karti
+let _rdEd = null;           // uređivanje trase { stari:[...], markeri:[] }
+const _RD_BOJE = { ok: '#22c55e', warn: '#f59e0b', bad: '#dc2626' };
+
+// Visina za poprečni nagib / pomjerenu tačku: Copernicus 30 m, inače DEM grid trase.
+function _rdVisina(lat, lon) {
+  if (_rdCop && window.USFDem) { const h = USFDem.visina(_rdCop, lat, lon); if (h !== null) return h; }
+  if (_rdDem && lat >= _rdDem.south && lat <= _rdDem.north && lon >= _rdDem.west && lon <= _rdDem.east) return _demBilinearElev(_rdDem, lat, lon);
+  return NaN;
+}
+// Trasa obojena po uzdužnom nagibu dionice (bijeli okvir ispod), + stacionaže.
+function _rdCrtajTrasu(path, val, bezStac) {
+  const g = L.layerGroup();
+  const ll = path.map(p => [p.lat, p.lon]);
+  L.polyline(ll, { color: '#fff', weight: 8, opacity: 0.85, pane: 'tragMsrLines', interactive: false }).addTo(g);
+  val.segments.forEach(sg => {
+    const a = path[sg.i - 1], b = path[sg.i];
+    L.polyline([[a.lat, a.lon], [b.lat, b.lon]], { color: _RD_BOJE[sg.level], weight: 5, opacity: 1, pane: 'tragMsrLines', interactive: false }).addTo(g);
+  });
+  if (_rdStacOn && !bezStac) rdStacionaze(path, 100).forEach(st => {
+    L.marker([st.lat, st.lon], { interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<div class="rd-st-t"></div>' }) }).addTo(g);
+    if (Math.round(st.dist) % 200 === 0 || st.kraj) L.marker([st.lat, st.lon], { interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="rd-st">${rdStacionazaTxt(st.dist)}</div>` }) }).addTo(g);
+  });
+  return g;
+}
 function _rdDiscardResult() {
+  _rdUrediKraj(false);
   if (_rdResultLayer) { map.removeLayer(_rdResultLayer); _rdResultLayer = null; }
   _rdResultPath = null;
   _rdResultVal = null;
@@ -7364,43 +7436,122 @@ function _rdDiscardResult() {
   const resEl = document.getElementById('rd-result');
   if (resEl) { resEl.style.display = 'none'; resEl.innerHTML = ''; }
 }
-
+function _rdSazetakHtml(path, val, params) {
+  const nWarn = val.segments.filter(x => x.level === 'warn').length, nBad = val.segments.filter(x => x.level === 'bad').length;
+  const m = { ok: 0, warn: 0, bad: 0 }; val.segments.forEach(x => { m[x.level] += x.distM; });
+  const first = path[0], last = path[path.length - 1], dh = last.elev - first.elev;
+  const badge = nBad ? `<div class="rd-badge bad">🔴 ${nBad} dionica prelazi maksimalni nagib (${params.nagibMax} %)</div>`
+    : nWarn ? `<div class="rd-badge warn">🟠 ${nWarn} dionica iznad preporučenog, unutar maksimalnog nagiba</div>`
+    : `<div class="rd-badge ok">✅ Cijela trasa unutar preporučenog nagiba (${params.nagibPreporuceni} %)</div>`;
+  const uk = val.totalDist || 1;
+  return `${badge}
+    <div class="rd-kpi"><div><b>${_msrFmt(val.totalDist)}</b><small>dužina</small></div><div><b>${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m</b><small>visinska razl.</small></div><div><b>${val.maxSlopePct.toFixed(1)} %</b><small>maks. nagib</small></div><div><b>${val.avgSlopePct.toFixed(1)} %</b><small>prosj. nagib</small></div></div>
+    <div class="ng-podnaslov">Uzdužni nagib po dužini</div>
+    <div class="rd-traka">${['ok', 'warn', 'bad'].map(k => `<i style="width:${(m[k] / uk * 100).toFixed(2)}%;background:${_RD_BOJE[k]}"></i>`).join('')}</div>
+    <div class="rd-leg"><span style="--c:${_RD_BOJE.ok}">≤${params.nagibPreporuceni} %: ${_msrFmt(m.ok)}</span><span style="--c:${_RD_BOJE.warn}">do ${params.nagibMax} %: ${_msrFmt(m.warn)}</span>${m.bad ? `<span style="--c:${_RD_BOJE.bad}">>${params.nagibMax} %: ${_msrFmt(m.bad)}</span>` : ''}</div>`;
+}
+function _rdPoprecniHtml(path) {
+  const pn = rdPoprecniNagib(path, _rdVisina, 20);
+  if (!pn.ukupno) return '';
+  return `<div class="ng-podnaslov">Poprečni nagib terena <small>(zemljani radovi)</small></div>
+    ${pn.poKlasi.map(p => `<div class="rd-pop"><i style="background:${p.k.boja}"></i><span>${p.k.naziv}</span><span class="bar"><u style="width:${(p.m / pn.ukupno * 100).toFixed(1)}%;background:${p.k.boja}"></u></span><span>${_msrFmt(p.m)}</span></div>`).join('')}
+    <div class="rd-pop-nap">Prosjek ${pn.sr.toFixed(0)} %, maks. ${pn.max.toFixed(0)} %. ${pn.poKlasi[3].m > 0 ? '⚠ Dionice preko 70 % traže potporne zidove ili pomjeranje trase. ' : ''}${pn.poKlasi[2].m > 0 ? 'Na 50–70 % računaj s punim usjekom.' : ''}</div>`;
+}
 function _rdShowResult() {
   if (_rdResultLayer) map.removeLayer(_rdResultLayer);
-  const latlngs = _rdResultPath.map(p => [p.lat, p.lon]);
-  _rdResultLayer = L.polyline(latlngs, { color: '#a78bfa', weight: 4, opacity: 0.9, dashArray: '8,6', pane: 'tragMsrLines' }).addTo(map);
-
+  _rdResultLayer = _rdCrtajTrasu(_rdResultPath, _rdResultVal).addTo(map);
   const v = _rdResultVal;
-  const nWarn = v.segments.filter(s => s.level === 'warn').length;
-  const nBad = v.segments.filter(s => s.level === 'bad').length;
-  let badgeHtml;
-  if (nBad > 0) badgeHtml = `<div style="background:#3a1e1e;border:1px solid #dc2626;color:#f87171;padding:6px 8px;border-radius:6px;font-size:12px;">🔴 ${nBad} segmenata prelazi maksimalni nagib</div>`;
-  else if (nWarn > 0) badgeHtml = `<div style="background:#3a2e1e;border:1px solid #d97706;color:#fbbf24;padding:6px 8px;border-radius:6px;font-size:12px;">🟠 ${nWarn} segmenata iznad preporučenog (ali unutar maksimalnog) nagiba</div>`;
-  else badgeHtml = `<div style="background:#1e3a2e;border:1px solid #16a34a;color:#4ade80;padding:6px 8px;border-radius:6px;font-size:12px;">✅ Cijela trasa unutar preporučenog nagiba</div>`;
-
-  const first = _rdResultPath[0], last = _rdResultPath[_rdResultPath.length - 1];
-  const azOverall = rdAzimuth(first.lat, first.lon, last.lat, last.lon);
-  const dhOverall = last.elev - first.elev;
-
   const resEl = document.getElementById('rd-result');
   resEl.style.display = 'block';
-  resEl.innerHTML = `
-    <div style="background:#111827;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:5px 6px;color:#e2e8f0;margin-bottom:6px;">
-      <span style="color:#94a3b8;">Dužina trase</span><span>${_msrFmt(v.totalDist)}</span>
-      <span style="color:#94a3b8;">Azimut (A→B)</span><span>${azOverall.toFixed(1)}°</span>
-      <span style="color:#94a3b8;">Visinska razlika</span><span>${dhOverall >= 0 ? '+' : ''}${dhOverall.toFixed(0)} m</span>
-      <span style="color:#94a3b8;">Maksimalni nagib</span><span>${v.maxSlopePct.toFixed(1)}%</span>
-      <span style="color:#94a3b8;">Prosječni nagib</span><span>${v.avgSlopePct.toFixed(1)}%</span>
-      <span style="color:#94a3b8;">Broj tačaka trase</span><span>${_rdResultPath.length}</span>
-    </div>
-    ${badgeHtml}
-    <div style="display:flex;gap:6px;margin-top:8px;">
-      <button onclick="_rdShowProfile()" style="flex:1;padding:8px;background:#1d4ed8;border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">↕ Uzdužni profil</button>
-      <button onclick="_rdSaveRoute()" style="flex:1;padding:8px;background:#059669;border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">💾 Sačuvaj rutu</button>
-      <button onclick="_rdDiscardResult()" style="padding:8px 12px;background:#374151;border:none;border-radius:6px;color:#e2e8f0;font-size:12px;cursor:pointer;">Odbaci</button>
-    </div>
-  `;
+  resEl.innerHTML = `<section class="ng-card">
+    <h3>Rezultat ${_rdResultPath._uredjeno ? '<small style="color:#a78bfa;font-weight:600">· ručno uređeno</small>' : ''}</h3>
+    ${_rdSazetakHtml(_rdResultPath, v, _rdResultParams)}
+    ${_rdPoprecniHtml(_rdResultPath)}
+    <div class="rd-akc"><button onclick="_rdShowProfile()">↕ Profil</button><button onclick="_rdUredi()">✎ Uredi trasu</button><button class="${_rdStacOn ? 'on' : ''}" onclick="_rdStacToggle()">📏 Stacionaže</button></div>
+    <div class="rd-akc"><button onclick="_rdIzvoz('kml')">⤓ KML</button><button onclick="_rdIzvoz('gpx')">⤓ GPX</button><button onclick="_rdIzvoz('csv')">⤓ CSV</button></div>
+    <div class="rd-akc"><button class="glavno" onclick="_rdSaveRoute()">💾 Sačuvaj trasu</button><button onclick="_rdDiscardResult()">Odbaci</button></div>
+  </section>`;
   showToast(`✓ Trasa: ${_msrFmt(v.totalDist)}, max nagib ${v.maxSlopePct.toFixed(1)}%`);
+}
+function _rdStacToggle() { _rdStacOn = !_rdStacOn; if (_rdResultPath) _rdShowResult(); }
+
+// ── Izvoz (KML sa stacionažama, GPX za GPS uređaje, CSV po tačkama)
+function _rdIzvozPut(path, naziv, format, boja) {
+  if (typeof _izvozFajl !== 'function') { showToast('⚠ Izvoz nije dostupan'); return; }
+  const ime = String(naziv).replace(/[^\w\-čćžšđČĆŽŠĐ]+/g, '_').slice(0, 40), dan = new Date().toISOString().slice(0, 10);
+  if (format === 'kml') _izvozFajl(ime + '_' + dan + '.kml', rdKml(path, naziv, rdStacionaze(path, 100), boja), 'application/vnd.google-earth.kml+xml', naziv);
+  else if (format === 'gpx') _izvozFajl(ime + '_' + dan + '.gpx', rdGpx(path, naziv), 'application/gpx+xml', naziv);
+  else {
+    let d = 0;
+    const redovi = path.map((p, i) => {
+      if (i) d += rdHaversine(path[i - 1].lat, path[i - 1].lon, p.lat, p.lon);
+      const nag = i ? Math.abs(p.elev - path[i - 1].elev) / Math.max(0.01, rdHaversine(path[i - 1].lat, path[i - 1].lon, p.lat, p.lon)) * 100 : '';
+      return [i + 1, rdStacionazaTxt(d), p.lat.toFixed(7), p.lon.toFixed(7), Number.isFinite(p.elev) ? p.elev.toFixed(1) : '', nag === '' ? '' : nag.toFixed(1)];
+    });
+    _izvozFajl(ime + '_' + dan + '.csv', _uCsv(['br', 'stacionaza', 'lat', 'lon', 'visina_m', 'uzduzni_nagib_pct'], redovi), 'text/csv', naziv);
+  }
+}
+function _rdIzvoz(format) { if (_rdResultPath) _rdIzvozPut(_rdResultPath, 'Sumski_put', format, '#a78bfa'); }
+
+// ── Ručno uređivanje: tačke trase se vuku, nagib se odmah preračunava
+function _rdUredi() {
+  if (!_rdResultPath) return;
+  document.getElementById('put-panel').classList.remove('show');
+  _rdEd = { stari: [], markeri: [] };
+  let card = document.getElementById('rd-ed-card');
+  if (!card) { card = document.createElement('div'); card.id = 'rd-ed-card'; document.body.appendChild(card); L.DomEvent.disableClickPropagation(card); }
+  card.classList.add('show');
+  if (_rdResultLayer) map.removeLayer(_rdResultLayer);
+  _rdResultLayer = _rdCrtajTrasu(_rdResultPath, _rdResultVal, true).addTo(map);
+  _rdUrediMarkeri();
+  _rdUrediKartica();
+  try { map.fitBounds(L.latLngBounds(_rdResultPath.map(p => [p.lat, p.lon])), { paddingTopLeft: [30, 80], paddingBottomRight: [30, 260] }); } catch(e) {}
+}
+function _rdUrediMarkeri() {
+  _rdEd.markeri.forEach(m => map.removeLayer(m));
+  // Najviše ~25 ručica — više ih se na telefonu ne može pogoditi prstom.
+  const n = _rdResultPath.length, korak = Math.max(1, Math.ceil(n / 25));
+  _rdEd.markeri = [];
+  _rdResultPath.forEach((p, i) => {
+    if (i % korak && i !== n - 1) return;
+    const m = L.marker([p.lat, p.lon], { draggable: true, autoPan: true, zIndexOffset: 800, icon: L.divIcon({ className: '', iconSize: [14, 14], iconAnchor: [7, 7], html: '<div class="rd-v"></div>' }) }).addTo(map);
+    m.on('dragstart', () => { _rdEd.stari.push(_rdResultPath.map(q => ({ ...q }))); });
+    m.on('drag', () => { const ll = m.getLatLng(); _rdResultPath[i].lat = ll.lat; _rdResultPath[i].lon = ll.lng; });
+    m.on('dragend', () => {
+      const h = _rdVisina(_rdResultPath[i].lat, _rdResultPath[i].lon);
+      if (Number.isFinite(h)) _rdResultPath[i].elev = h;
+      _rdPoslijeIzmjene();
+    });
+    _rdEd.markeri.push(m);
+  });
+}
+function _rdPoslijeIzmjene() {
+  _rdResultPath._uredjeno = true;
+  _rdResultVal = rdValidateRoute(_rdResultPath, _rdResultParams);
+  if (_rdResultLayer) map.removeLayer(_rdResultLayer);
+  _rdResultLayer = _rdCrtajTrasu(_rdResultPath, _rdResultVal, !!_rdEd).addTo(map);
+  _rdUrediKartica();
+}
+function _rdUrediKartica() {
+  const card = document.getElementById('rd-ed-card'); if (!card || !_rdEd) return;
+  const v = _rdResultVal, nBad = v.segments.filter(x => x.level === 'bad').length;
+  card.innerHTML = `<div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13.5px"><span style="flex:1">✎ Uređivanje trase</span></div>
+    <div class="rd-kpi"><div><b>${_msrFmt(v.totalDist)}</b><small>dužina</small></div><div><b style="color:${v.maxSlopePct > _rdResultParams.nagibMax ? '#f87171' : '#e2e8f0'}">${v.maxSlopePct.toFixed(1)} %</b><small>maks.</small></div><div><b>${v.avgSlopePct.toFixed(1)} %</b><small>prosjek</small></div><div><b style="color:${nBad ? '#f87171' : '#4ade80'}">${nBad}</b><small>preko max</small></div></div>
+    <div style="color:#80958a;font-size:11px;margin-bottom:8px">Vuci bijele tačke. Crvene dionice prelaze ${_rdResultParams.nagibMax} %.</div>
+    <div class="rd-akc"><button onclick="_rdUrediPonisti()" ${_rdEd.stari.length ? '' : 'disabled'}>↶ Poništi</button><button class="glavno" onclick="_rdUrediKraj(true)">✓ Gotovo</button></div>`;
+}
+function _rdUrediPonisti() {
+  if (!_rdEd || !_rdEd.stari.length) return;
+  const st = _rdEd.stari.pop();
+  st.forEach((q, i) => Object.assign(_rdResultPath[i], q));
+  _rdPoslijeIzmjene(); _rdUrediMarkeri(); _rdUrediKartica();
+}
+function _rdUrediKraj(nazadUPanel) {
+  if (!_rdEd) return;
+  _rdEd.markeri.forEach(m => map.removeLayer(m));
+  _rdEd = null;
+  document.getElementById('rd-ed-card')?.classList.remove('show');
+  if (nazadUPanel) { document.getElementById('put-panel').classList.add('show'); _rdShowResult(); }
 }
 
 // Boji dionice po STVARNO korištenim pragovima OVE trase (ne generičkim
@@ -7427,20 +7578,24 @@ let _rdShownRouteLayers = {};
 function _rdGetSavedRoutes() { try { return JSON.parse(localStorage.getItem(_RD_ROUTES_KEY) || '[]'); } catch(e) { return []; } }
 function _rdSetSavedRoutes(list) { try { localStorage.setItem(_RD_ROUTES_KEY, JSON.stringify(list)); } catch(e) {} }
 
-function _rdSaveRoute() {
+async function _rdSaveRoute() {
   if (!_rdResultPath || !_rdResultVal) return;
   const routes = _rdGetSavedRoutes();
-  const nm = 'Šumski put ' + (routes.length + 1);
+  const nm = await _dlgPrompt('Naziv trase:', 'Šumski put ' + (routes.length + 1), { title: '💾 Sačuvaj trasu', okLabel: 'Sačuvaj' });
+  if (nm === null || nm === undefined) return;
   const first = _rdResultPath[0], last = _rdResultPath[_rdResultPath.length - 1];
+  const pn = rdPoprecniNagib(_rdResultPath, _rdVisina, 20);
   routes.push({
     id: _genUUID(),
-    nm,
+    nm: String(nm).trim() || 'Šumski put ' + (routes.length + 1),
     pts: _rdResultPath.map(p => ({ la: p.lat, lo: p.lon, al: p.elev })),
     totalDist: _rdResultVal.totalDist,
     maxSlopePct: _rdResultVal.maxSlopePct,
     avgSlopePct: _rdResultVal.avgSlopePct,
     azimuthDeg: rdAzimuth(first.lat, first.lon, last.lat, last.lon),
     deltaH: last.elev - first.elev,
+    poprecniSr: pn.ukupno ? pn.sr : null,
+    uredjeno: !!_rdResultPath._uredjeno,
     color: _RD_ROUTE_DEFAULT_COLOR,
     nagibMax: _rdResultParams?.nagibMax ?? RD_DEFAULT_PARAMS.nagibMax,
     nagibPreporuceni: _rdResultParams?.nagibPreporuceni ?? RD_DEFAULT_PARAMS.nagibPreporuceni,
@@ -7449,7 +7604,7 @@ function _rdSaveRoute() {
   _rdSetSavedRoutes(routes);
   _rdDiscardResult();
   _rdRenderSavedRoutes();
-  showToast('✅ Ruta sačuvana: ' + nm);
+  showToast('✅ Trasa sačuvana: ' + routes[routes.length - 1].nm);
 }
 
 function _rdRenderSavedRoutes() {
@@ -7457,33 +7612,26 @@ function _rdRenderSavedRoutes() {
   if (!wrap) return;
   const routes = _rdGetSavedRoutes();
   const countEl = document.getElementById('rd-saved-routes-count');
-  if (countEl) countEl.textContent = routes.length ? String(routes.length) : '';
-  if (!routes.length) { wrap.innerHTML = '<div style="font-size:11.5px;color:#64748b;padding:4px 0;">Nema sačuvanih trasa.</div>'; return; }
+  if (countEl) countEl.textContent = routes.length ? '(' + routes.length + ')' : '';
+  if (!routes.length) { wrap.innerHTML = '<div class="ng-prazno">Još nema sačuvanih trasa. Generiši trasu pa dodirni 💾 Sačuvaj.</div>'; return; }
   wrap.innerHTML = routes.map(r => {
     const shown = !!_rdShownRouteLayers[r.id];
     const col = r.color || _RD_ROUTE_DEFAULT_COLOR;
     const first = r.pts[0], last = r.pts[r.pts.length - 1];
-    const az = r.azimuthDeg != null ? r.azimuthDeg : rdAzimuth(first.la, first.lo, last.la, last.lo);
     const dh = r.deltaH != null ? r.deltaH : (last.al - first.al);
-    return `<div class="treg-row" style="border-left:3px solid ${col};">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-          <span style="display:flex;align-items:center;gap:6px;min-width:0;">
-            <input type="color" value="${col}" onchange="_rdSetRouteColor('${r.id}',this.value)" title="Boja trase" style="width:20px;height:20px;border:1px solid #334155;border-radius:4px;cursor:pointer;padding:0;background:none;flex-shrink:0;">
-            <span style="color:#e2e8f0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(r.nm)}</span>
-          </span>
-          ${shown ? `<span style="color:${col};white-space:nowrap;font-size:10.5px;">● na karti</span>` : ''}
-        </div>
-        <div style="color:#94a3b8;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          ${_msrFmt(r.totalDist)} · azimut ${az.toFixed(0)}° · Δh ${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m · maks ${r.maxSlopePct.toFixed(1)}%
-        </div>
-        <div style="display:flex;gap:4px;margin-top:6px;">
-          <button onclick="_rdToggleSavedRouteOnMap('${r.id}')" style="flex:1;padding:5px;background:${shown ? '#7c3aed' : '#374151'};border:none;border-radius:5px;color:#fff;font-size:11px;cursor:pointer;">${shown ? '🗺 Sakrij' : '🗺 Prikaži'}</button>
-          <button onclick="_rdShowSavedRouteProfile('${r.id}')" style="padding:5px 8px;background:#1d4ed8;border:none;border-radius:5px;color:#fff;font-size:11px;cursor:pointer;" title="Uzdužni profil">↕</button>
-          <button onclick="_rdRenameSavedRoute('${r.id}')" style="padding:5px 8px;background:#374151;border:none;border-radius:5px;color:#e2e8f0;font-size:11px;cursor:pointer;">✎</button>
-          <button onclick="_rdDeleteSavedRoute('${r.id}')" style="padding:5px 8px;background:#3a1e1e;border:none;border-radius:5px;color:#f87171;font-size:11px;cursor:pointer;">🗑</button>
-        </div>
-      </div>`;
+    const preko = r.maxSlopePct > (r.nagibMax ?? RD_DEFAULT_PARAMS.nagibMax);
+    return `<div class="ul-red${shown ? '' : ' skriven'}" style="opacity:1">
+      <label class="ul-boja" style="background:${col};position:relative;overflow:hidden" title="Boja trase"><input type="color" value="${col}" onchange="_rdSetRouteColor('${r.id}',this.value)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+      <div class="ul-info" onclick="_rdToggleSavedRouteOnMap('${r.id}')"><b>${_escHtml(r.nm)}${r.uredjeno ? '<span class="ul-oznaka">uređeno</span>' : ''}</b>
+        <small>${_msrFmt(r.totalDist)} · Δh ${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m · maks. <span style="color:${preko ? '#f87171' : '#4ade80'}">${r.maxSlopePct.toFixed(1)} %</span> · prosj. ${r.avgSlopePct.toFixed(1)} %${r.poprecniSr != null ? ' · poprečni ' + r.poprecniSr.toFixed(0) + ' %' : ''}</small></div>
+      <label class="ng-switch" aria-label="Prikaži trasu na karti"><input type="checkbox" ${shown ? 'checked' : ''} onchange="_rdToggleSavedRouteOnMap('${r.id}')"><span></span></label>
+      <div class="ul-akc"><button onclick="_rdShowSavedRouteProfile('${r.id}')">↕ Profil</button><button onclick="_rdIzvozSacuvane('${r.id}','kml')">⤓ KML</button><button onclick="_rdIzvozSacuvane('${r.id}','gpx')">⤓ GPX</button><button onclick="_rdRenameSavedRoute('${r.id}')" aria-label="Preimenuj">✎</button><button class="brisi" onclick="_rdDeleteSavedRoute('${r.id}')" aria-label="Obriši">🗑</button></div>
+    </div>`;
   }).join('');
+}
+function _rdIzvozSacuvane(id, format) {
+  const r = _rdGetSavedRoutes().find(x => x.id === id);
+  if (r) _rdIzvozPut(r.pts.map(p => ({ lat: p.la, lon: p.lo, elev: p.al })), r.nm, format, r.color || _RD_ROUTE_DEFAULT_COLOR);
 }
 
 function _rdShowSavedRouteProfile(id) {
