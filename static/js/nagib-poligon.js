@@ -381,7 +381,22 @@ body.np-open #terrain-map-legend { display:none !important; }
   }
   async function celijeStat(ring) {
     const d = await dem(); if (!d) return null;
-    const r = npCelije(d, ring, (ix, iy, lat) => USFDem.nagibEkspozicija(d, ix, iy, lat));
+    // Polumjer 2 piksela (60 m) umjesto Horn 3×3 (30 m) — gladi DSM artefakte
+    // krošnji gdje susjedni pikseli imaju različite visine vegetacije.
+    const NODATA = USFDem.NODATA, R = 2;
+    function nagibSiri(ix, iy, lat) {
+      if (ix < R || iy < R || ix >= d.W - R || iy >= d.H - R) return null;
+      const g = (x, y) => d.data[y * d.W + x];
+      const n = g(ix, iy - R), s = g(ix, iy + R), e = g(ix + R, iy), w = g(ix - R, iy);
+      if (n === NODATA || s === NODATA || e === NODATA || w === NODATA) return null;
+      const mx = Math.abs(d.rx) * R * 111320 * Math.cos(lat * Math.PI / 180);
+      const my = Math.abs(d.ry) * R * 111132;
+      const dzx = (e - w) / (2 * mx), dzy = (n - s) / (2 * my);
+      const nagib = Math.atan(Math.hypot(dzx, dzy)) * 180 / Math.PI;
+      const eksp = (Math.atan2(-dzx, -dzy) * 180 / Math.PI + 360) % 360;
+      return { nagib, eksp };
+    }
+    const r = npCelije(d, ring, nagibSiri);
     if (!(r.ukupno >= 3 && r.nagibi.length >= 0.9 * r.ukupno)) return null;
     r.d = { ox: d.ox, oy: d.oy, rx: d.rx, ry: d.ry };
     return r;
