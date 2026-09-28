@@ -11,21 +11,22 @@ const t = (name, fn) => { fn(); pass++; console.log('  ✔ ' + name); };
 console.log('Nagib — rasponi od–do i nagib u poligonu:');
 
 t('rasponi: sortirane granice, od = prethodna granica, zadnji do beskonačnosti', () => {
-  const k = T.terrainSlopeNormalize([{ max: 30 }, { max: 10 }, { max: 30 }, { max: 95 }, { max: null }]);
-  assert.deepStrictEqual(k.map(x => x.label), ['0–10°', '10–30°', '>30°']);
+  const k = T.terrainSlopeNormalize([{ max: 30 }, { max: 10 }, { max: 30 }, { max: 1200 }, { max: null }]);
+  assert.deepStrictEqual(k.map(x => x.label), ['0–10 %', '10–30 %', '>30 %'], 'granice u procentima');
+  assert.deepStrictEqual(k.map(x => x.labelSt), ['(0–6°)', '(6–17°)', '(>17°)'], 'stepeni u zagradi');
   assert.strictEqual(k[2].max, Infinity);
   assert.ok(k.every(x => /^#[0-9a-f]{6}$/i.test(x.color) && x.on));
 });
 
 t('rasponi: isključen raspon je proziran, korisnička boja ostaje', () => {
   T.terrainSetSlopeKlase([{ max: 20, color: '#123456' }, { max: 40, on: false }, { max: Infinity }]);
-  const nag = d => T.terrainColor('slope', Math.tan(d * Math.PI / 180), 0);
+  const nag = p => T.terrainColor('slope', p / 100, 0);
   assert.strictEqual(nag(10), '#123456');
   assert.strictEqual(nag(30), null, 'isključen raspon se ne crta');
   assert.ok(nag(60));
-  assert.strictEqual(T.terrainSlopeKlasa(30).label, '20–40°');
+  assert.strictEqual(T.terrainSlopeKlasa(T.terrainDeg(30) + 0.2).label, '20–40 %', 'ulaz u stepenima, klase u %');
   T.terrainSetSlopeKlase(null);
-  assert.strictEqual(nag(30), '#f97316', 'vraćanje na zadane klase');
+  assert.strictEqual(nag(40), '#f97316', 'vraćanje na zadane klase (30–50 %)');
 });
 
 const ring = [[44.80, 16.10], [44.80, 16.11], [44.81, 16.11], [44.81, 16.10]];
@@ -58,11 +59,12 @@ t('nagib iz visina: ±10 m pomak, razlika 10 m na 20 m = 26,6°, strana okrenuta
 
 t('statistika po rasponima: prosjek, medijan, udio i ha', () => {
   const kl = T.terrainSlopeNormalize([{ max: 15 }, { max: 30 }, { max: Infinity }]);
+  // 5° = 8,7 %, 10° = 17,6 %, 20° = 36 %, 40° = 84 %
   const s = N.npStatistika([5, 10, 20, 40, NaN], kl, 40000);
   assert.strictEqual(s.n, 4);
   assert.strictEqual(s.sr, 18.75); assert.strictEqual(s.med, 15);
-  assert.deepStrictEqual(s.poKlasi.map(p => p.n), [2, 1, 1]);
-  assert.strictEqual(s.poKlasi[0].ha, 2);
+  assert.deepStrictEqual(s.poKlasi.map(p => p.n), [1, 1, 2], 'stepeni se svrstavaju u klase po procentu');
+  assert.strictEqual(s.poKlasi[0].ha, 1);
 });
 
 t('integracija: urednik raspona, dugme u terenu, KML i mjerenje, keš i APK', () => {

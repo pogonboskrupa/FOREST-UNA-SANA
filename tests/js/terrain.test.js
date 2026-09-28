@@ -11,14 +11,14 @@ assert.equal(terrainGradient(1,0).slope,45);
 assert.equal(terrainColor('aspect',0,0),'#a1a1aa');
 assert.equal(terrainColor('aspect',Math.tan(10*Math.PI/180),0),'#a1a1aa');
 assert.notEqual(terrainColor('aspect',Math.tan(10.1*Math.PI/180),0),'#a1a1aa');
-// Pet šumarskih klasa nagiba, sve obojene (ranije je sve ≤30° bilo prozirno).
-const nag = d => terrainColor('slope', Math.tan(d*Math.PI/180), 0);
+// Pet šumarskih klasa nagiba u procentima (stepeni samo za prikaz): 0–15, 15–30, 30–50, 50–70, >70 %.
+const nag = p => terrainColor('slope', p / 100, 0);
 assert.equal(nag(0), '#22c55e'); assert.equal(nag(14.9), '#22c55e');
-assert.equal(nag(15.1), '#facc15'); assert.equal(nag(24.9), '#facc15');
-assert.equal(nag(25.1), '#f97316'); assert.equal(nag(34.9), '#f97316');
-assert.equal(nag(35.1), '#dc2626'); assert.equal(nag(49.9), '#dc2626');
-assert.equal(nag(50.1), '#7e22ce'); assert.equal(nag(75), '#7e22ce');
-assert.equal(terrainSlopeClasses.map(k => k.label).join(' '), '0–15° 15–25° 25–35° 35–50° >50°');
+assert.equal(nag(15.1), '#facc15'); assert.equal(nag(29.9), '#facc15');
+assert.equal(nag(30.1), '#f97316'); assert.equal(nag(49.9), '#f97316');
+assert.equal(nag(50.1), '#dc2626'); assert.equal(nag(69.9), '#dc2626');
+assert.equal(nag(70.1), '#7e22ce'); assert.equal(nag(250), '#7e22ce');
+assert.equal(terrainSlopeClasses.map(k => k.label + ' ' + k.labelSt).join(' | '), '0–15 % (0–9°) | 15–30 % (9–17°) | 30–50 % (17–27°) | 50–70 % (27–35°) | >70 % (>35°)');
 // Legenda na karti: između zuma i FAB-ova, iznad donje trake, ispod dugmadi po z-indexu.
 const leg = html.slice(html.indexOf('#terrain-map-legend {'), html.indexOf('#terrain-map-legend .tml-title'));
 assert.ok(/bottom:76px/.test(leg) && /left:70px/.test(leg) && /right:76px/.test(leg) && /z-index:590/.test(leg), 'legenda se ne smije preklapati sa dugmadima');

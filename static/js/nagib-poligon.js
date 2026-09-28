@@ -53,7 +53,8 @@ function npStatistika(nagibi, klase, povrsina) {
   return {
     n, sr: v.reduce((a, b) => a + b, 0) / n, med: n % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2, min: v[0], max: v[n - 1],
     poKlasi: klase.map((k, i) => {
-      const od = i ? klase[i - 1].max : 0, c = v.filter(x => x >= od && x < k.max).length;
+      // vrijednosti su stepeni, granice klasa procenti
+      const od = i ? klase[i - 1].max : 0, c = v.filter(x => { const p = npPct(x); return p >= od && p < k.max; }).length;
       return { k, n: c, udio: c / n, ha: povrsina * c / n / 10000 };
     })
   };
@@ -285,7 +286,8 @@ body.np-open #terrain-map-legend { display:none !important; }
   const pctSt = (pct, st, dSt = 1) => `${fmt(pct, 0)} % <small>(${fmt(st, dSt)}°)</small>`;
   const klasaTxt = (k, i, kl) => {
     const od = i ? kl[i - 1].max : 0;
-    return k.max === Infinity ? `>${Math.round(npPct(od))} % <small>(>${od}°)</small>` : `${Math.round(npPct(od))}–${Math.round(npPct(k.max))} % <small>(${od}–${k.max}°)</small>`;
+    const st = p => Math.round(npSt(p));
+    return k.max === Infinity ? `>${od} % <small>(>${st(od)}°)</small>` : `${od}–${k.max} % <small>(${st(od)}–${st(k.max)}°)</small>`;
   };
   const ikona = (html, w, h) => L.divIcon({ className: '', iconSize: [w, h], iconAnchor: [w / 2, h / 2], html });
 

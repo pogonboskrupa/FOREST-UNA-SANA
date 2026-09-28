@@ -6,13 +6,15 @@ function terrainGradient(east, south) {
   return { slope, aspect };
 }
 const terrainAspectColors = ['#3b82f6','#06b6d4','#22c55e','#a3e635','#facc15','#f97316','#ef4444','#a855f7'];
-// Šumarske klase nagiba (°): gornja granica klase i boja; sve klase su obojene.
+// Šumarske klase nagiba u PROCENTIMA (max = gornja granica u %); stepeni samo za prikaz.
+const terrainPct = deg => Math.tan(deg * Math.PI / 180) * 100;
+const terrainDeg = pct => Math.round(Math.atan(pct / 100) * 180 / Math.PI);
 const terrainSlopeClasses = [
-  { max: 15, color: '#22c55e', label: '0–15°' },
-  { max: 25, color: '#facc15', label: '15–25°' },
-  { max: 35, color: '#f97316', label: '25–35°' },
-  { max: 50, color: '#dc2626', label: '35–50°' },
-  { max: Infinity, color: '#7e22ce', label: '>50°' }
+  { max: 15, color: '#22c55e', label: '0–15 %', labelSt: '(0–9°)' },
+  { max: 30, color: '#facc15', label: '15–30 %', labelSt: '(9–17°)' },
+  { max: 50, color: '#f97316', label: '30–50 %', labelSt: '(17–27°)' },
+  { max: 70, color: '#dc2626', label: '50–70 %', labelSt: '(27–35°)' },
+  { max: Infinity, color: '#7e22ce', label: '>70 %', labelSt: '(>35°)' }
 ];
 const terrainAspectLabels = ['S','SI','I','JI','J','JZ','Z','SZ'];
 // Korisnički rasponi: [{max, color, on}] — max je gornja granica (°), zadnji
@@ -23,19 +25,21 @@ function terrainSlopeBoje(n) {
   return Array.from({ length: n }, (_, i) => terrainSlopePaleta[Math.round(i * (terrainSlopePaleta.length - 1) / (n - 1))]);
 }
 function terrainSlopeNormalize(list) {
-  const granice = [...new Set((list || []).map(k => Number(k.max)).filter(v => Number.isFinite(v) && v > 0 && v < 90).map(v => Math.round(v)))].sort((a, b) => a - b);
+  const granice = [...new Set((list || []).map(k => Number(k.max)).filter(v => Number.isFinite(v) && v > 0 && v < 1000).map(v => Math.round(v)))].sort((a, b) => a - b);
   const stare = list || [];
   const nadji = max => stare.find(k => (Number.isFinite(Number(k.max)) ? Math.round(Number(k.max)) : Infinity) === max);
   const boje = terrainSlopeBoje(granice.length + 1);
   return [...granice, Infinity].map((max, i) => {
     const od = i ? granice[i - 1] : 0, k = nadji(max) || {};
     return { max, color: /^#[0-9a-f]{6}$/i.test(k.color || '') ? k.color : boje[i], on: k.on !== false,
-      label: max === Infinity ? '>' + od + '°' : od + '–' + max + '°' };
+      label: max === Infinity ? '>' + od + ' %' : od + '–' + max + ' %',
+      labelSt: max === Infinity ? '(>' + terrainDeg(od) + '°)' : '(' + terrainDeg(od) + '–' + terrainDeg(max) + '°)' };
   });
 }
 let terrainSlopeAktivne = terrainSlopeClasses;
 function terrainSetSlopeKlase(list) { terrainSlopeAktivne = list && list.length ? terrainSlopeNormalize(list) : terrainSlopeClasses; return terrainSlopeAktivne; }
-function terrainSlopeKlasa(slope, klase) { return (klase || terrainSlopeAktivne).find(k => slope < k.max) || null; }
+// slope u STEPENIMA (iz DEM-a), klase u procentima.
+function terrainSlopeKlasa(slope, klase) { const p = terrainPct(slope); return (klase || terrainSlopeAktivne).find(k => p < k.max) || null; }
 function terrainColor(mode, east, south) {
   const g = terrainGradient(east, south);
   if (mode === 'aspect') return g.slope <= 10 ? '#a1a1aa' : terrainAspectColors[Math.floor((g.aspect+22.5)/45)%8];
@@ -45,12 +49,13 @@ function terrainColor(mode, east, south) {
   const n = Math.round(35 + 220*light);
   return '#' + n.toString(16).padStart(2,'0').repeat(3);
 }
-if (typeof module !== 'undefined') module.exports = {terrainGradient,terrainColor,terrainSlopeClasses,terrainSlopeNormalize,terrainSetSlopeKlase,terrainSlopeKlasa};
+if (typeof module !== 'undefined') module.exports = {terrainGradient,terrainColor,terrainSlopeClasses,terrainSlopeNormalize,terrainSetSlopeKlase,terrainSlopeKlasa,terrainPct,terrainDeg};
 if (typeof window !== 'undefined') {
   const saved = (()=>{try{return JSON.parse(localStorage.getItem('usf_terrain')||'{}');}catch(e){return {};}})();
   const layers = {}, decoded = new Map();
   let opacity = Math.max(.15,Math.min(.85,Number(saved.opacity)||.55));
-  if (Array.isArray(saved.nagibKlase)) terrainSetSlopeKlase(saved.nagibKlase.map(k => ({ ...k, max: k.max === null ? Infinity : k.max })));
+  // Stari zapis (granice u stepenima) se pretvara u procente.
+  if (Array.isArray(saved.nagibKlase)) terrainSetSlopeKlase(saved.nagibKlase.map(k => ({ ...k, max: k.max === null ? Infinity : (saved.nagibJed === 'pct' ? k.max : Math.round(terrainPct(k.max))) })));
   const klizaci=()=>document.querySelectorAll('input[aria-label="Prozirnost slojeva terena"]');
   klizaci().forEach(i=>{i.value=Math.round(opacity*100);});
   map.createPane('terrainShade'); map.getPane('terrainShade').style.zIndex='320';
@@ -104,13 +109,13 @@ if (typeof window !== 'undefined') {
   try{if(localStorage.getItem('usf_terrain_leg_mini')==='1')mapLegend.classList.add('mini');}catch(e){}
   const legend=()=>{
     let rows=[];
-    if(saved.slope)rows.push(...terrainSlopeAktivne.filter(k=>k.on!==false).map(k=>[k.color,k.label]));
+    if(saved.slope)rows.push(...terrainSlopeAktivne.filter(k=>k.on!==false).map(k=>[k.color,k.label+' '+k.labelSt]));
     if(saved.aspect)rows.push(['#a1a1aa','Neutralno ≤10°'],...['Sjever','Sjeveroistok','Istok','Jugoistok','Jug','Jugozapad','Zapad','Sjeverozapad'].map((t,i)=>[terrainAspectColors[i],t]));
     document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
     const stavka=(c,t)=>`<span class="tml-item"><i style="background:${c}"></i>${t}</span>`;
     let html='';
     const vidljive=terrainSlopeAktivne.filter(k=>k.on!==false);
-    if(saved.slope)html=`<div class="tml-title">Nagib terena (°)</div><div class="tml-row tml-slope" style="grid-template-columns:repeat(${Math.min(5,Math.max(1,vidljive.length))},minmax(0,1fr))">${vidljive.map(k=>stavka(k.color,k.label.replace('°',''))).join('')}</div>`;
+    if(saved.slope)html=`<div class="tml-title">Nagib terena (%)</div><div class="tml-row tml-slope" style="grid-template-columns:repeat(${Math.min(5,Math.max(1,vidljive.length))},minmax(0,1fr))">${vidljive.map(k=>stavka(k.color,k.label.replace(' %',''))).join('')}</div>`;
     else if(saved.aspect)html=`<div class="tml-title">Ekspozicija</div><div class="tml-row tml-aspect">${terrainAspectLabels.map((t,i)=>stavka(terrainAspectColors[i],t)).join('')}${stavka('#a1a1aa','ravno')}</div>`;
     mapLegend.innerHTML=html;
     mapLegend.style.display=html?'block':'none';
@@ -126,7 +131,7 @@ if (typeof window !== 'undefined') {
   // Urednik raspona nagiba (od–do): granice, boja, prikaz po rasponu.
   const primijeni=list=>{
     terrainSetSlopeKlase(list);
-    saved.nagibKlase=terrainSlopeAktivne.map(k=>({max:k.max===Infinity?null:k.max,color:k.color,on:k.on}));
+    saved.nagibKlase=terrainSlopeAktivne.map(k=>({max:k.max===Infinity?null:k.max,color:k.color,on:k.on}));saved.nagibJed='pct';
     persist();if(layers.slope)layers.slope.redraw();legend();urednik();
     try{window.dispatchEvent(new CustomEvent('usf-nagib-klase'));}catch(e){}
   };
@@ -134,8 +139,7 @@ if (typeof window !== 'undefined') {
     const el=document.getElementById('terrain-slope-editor');if(!el)return;
     const k=terrainSlopeAktivne;
     el.innerHTML=k.map((r,i)=>{const od=i?k[i-1].max:0;
-      const pct=g=>Math.round(Math.tan(g*Math.PI/180)*100);
-      return `<div class="tse-red"><input type="checkbox" data-i="${i}" data-f="on" ${r.on!==false?'checked':''} aria-label="Prikaži raspon"><input type="color" data-i="${i}" data-f="color" value="${r.color}" aria-label="Boja raspona"><span class="tse-od">${od}°</span><span>–</span>${r.max===Infinity?'<span class="tse-inf">i više</span>':`<input type="number" inputmode="numeric" min="1" max="89" step="1" data-i="${i}" data-f="max" value="${r.max}" aria-label="Gornja granica">°`}<span class="tse-pct">${r.max===Infinity?'>'+pct(od):pct(od)+'–'+pct(r.max)} %</span>${k.length>2&&r.max!==Infinity?`<button data-i="${i}" data-f="del" aria-label="Ukloni granicu">✕</button>`:''}</div>`;}).join('')
+      return `<div class="tse-red"><input type="checkbox" data-i="${i}" data-f="on" ${r.on!==false?'checked':''} aria-label="Prikaži raspon"><input type="color" data-i="${i}" data-f="color" value="${r.color}" aria-label="Boja raspona"><span class="tse-od">${od} %</span><span>–</span>${r.max===Infinity?'<span class="tse-inf">i više</span>':`<input type="number" inputmode="numeric" min="1" max="999" step="1" data-i="${i}" data-f="max" value="${r.max}" aria-label="Gornja granica u procentima"> %`}<span class="tse-pct">${r.labelSt||''}</span>${k.length>2&&r.max!==Infinity?`<button data-i="${i}" data-f="del" aria-label="Ukloni granicu">✕</button>`:''}</div>`;}).join('')
       +`<div class="tse-akcije"><button data-f="add">+ Dodaj raspon</button><button data-f="reset">↺ Zadano</button></div>`;
   };
   const edEl=document.getElementById('terrain-slope-editor');
@@ -145,7 +149,7 @@ if (typeof window !== 'undefined') {
       const list=terrainSlopeAktivne.map(k=>({...k}));
       if(f==='on')list[i].on=t.checked;
       else if(f==='color')list[i].color=t.value;
-      else if(f==='max'){const v=Number(t.value);if(!(v>0&&v<90)){urednik();return;}list[i].max=v;delete list[i].color;}
+      else if(f==='max'){const v=Number(t.value);if(!(v>0&&v<1000)){urednik();return;}list[i].max=v;delete list[i].color;}
       primijeni(list);
     });
     edEl.addEventListener('click',e=>{
@@ -154,7 +158,7 @@ if (typeof window !== 'undefined') {
       let list=terrainSlopeAktivne.map(k=>({max:k.max,on:k.on,color:k.color}));
       if(f==='del')list.splice(Number(e.target.dataset.i),1);
       else{const kon=list.filter(k=>k.max!==Infinity).map(k=>k.max),zad=kon.length?kon[kon.length-1]:0;
-        if(zad>=85){showToast('Najviša granica je 89°');return;}list.push({max:Math.min(89,zad+10),on:true});}
+        if(zad>=990){showToast('Najviša granica je 999 %');return;}list.push({max:Math.min(999,zad+(zad>=100?50:10)),on:true});}
       primijeni(list);
     });
   }
@@ -190,13 +194,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.4.47';
+      if (label) label.textContent = 'v1.4.48';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v1.4.47';
+  if (badge) badge.textContent = 'Grmeč Navigator v1.4.48';
 })();
 
 

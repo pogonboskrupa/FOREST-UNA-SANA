@@ -195,7 +195,7 @@ async function _odjelTeren(gj) {
       if (!ne) continue;
       broj++; hSum += h; nSum += ne.nagib;
       if (h < hMin) hMin = h; if (h > hMax) hMax = h;
-      klase[terrainSlopeClasses.findIndex(k => ne.nagib < k.max)]++;
+      klase[terrainSlopeClasses.findIndex(k => Math.tan(ne.nagib * Math.PI / 180) * 100 < k.max)]++;
       eksp[ne.nagib < 5 ? 8 : Math.floor((ne.eksp + 22.5) / 45) % 8]++;
     }
   }
@@ -295,7 +295,7 @@ function _odjelRender() {
   let teren = cekaj;
   if (r.teren) teren = r.teren.greska ? greska(r.teren.greska)
     : red('Nadmorska visina', `${r.teren.hMin}–${r.teren.hMax} m (Ø ${r.teren.hSr} m)`) + red('Prosječan nagib', r.teren.nagibSr + '°')
-      + `<div class="om-traka">${terrainSlopeClasses.map((k, i) => r.teren.klase[i] ? `<i style="flex:${r.teren.klase[i]};background:${k.color}" title="${k.label}"></i>` : '').join('')}</div>`
+      + `<div class="om-traka">${terrainSlopeClasses.map((k, i) => r.teren.klase[i] ? `<i style="flex:${r.teren.klase[i]};background:${k.color}" title="${k.label} ${k.labelSt || ''}"></i>` : '').join('')}</div>`
       + `<div class="om-leg">${terrainSlopeClasses.map((k, i) => `<span><i style="background:${k.color}"></i>${k.label} ${r.teren.klase[i]}%</span>`).join('')}</div>`
       + `<div class="om-leg">Ekspozicija: ${['S', 'SI', 'I', 'JI', 'J', 'JZ', 'Z', 'SZ', 'ravno (&lt;5°)'].map((t, i) => r.teren.eksp[i] ? `<span>${t} ${r.teren.eksp[i]}%</span>` : '').join('')}</div>`;
   let por = cekaj;
@@ -322,7 +322,7 @@ function _izvozOdjel() {
   const s = [['odjel', r.ime], ['izvor', r.izvor], ['povrsina_ha', r.ha]];
   if (r.teren && !r.teren.greska) {
     s.push(['visina_min_m', r.teren.hMin], ['visina_max_m', r.teren.hMax], ['visina_sr_m', r.teren.hSr], ['nagib_sr_st', r.teren.nagibSr]);
-    terrainSlopeClasses.forEach((k, i) => s.push(['nagib_' + k.label.replace('°', '').replace('>', 'preko_') + '_pct', r.teren.klase[i]]));
+    terrainSlopeClasses.forEach((k, i) => s.push(['nagib_' + k.label.replace(' %', '').replace('>', 'preko_') + 'pct_udio', r.teren.klase[i]]));
     ['S', 'SI', 'I', 'JI', 'J', 'JZ', 'Z', 'SZ', 'ravno'].forEach((t, i) => s.push(['ekspozicija_' + t + '_pct', r.teren.eksp[i]]));
   }
   if (r.por && !r.por.greska) [3, 1, 2].forEach(u => { const n = USFEfda.UZROCI[u].naziv; s.push([n + ' 1985-2024 ha', r.por.po[u].ha], [n + ' od 2015 ha', r.por.po[u].ha10], [n + ' zadnja godina', r.por.po[u].zadnja || '']); });
