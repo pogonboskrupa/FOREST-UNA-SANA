@@ -195,15 +195,24 @@ if (typeof window !== 'undefined' && typeof map !== 'undefined') (function () {
 
   const st = document.createElement('style');
   st.textContent = `
-#np-card { position:fixed; left:10px; right:10px; bottom:76px; z-index:700; max-width:440px; margin:0 auto;
+#np-card { position:fixed; left:10px; bottom:76px; z-index:700; width:340px; min-width:220px; max-width:520px;
   background:rgba(10,20,15,.96); border:1px solid #1f3b2d; border-radius:14px; padding:10px 12px; color:#e2e8f0;
-  box-shadow:0 8px 28px rgba(0,0,0,.55); font-size:12.5px; display:none; max-height:50vh; overflow:auto; }
-#np-card.show { display:block; }
+  box-shadow:0 8px 28px rgba(0,0,0,.55); font-size:12.5px; display:none; overflow:hidden; }
+#np-card.show { display:flex; flex-direction:column; max-height:70vh; }
+#np-card .np-tijelo { overflow-y:auto; flex:1; }
 body.np-open #terrain-map-legend { display:none !important; }
-#np-card .np-hdr { display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; cursor:pointer; }
-#np-card .np-hdr span { flex:1; }
-#np-card .np-hdr button { border:none; background:none; color:#94a3b8; font-size:17px; cursor:pointer; padding:0 4px; }
+#np-card .np-hdr { display:flex; align-items:center; gap:6px; font-weight:800; font-size:13.5px; cursor:grab; user-select:none; }
+#np-card .np-hdr:active { cursor:grabbing; }
+#np-card .np-hdr span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#np-card .np-hdr button { border:none; background:none; color:#94a3b8; font-size:16px; cursor:pointer; padding:0 3px; flex-shrink:0; }
+#np-card .np-hdr button.raster-on { color:#fbbf24; }
+#np-card.dragging { user-select:none; }
 #np-card.mini .np-tijelo { display:none; }
+#np-card.mini { max-height:none; }
+#np-resize { position:absolute; right:3px; bottom:3px; width:14px; height:14px; cursor:nwse-resize; opacity:.4;
+  background:linear-gradient(135deg,transparent 40%,#64748b 40%,#64748b 47%,transparent 47%,
+    transparent 57%,#64748b 57%,#64748b 64%,transparent 64%,
+    transparent 74%,#64748b 74%,#64748b 81%,transparent 81%); }
 #np-card .np-sub { color:#94a3b8; font-size:11.5px; margin:4px 0 6px; line-height:1.4; }
 #np-card .np-kpi { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:6px; margin:6px 0 8px; }
 #np-card .np-kpi div { background:#0f1f17; border-radius:8px; padding:6px 4px; text-align:center; }
@@ -252,6 +261,86 @@ body.np-open #terrain-map-legend { display:none !important; }
   const card = document.createElement('div');
   card.id = 'np-card';
   document.body.appendChild(card);
+
+  // Gripper za resize
+  const gripper = document.createElement('div');
+  gripper.id = 'np-resize';
+  card.appendChild(gripper);
+
+  // Drag i resize logika
+  (function() {
+    let drag = null, resize = null;
+    // Učitaj sačuvanu poziciju/veličinu
+    try {
+      const pos = JSON.parse(localStorage.getItem('usf_np_pos') || 'null');
+      if (pos) {
+        if (pos.left != null) card.style.left = pos.left + 'px';
+        if (pos.top != null) { card.style.top = pos.top + 'px'; card.style.bottom = 'auto'; }
+        if (pos.width) card.style.width = pos.width + 'px';
+      }
+    } catch (e) {}
+    function sačuvajPos() {
+      try {
+        const r = card.getBoundingClientRect();
+        localStorage.setItem('usf_np_pos', JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width) }));
+      } catch (e) {}
+    }
+    card.addEventListener('mousedown', e => {
+      const hdr = e.target.closest('.np-hdr');
+      if (hdr && !e.target.closest('button')) {
+        e.preventDefault();
+        const r = card.getBoundingClientRect();
+        drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
+        card.classList.add('dragging');
+      }
+    });
+    card.addEventListener('touchstart', e => {
+      const hdr = e.target.closest('.np-hdr');
+      if (hdr && !e.target.closest('button') && e.touches.length === 1) {
+        const t = e.touches[0], r = card.getBoundingClientRect();
+        drag = { ox: t.clientX - r.left, oy: t.clientY - r.top };
+        card.classList.add('dragging');
+      }
+    }, { passive: true });
+    gripper.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const r = card.getBoundingClientRect();
+      resize = { ox: e.clientX, ow: r.width, oy: e.clientY, oh: r.height };
+    });
+    gripper.addEventListener('touchstart', e => {
+      e.stopPropagation();
+      if (e.touches.length === 1) {
+        const t = e.touches[0], r = card.getBoundingClientRect();
+        resize = { ox: t.clientX, ow: r.width, oy: t.clientY, oh: r.height };
+      }
+    }, { passive: true });
+    function move(cx, cy) {
+      if (drag) {
+        const w = window.innerWidth, h = window.innerHeight;
+        const cw = card.offsetWidth, ch = card.offsetHeight;
+        let x = cx - drag.ox, y = cy - drag.oy;
+        x = Math.max(0, Math.min(w - cw, x));
+        y = Math.max(0, Math.min(h - ch, y));
+        card.style.left = x + 'px'; card.style.top = y + 'px'; card.style.bottom = 'auto'; card.style.right = 'auto';
+      }
+      if (resize) {
+        const nw = Math.max(220, Math.min(600, resize.ow + cx - resize.ox));
+        card.style.width = nw + 'px';
+      }
+    }
+    document.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+    document.addEventListener('touchmove', e => {
+      if ((drag || resize) && e.touches.length === 1) {
+        if (drag) e.preventDefault();
+        move(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
+    function end() {
+      if (drag || resize) { drag = null; resize = null; card.classList.remove('dragging'); sačuvajPos(); }
+    }
+    document.addEventListener('mouseup', end);
+    document.addEventListener('touchend', end);
+  })();
 
   const grp = L.layerGroup().addTo(map);
   let stanje = null; // { ring, poly, linije:[], n, duzina, rubovi, vrhovi, celije, gen }
@@ -592,10 +681,10 @@ body.np-open #terrain-map-legend { display:none !important; }
   }
   function prikazi() {
     if (crt) {
-      card.innerHTML = `<div class="np-hdr"><span>📐 Crtaj poligon</span><button data-a="x" aria-label="Zatvori">✕</button></div>
+      card.innerHTML = `<div class="np-hdr"><span>📐 Crtaj poligon</span><button data-a="mini" title="Minimiziraj">−</button><button data-a="x" aria-label="Zatvori">✕</button></div>
         <div class="np-sub">Dodiruj kartu na tjemena poligona (${crt.pts.length}).</div>
         <div class="np-akc"><button data-a="undo" ${crt.pts.length ? '' : 'disabled'}>↶ Ukloni zadnje</button><button data-a="kraj" class="glavno" ${crt.pts.length >= 3 ? '' : 'disabled'}>✓ Izračunaj nagib</button></div>`;
-      return;
+      card.appendChild(gripper); return;
     }
     const s = stanje; if (!s) return;
     const pov = npPovrsina(s.ring), kl = klase();
@@ -605,7 +694,7 @@ body.np-open #terrain-map-legend { display:none !important; }
     const sz = npSazetak(ok);
     const povr = s.celije ? npStatistika(s.celije.nagibi.map(npPct), [], pov) : null;
     const povrSt = s.celije ? s.celije.nagibi.reduce((a, b) => a + b, 0) / s.celije.nagibi.length : NaN;
-    card.innerHTML = `<div class="np-hdr" data-a="mini"><span>📐 ${s.naziv.replace(/[<>&]/g, '')}</span><button data-a="x" aria-label="Zatvori">✕</button></div>
+    card.innerHTML = `<div class="np-hdr"><span>📐 ${s.naziv.replace(/[<>&]/g, '')}</span><button data-a="raster" class="${rasterOn ? 'raster-on' : ''}" title="${rasterOn ? 'Sakrij obojenje' : 'Prikaži obojenje'}">🎨</button><button data-a="mini" title="Minimiziraj">−</button><button data-a="x" aria-label="Zatvori">✕</button></div>
       <div class="np-tijelo">
       <div class="np-sub">${fmt(pov / 10000, 2)} ha · ${s.linije.length} linija niz padinu · do ${s.duzinaAkt} m (od vrha do podnožja padine)${s.racuna ? ' · računam…' : ''}</div>
       ${zastupljenostHtml(s, kl, pov)}
@@ -616,7 +705,6 @@ body.np-open #terrain-map-legend { display:none !important; }
       <div class="np-broj"><span>Linija:</span>${[5, 8, 10, 12].map(n => `<button data-a="n" data-n="${n}" class="${n === s.n ? 'on' : ''}">${n}</button>`).join('')}</div>
       <div class="np-akc">
         <select data-a="duz" aria-label="Dužina linija">${[0, 100, 150, 200, 300].map(d => `<option value="${d}" ${d === s.duzina ? 'selected' : ''}>${d ? 'Najviše ' + d + ' m' : 'Dužina auto'}</option>`).join('')}</select>
-        <button data-a="raster" class="${rasterOn ? 'on' : ''}">🎨 Rasponi na karti</button>
         <button data-a="rub" class="${s.rubovi ? 'on' : ''}">✎ Rubovi</button>
         <button data-a="dodaj" class="${dodaj ? 'on' : ''}">+ Linija</button>
         <button data-a="csv">⤓ CSV</button>
@@ -624,6 +712,7 @@ body.np-open #terrain-map-legend { display:none !important; }
       </div>
       <div class="np-nap">${dodaj ? (dodaj.prva ? 'Dodirni kraj linije (dno).' : 'Dodirni početak linije (vrh).') : `Vuci kraj linije da ga pomjeriš, ili oznaku s nagibom da pomjeriš cijelu liniju. Tamni kraj = vrh. Dodir na oznaku: detalji i brisanje.${s.rubovi ? ' Bijela tjemena pomjeraju rub poligona.' : ''}`}</div>
       </div>`;
+    card.appendChild(gripper);
   }
 
   card.addEventListener('click', e => {
