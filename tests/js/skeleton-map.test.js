@@ -190,4 +190,17 @@ t('_meniStatusi: statusi i bosanska množina', () => {
   assert.strictEqual(m(21), '21 trag'); assert.strictEqual(m(22), '22 traga');
 });
 
+t('Postavke: grupisane kartice, stanje veze uvijek vidljivo, memorija, baterija, rezervna kopija', () => {
+  const postavke = HTML.match(/<div id="postavke-panel"[\s\S]*?<div id="pozari-panel"/)?.[0] || '';
+  ['id="set-ver-txt"', 'id="set-mreza-txt"', 'id="set-update-card"', 'id="set-mem-txt"', 'onclick="_setOcistiTeren()"', 'onclick="_setBaterija()"', 'id="set-podaci"', 'onclick="_setBackup()"', 'id="set-restore-input"', 'id="set-uid-txt"'].forEach(x => assert.ok(postavke.includes(x), x));
+  const fn = HTML.slice(HTML.indexOf('function _updOfflineBanner()'), HTML.indexOf("window.addEventListener('online', _updOfflineBanner)"));
+  assert.ok(fn.includes("'● Online'") && !fn.includes("display = 'none'"), 'stanje veze se uvijek prikazuje');
+  const bat = HTML.slice(HTML.indexOf('function _setBaterija()'), HTML.indexOf('function _setPodaci()'));
+  assert.ok(bat.includes('requestBatteryOptExemption') && !bat.includes('_BATT_HINT_KEY'), 'dugme uvijek otvara sistemske postavke');
+  const bk = HTML.slice(HTML.indexOf('const _SET_BACKUP_BEZ'), HTML.indexOf('function _setRestore('));
+  assert.ok(bk.includes("/^(usf_|tvlake_)/") && bk.includes('usf_pozari_kes'), 'kopija: samo ključevi aplikacije, bez keševa');
+  const rs = HTML.slice(HTML.indexOf('function _setRestore('), HTML.indexOf('function _setRestore(') + 1500);
+  assert.ok(rs.includes("j.app !== 'grmec-navigator'") && rs.includes('/^(usf_|tvlake_)/.test(k)'), 'vraćanje samo provjerenih ključeva');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — kostur karte');

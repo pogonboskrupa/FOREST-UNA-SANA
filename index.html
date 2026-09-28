@@ -548,6 +548,33 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .meni-set small { font-size:11px; color:#7b8f86; }
 #meni-ver-badge { text-align:center; color:#475569; font-size:11px; padding:14px 0 4px; }
 
+.set-app { display:grid; grid-template-columns:48px 1fr auto; gap:12px; align-items:center; }
+.set-ikona { width:48px; height:48px; border-radius:13px; display:block; box-shadow:0 2px 10px rgba(0,0,0,.35); }
+.set-app-txt h3 { margin:0 0 2px; }
+.set-app-txt small { color:#80958a; font-size:12px; }
+.set-app-txt b { color:#4ade80; }
+.set-veza { padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:800; white-space:nowrap; border:1px solid currentColor; }
+.set-mem { margin:2px 0 8px; }
+.set-mem-bar { height:8px; border-radius:5px; background:#0b1a13; border:1px solid #1f3b2d; overflow:hidden; }
+.set-mem-bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,#16a34a,#4ade80); transition:width .3s; }
+.set-mem small { display:block; color:#80958a; font-size:11px; margin-top:4px; }
+.set-red { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; padding:10px 0; border-top:1px solid #1f3b2d; }
+.set-red b { display:block; color:var(--text); font-size:13px; }
+.set-red small { display:block; color:#80958a; font-size:11px; line-height:1.4; margin-top:2px; }
+.set-red button, .set-uid button { padding:8px 14px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.set-red button.ok { border-color:#22c55e; color:#86efac; background:#0f2a1b; }
+.set-det { border-top:1px solid #1f3b2d; padding-top:10px; }
+.ng-card > .set-det:first-child { border-top:none; padding-top:0; }
+.set-det summary { cursor:pointer; color:var(--text); font-size:13px; font-weight:700; }
+.set-input { width:100%; box-sizing:border-box; padding:11px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; margin:6px 0 8px; }
+.set-dugme { width:100%; padding:10px; border-radius:10px; border:1px solid rgba(74,222,128,.3); background:rgba(22,101,52,.3); color:#bbf7d0; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.set-nap { color:#80958a; font-size:11px; line-height:1.45; margin:8px 0 0; }
+.set-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:4px 0 6px; }
+.set-grid div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:8px 4px; text-align:center; }
+.set-grid b { display:block; color:var(--text); font-size:16px; }
+.set-grid small { color:#80958a; font-size:10px; }
+.set-uid { display:flex; gap:6px; align-items:center; margin-top:6px; }
+.set-uid code { flex:1; font-size:11px; color:#94a3b8; background:#0b1220; border:1px solid #1e293b; border-radius:8px; padding:8px 10px; word-break:break-all; }
 .set-row {
   display:flex; align-items:center; justify-content:space-between; background:var(--surface-2);
   border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:10px; color:var(--text); font-size:13px;
@@ -1112,18 +1139,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 <div id="postavke-panel" class="usf-panel">
   <div class="up-hdr"><h2>⚙ Postavke</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div class="set-row" id="set-mreza-row" style="display:none;">
-      <span>Stanje veze</span>
-      <b id="set-mreza-txt"></b>
-    </div>
-    <div class="set-row"><span>Verzija aplikacije</span><b id="set-ver-txt" style="color:#4ade80;"></b></div>
-    <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-      <span>Uređaj ID (za admin pristup)</span>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <code id="set-uid-txt" style="flex:1;font-size:11px;color:#94a3b8;background:#0f172a;border-radius:8px;padding:8px 10px;word-break:break-all;">nema interneta / Firebase nije podešen</code>
-        <button onclick="_copyUid()">Kopiraj</button>
-      </div>
-    </div>
+    <section class="ng-card set-app">
+      <img src="icon-192.png" alt="" class="set-ikona">
+      <div class="set-app-txt"><h3>Grmeč Navigator</h3><small>Verzija <b id="set-ver-txt"></b></small></div>
+      <span id="set-mreza-txt" class="set-veza" role="status"></span>
+    </section>
     <section class="update-card" id="set-update-card" data-phase="idle">
       <div class="update-card-head">
         <div class="update-card-icon">⇩</div>
@@ -1136,13 +1156,38 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
         <div class="update-progress-meta"><span id="set-update-size"></span><span id="set-update-percent"></span></div>
       </div>
     </section>
-    <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-      <label for="protomaps-key"><b style="display:block;font-size:13px;">Protomaps API ključ</b><small style="display:block;color:#80958a;margin-top:3px;">Omogućava Protomaps online podlogu u izboru karata</small></label>
-      <input id="protomaps-key" type="password" autocomplete="off" placeholder="Unesi svoj Protomaps ključ" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;">
-      <button onclick="_terrainProtomapsSave()">Sačuvaj i koristi Protomaps</button>
-    </div>
-    <div class="set-row"><span>Rad bez ograničenja baterije</span><button onclick="_checkBatteryOptHint()">Podesi</button></div>
-    <div class="set-row"><span>Očisti keš karata (Topo/Satelit/Karta)</span><button onclick="clearTileCache()">Očisti</button></div>
+
+    <section class="ng-card">
+      <h3>🗺 Karte i memorija</h3>
+      <div class="set-mem"><div class="set-mem-bar"><i id="set-mem-fill"></i></div><small id="set-mem-txt">Računam zauzeće…</small></div>
+      <div class="set-red"><div><b>Pločice karata</b><small id="set-kes-plocice">Topo / Satelit / Karta pregledane online</small></div><button onclick="clearTileCache()">Očisti</button></div>
+      <div class="set-red"><div><b>Visinske pločice</b><small id="set-kes-teren">Nagib, sjenčenje, profil van 5 općina</small></div><button onclick="_setOcistiTeren()">Očisti</button></div>
+      <details class="set-det"><summary>Protomaps API ključ</summary>
+        <p class="set-nap">Omogućava Protomaps online podlogu u izboru karata.</p>
+        <input id="protomaps-key" type="password" autocomplete="off" placeholder="Unesi svoj Protomaps ključ" class="set-input">
+        <button class="set-dugme" onclick="_terrainProtomapsSave()">Sačuvaj i koristi Protomaps</button>
+      </details>
+    </section>
+
+    <section class="ng-card">
+      <h3>📍 GPS i baterija</h3>
+      <div class="set-red"><div><b>Rad bez ograničenja baterije</b><small id="set-bat-txt">Da poziv ili druga aplikacija ne prekine GPS snimanje u pozadini.</small></div><button id="set-bat-btn" onclick="_setBaterija()">Podesi</button></div>
+    </section>
+
+    <section class="ng-card">
+      <h3>💾 Podaci na uređaju</h3>
+      <div class="set-grid" id="set-podaci"></div>
+      <div class="rd-akc"><button class="glavno" onclick="_setBackup()">⤓ Rezervna kopija</button><button onclick="document.getElementById('set-restore-input').click()">⤒ Vrati iz kopije</button></div>
+      <input type="file" id="set-restore-input" accept=".json,application/json" style="display:none" onchange="_setRestore(event)">
+      <p class="set-nap">Kopija (.json) sadrži tragove, mjerenja, KML slojeve, trase, mjerenja nagiba, postavke i API ključeve — ne dijeli je. Offline karte (.mbtiles) nisu u kopiji; to su već fajlovi na telefonu. Korisno pri prelasku na novi telefon.</p>
+    </section>
+
+    <section class="ng-card">
+      <details class="set-det"><summary>🛠 Napredno</summary>
+        <p class="set-nap">Uređaj ID — pošalji administratoru za pristup dijeljenim ključevima.</p>
+        <div class="set-uid"><code id="set-uid-txt">nema interneta / Firebase nije podešen</code><button onclick="_copyUid()">Kopiraj</button></div>
+      </details>
+    </section>
   </div>
 </div>
 
@@ -1519,20 +1564,10 @@ function _vezaLoša() {
 
 // ── Stanje veze — prikazuje se samo u Postavke tabu ─────────────────
 function _updOfflineBanner() {
-  const row = document.getElementById('set-mreza-row');
   const txt = document.getElementById('set-mreza-txt');
-  if (!row || !txt) return;
-  if (!navigator.onLine) {
-    txt.textContent = '📡 Offline';
-    txt.style.color = '#f87171';
-    row.style.display = '';
-  } else if (_vezaLoša()) {
-    txt.textContent = '📶 Slaba veza';
-    txt.style.color = '#fb923c';
-    row.style.display = '';
-  } else {
-    row.style.display = 'none';
-  }
+  if (!txt) return;
+  const [t, c] = !navigator.onLine ? ['📡 Offline', '#f87171'] : _vezaLoša() ? ['📶 Slaba veza', '#fb923c'] : ['● Online', '#4ade80'];
+  txt.textContent = t; txt.style.color = c;
 }
 window.addEventListener('online', _updOfflineBanner);
 window.addEventListener('offline', _updOfflineBanner);
@@ -8511,6 +8546,93 @@ function _renderPostavke() {
   if (el) el.textContent = APP_VER;
   const uidEl = document.getElementById('set-uid-txt');
   if (uidEl && typeof fbUid !== 'undefined' && fbUid) uidEl.textContent = fbUid;
+  _setBaterijaStatus();
+  _setPodaci();
+  _setMemorija();
+}
+const _setMb = b => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : Math.max(0.1, b / 1048576).toFixed(b >= 104857600 ? 0 : 1) + ' MB';
+async function _setMemorija() {
+  const fill = document.getElementById('set-mem-fill'), txt = document.getElementById('set-mem-txt');
+  try {
+    const e = await navigator.storage.estimate();
+    if (fill && e.quota) fill.style.width = Math.min(100, e.usage / e.quota * 100).toFixed(1) + '%';
+    if (txt) txt.textContent = `Aplikacija zauzima ${_setMb(e.usage || 0)}${e.quota ? ' od dostupnih ' + _setMb(e.quota) : ''} (offline karte, keš, podaci).`;
+  } catch(e) { if (txt) txt.textContent = 'Zauzeće memorije nije dostupno.'; }
+  const broj = async (ime, id, opis) => {
+    const el = document.getElementById(id); if (!el || !('caches' in window)) return;
+    try { const n = (await (await caches.open(ime)).keys()).length; el.textContent = `${n.toLocaleString('bs-BA')} pločica · ${opis}`; } catch(e) {}
+  };
+  broj('usf-tiles-v1', 'set-kes-plocice', 'Topo / Satelit / Karta');
+  broj(_TERR_CACHE, 'set-kes-teren', 'nagib, sjenčenje, profil van 5 općina');
+}
+async function _setOcistiTeren() {
+  const ok = await _dlgConfirm('Obrisati keširane visinske pločice? Unutar 5 općina teren radi i dalje (ugrađeni DEM); drugdje treba internet dok se ponovo ne preuzmu.', { danger: true, okLabel: 'Očisti' });
+  if (!ok) return;
+  try { await caches.delete(_TERR_CACHE); showToast('✅ Visinske pločice obrisane'); } catch(e) { showToast('⚠ Greška pri čišćenju'); }
+  _setMemorija();
+}
+function _setBaterijaStatus() {
+  const btn = document.getElementById('set-bat-btn'), txt = document.getElementById('set-bat-txt');
+  if (!btn) return;
+  if (typeof AndroidGps === 'undefined' || typeof AndroidGps.hasBatteryOptExemption !== 'function') {
+    btn.style.display = 'none';
+    if (txt) txt.textContent = 'Podešava se samo u Android aplikaciji.';
+    return;
+  }
+  let ok = false; try { ok = AndroidGps.hasBatteryOptExemption(); } catch(e) {}
+  btn.textContent = ok ? '✓ Dozvoljeno' : 'Podesi'; btn.classList.toggle('ok', ok);
+  if (txt) txt.textContent = ok ? 'GPS snimanje radi i kad je ekran ugašen ili je otvorena druga aplikacija.' : 'Nije dozvoljeno — Android može prekinuti GPS snimanje u pozadini.';
+}
+// Uvijek otvara sistemske postavke (_checkBatteryOptHint radi samo jednom).
+function _setBaterija() {
+  if (typeof AndroidGps === 'undefined' || typeof AndroidGps.requestBatteryOptExemption !== 'function') { showToast('⚠ Dostupno samo u Android aplikaciji'); return; }
+  try { AndroidGps.requestBatteryOptExemption(); } catch(e) {}
+  setTimeout(_setBaterijaStatus, 1500);
+}
+function _setPodaci() {
+  const el = document.getElementById('set-podaci'); if (!el) return;
+  const d = (fn) => { try { return fn(); } catch(e) { return 0; } };
+  const n = (k) => d(() => (JSON.parse(localStorage.getItem(k) || '[]') || []).length);
+  const polja = [
+    ['tragova', d(() => _tragRegistry.length)], ['mjerenja', d(() => _msrRegistry.length)], ['KML slojeva', d(() => kmlLs.length)],
+    ['trasa puta', n(_RD_ROUTES_KEY)], ['nagib mjerenja', n('usf_nagib_mjerenja')], ['offline karata', d(() => _sqlLayers.length)]
+  ];
+  el.innerHTML = polja.map(([t, v]) => `<div><b>${v}</b><small>${t}</small></div>`).join('');
+}
+// ── Rezervna kopija: localStorage ključevi aplikacije (bez keševa) ──
+const _SET_BACKUP_BEZ = /^(usf_pozari_kes|usf_pozari_god_cache|usf_crash_trag|usf_batt_hint|usf_pozari_notif_seen)/;
+function _setBackupKljucevi() {
+  const out = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (/^(usf_|tvlake_)/.test(k) && !_SET_BACKUP_BEZ.test(k)) out[k] = localStorage.getItem(k);
+  }
+  return out;
+}
+function _setBackup() {
+  const kljucevi = _setBackupKljucevi();
+  const sadrzaj = JSON.stringify({ app: 'grmec-navigator', v: 1, verzija: APP_VER, datum: new Date().toISOString(), kljucevi });
+  if (typeof _izvozFajl !== 'function') { showToast('⚠ Izvoz nije dostupan'); return; }
+  _izvozFajl('grmec_navigator_kopija_' + new Date().toISOString().slice(0, 10) + '.json', sadrzaj, 'application/json', 'Grmeč Navigator — rezervna kopija');
+  showToast('💾 Kopija: ' + Object.keys(kljucevi).length + ' stavki');
+}
+function _setRestore(ev) {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = '';
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    let j;
+    try { j = JSON.parse(r.result); } catch(e) { showToast('⚠ Fajl nije ispravna kopija'); return; }
+    if (!j || j.app !== 'grmec-navigator' || typeof j.kljucevi !== 'object') { showToast('⚠ Ovo nije kopija Grmeč Navigatora'); return; }
+    const ulaz = Object.entries(j.kljucevi).filter(([k, v]) => /^(usf_|tvlake_)/.test(k) && typeof v === 'string');
+    const ok = await _dlgConfirm(`Vratiti ${ulaz.length} stavki iz kopije od ${new Date(j.datum).toLocaleDateString('bs-BA')}? Postojeći podaci istog imena biće zamijenjeni, pa se aplikacija ponovo učitava.`, { title: '⤒ Vrati iz kopije', okLabel: 'Vrati' });
+    if (!ok) return;
+    try { ulaz.forEach(([k, v]) => localStorage.setItem(k, v)); }
+    catch(e) { showToast('⚠ Nema dovoljno mjesta za vraćanje'); return; }
+    showToast('✅ Vraćeno — ponovno učitavanje…');
+    setTimeout(() => location.reload(), 800);
+  };
+  r.readAsText(f);
 }
 function _copyUid() {
   const txt = document.getElementById('set-uid-txt')?.textContent || '';
@@ -8560,6 +8682,7 @@ async function clearTileCache() {
     await caches.delete('usf-tiles-v1');
     showToast('✅ Keš karata očišćen');
   } catch(e) { showToast('⚠ Greška pri čišćenju keša'); }
+  if (typeof _setMemorija === 'function') _setMemorija();
 }
 
 // ── Service worker (offline-first) ──────────────────────────────────
