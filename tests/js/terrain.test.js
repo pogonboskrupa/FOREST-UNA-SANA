@@ -11,14 +11,15 @@ assert.equal(terrainGradient(1,0).slope,45);
 assert.equal(terrainColor('aspect',0,0),'#a1a1aa');
 assert.equal(terrainColor('aspect',Math.tan(10*Math.PI/180),0),'#a1a1aa');
 assert.notEqual(terrainColor('aspect',Math.tan(10.1*Math.PI/180),0),'#a1a1aa');
-// Pet šumarskih klasa nagiba u procentima (stepeni samo za prikaz): 0–15, 15–30, 30–50, 50–70, >70 %.
+// Šest šumarskih klasa nagiba u procentima (stepeni samo za prikaz): 0–10, 11–20, 21–30, 31–40, 41–50, >50 %.
 const nag = p => terrainColor('slope', p / 100, 0);
-assert.equal(nag(0), '#22c55e'); assert.equal(nag(14.9), '#22c55e');
-assert.equal(nag(15.1), '#facc15'); assert.equal(nag(29.9), '#facc15');
-assert.equal(nag(30.1), '#f97316'); assert.equal(nag(49.9), '#f97316');
-assert.equal(nag(50.1), '#dc2626'); assert.equal(nag(69.9), '#dc2626');
-assert.equal(nag(70.1), '#7e22ce'); assert.equal(nag(250), '#7e22ce');
-assert.equal(terrainSlopeClasses.map(k => k.label + ' ' + k.labelSt).join(' | '), '0–15 % (0–9°) | 15–30 % (9–17°) | 30–50 % (17–27°) | 50–70 % (27–35°) | >70 % (>35°)');
+assert.equal(nag(0), '#22c55e'); assert.equal(nag(9.9), '#22c55e');
+assert.equal(nag(10.1), '#84cc16'); assert.equal(nag(19.9), '#84cc16');
+assert.equal(nag(20.1), '#facc15'); assert.equal(nag(29.9), '#facc15');
+assert.equal(nag(30.1), '#f97316'); assert.equal(nag(39.9), '#f97316');
+assert.equal(nag(40.1), '#dc2626'); assert.equal(nag(49.9), '#dc2626');
+assert.equal(nag(50.1), '#7e22ce'); assert.equal(nag(250), '#7e22ce');
+assert.equal(terrainSlopeClasses.map(k => k.label + ' ' + k.labelSt).join(' | '), '0–10 % (0–6°) | 11–20 % (6–11°) | 21–30 % (11–17°) | 31–40 % (17–22°) | 41–50 % (22–27°) | >50 % (>27°)');
 // Legenda na karti: između zuma i FAB-ova, iznad donje trake, ispod dugmadi po z-indexu.
 const leg = html.slice(html.indexOf('#terrain-map-legend {'), html.indexOf('#terrain-map-legend .tml-title'));
 assert.ok(/bottom:76px/.test(leg) && /left:70px/.test(leg) && /right:76px/.test(leg) && /z-index:590/.test(leg), 'legenda se ne smije preklapati sa dugmadima');
@@ -28,4 +29,4 @@ assert.notEqual(terrainColor('shade',1,1),terrainColor('shade',-1,-1));
 assert.ok(html.includes('await cache.put(url, resp.clone())'), 'DEM tile mora biti sigurno upisan za offline rad');
 assert.ok(html.includes('URL.revokeObjectURL(objectUrl)'), 'Image fallback ne smije curiti object URL memoriju');
 assert.ok(html.includes("pane:'pozariPane', radius: 5"), 'simulacijske tačke moraju biti iznad projekcije plohe');
-console.log('Terrain: cardinal aspects, 5 slope classes, map legend, neutral threshold and hillshade passed');
+console.log('Terrain: cardinal aspects, 6 slope classes, map legend, neutral threshold and hillshade passed');

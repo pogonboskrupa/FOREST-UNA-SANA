@@ -10,11 +10,12 @@ const terrainAspectColors = ['#3b82f6','#06b6d4','#22c55e','#a3e635','#facc15','
 const terrainPct = deg => Math.tan(deg * Math.PI / 180) * 100;
 const terrainDeg = pct => Math.round(Math.atan(pct / 100) * 180 / Math.PI);
 const terrainSlopeClasses = [
-  { max: 15, color: '#22c55e', label: '0–15 %', labelSt: '(0–9°)' },
-  { max: 30, color: '#facc15', label: '15–30 %', labelSt: '(9–17°)' },
-  { max: 50, color: '#f97316', label: '30–50 %', labelSt: '(17–27°)' },
-  { max: 70, color: '#dc2626', label: '50–70 %', labelSt: '(27–35°)' },
-  { max: Infinity, color: '#7e22ce', label: '>70 %', labelSt: '(>35°)' }
+  { max: 10, color: '#22c55e', label: '0–10 %', labelSt: '(0–6°)' },
+  { max: 20, color: '#84cc16', label: '11–20 %', labelSt: '(6–11°)' },
+  { max: 30, color: '#facc15', label: '21–30 %', labelSt: '(11–17°)' },
+  { max: 40, color: '#f97316', label: '31–40 %', labelSt: '(17–22°)' },
+  { max: 50, color: '#dc2626', label: '41–50 %', labelSt: '(22–27°)' },
+  { max: Infinity, color: '#7e22ce', label: '>50 %', labelSt: '(>27°)' }
 ];
 const terrainAspectLabels = ['S','SI','I','JI','J','JZ','Z','SZ'];
 // Korisnički rasponi: [{max, color, on}] — max je gornja granica (°), zadnji
@@ -31,8 +32,9 @@ function terrainSlopeNormalize(list) {
   const boje = terrainSlopeBoje(granice.length + 1);
   return [...granice, Infinity].map((max, i) => {
     const od = i ? granice[i - 1] : 0, k = nadji(max) || {};
+    const dispOd = od > 0 ? od + 1 : 0;
     return { max, color: /^#[0-9a-f]{6}$/i.test(k.color || '') ? k.color : boje[i], on: k.on !== false,
-      label: max === Infinity ? '>' + od + ' %' : od + '–' + max + ' %',
+      label: max === Infinity ? '>' + od + ' %' : dispOd + '–' + max + ' %',
       labelSt: max === Infinity ? '(>' + terrainDeg(od) + '°)' : '(' + terrainDeg(od) + '–' + terrainDeg(max) + '°)' };
   });
 }
@@ -194,13 +196,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.4.49';
+      if (label) label.textContent = 'v1.4.50';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v1.4.49';
+  if (badge) badge.textContent = 'Grmeč Navigator v1.4.50';
 })();
 
 
