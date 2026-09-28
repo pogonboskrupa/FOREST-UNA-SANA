@@ -414,11 +414,10 @@ body.np-open #terrain-map-legend { display:none !important; }
   const klase = () => (typeof terrainSlopeAktivne !== 'undefined' ? terrainSlopeAktivne : [{ max: Infinity, color: '#22c55e', label: 'sve', on: true }]);
   const klasaOd = v => (typeof terrainSlopeKlasa === 'function' ? terrainSlopeKlasa(v) : null) || klase()[klase().length - 1];
   const fmt = (v, d = 1) => Number(v).toLocaleString('bs-BA', { minimumFractionDigits: d, maximumFractionDigits: d });
-  const pctSt = (pct, st, dSt = 1) => `${fmt(pct, 0)} % <small>(${fmt(st, dSt)}°)</small>`;
+  const pctSt = (pct, _st, _dSt) => `${fmt(pct, 0)} %`;
   const klasaTxt = (k, i, kl) => {
     const od = i ? kl[i - 1].max : 0;
-    const st = p => Math.round(npSt(p));
-    return k.max === Infinity ? `>${od} % <small>(>${st(od)}°)</small>` : `${od}–${k.max} % <small>(${st(od)}–${st(k.max)}°)</small>`;
+    return k.max === Infinity ? `>${od} %` : `${od}–${k.max} %`;
   };
   const ikona = (html, w, h) => L.divIcon({ className: '', iconSize: [w, h], iconAnchor: [w / 2, h / 2], html });
 
@@ -430,7 +429,7 @@ body.np-open #terrain-map-legend { display:none !important; }
     const vrhA = Number.isFinite(l.ha) && Number.isFinite(l.hb) ? l.ha >= l.hb : true;
     l.ma.setLatLng(l.a).setIcon(ikona(`<div class="np-e${vrhA ? ' vrh' : ''}" style="background:${boja}"></div>`, 14, 14));
     l.mb.setLatLng(l.b).setIcon(ikona(`<div class="np-e${vrhA ? '' : ' vrh'}" style="background:${boja}"></div>`, 14, 14));
-    const txt = Number.isFinite(l.st) ? `${Math.round(l.pct)} % (${Math.round(l.st)}°)` : '…';
+    const txt = Number.isFinite(l.st) ? `${Math.round(l.pct)} %` : '…';
     l.lbl.setLatLng([(l.a[0] + l.b[0]) / 2, (l.a[1] + l.b[1]) / 2])
       .setIcon(L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="np-lbl${l.rucno ? ' rucno' : ''}${k && k.on === false ? ' skr' : ''}" style="background:${boja}">${txt}</div>` }));
   }
@@ -446,7 +445,7 @@ body.np-open #terrain-map-legend { display:none !important; }
   function popupLinije(l) {
     if (!Number.isFinite(l.st)) return 'Nema visinskih podataka za ovu liniju.';
     const [vrh, dno] = l.ha >= l.hb ? [l.ha, l.hb] : [l.hb, l.ha];
-    return `<b>Nagib ${fmt(l.pct, 0)} % (${fmt(l.st)}°)</b><br>Dužina ${Math.round(l.dist)} m · visinska razlika ${Math.round(l.dh)} m<br>Vrh ${Math.round(vrh)} m → dno ${Math.round(dno)} m${l.rucno ? '<br><i>ručno postavljena / pomjerena</i>' : ''}<br><button onclick="npObrisiLiniju(${l.id})" style="margin-top:6px;padding:4px 8px;border:none;border-radius:6px;background:#dc2626;color:#fff">🗑 Ukloni liniju</button>`;
+    return `<b>Nagib ${fmt(l.pct, 0)} %</b><br>Dužina ${Math.round(l.dist)} m · visinska razlika ${Math.round(l.dh)} m<br>Vrh ${Math.round(vrh)} m → dno ${Math.round(dno)} m${l.rucno ? '<br><i>ručno postavljena / pomjerena</i>' : ''}<br><button onclick="npObrisiLiniju(${l.id})" style="margin-top:6px;padding:4px 8px;border:none;border-radius:6px;background:#dc2626;color:#fff">🗑 Ukloni liniju</button>`;
   }
   let idBr = 0;
   function dodajLiniju(a, b, rucno) {
@@ -596,7 +595,7 @@ body.np-open #terrain-map-legend { display:none !important; }
       const sz = z.sazetak, k = sz ? klasaOd(sz.st) : null;
       return `<div class="ng-red"><i style="background:${k ? k.color : '#475569'}"></i>
         <div><b>${esc(z.naziv)}</b><small>${new Date(z.datum).toLocaleDateString('bs-BA')} · ${fmt(z.ha || 0, 2)} ha · ${(z.linije || []).length} linija</small>${Array.isArray(z.rasponi) ? `<div class="np-traka mala" title="${z.rasponi.map(r => esc(r.label) + ': ' + Math.round(r.udio * 100) + ' %').join(', ')}">${z.rasponi.map(r => `<u style="width:${(r.udio * 100).toFixed(1)}%;background:${r.color}"></u>`).join('')}</div>` : ''}</div>
-        <div class="ng-prosjek">${sz ? fmt(sz.pct, 0) + ' %' : '—'}<small>${sz ? '(' + fmt(sz.st) + '°)' : ''}</small></div>
+        <div class="ng-prosjek">${sz ? fmt(sz.pct, 0) + ' %' : '—'}</div>
         <div class="ng-akc"><button class="prikazi" data-sv="prikazi" data-id="${z.id}">👁 Prikaži</button><button data-sv="csv" data-id="${z.id}">⤓ CSV</button><button data-sv="ime" data-id="${z.id}" aria-label="Preimenuj">✎</button><button data-sv="brisi" data-id="${z.id}" aria-label="Obriši">🗑</button></div></div>`;
     }).join('') : '<div class="ng-prazno">Još nema sačuvanih mjerenja. Poslije mjerenja dodirni 💾 Sačuvaj.</div>';
   }
@@ -693,7 +692,6 @@ body.np-open #terrain-map-legend { display:none !important; }
     const statPct = npStatistika(ok.map(l => l.pct), [], pov);
     const sz = npSazetak(ok);
     const povr = s.celije ? npStatistika(s.celije.nagibi.map(npPct), [], pov) : null;
-    const povrSt = s.celije ? s.celije.nagibi.reduce((a, b) => a + b, 0) / s.celije.nagibi.length : NaN;
     card.innerHTML = `<div class="np-hdr"><span>📐 ${s.naziv.replace(/[<>&]/g, '')}</span><button data-a="raster" class="${rasterOn ? 'raster-on' : ''}" title="${rasterOn ? 'Sakrij obojenje' : 'Prikaži obojenje'}">🎨</button><button data-a="mini" title="Minimiziraj">−</button><button data-a="x" aria-label="Zatvori">✕</button></div>
       <div class="np-tijelo">
       <div class="np-sub">${fmt(pov / 10000, 2)} ha · ${s.linije.length} linija niz padinu · do ${s.duzinaAkt} m (od vrha do podnožja padine)${s.racuna ? ' · računam…' : ''}</div>
@@ -701,7 +699,7 @@ body.np-open #terrain-map-legend { display:none !important; }
       <div class="np-naslov">Linije niz padinu</div>
       ${stat ? `<div class="np-kpi"><div><b>${pctSt(sz.pct, sz.st)}</b><small>prosjek linija</small></div><div><b>${pctSt(statPct.med, npSt(statPct.med), 0)}</b><small>medijan</small></div><div><b>${pctSt(statPct.min, npSt(statPct.min), 0)}</b><small>min</small></div><div><b>${pctSt(statPct.max, npSt(statPct.max), 0)}</b><small>max</small></div></div>
       ${stat.poKlasi.map((p, i) => `<div class="np-kl${p.k.on === false ? ' off' : ''}"><i style="background:${p.k.color}"></i><span>${klasaTxt(p.k, i, kl)}</span><span class="bar"><u style="width:${(p.udio * 100).toFixed(1)}%;background:${p.k.color}"></u></span><span>${p.n} lin.</span></div>`).join('')}` : '<div class="np-sub">Čekam visinske podatke…</div>'}
-      ${povr ? `<div class="np-povr">Cijela površina (${povr.n} ćelija DEM 30 m): prosjek <b>${fmt(povr.sr, 0)} % (${fmt(povrSt)}°)</b>, max ${fmt(povr.max, 0)} %</div>` : ''}
+      ${povr ? `<div class="np-povr">Cijela površina (${povr.n} ćelija DEM 30 m): prosjek <b>${fmt(povr.sr, 0)} %</b>, max ${fmt(povr.max, 0)} %</div>` : ''}
       <div class="np-broj"><span>Linija:</span>${[5, 8, 10, 12].map(n => `<button data-a="n" data-n="${n}" class="${n === s.n ? 'on' : ''}">${n}</button>`).join('')}</div>
       <div class="np-akc">
         <select data-a="duz" aria-label="Dužina linija">${[0, 100, 150, 200, 300].map(d => `<option value="${d}" ${d === s.duzina ? 'selected' : ''}>${d ? 'Najviše ' + d + ' m' : 'Dužina auto'}</option>`).join('')}</select>

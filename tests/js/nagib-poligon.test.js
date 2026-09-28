@@ -128,12 +128,12 @@ t('UI: izbor 5/8/10/12 linija, pomjerivi krajevi i cijela linija, ručna linija,
   assert.ok(js.includes("'nagib_pct'"));
 });
 
-t('procenti su glavni prikaz, stepeni u zagradi; sažetak za pohranu', () => {
+t('procenti su jedini prikaz (stepeni uklonjeni); sažetak za pohranu', () => {
   assert.ok(Math.abs(N.npPct(45) - 100) < 1e-9 && Math.abs(N.npSt(100) - 45) < 1e-9);
   const sz = N.npSazetak([{ pct: 20, st: N.npSt(20) }, { pct: 40, st: N.npSt(40) }, { pct: NaN, st: NaN }]);
   assert.strictEqual(sz.n, 2); assert.strictEqual(sz.pct, 30); assert.strictEqual(sz.min, 20);
   const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
-  assert.ok(js.includes("`${Math.round(l.pct)} % (${Math.round(l.st)}°)`"), 'oznaka linije: % (°)');
+  assert.ok(js.includes('`${Math.round(l.pct)} %`'), 'oznaka linije: samo %');
   assert.ok(js.includes("'nagib_pct', 'nagib_st'"), 'CSV: procenat prije stepeni');
 });
 
