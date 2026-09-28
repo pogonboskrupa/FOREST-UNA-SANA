@@ -155,6 +155,22 @@ t('sekcija Nagib u Kartama: kartica, panel, prekidač karte, rasponi s %, mjeren
   assert.ok(tjs.includes('class="tse-pct"') && tjs.includes('querySelectorAll(\'input[aria-label="Prozirnost slojeva terena"]\')'));
 });
 
+t('zastupljenost raspona: ćelije s položajem, udio i ha po rasponu, raster u boji na karti, pohrana', () => {
+  const d = { W: 10, H: 10, ox: 16, oy: 45, rx: 0.001, ry: -0.001 };
+  const ring = [[44.9975, 16.0025], [44.9975, 16.0075], [44.9925, 16.0075], [44.9925, 16.0025]];
+  // nagib raste po koloni: 2..6 → 5°, 10°, 15°, 20°, 25° (8,7 / 17,6 / 26,8 / 36,4 / 46,6 %)
+  const r = N.npCelije(d, ring, ix => ({ nagib: (ix - 1) * 5 }));
+  assert.strictEqual(r.celije.length, 25);
+  assert.ok(r.celije.every(([ix, iy, n]) => Number.isInteger(ix) && Number.isInteger(iy) && n === (ix - 1) * 5), 'ćelija nosi svoj položaj i nagib');
+  const kl = T.terrainSlopeNormalize([{ max: 15 }, { max: 30 }, { max: 50 }, { max: Infinity }]);
+  const st = N.npStatistika(r.nagibi, kl, 250000);
+  assert.deepStrictEqual(st.poKlasi.map(p => Math.round(p.udio * 100)), [20, 40, 40, 0]);
+  assert.strictEqual(st.poKlasi[1].ha, 10);
+  const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
+  assert.ok(js.includes("map.createPane('nagibRasterPane')") && js.includes("pane: 'nagibRasterPane'"), 'raster ima svoj pane');
+  assert.ok(js.includes('function zastupljenostHtml(') && js.includes('data-a="raster"') && js.includes('rasponi: s.celije ?'));
+});
+
 (async () => {
   // Greben na lon 16.105 (1200 m), padine 20 % na obje strane; tačka na istočnoj padini.
   const m = 111320 * Math.cos(44.805 * Math.PI / 180);
