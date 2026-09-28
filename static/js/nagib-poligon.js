@@ -195,7 +195,7 @@ if (typeof window !== 'undefined' && typeof map !== 'undefined') (function () {
 
   const st = document.createElement('style');
   st.textContent = `
-#np-card { position:fixed; left:10px; bottom:76px; z-index:700; width:min(340px,calc(100vw - 20px)); min-width:220px; max-width:520px;
+#np-card { position:fixed; left:10px; bottom:76px; z-index:700; width:min(340px,calc(100vw - 20px)); min-width:200px; max-width:min(520px,calc(100vw - 16px)); box-sizing:border-box;
   background:rgba(10,20,15,.96); border:1px solid #1f3b2d; border-radius:12px; padding:8px 10px; color:#e2e8f0;
   box-shadow:0 8px 28px rgba(0,0,0,.55); font-size:12px; display:none; overflow:hidden; }
 #np-card.show { display:flex; flex-direction:column; max-height:50vh; }
@@ -204,12 +204,14 @@ body.np-open #terrain-map-legend { display:none !important; }
 #np-card .np-hdr { display:flex; align-items:center; gap:5px; font-weight:800; font-size:13px; cursor:grab; user-select:none; }
 #np-card .np-hdr:active { cursor:grabbing; }
 #np-card .np-hdr span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-#np-card .np-hdr button { border:none; background:none; color:#94a3b8; font-size:15px; cursor:pointer; padding:0 2px; flex-shrink:0; }
+#np-card .np-hdr button { border:none; background:#0f1f17; color:#cbd5e1; font-size:16px; cursor:pointer; width:34px; height:30px; border-radius:8px; padding:0; flex-shrink:0; }
+#np-card .np-hdr small { font-weight:700; color:#fbbf24; margin-left:4px; }
 #np-card .np-hdr button.raster-on { color:#fbbf24; }
 #np-card.dragging { user-select:none; }
 #np-card.mini .np-tijelo { display:none; }
 #np-card.mini { max-height:none; }
-#np-resize { position:absolute; right:3px; bottom:3px; width:14px; height:14px; cursor:nwse-resize; opacity:.4;
+#np-card.mini #np-resize { display:none; }
+#np-resize { position:absolute; right:2px; bottom:2px; width:22px; height:22px; cursor:nwse-resize; opacity:.4;
   background:linear-gradient(135deg,transparent 40%,#64748b 40%,#64748b 47%,transparent 47%,
     transparent 57%,#64748b 57%,#64748b 64%,transparent 64%,
     transparent 74%,#64748b 74%,#64748b 81%,transparent 81%); }
@@ -267,22 +269,38 @@ body.np-open #terrain-map-legend { display:none !important; }
   gripper.id = 'np-resize';
   card.appendChild(gripper);
 
-  // Drag i resize logika
+  // Kartica uvijek cijela na ekranu: sačuvana pozicija/širina s većeg ekrana
+  // ili rotacije ne smije odsjeći dugmad u zaglavlju.
+  const NP_POS = 'usf_np_pos2';
+  let miniPref = false;
+  try { miniPref = localStorage.getItem('usf_np_mini') === '1'; } catch (e) {}
+  function ogranici() {
+    if (!card.classList.contains('show')) return;
+    const w = window.innerWidth, h = window.innerHeight;
+    if (card.offsetWidth > w - 16) card.style.width = (w - 16) + 'px';
+    const r = card.getBoundingClientRect();
+    if (r.left < 0 || r.right > w) card.style.left = Math.max(0, Math.min(w - r.width, r.left)) + 'px';
+    if (r.top < 0 || r.bottom > h) { card.style.top = Math.max(0, Math.min(h - r.height, r.top)) + 'px'; card.style.bottom = 'auto'; }
+  }
+  window.addEventListener('resize', ogranici);
+
   (function() {
     let drag = null, resize = null;
-    // Učitaj sačuvanu poziciju/veličinu
     try {
-      const pos = JSON.parse(localStorage.getItem('usf_np_pos') || 'null');
+      localStorage.removeItem('usf_np_pos');
+      const pos = JSON.parse(localStorage.getItem(NP_POS) || 'null');
       if (pos) {
-        if (pos.left != null) card.style.left = pos.left + 'px';
-        if (pos.top != null) { card.style.top = pos.top + 'px'; card.style.bottom = 'auto'; }
-        if (pos.width) card.style.width = pos.width + 'px';
+        const w = window.innerWidth, h = window.innerHeight;
+        const sir = pos.width ? Math.min(pos.width, w - 16) : null;
+        if (sir) card.style.width = sir + 'px';
+        if (pos.left != null) card.style.left = Math.max(0, Math.min(w - (sir || 340), pos.left)) + 'px';
+        if (pos.top != null) { card.style.top = Math.max(0, Math.min(h - 60, pos.top)) + 'px'; card.style.bottom = 'auto'; }
       }
     } catch (e) {}
     function sačuvajPos() {
       try {
         const r = card.getBoundingClientRect();
-        localStorage.setItem('usf_np_pos', JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width) }));
+        localStorage.setItem(NP_POS, JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width) }));
       } catch (e) {}
     }
     card.addEventListener('mousedown', e => {
@@ -324,7 +342,8 @@ body.np-open #terrain-map-legend { display:none !important; }
         card.style.left = x + 'px'; card.style.top = y + 'px'; card.style.bottom = 'auto'; card.style.right = 'auto';
       }
       if (resize) {
-        const nw = Math.max(220, Math.min(600, resize.ow + cx - resize.ox));
+        const maxW = window.innerWidth - card.getBoundingClientRect().left - 8;
+        const nw = Math.max(200, Math.min(520, maxW, resize.ow + cx - resize.ox));
         card.style.width = nw + 'px';
       }
     }
@@ -547,7 +566,7 @@ body.np-open #terrain-map-legend { display:none !important; }
     if (sacuvano) Object.assign(stanje, { sid: sacuvano.id, n: sacuvano.n || n, duzina: sacuvano.duzina || 0 });
     stanje.poly = L.polygon(r, { pane: 'nagibPolPane', color: '#3b82f6', weight: 2.5, dashArray: '6 4', fillColor: '#3b82f6', fillOpacity: 0.05, interactive: false }).addTo(grp);
     document.body.classList.add('np-open');
-    card.classList.add('show'); card.classList.remove('mini');
+    card.classList.add('show'); card.classList.toggle('mini', miniPref);
     try { map.fitBounds(stanje.poly.getBounds(), { paddingTopLeft: [24, 80], paddingBottomRight: [24, Math.min(400, window.innerHeight * 0.5) + 90], maxZoom: 17 }); } catch (e) {}
     if (sacuvano) obnovi(sacuvano); else generisi();
   }
@@ -693,12 +712,15 @@ body.np-open #terrain-map-legend { display:none !important; }
       <div class="np-traka">${st.poKlasi.map(p => `<u style="width:${(p.udio * 100).toFixed(2)}%;background:${p.k.color};opacity:${p.k.on === false ? 0.35 : 1}" title="${p.k.label}"></u>`).join('')}</div>
       ${st.poKlasi.map((p, i) => `<div class="np-zas${p.k.on === false ? ' off' : ''}"><i style="background:${p.k.color}"></i><span>${klasaTxt(p.k, i, kl)}</span><b>${fmt(p.udio * 100, p.udio > 0 && p.udio < 0.01 ? 1 : 0)} %</b><span>${fmt(p.ha, 2)} ha</span></div>`).join('')}`;
   }
+  const miniBtn = () => card.classList.contains('mini')
+    ? '<button data-a="mini" title="Proširi">▢</button>'
+    : '<button data-a="mini" title="Minimiziraj">−</button>';
   function prikazi() {
     if (crt) {
-      card.innerHTML = `<div class="np-hdr"><span>📐 Crtaj poligon</span><button data-a="mini" title="Minimiziraj">−</button><button data-a="x" aria-label="Zatvori">✕</button></div>
-        <div class="np-sub">Dodiruj kartu na tjemena poligona (${crt.pts.length}).</div>
-        <div class="np-akc"><button data-a="undo" ${crt.pts.length ? '' : 'disabled'}>↶ Ukloni zadnje</button><button data-a="kraj" class="glavno" ${crt.pts.length >= 3 ? '' : 'disabled'}>✓ Izračunaj nagib</button></div>`;
-      card.appendChild(gripper); return;
+      card.innerHTML = `<div class="np-hdr"><span>📐 Crtaj poligon</span>${miniBtn()}<button data-a="x" aria-label="Zatvori">✕</button></div>
+        <div class="np-tijelo"><div class="np-sub">Dodiruj kartu na tjemena poligona (${crt.pts.length}).</div>
+        <div class="np-akc"><button data-a="undo" ${crt.pts.length ? '' : 'disabled'}>↶ Ukloni zadnje</button><button data-a="kraj" class="glavno" ${crt.pts.length >= 3 ? '' : 'disabled'}>✓ Izračunaj nagib</button></div></div>`;
+      card.appendChild(gripper); ogranici(); return;
     }
     const s = stanje; if (!s) return;
     const pov = npPovrsina(s.ring), kl = klase();
@@ -707,7 +729,7 @@ body.np-open #terrain-map-legend { display:none !important; }
     const statPct = npStatistika(ok.map(l => l.pct), [], pov);
     const sz = npSazetak(ok);
     const povr = s.celije ? npStatistika(s.celije.nagibi.map(npPct), [], pov) : null;
-    card.innerHTML = `<div class="np-hdr"><span>📐 ${s.naziv.replace(/[<>&]/g, '')}</span><button data-a="raster" class="${rasterOn ? 'raster-on' : ''}" title="${rasterOn ? 'Sakrij obojenje' : 'Prikaži obojenje'}">🎨</button><button data-a="mini" title="Minimiziraj">−</button><button data-a="x" aria-label="Zatvori">✕</button></div>
+    card.innerHTML = `<div class="np-hdr"><span>📐 ${s.naziv.replace(/[<>&]/g, '')}${povr ? `<small>${fmt(povr.sr, 0)} %</small>` : ''}</span><button data-a="raster" class="${rasterOn ? 'raster-on' : ''}" title="${rasterOn ? 'Sakrij obojenje' : 'Prikaži obojenje'}">🎨</button>${miniBtn()}<button data-a="x" aria-label="Zatvori">✕</button></div>
       <div class="np-tijelo">
       <div class="np-sub">${fmt(pov / 10000, 2)} ha · ${s.linije.length} linija niz padinu · do ${s.duzinaAkt} m (od vrha do podnožja padine)${s.racuna ? ' · računam…' : ''}</div>
       ${zastupljenostHtml(s, kl, pov)}
@@ -725,14 +747,18 @@ body.np-open #terrain-map-legend { display:none !important; }
       </div>
       <div class="np-nap">${dodaj ? (dodaj.prva ? 'Dodirni kraj linije (dno).' : 'Dodirni početak linije (vrh).') : `Vuci kraj linije da ga pomjeriš, ili oznaku s nagibom da pomjeriš cijelu liniju. Tamni kraj = vrh. Dodir na oznaku: detalji i brisanje.${s.rubovi ? ' Bijela tjemena pomjeraju rub poligona.' : ''}`}</div>
       </div>`;
-    card.appendChild(gripper);
+    card.appendChild(gripper); ogranici();
   }
 
   card.addEventListener('click', e => {
     const el = e.target.closest('[data-a]'), a = el?.dataset.a;
     if (!a || a === 'duz') return;
     if (a === 'x') { e.stopPropagation(); zatvori(); }
-    else if (a === 'mini') card.classList.toggle('mini');
+    else if (a === 'mini') {
+      miniPref = card.classList.toggle('mini');
+      try { localStorage.setItem('usf_np_mini', miniPref ? '1' : '0'); } catch (err) {}
+      prikazi(); ogranici();
+    }
     else if (a === 'undo' && crt) { crt.pts.pop(); grp.removeLayer(crt.mk.pop()); crt.line.setLatLngs(crt.pts.length > 2 ? [...crt.pts, crt.pts[0]] : crt.pts); prikazi(); }
     else if (a === 'kraj') crtZavrsi();
     else if (a === 'n') {
