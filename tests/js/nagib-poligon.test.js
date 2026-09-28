@@ -12,7 +12,7 @@ console.log('Nagib — rasponi od–do i nagib u poligonu:');
 
 t('rasponi: sortirane granice, od = prethodna granica, zadnji do beskonačnosti', () => {
   const k = T.terrainSlopeNormalize([{ max: 30 }, { max: 10 }, { max: 30 }, { max: 1200 }, { max: null }]);
-  assert.deepStrictEqual(k.map(x => x.label), ['0–10 %', '11–30 %', '>30 %'], 'granice u procentima');
+  assert.deepStrictEqual(k.map(x => x.label), ['0–9,99 %', '10–29,99 %', '>30 %'], 'granice u procentima');
   assert.deepStrictEqual(k.map(x => x.labelSt), ['(0–6°)', '(6–17°)', '(>17°)'], 'stepeni u zagradi');
   assert.strictEqual(k[2].max, Infinity);
   assert.ok(k.every(x => /^#[0-9a-f]{6}$/i.test(x.color) && x.on));
@@ -24,7 +24,7 @@ t('rasponi: isključen raspon je proziran, korisnička boja ostaje', () => {
   assert.strictEqual(nag(10), '#123456');
   assert.strictEqual(nag(30), null, 'isključen raspon se ne crta');
   assert.ok(nag(60));
-  assert.strictEqual(T.terrainSlopeKlasa(T.terrainDeg(30) + 0.2).label, '21–40 %', 'ulaz u stepenima, klase u %');
+  assert.strictEqual(T.terrainSlopeKlasa(T.terrainDeg(30) + 0.2).label, '20–39,99 %', 'ulaz u stepenima, klase u %');
   T.terrainSetSlopeKlase(null);
   assert.strictEqual(nag(35), '#f97316', 'vraćanje na zadane klase (31–40 %)');
 });

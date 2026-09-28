@@ -10,11 +10,11 @@ const terrainAspectColors = ['#3b82f6','#06b6d4','#22c55e','#a3e635','#facc15','
 const terrainPct = deg => Math.tan(deg * Math.PI / 180) * 100;
 const terrainDeg = pct => Math.round(Math.atan(pct / 100) * 180 / Math.PI);
 const terrainSlopeClasses = [
-  { max: 10, color: '#22c55e', label: '0–10 %', labelSt: '(0–6°)' },
-  { max: 20, color: '#84cc16', label: '11–20 %', labelSt: '(6–11°)' },
-  { max: 30, color: '#facc15', label: '21–30 %', labelSt: '(11–17°)' },
-  { max: 40, color: '#f97316', label: '31–40 %', labelSt: '(17–22°)' },
-  { max: 50, color: '#dc2626', label: '41–50 %', labelSt: '(22–27°)' },
+  { max: 10, color: '#22c55e', label: '0–9,99 %', labelSt: '(0–6°)' },
+  { max: 20, color: '#84cc16', label: '10–19,99 %', labelSt: '(6–11°)' },
+  { max: 30, color: '#facc15', label: '20–29,99 %', labelSt: '(11–17°)' },
+  { max: 40, color: '#f97316', label: '30–39,99 %', labelSt: '(17–22°)' },
+  { max: 50, color: '#dc2626', label: '40–49,99 %', labelSt: '(22–27°)' },
   { max: Infinity, color: '#7e22ce', label: '>50 %', labelSt: '(>27°)' }
 ];
 const terrainAspectLabels = ['S','SI','I','JI','J','JZ','Z','SZ'];
@@ -32,9 +32,9 @@ function terrainSlopeNormalize(list) {
   const boje = terrainSlopeBoje(granice.length + 1);
   return [...granice, Infinity].map((max, i) => {
     const od = i ? granice[i - 1] : 0, k = nadji(max) || {};
-    const dispOd = od > 0 ? od + 1 : 0;
+    const dispMax = max === Infinity ? null : (max - 1) + ',99';
     return { max, color: /^#[0-9a-f]{6}$/i.test(k.color || '') ? k.color : boje[i], on: k.on !== false,
-      label: max === Infinity ? '>' + od + ' %' : dispOd + '–' + max + ' %',
+      label: max === Infinity ? '>' + od + ' %' : od + '–' + dispMax + ' %',
       labelSt: max === Infinity ? '(>' + terrainDeg(od) + '°)' : '(' + terrainDeg(od) + '–' + terrainDeg(max) + '°)' };
   });
 }
