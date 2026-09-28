@@ -195,16 +195,16 @@ if (typeof window !== 'undefined' && typeof map !== 'undefined') (function () {
 
   const st = document.createElement('style');
   st.textContent = `
-#np-card { position:fixed; left:10px; bottom:76px; z-index:700; width:340px; min-width:220px; max-width:520px;
-  background:rgba(10,20,15,.96); border:1px solid #1f3b2d; border-radius:14px; padding:10px 12px; color:#e2e8f0;
-  box-shadow:0 8px 28px rgba(0,0,0,.55); font-size:12.5px; display:none; overflow:hidden; }
-#np-card.show { display:flex; flex-direction:column; max-height:70vh; }
+#np-card { position:fixed; left:10px; bottom:76px; z-index:700; width:min(340px,calc(100vw - 20px)); min-width:220px; max-width:520px;
+  background:rgba(10,20,15,.96); border:1px solid #1f3b2d; border-radius:12px; padding:8px 10px; color:#e2e8f0;
+  box-shadow:0 8px 28px rgba(0,0,0,.55); font-size:12px; display:none; overflow:hidden; }
+#np-card.show { display:flex; flex-direction:column; max-height:50vh; }
 #np-card .np-tijelo { overflow-y:auto; flex:1; }
 body.np-open #terrain-map-legend { display:none !important; }
-#np-card .np-hdr { display:flex; align-items:center; gap:6px; font-weight:800; font-size:13.5px; cursor:grab; user-select:none; }
+#np-card .np-hdr { display:flex; align-items:center; gap:5px; font-weight:800; font-size:13px; cursor:grab; user-select:none; }
 #np-card .np-hdr:active { cursor:grabbing; }
 #np-card .np-hdr span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-#np-card .np-hdr button { border:none; background:none; color:#94a3b8; font-size:16px; cursor:pointer; padding:0 3px; flex-shrink:0; }
+#np-card .np-hdr button { border:none; background:none; color:#94a3b8; font-size:15px; cursor:pointer; padding:0 2px; flex-shrink:0; }
 #np-card .np-hdr button.raster-on { color:#fbbf24; }
 #np-card.dragging { user-select:none; }
 #np-card.mini .np-tijelo { display:none; }
@@ -213,39 +213,39 @@ body.np-open #terrain-map-legend { display:none !important; }
   background:linear-gradient(135deg,transparent 40%,#64748b 40%,#64748b 47%,transparent 47%,
     transparent 57%,#64748b 57%,#64748b 64%,transparent 64%,
     transparent 74%,#64748b 74%,#64748b 81%,transparent 81%); }
-#np-card .np-sub { color:#94a3b8; font-size:11.5px; margin:4px 0 6px; line-height:1.4; }
-#np-card .np-kpi { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:6px; margin:6px 0 8px; }
-#np-card .np-kpi div { background:#0f1f17; border-radius:8px; padding:6px 4px; text-align:center; }
-#np-card .np-kpi b { display:block; font-size:14px; line-height:1.25; }
-#np-card .np-kpi b small { display:block; font-size:10.5px; font-weight:600; color:#cbd5e1; }
+#np-card .np-sub { color:#94a3b8; font-size:11px; margin:2px 0 4px; line-height:1.35; }
+#np-card .np-kpi { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:4px; margin:4px 0 5px; }
+#np-card .np-kpi div { background:#0f1f17; border-radius:7px; padding:4px 3px; text-align:center; }
+#np-card .np-kpi b { display:block; font-size:13px; line-height:1.2; }
+#np-card .np-kpi b small { display:block; font-size:10px; font-weight:600; color:#cbd5e1; }
 #np-card .np-kl small { color:#80958a; }
-#np-card .np-kpi div:first-child b { font-size:17px; color:#fbbf24; }
-#np-card .np-kpi small { color:#80958a; font-size:10px; }
-#np-card .np-kl { display:grid; grid-template-columns:14px 118px 1fr 44px; align-items:center; gap:6px; padding:2px 0; font-size:11.5px; }
-#np-card .np-kl i { width:12px; height:12px; border-radius:3px; }
-#np-card .np-kl .bar { height:7px; background:#1e293b; border-radius:4px; overflow:hidden; }
+#np-card .np-kpi div:first-child b { font-size:15px; color:#fbbf24; }
+#np-card .np-kpi small { color:#80958a; font-size:9.5px; }
+#np-card .np-kl { display:grid; grid-template-columns:12px 108px 1fr 40px; align-items:center; gap:5px; padding:1px 0; font-size:11px; }
+#np-card .np-kl i { width:10px; height:10px; border-radius:2px; }
+#np-card .np-kl .bar { height:6px; background:#1e293b; border-radius:3px; overflow:hidden; }
 #np-card .np-kl .bar u { display:block; height:100%; }
 #np-card .np-kl.off { opacity:.4; }
 #np-card .np-kl span:last-child { text-align:right; font-variant-numeric:tabular-nums; }
-#np-card .np-naslov { font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#91a69b; margin:10px 0 5px; }
+#np-card .np-naslov { font-size:10.5px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#91a69b; margin:7px 0 3px; }
 #np-card .np-naslov small { text-transform:none; letter-spacing:0; font-weight:600; color:#64748b; }
-.np-traka { display:flex; height:14px; border-radius:7px; overflow:hidden; background:#1e293b; margin:2px 0 6px; }
+.np-traka { display:flex; height:10px; border-radius:5px; overflow:hidden; background:#1e293b; margin:2px 0 4px; }
 .np-traka u { display:block; height:100%; }
-.np-traka.mala { height:6px; border-radius:3px; margin:5px 0 0; }
-#np-card .np-zas { display:grid; grid-template-columns:14px 1fr 48px 62px; gap:6px; align-items:center; padding:2px 0; font-size:12px; }
-#np-card .np-zas i { width:12px; height:12px; border-radius:3px; }
-#np-card .np-zas b { text-align:right; font-size:13px; color:#fff; font-variant-numeric:tabular-nums; }
+.np-traka.mala { height:5px; border-radius:2px; margin:4px 0 0; }
+#np-card .np-zas { display:grid; grid-template-columns:12px 1fr 44px 56px; gap:5px; align-items:center; padding:1px 0; font-size:11.5px; }
+#np-card .np-zas i { width:10px; height:10px; border-radius:2px; }
+#np-card .np-zas b { text-align:right; font-size:12px; color:#fff; font-variant-numeric:tabular-nums; }
 #np-card .np-zas span:last-child { text-align:right; color:#94a3b8; font-variant-numeric:tabular-nums; }
 #np-card .np-zas small { color:#80958a; }
 #np-card .np-zas.off { opacity:.45; }
 .np-raster { image-rendering:pixelated; image-rendering:crisp-edges; }
-#np-card .np-povr { margin-top:6px; padding-top:6px; border-top:1px solid #1e293b; color:#94a3b8; font-size:11.5px; }
-#np-card .np-broj { display:flex; gap:6px; margin:8px 0 2px; align-items:center; }
-#np-card .np-broj span { color:#94a3b8; font-size:11.5px; margin-right:2px; }
-#np-card .np-broj button { flex:1; padding:7px 0; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-weight:700; cursor:pointer; }
+#np-card .np-povr { margin-top:4px; padding-top:4px; border-top:1px solid #1e293b; color:#94a3b8; font-size:11px; }
+#np-card .np-broj { display:flex; gap:5px; margin:6px 0 2px; align-items:center; }
+#np-card .np-broj span { color:#94a3b8; font-size:11px; margin-right:2px; }
+#np-card .np-broj button { flex:1; padding:5px 0; border-radius:7px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-weight:700; cursor:pointer; }
 #np-card .np-broj button.on { background:#854d0e; border-color:#fbbf24; color:#fff; }
-#np-card .np-akc { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-#np-card .np-akc button, #np-card .np-akc select { flex:1 1 auto; padding:7px 8px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
+#np-card .np-akc { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+#np-card .np-akc button, #np-card .np-akc select { flex:1 1 auto; padding:5px 7px; border-radius:7px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:11.5px; cursor:pointer; }
 #np-card .np-akc button.on { background:#1e3a5f; border-color:#3b82f6; color:#dbeafe; }
 #np-card .np-akc button.glavno { background:#166534; border-color:#22c55e; color:#fff; font-weight:700; }
 #np-card .np-nap { color:#80958a; font-size:11px; margin-top:6px; line-height:1.4; }
