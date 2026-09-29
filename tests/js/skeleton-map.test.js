@@ -157,6 +157,22 @@ t('indikator snimanja na dugmetu Tragovi se osvježi i kad snimanje stane', () =
   const poziv = body.indexOf('_updTragFab()'), rani = body.indexOf('if (!_tragOn)');
   assert.ok(poziv > 0 && poziv < rani, '_updTragFab() mora biti prije ranog return-a');
 });
+t('traka snimanja traga je iznad navigacije; dugmad i prozori idu iznad nje', () => {
+  const v2 = HTML.slice(HTML.indexOf('<style id="ui-v2">'), HTML.indexOf('</style>', HTML.indexOf('<style id="ui-v2">')));
+  assert.ok(/--dock-b:\s*calc\(76px \+ env\(safe-area-inset-bottom/.test(v2), 'sidro poštuje sistemsku traku');
+  const rb = v2.slice(v2.indexOf('#rec-bar {'), v2.indexOf('}', v2.indexOf('#rec-bar {')));
+  assert.ok(/bottom:\s*var\(--dock-b\)/.test(rb) && /z-index:\s*905/.test(rb), 'traka iznad #main-tabs (z 920 je nav, traka je iznad nje po položaju)');
+  assert.ok(/#map-fabs, #zoom-grp \{ bottom: calc\(var\(--dock-b\) \+ var\(--rec-h\)\)/.test(v2), 'dugmad na karti se podignu');
+  assert.ok(HTML.includes("setProperty('--rec-h', (bar.offsetHeight + 10) + 'px')"), 'stvarna visina trake');
+  ['rb-vrijeme', 'rb-duz', 'rb-acc', 'rb-pauza', 'rb-kraj'].forEach(id => assert.ok(HTML.includes('id="' + id + '"'), id));
+  assert.ok(/^var _recSat/m.test(HTML), 'var: _updRecBarUI se zove i prije deklaracije (TDZ)');
+});
+t('dijalozi i modali su tamni, u istom stilu', () => {
+  const v2 = HTML.slice(HTML.indexOf('<style id="ui-v2">'));
+  assert.ok(/#dlg-sheet \{[^}]*\}/.test(v2) && /#dlg-input \{ background: var\(--pn-bg-2\)/.test(v2));
+  assert.ok(v2.includes('#profil-box, #tem-table-box, #poz-sim-box { background: var(--pn-bg)'));
+  assert.ok(HTML.includes('<div id="gstab-card"'), 'GPS stabilizacija bez inline stilova');
+});
 t('meni kartice nemaju oznake "Osnovno spremno"/"Spremno"', () => {
   assert.ok(!/mc-badge/.test(HTML), 'oznake statusa su uklonjene iz menija');
 });

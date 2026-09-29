@@ -892,6 +892,153 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #poz-legend-handle { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; cursor:move; touch-action:none; color:#e2e8f0; font-size:12px; }
 #poz-legend-handle button { min-width:36px; min-height:36px; border:0; border-radius:8px; background:#334155; color:white; cursor:pointer; }
 </style>
+<style id="ui-v2">
+/* ═══ Dizajn sistem plutajućih prozora (v2) ═══════════════════════════════
+   Svi prozori nad kartom dijele iste tokene: tamnozeleno staklo teme, isto
+   zaglavlje, ista dugmad, sidro iznad donje navigacije (+ sistemska traka).
+   Dok traje snimanje traga, prozori i dugmad na karti idu iznad trake. */
+:root {
+  --dock-b: calc(76px + env(safe-area-inset-bottom, 0px));
+  --rec-h: 0px;
+  --pn-bg: rgba(9,20,15,.97);
+  --pn-bg-2: #12241b;
+  --pn-bg-3: #183025;
+  --pn-line: rgba(134,239,172,.16);
+  --pn-r: 18px;
+  --pn-sh: 0 18px 44px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.35);
+  --pn-txt: #ecfdf5; --pn-mut: #9fb3a8; --pn-dim: #6b8577;
+  --ok-a: #16a34a; --ok-b: #15803d; --warn: #f59e0b; --bad: #ef4444;
+}
+
+/* Zajednička ljuska */
+#tragovi-panel, #msr-panel, #ab-loc-popup, #rec-bar, #gstab-card, #dlg-sheet {
+  background: var(--pn-bg); color: var(--pn-txt);
+  border: 1px solid var(--pn-line); border-radius: var(--pn-r);
+  box-shadow: var(--pn-sh);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  font-family: 'DM Sans', Arial, Roboto, sans-serif;
+}
+#tragovi-panel, #msr-panel {
+  left: 10px; right: 10px; max-width: 440px; margin: 0 auto;
+  bottom: calc(var(--dock-b) + var(--rec-h));
+}
+#tragovi-panel { max-height: min(62vh, 520px); }
+#ab-loc-popup { bottom: calc(var(--dock-b) + var(--rec-h)); width: min(360px, calc(100vw - 20px)); max-width: none; padding: 14px 16px 16px; }
+#map-fabs, #zoom-grp { bottom: calc(var(--dock-b) + var(--rec-h)); transition: bottom .2s ease; }
+
+/* Zaglavlja i dugme zatvaranja */
+#tragovi-panel .tp-hdr { padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--pn-line); }
+#tragovi-panel .tp-hdr h2 { font-size: 15px; font-weight: 800; letter-spacing: .1px; }
+#tragovi-panel .tp-close, #np-card .np-hdr button[data-a="x"] {
+  width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center;
+  background: var(--pn-bg-3); border: 1px solid var(--pn-line); color: #cfe3d8; font-size: 16px; line-height: 1;
+}
+#ab-loc-popup .loc-hdr { border-bottom-color: var(--pn-line); }
+#ab-loc-popup .loc-title { font-size: 14px; font-weight: 800; }
+
+/* Lista tragova */
+#tragovi-list { padding: 10px; }
+.treg-row { background: var(--pn-bg-2); border: 1px solid var(--pn-line); border-radius: 14px; padding: 11px 12px; margin-bottom: 8px; }
+.treg-name { font-size: 14.5px; }
+.treg-meta { color: var(--pn-mut); font-variant-numeric: tabular-nums; }
+.treg-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.treg-btns button {
+  min-width: 0; min-height: 36px; background: var(--pn-bg-3); border: 1px solid var(--pn-line);
+  color: #d5e6dc; border-radius: 10px; font-size: 11.5px; font-weight: 650; padding: 6px 4px;
+}
+.treg-btns button:active { transform: scale(.97); }
+.treg-btns button.del-btn { color: #fca5a5; border-color: rgba(239,68,68,.35); background: rgba(127,29,29,.22); }
+.treg-empty { color: var(--pn-dim); }
+
+/* Alat za mjerenje */
+#msr-panel { padding: 12px; }
+#msr-panel .msr-modes button { min-height: 38px; border-radius: 11px; background: var(--pn-bg-2); border-color: var(--pn-line); color: var(--pn-mut); font-weight: 700; }
+#msr-panel .msr-modes button.on { background: rgba(22,101,52,.45); border-color: #4ade80; color: #dcfce7; }
+#msr-panel .msr-stats { font-size: 13px; font-weight: 700; background: var(--pn-bg-2); border-radius: 10px; padding: 8px 10px; }
+#msr-panel .msr-hint { color: var(--pn-dim); }
+#msr-panel .msr-btns button { min-height: 40px; border-radius: 11px; background: var(--pn-bg-3); border-color: var(--pn-line); color: #d5e6dc; font-weight: 700; }
+#msr-panel .msr-btns button.primary { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
+#msr-panel .msr-btns button.stop { background: linear-gradient(135deg, #b91c1c, #991b1b); border-color: #ef4444; color: #fff; }
+
+/* ═══ Traka snimanja traga — kartica iznad navigacije ═══ */
+#rec-bar {
+  left: 10px; right: 10px; bottom: var(--dock-b); max-width: 440px; margin: 0 auto;
+  z-index: 905; flex-direction: column; gap: 8px; padding: 10px 12px 12px;
+  border-color: rgba(248,113,113,.35);
+}
+#rec-bar.paused { border-color: rgba(251,191,36,.4); }
+#rec-bar .rb-top { display: flex; align-items: center; gap: 8px; }
+#rec-bar .rb-lbl { font-size: 11px; font-weight: 800; letter-spacing: .8px; color: #fca5a5; text-transform: uppercase; }
+#rec-bar.paused .rb-lbl { color: #fcd34d; }
+#rec-bar #rb-vrijeme { margin-left: auto; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pn-txt); }
+#rec-bar #rb-go { flex: none; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 11px; background: var(--pn-bg-3); border: 1px solid var(--pn-line); color: var(--pn-txt); font-size: 16px; }
+#rec-bar .rb-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+#rec-bar .rb-stat div { background: var(--pn-bg-2); border-radius: 10px; padding: 5px 4px; text-align: center; }
+#rec-bar .rb-stat b { display: block; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+#rec-bar .rb-stat span { font-size: 10px; color: var(--pn-dim); text-transform: uppercase; letter-spacing: .4px; }
+#rec-bar .rb-akc { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+#rec-bar .rb-akc button { min-height: 44px; border-radius: 12px; font-size: 14px; font-weight: 800; }
+#rec-bar #rb-pauza { background: rgba(146,64,14,.35); color: #fcd34d; border: 1px solid rgba(245,158,11,.45); }
+#rec-bar #rb-kraj { background: linear-gradient(135deg, #b91c1c, #991b1b); color: #fff; border: 1px solid #ef4444; }
+#rb-dot { width: 11px; height: 11px; box-shadow: 0 0 0 4px rgba(239,68,68,.18); }
+#rb-acc.dobro { color: #4ade80; } #rb-acc.srednje { color: #fbbf24; } #rb-acc.lose { color: #f87171; }
+
+/* ═══ GPS stabilizacija ═══ */
+#gstab-overlay { background: rgba(3,10,7,.62); }
+#gstab-card { max-width: 340px; width: 100%; padding: 22px 18px 16px; text-align: center; }
+#gstab-card .gs-spin { width: 52px; height: 52px; margin: 2px auto 14px; border: 4px solid rgba(74,222,128,.18); border-top-color: #4ade80; border-radius: 50%; animation: gstabspin .9s linear infinite; }
+#gstab-card h3 { margin: 0 0 4px; font-size: 16px; font-weight: 800; }
+#gstab-card p { margin: 0 0 14px; font-size: 12.5px; color: var(--pn-mut); line-height: 1.5; }
+#gstab-card .gs-met { display: flex; gap: 6px; margin-bottom: 16px; }
+.gstab-m { background: var(--pn-bg-2); border: 1px solid var(--pn-line); border-radius: 11px; padding: 7px 4px; }
+.gstab-m span { color: var(--pn-dim); letter-spacing: .4px; }
+.gstab-m b { font-size: 16px; font-variant-numeric: tabular-nums; }
+#gstab-card .gs-akc { display: flex; gap: 8px; }
+#gstab-card .gs-akc button { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+#gstab-card .gs-odustani { background: var(--pn-bg-3); border: 1px solid var(--pn-line); color: var(--pn-mut); }
+#gstab-card #gstab-force { background: rgba(146,64,14,.35); border: 1px solid rgba(245,158,11,.45); color: #fcd34d; }
+
+/* ═══ Dijalozi (potvrda, unos, izbor) — tamni, kao ostatak aplikacije ═══ */
+#dlg-overlay { background: rgba(3,10,7,.55); }
+#dlg-sheet { left: 0; right: 0; max-width: 520px; margin: 0 auto; border-radius: 22px 22px 0 0; border-bottom: none; padding: 14px 18px calc(env(safe-area-inset-bottom,0px) + 20px); }
+#dlg-handle { background: rgba(134,239,172,.28); margin-bottom: 14px; }
+#dlg-title { color: var(--pn-txt); font-size: 17px; }
+#dlg-msg { color: var(--pn-mut); }
+#dlg-input { background: var(--pn-bg-2); border: 1.5px solid var(--pn-line); color: var(--pn-txt); }
+#dlg-input:focus { border-color: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.15); }
+.dlg-btn-ok { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); box-shadow: 0 4px 14px rgba(22,163,74,.28); min-height: 48px; }
+.dlg-btn-ok.danger { background: linear-gradient(135deg, #dc2626, #b91c1c); box-shadow: 0 4px 14px rgba(220,38,38,.28); }
+.dlg-btn-cancel { background: var(--pn-bg-3); color: var(--pn-mut); border: 1.5px solid var(--pn-line); min-height: 48px; }
+.dlg-action-btn { background: var(--pn-bg-2); color: var(--pn-txt); border: 1.5px solid var(--pn-line); min-height: 48px; }
+.dlg-action-btn.danger { color: #fca5a5; border-color: rgba(239,68,68,.35); background: rgba(127,29,29,.22); }
+
+/* Popup na karti (trag, KML, mjerenje) — isti tamni stil */
+.leaflet-popup-content-wrapper { background: var(--pn-bg); color: var(--pn-txt); border: 1px solid var(--pn-line); border-radius: 14px; box-shadow: var(--pn-sh); }
+.leaflet-popup-tip { background: var(--pn-bg); }
+.leaflet-container a.leaflet-popup-close-button { color: var(--pn-mut); }
+.trag-popup-meta { color: var(--pn-mut); }
+.trag-popup-btns button { background: var(--pn-bg-3); border: 1px solid var(--pn-line); color: #d5e6dc; border-radius: 8px; min-height: 32px; }
+
+/* Veliki modali (profil visina, tabela atributa, simulacija požara) */
+#profil-modal, #tem-table-modal, #poz-sim-modal { background: rgba(3,10,7,.72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); inset: 0 0 var(--dock-b) 0; }
+#profil-box, #tem-table-box, #poz-sim-box { background: var(--pn-bg); border: 1px solid var(--pn-line); border-radius: var(--pn-r); box-shadow: var(--pn-sh); color: var(--pn-txt); }
+#profil-box > div:first-child h3, #tem-table-box > div:first-child h3, #poz-sim-box > div:first-child h3 { color: var(--pn-txt) !important; font-size: 15px !important; font-weight: 800 !important; }
+#profil-box > div:first-child > button, #tem-table-box > div:first-child > button, #poz-sim-box > div:first-child > button {
+  width: 34px !important; height: 34px !important; padding: 0 !important; border-radius: 11px !important;
+  background: var(--pn-bg-3) !important; border: 1px solid var(--pn-line) !important; color: #cfe3d8 !important; font-size: 16px !important;
+}
+#ttm-search { background: var(--pn-bg-2) !important; border-color: var(--pn-line) !important; min-height: 38px; border-radius: 10px !important; }
+#ttm-scroll { border-color: var(--pn-line) !important; }
+#profil-svg { background: #06100b !important; }
+#poz-sim-box button { min-height: 44px; border-radius: 12px !important; background: var(--pn-bg-3) !important; border: 1px solid var(--pn-line) !important; }
+#poz-sim-box > div:first-child > button { min-height: 0; }
+#tem-table-box > div:nth-child(2) > button { background: var(--pn-bg-3) !important; border-color: var(--pn-line) !important; color: #d5e6dc !important; border-radius: 10px !important; }
+#poz-sim-box #poz-sim-play { background: linear-gradient(135deg, #c2410c, #9a3412) !important; border-color: #fb923c !important; color: #fff !important; }
+
+/* Nagib poligona prati isto sidro kad nije ručno pomjeren */
+#np-card:not([style*="top"]) { bottom: calc(var(--dock-b) + var(--rec-h)); }
+#np-card { border-radius: var(--pn-r); box-shadow: var(--pn-sh); border-color: var(--pn-line); }
+</style>
 </head>
 <body>
 
@@ -1003,10 +1150,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 </div>
 
 <!-- Traka aktivnog snimanja traga -->
-<div id="rec-bar">
-  <button id="rb-go" onclick="_recBarGo()"><span id="rb-dot"></span><span id="rb-info">Trag</span></button>
-  <button id="rb-pauza" onclick="togTragPause()"><span id="rb-pauza-txt">Pauza</span></button>
-  <button id="rb-kraj" onclick="fabSnimTrag()">Završi</button>
+<div id="rec-bar" role="status" aria-live="polite">
+  <div class="rb-top"><span id="rb-dot"></span><span class="rb-lbl" id="rb-lbl">Snimanje traga</span><b id="rb-vrijeme">0:00</b><button id="rb-go" onclick="_recBarGo()" aria-label="Centriraj na moju poziciju">🎯</button></div>
+  <div class="rb-stat"><div><b id="rb-duz">0 m</b><span>dužina</span></div><div><b id="rb-info">0</b><span>tačaka</span></div><div><b id="rb-acc">—</b><span>GPS tačnost</span></div></div>
+  <div class="rb-akc"><button id="rb-pauza" onclick="togTragPause()"><span id="rb-pauza-txt">⏸ Pauza</span></button><button id="rb-kraj" onclick="fabSnimTrag()">⏹ Završi i sačuvaj</button></div>
 </div>
 
 <!-- Upozorenje: app u pozadini (samo iOS/web, APK ima foreground servis) -->
@@ -2370,18 +2517,18 @@ function _buildGpsStabOverlay() {
   const d = document.createElement('div');
   d.id = 'gstab-overlay';
   d.innerHTML = `
-    <div style="background:#0f172a;border:1.5px solid #1e3a5f;border-radius:16px;padding:22px 20px 16px;max-width:330px;width:100%;box-shadow:0 14px 44px rgba(0,0,0,0.6);text-align:center;">
-      <div style="width:50px;height:50px;margin:2px auto 14px;border:4px solid #1e3a5f;border-top-color:#38bdf8;border-radius:50%;animation:gstabspin 0.9s linear infinite;"></div>
-      <div style="font-size:15px;font-weight:bold;color:#e2e8f0;margin-bottom:4px;">📡 Stabiliziram GPS signal…</div>
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:14px;line-height:1.5;">Sačekaj da signal prestane lutati — snimanje počinje čim se smiri.</div>
-      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px;">
-        <div class="gstab-m"><span>Tačnost</span><b id="gstab-acc" style="color:#475569;">—</b></div>
-        <div class="gstab-m"><span>Lutanje</span><b id="gstab-spr" style="color:#475569;">—</b></div>
-        <div class="gstab-m"><span>Fiksevi</span><b id="gstab-cnt" style="color:#475569;">0/${GPS_STAB_NEED}</b></div>
+    <div id="gstab-card" role="dialog" aria-label="Stabilizacija GPS signala">
+      <div class="gs-spin"></div>
+      <h3>📡 Stabiliziram GPS signal…</h3>
+      <p>Sačekaj da signal prestane lutati — snimanje počinje čim se smiri.</p>
+      <div class="gs-met">
+        <div class="gstab-m"><span>Tačnost</span><b id="gstab-acc" style="color:#6b8577;">—</b></div>
+        <div class="gstab-m"><span>Lutanje</span><b id="gstab-spr" style="color:#6b8577;">—</b></div>
+        <div class="gstab-m"><span>Fiksevi</span><b id="gstab-cnt" style="color:#6b8577;">0/${GPS_STAB_NEED}</b></div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="_gpsStabCancel()" style="flex:1;padding:10px;background:#1e293b;border:1px solid #334155;border-radius:9px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;">Odustani</button>
-        <button id="gstab-force" onclick="_gpsStabForce()" style="display:none;flex:1;padding:10px;background:#422006;border:1px solid #92400e;border-radius:9px;color:#fbbf24;font-size:13px;font-weight:600;cursor:pointer;">Započni svejedno</button>
+      <div class="gs-akc">
+        <button class="gs-odustani" onclick="_gpsStabCancel()">Odustani</button>
+        <button id="gstab-force" onclick="_gpsStabForce()" style="display:none;">Započni svejedno</button>
       </div>
     </div>`;
   document.body.appendChild(d);
@@ -2492,7 +2639,7 @@ async function fabSnimTrag() {
 function _fabSnimTragBegin() {
   if (!gpsOn) startGPS();
   _recFreeView = false;
-  _tragOn = true; _tragPaused = false; _tragPts = []; _tragBuf = []; _tragLastT = Date.now();
+  _tragOn = true; _tragPaused = false; _tragPts = []; _tragBuf = []; _tragLastT = Date.now(); _recT0 = Date.now();
   _nativeReplayLast.trag = _tragLastT;
   if (!_crashSaveTrag()) { _tragOn = false; showToast('⚠ Nema prostora za sigurno snimanje'); return; }
   if (_tragLine) { map.removeLayer(_tragLine); _tragLine = null; }
@@ -2539,14 +2686,29 @@ function _updRecBarUI() {
   _updTragFab(); // prije ranog return-a: indikator se mora ugasiti i kad snimanje stane
   const bar = document.getElementById('rec-bar');
   if (!bar) return;
-  if (!_tragOn) { bar.classList.remove('show'); return; }
-  bar.classList.add('show');
+  if (!_tragOn) { bar.classList.remove('show'); document.body.classList.remove('rec-on'); document.documentElement.style.removeProperty('--rec-h'); clearInterval(_recSat); _recSat = null; return; }
+  bar.classList.add('show'); document.body.classList.add('rec-on');
+  // Prozori i dugmad na karti idu iznad trake — stvarna visina, ne pretpostavka.
+  document.documentElement.style.setProperty('--rec-h', (bar.offsetHeight + 10) + 'px');
   bar.classList.toggle('paused', _tragPaused);
-  const info = document.getElementById('rb-info');
-  if (info) info.textContent = (_tragPaused ? '⏸ pauzirano · ' : '') + _tragPts.length + ' tač. · ' + _tragFmtLen(_tragCalcLen(_tragPts));
-  const ptxt = document.getElementById('rb-pauza-txt');
-  if (ptxt) ptxt.textContent = _tragPaused ? 'Nastavi' : 'Pauza';
+  const txt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  txt('rb-lbl', _tragPaused ? 'Pauzirano' : 'Snimanje traga');
+  txt('rb-info', String(_tragPts.length));
+  txt('rb-duz', _tragFmtLen(_tragCalcLen(_tragPts)));
+  txt('rb-pauza-txt', _tragPaused ? '▶ Nastavi' : '⏸ Pauza');
+  const acc = document.getElementById('rb-acc'), ac = lastP && Number.isFinite(lastP.ac) ? Math.round(lastP.ac) : null;
+  if (acc) { acc.textContent = ac === null ? '—' : '±' + ac + ' m'; acc.className = ac === null ? '' : ac <= 8 ? 'dobro' : ac <= 20 ? 'srednje' : 'lose'; }
+  _recSatOsvjezi();
+  if (!_recSat) _recSat = setInterval(() => { if (_tragOn) _recSatOsvjezi(); }, 1000);
   _updGpsSwitch();
+}
+// Proteklo vrijeme od prve tačke (preživi i obnovu poslije pada app-e).
+var _recSat = null, _recT0 = 0;
+function _recSatOsvjezi() {
+  const el = document.getElementById('rb-vrijeme'); if (!el) return;
+  const t0 = (_tragPts[0] && _tragPts[0][3]) || _recT0 || Date.now();
+  const s = Math.max(0, Math.floor((Date.now() - t0) / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+  el.textContent = (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0');
 }
 function _recBarGo() { /* traka je već na karti — samo fokusiraj trenutnu poziciju */ if (lastP) map.panTo([lastP.la, lastP.lo]); }
 
