@@ -27,6 +27,11 @@
   `zima.json` (Sentinel-2 dec–mart, `tools/zima_priprema.py`, ~20 min u CI-ju).
   Prave se na istoj data grani; poslije CI-ja fajlove prekopirati na `codex-forest`
   (`git show origin/<grana>:static/data/...`).
+- **Zimski snimak u APK-u je samo pregled z8–11.** Detalj z12–14 se preuzima u app-u
+  (`static/js/zima.js`): paketi `paketi/zima/{područje}_z{12,13,14}.zip` na data grani
+  (`tools/zima_paketi.py`, manifest `static/data/zima_paketi.json`) sa
+  raw.githubusercontent.com (CORS *) → Cache Storage `usf-zima-<područje>`. Nove
+  pločice na data grani ⇒ ponovo napraviti pakete i manifest kopirati na `codex-forest`.
 - **Klik na kartu** ide kroz `_kartaKlikIzvor` (index.html), ne kroz DOM
   događaje slojeva: u canvas modu gornji pane pojede dodir donjeg. Novi sloj koji
   treba popup registruje izvor i ima `pointerEvents='none'` na svom pane-u.

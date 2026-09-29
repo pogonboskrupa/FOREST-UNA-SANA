@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '1.6.1';
+const APP_VERSION = '1.6.2';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -33,6 +33,8 @@ const APP_SHELL = [
   './static/js/nagib-poligon.js',
   './static/js/tacke.js',
   './static/js/usk-slojevi.js',
+  './static/js/zima.js',
+  './static/data/zima_paketi.json',
   './static/data/tlo_usk.tif',
   './static/data/tlo_usk.json',
   './static/data/zima.json',

@@ -130,21 +130,71 @@
       vise: komp ? `<div class="uk-komp-nasl">Sastav jedinice (gornji sloj dominantnog tla gore)</div><div class="uk-komp-lista">${komp}</div>` : '' });
   }
 
-  // ── Zimski snimak ────────────────────────────────────────────────────
+  // ── Zimski snimak (sloj u static/js/zima.js; ovdje prikaz i preuzimanje) ──
   let zimaMeta = null, zimaSloj = null;
   async function crtajZimu() {
     if (zimaSloj) { map.removeLayer(zimaSloj); zimaSloj = null; }
     if (!st.zima.on) return;
     try {
       if (!zimaMeta) zimaMeta = await fetch(FAJL.zima).then(r => { if (!r.ok) throw new Error('zimski snimak još nije u aplikaciji'); return r.json(); });
+      const man = await root.USKZima.manifest();
       const [w, s, e, n] = zimaMeta.obuhvat;
-      zimaSloj = L.tileLayer('static/data/zima/{z}/{x}/{y}.webp', {
-        pane: 'ukZimaPane', minZoom: 0, maxZoom: 22, minNativeZoom: zimaMeta.zoom[0], maxNativeZoom: zimaMeta.zoom[1],
-        bounds: L.latLngBounds([s, w], [n, e]).pad(0.02), opacity: st.zima.op / 100, errorTileUrl: PROZIRNO,
-        attribution: 'Copernicus Sentinel-2 (ESA)'
-      }).addTo(map);
-      status('uk-zima-status', `${zimaMeta.scena} zimskih snimaka (${zimaMeta.mjeseci}), ${zimaMeta.od} – ${zimaMeta.do} · 10 m · offline`);
+      zimaSloj = root.USKZima.napraviSloj({ pane: 'ukZimaPane', ugrMax: man.ugradjeno[1], bounds: L.latLngBounds([s, w], [n, e]).pad(0.02), opacity: st.zima.op / 100 }).addTo(map);
+      status('uk-zima-status', `${zimaMeta.scena} zimskih snimaka (${zimaMeta.mjeseci}), ${zimaMeta.od} – ${zimaMeta.do}`);
+      zimaUi();
     } catch (err) { status('uk-zima-status', '⚠ ' + err.message); }
+  }
+  const ZOOM_OPIS = { 12: 'z12 · ~38 m (pregled šume)', 13: 'z13 · ~19 m (odjeli, veće sječine)', 14: 'z14 · 10 m (puna rezolucija, vlake)' };
+  async function zimaUi() {
+    const Z = root.USKZima, selP = document.getElementById('zp-pod'), selZ = document.getElementById('zp-zoom');
+    if (!Z || !selP) return;
+    const man = await Z.manifest(), s = Z.stanje();
+    if (!selP.options.length) {
+      selP.innerHTML = man.podrucja.map(p => `<option value="${p.id}">${esc(p.naziv)}${p.tip === 'grad' ? ' (grad)' : ''}</option>`).join('');
+      selZ.innerHTML = [12, 13, 14].map(z => `<option value="${z}" ${z === 14 ? 'selected' : ''}>${ZOOM_OPIS[z]}</option>`).join('');
+    }
+    const p = man.podrucja.find(x => x.id === selP.value), doZ = Number(selZ.value), imam = s[p.id] || 11;
+    const b = Z.velicina(p, imam, doZ), btn = document.getElementById('zp-preuzmi');
+    btn.disabled = Z.u_toku() || b === 0;
+    btn.textContent = b === 0 ? '✓ Već preuzeto do z' + imam : '⬇ Preuzmi · ' + Z.mb(b);
+    const lista = document.getElementById('zp-lista');
+    const red = Object.entries(s).map(([id, z]) => {
+      const q = man.podrucja.find(x => x.id === id); if (!q) return '';
+      return `<div class="zp-stavka"><div><b>${esc(q.naziv)}</b><small>do z${z} · ${Z.mb(Z.velicina(q, 11, z))} · radi bez interneta</small></div><button onclick="USKSlojevi.zimaPrikazi('${id}')" aria-label="Prikaži na karti">🗺</button><button class="opasno" onclick="USKSlojevi.zimaObrisi('${id}')" aria-label="Obriši paket">🗑</button></div>`;
+    }).join('');
+    const ukupno = await Z.zauzece();
+    lista.innerHTML = red ? `<div class="zp-nasl">Preuzeto na uređaju · ${Z.mb(ukupno)}</div>${red}` : '<div class="zp-prazno">Još ništa nije preuzeto. Bez paketa se detalj (z12–14) učitava s interneta dok ima veze, a offline se vidi pregled do z11.</div>';
+  }
+  async function zimaPreuzmi() {
+    const Z = root.USKZima, id = document.getElementById('zp-pod').value, doZ = Number(document.getElementById('zp-zoom').value);
+    const box = document.getElementById('zp-napredak'), traka = box.querySelector('u'), txt = box.querySelector('span');
+    box.hidden = false; document.getElementById('zp-preuzmi').disabled = true;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
+    try {
+      await Z.preuzmi(id, doZ, (f, t) => { traka.style.width = Math.round(f * 100) + '%'; txt.textContent = t; });
+      if (typeof showToast === 'function') showToast('❄ Zimski snimak preuzet — radi bez interneta');
+      if (zimaSloj) zimaSloj.redraw();
+    } catch (e) {
+      const prekid = e && e.name === 'AbortError';
+      txt.textContent = prekid ? 'Prekinuto — završeni nivoi ostaju sačuvani' : '⚠ ' + (e.message || e) + (navigator.onLine === false ? ' (nema interneta)' : '');
+      if (typeof showToast === 'function') showToast(prekid ? 'Preuzimanje prekinuto' : '⚠ Preuzimanje nije uspjelo');
+    }
+    setTimeout(() => { if (!Z.u_toku()) box.hidden = true; }, 2500);
+    zimaUi();
+  }
+  async function zimaObrisi(id) {
+    const man = await root.USKZima.manifest(), p = man.podrucja.find(x => x.id === id);
+    const ok = typeof _dlgConfirm === 'function' ? await _dlgConfirm('Obrisati preuzeti zimski snimak: ' + (p ? p.naziv : id) + '?', { title: 'Obriši paket', danger: true, okLabel: 'Obriši' }) : true;
+    if (!ok) return;
+    await root.USKZima.obrisi(id);
+    if (zimaSloj) zimaSloj.redraw();
+    zimaUi();
+  }
+  async function zimaPrikazi(id) {
+    const man = await root.USKZima.manifest(), p = man.podrucja.find(x => x.id === id); if (!p) return;
+    if (!st.zima.on) prekidac('zima', true);
+    if (typeof switchMainTab === 'function') switchMainTab('karta');
+    const [w, s, e, n] = p.obuhvat; map.fitBounds([[s, w], [n, e]]);
   }
 
   function status(id, t) { const el = document.getElementById(id); if (el) el.textContent = t; }
@@ -201,7 +251,7 @@
     });
   }
 
-  root.USKSlojevi = { prekidac, prozirnost, ispuna, nazivi, stanje: () => JSON.parse(JSON.stringify(st)), tloPodaci, tloNa };
+  root.USKSlojevi = { zimaUi, zimaPreuzmi, zimaObrisi, zimaPrikazi, prekidac, prozirnost, ispuna, nazivi, stanje: () => JSON.parse(JSON.stringify(st)), tloPodaci, tloNa };
   if (typeof L !== 'undefined' && imaKartu()) {
     panovi(); registruj(); uiSync();
     for (const k of ['granice', 'tlo', 'zima']) if (st[k].on) CRTAJ[k]();

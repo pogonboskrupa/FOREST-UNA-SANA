@@ -1,0 +1,263 @@
+{
+ "verzija": 1,
+ "izvor": "Copernicus Sentinel-2 L2A (ESA) — zimski mozaik, 10 m",
+ "baza": "https://raw.githubusercontent.com/pogonboskrupa/FOREST-UNA-SANA/claude/practical-pasteur-p2npth/paketi/zima/",
+ "ugradjeno": [
+  8,
+  11
+ ],
+ "podrucja": [
+  {
+   "id": "usk",
+   "naziv": "Cijeli kanton",
+   "tip": "kanton",
+   "obuhvat": [
+    15.72868,
+    44.25006,
+    16.901,
+    45.23111
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "usk_z12.zip",
+     "plocica": 121,
+     "bajtova": 1379686
+    },
+    "13": {
+     "fajl": "usk_z13.zip",
+     "plocica": 422,
+     "bajtova": 4465948
+    },
+    "14": {
+     "fajl": "usk_z14.zip",
+     "plocica": 1548,
+     "bajtova": 12459758
+    }
+   }
+  },
+  {
+   "id": "bihac",
+   "naziv": "Bihać",
+   "tip": "grad",
+   "obuhvat": [
+    15.72868,
+    44.25006,
+    16.31009,
+    44.97168
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "bihac_z12.zip",
+     "plocica": 42,
+     "bajtova": 468980
+    },
+    "13": {
+     "fajl": "bihac_z13.zip",
+     "plocica": 129,
+     "bajtova": 1300092
+    },
+    "14": {
+     "fajl": "bihac_z14.zip",
+     "plocica": 420,
+     "bajtova": 3195524
+    }
+   }
+  },
+  {
+   "id": "bosanska-krupa",
+   "naziv": "Bosanska Krupa",
+   "tip": "grad",
+   "obuhvat": [
+    15.99617,
+    44.73078,
+    16.38432,
+    45.07292
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "bosanska-krupa_z12.zip",
+     "plocica": 24,
+     "bajtova": 320058
+    },
+    "13": {
+     "fajl": "bosanska-krupa_z13.zip",
+     "plocica": 73,
+     "bajtova": 826850
+    },
+    "14": {
+     "fajl": "bosanska-krupa_z14.zip",
+     "plocica": 240,
+     "bajtova": 2037232
+    }
+   }
+  },
+  {
+   "id": "bosanski-petrovac",
+   "naziv": "Bosanski Petrovac",
+   "tip": "općina",
+   "obuhvat": [
+    16.06968,
+    44.46309,
+    16.65628,
+    44.76264
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "bosanski-petrovac_z12.zip",
+     "plocica": 31,
+     "bajtova": 386342
+    },
+    "13": {
+     "fajl": "bosanski-petrovac_z13.zip",
+     "plocica": 94,
+     "bajtova": 1064348
+    },
+    "14": {
+     "fajl": "bosanski-petrovac_z14.zip",
+     "plocica": 313,
+     "bajtova": 2721460
+    }
+   }
+  },
+  {
+   "id": "buzim",
+   "naziv": "Bužim",
+   "tip": "općina",
+   "obuhvat": [
+    15.96267,
+    44.98261,
+    16.17058,
+    45.13034
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "buzim_z12.zip",
+     "plocica": 9,
+     "bajtova": 136900
+    },
+    "13": {
+     "fajl": "buzim_z13.zip",
+     "plocica": 23,
+     "bajtova": 282972
+    },
+    "14": {
+     "fajl": "buzim_z14.zip",
+     "plocica": 65,
+     "bajtova": 573714
+    }
+   }
+  },
+  {
+   "id": "cazin",
+   "naziv": "Cazin",
+   "tip": "grad",
+   "obuhvat": [
+    15.74119,
+    44.88342,
+    16.07128,
+    45.09294
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "cazin_z12.zip",
+     "plocica": 15,
+     "bajtova": 225302
+    },
+    "13": {
+     "fajl": "cazin_z13.zip",
+     "plocica": 47,
+     "bajtova": 595232
+    },
+    "14": {
+     "fajl": "cazin_z14.zip",
+     "plocica": 159,
+     "bajtova": 1406654
+    }
+   }
+  },
+  {
+   "id": "kljuc",
+   "naziv": "Ključ",
+   "tip": "općina",
+   "obuhvat": [
+    16.52121,
+    44.49751,
+    16.901,
+    44.68297
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "kljuc_z12.zip",
+     "plocica": 17,
+     "bajtova": 186734
+    },
+    "13": {
+     "fajl": "kljuc_z13.zip",
+     "plocica": 45,
+     "bajtova": 462148
+    },
+    "14": {
+     "fajl": "kljuc_z14.zip",
+     "plocica": 155,
+     "bajtova": 1171662
+    }
+   }
+  },
+  {
+   "id": "sanski-most",
+   "naziv": "Sanski Most",
+   "tip": "općina",
+   "obuhvat": [
+    16.31494,
+    44.6315,
+    16.85833,
+    44.86502
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "sanski-most_z12.zip",
+     "plocica": 28,
+     "bajtova": 334278
+    },
+    "13": {
+     "fajl": "sanski-most_z13.zip",
+     "plocica": 83,
+     "bajtova": 890428
+    },
+    "14": {
+     "fajl": "sanski-most_z14.zip",
+     "plocica": 291,
+     "bajtova": 2363324
+    }
+   }
+  },
+  {
+   "id": "velika-kladusa",
+   "naziv": "Velika Kladuša",
+   "tip": "općina",
+   "obuhvat": [
+    15.76461,
+    45.05586,
+    16.10516,
+    45.23111
+   ],
+   "pojasevi": {
+    "12": {
+     "fajl": "velika-kladusa_z12.zip",
+     "plocica": 15,
+     "bajtova": 169670
+    },
+    "13": {
+     "fajl": "velika-kladusa_z13.zip",
+     "plocica": 44,
+     "bajtova": 464454
+    },
+    "14": {
+     "fajl": "velika-kladusa_z14.zip",
+     "plocica": 144,
+     "bajtova": 1146718
+    }
+   }
+  }
+ ]
+}

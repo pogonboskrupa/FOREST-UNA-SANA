@@ -85,11 +85,20 @@ t('zimski snimak: pločice z8–14 unutar USK, metapodaci, sloj iznad offline po
   assert.deepStrictEqual(z.zoom, [8, 14]);
   assert.ok(z.scena >= 10 && z.pločica > 1000, 'dovoljno scena i pločica');
   const dir = path.join(__dirname, '../../static/data/zima');
-  for (let k = z.zoom[0]; k <= z.zoom[1]; k++) assert.ok(fs.existsSync(path.join(dir, String(k))), 'zoom ' + k);
+  const man = JSON.parse(R('static/data/zima_paketi.json'));
+  for (let k = z.zoom[0]; k <= z.zoom[1]; k++) assert.strictEqual(fs.existsSync(path.join(dir, String(k))), k <= man.ugradjeno[1], 'ugrađen samo pregled do z' + man.ugradjeno[1] + ' (zoom ' + k + ')');
+  assert.strictEqual(man.podrucja.length, 9, 'cijeli kanton + 8 općina/gradova');
+  for (const p of man.podrucja) for (const zz of ['12', '13', '14']) assert.ok(p.pojasevi[zz].bajtova > 0 && p.pojasevi[zz].fajl === p.id + '_z' + zz + '.zip', p.id + ' z' + zz);
+  assert.ok(/^https:\/\/raw\.githubusercontent\.com\//.test(man.baza), 'paketi sa raw.githubusercontent.com (CORS *)');
   const f = path.join(dir, '10/558/369.webp'), b = fs.readFileSync(f);
   assert.ok(b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP', 'WebP pločica');
   const js = R('static/js/usk-slojevi.js');
-  assert.ok(js.includes("L.tileLayer('static/data/zima/{z}/{x}/{y}.webp'") && js.includes('maxNativeZoom: zimaMeta.zoom[1]') && js.includes('errorTileUrl: PROZIRNO'));
+  assert.ok(js.includes('root.USKZima.napraviSloj(') && js.includes("onclick=\"USKSlojevi.zimaObrisi('${id}')\""));
+  const zj = R('static/js/zima.js');
+  assert.ok(zj.includes("caches.match(kljuc(z, x, y))") && zj.includes('_zipUlazi(buf)') && zj.includes("caches.delete(KES + id)"), 'paketi u Cache Storage, brisanje po području');
+  assert.ok(zj.includes('for (let z = c.z, k = 0; z >= Z_MIN; z--, k++)'), 'nedostajući nivo → uvećan grublji');
+  assert.ok(zj.includes('setTimeout(() => ctl.abort(), 6000)') && zj.includes('vezaLosa()'), 'online pločice s rokom, preskoči na slaboj vezi');
+  ['id="zp-pod"', 'id="zp-zoom"', 'id="zp-preuzmi"', 'USKZima.prekini()', '<script src="static/js/zima.js">'].forEach(x => assert.ok(HTML.includes(x), x));
 });
 
 (async () => {
