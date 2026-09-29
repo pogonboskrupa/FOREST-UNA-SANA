@@ -1,0 +1,38 @@
+{
+ "izvor": "ISRIC SoilGrids 2.0 — WRB MostProbable, 250 m (CC BY 4.0)",
+ "klasifikacija": "WRB 2006 (FAO; nasljednik FAO-UNESCO legende)",
+ "klase": [
+  {
+   "kod": 7,
+   "wrb": "Cambisols",
+   "naziv": "Kambisoli (smeđa tla)",
+   "boja": "#8e3a23",
+   "ha": 407880,
+   "udio": 0.9734
+  },
+  {
+   "kod": 19,
+   "wrb": "Luvisols",
+   "naziv": "Luvisoli (lesivirana tla)",
+   "boja": "#ac4fc5",
+   "ha": 5827,
+   "udio": 0.0139
+  },
+  {
+   "kod": 17,
+   "wrb": "Leptosols",
+   "naziv": "Leptosoli (plitka tla)",
+   "boja": "#7ccd5f",
+   "ha": 4641,
+   "udio": 0.0111
+  },
+  {
+   "kod": 12,
+   "wrb": "Fluvisols",
+   "naziv": "Fluvisoli (aluvijalna tla)",
+   "boja": "#a2705c",
+   "ha": 692,
+   "udio": 0.0017
+  }
+ ]
+}
