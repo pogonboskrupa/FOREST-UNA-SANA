@@ -77,7 +77,7 @@ t('lokalni DEM: bilinearna visina, nodata, Terrarium kodiranje i nagib/ekspozici
 t('integracija: DEM rezerva u Terrarium dohvatu, dugme izvještaja, izvoz u panelima, fajlovi u APK-u i kešu', () => {
   const terr = HTML.slice(HTML.indexOf('async function _getTerrariumTile'), HTML.indexOf('function _terrariumDecodeTile'));
   assert.ok(terr.includes('USFDem.terrariumPlocica') && terr.includes('if (!blob) return lokalno();'));
-  assert.ok(HTML.includes('📊 Izvještaj odjela') && HTML.includes('_odjelIzvjestaj(${L.stamp(layer)})'));
+  assert.ok(HTML.includes('📊 Izvještaj odjela') && HTML.includes('_odjelIzvjestaj(${id})') && HTML.includes('id = L.stamp(layer)'));
   ["_izvoz('pozari','kml')", "_izvoz('poremecaji','geojson')", "_izvozDugmad('susenje')"].forEach(x => assert.ok(HTML.includes(x), x));
   const sw = fs.readFileSync(path.join(__dirname, '../../sw.js'), 'utf8');
   const kop = fs.readFileSync(path.join(__dirname, '../../android/copy-assets.sh'), 'utf8');

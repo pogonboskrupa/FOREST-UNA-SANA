@@ -200,6 +200,9 @@ if (typeof window !== 'undefined' && typeof map !== 'undefined') (function () {
   // Sačuvana mjerenja ostaju na karti (ispod aktivnog mjerenja, klik otvara).
   map.createPane('nagibSvPane');
   map.getPane('nagibSvPane').style.zIndex = '453';
+  // Bez DOM klikova: canvas ovog pane-a bi prekrio tragove ispod. Klik ide kroz
+  // zajednički _kartaKlikIzvor (index.html).
+  map.getPane('nagibSvPane').style.pointerEvents = 'none';
   map.createPane('nagibPolPane');
   map.getPane('nagibPolPane').style.zIndex = '455';
   map.getPane('nagibPolPane').style.pointerEvents = 'none';
@@ -640,8 +643,7 @@ body.np-open #terrain-map-legend { display:none !important; }
       if (z.naKarti === false || !Array.isArray(z.ring) || z.ring.length < 3) return;
       if (stanje && stanje.sid === z.id) return;
       const k = z.sazetak ? klasaOd(z.sazetak.st) : null, boja = k ? k.color : '#94a3b8';
-      const otvori = () => { if (!crt) pocni(z.ring, z.naziv, z); };
-      L.polygon(z.ring, { pane: 'nagibSvPane', color: boja, weight: 2, fillColor: boja, fillOpacity: 0.12 }).on('click', otvori).addTo(svGrp);
+      L.polygon(z.ring, { pane: 'nagibSvPane', color: boja, weight: 2, fillColor: boja, fillOpacity: 0.12, interactive: false }).addTo(svGrp);
       (z.linije || []).forEach(l => {
         if (!Number.isFinite(l.ha) || !Number.isFinite(l.hb)) return;
         const kl = klasaOd(npNagibLinije(l.ha, l.hb, npDist(l.a, l.b)).st);
@@ -649,9 +651,35 @@ body.np-open #terrain-map-legend { display:none !important; }
       });
       const c = L.polygon(z.ring).getBounds().getCenter();
       const txt = String(z.naziv).replace(/[&<>"']/g, '') + (z.sazetak ? ' · ' + fmt(z.sazetak.pct, 0) + ' %' : '');
-      L.marker(c, { pane: 'nagibSvPane', icon: L.divIcon({ className: '', html: `<span class="np-lbl" style="background:${boja}">${txt}</span>`, iconSize: [0, 0] }) }).on('click', otvori).addTo(svGrp);
+      L.marker(c, { pane: 'nagibSvPane', interactive: false, icon: L.divIcon({ className: '', html: `<span class="np-lbl" style="background:${boja}">${txt}</span>`, iconSize: [0, 0] }) }).addTo(svGrp);
     });
   }
+  function svPopup(z) {
+    const k = z.sazetak ? klasaOd(z.sazetak.st) : null;
+    const redovi = [['Površina', fmt(z.ha || 0, 2) + ' ha']];
+    if (z.sazetak) redovi.push(['Prosjek linija', fmt(z.sazetak.pct, 0) + ' %']);
+    if (z.povrsina) redovi.push(['Prosjek površine', fmt(z.povrsina.pct, 0) + ' %']);
+    redovi.push(['Linija niz padinu', String((z.linije || []).length)]);
+    const traka = Array.isArray(z.rasponi) ? `<div class="np-traka pk-traka">${z.rasponi.map(r => `<u style="width:${(r.udio * 100).toFixed(1)}%;background:${r.color}" title="${String(r.label).replace(/[<>&"]/g, '')}"></u>`).join('')}</div>` : '';
+    return _popKartica({ ikona: '📐', boja: k ? k.color : '#94a3b8', naslov: z.naziv, tip: 'Nagib poligona', meta: z.datum ? new Date(z.datum).toLocaleDateString('bs-BA') : '', redovi, vise: traka, dugmad: [
+      { t: '✎ Otvori mjerenje', on: `npSv('otvori','${z.id}')`, v: 'glavno' },
+      { t: '⤓ CSV', on: `npSv('csv','${z.id}')` },
+      { t: '○ Sakrij', on: `npSv('sakrij','${z.id}')` }
+    ] });
+  }
+  window.npSv = (a, id) => {
+    const list = svCitaj(), z = list.find(x => x.id === id); if (!z) return;
+    map.closePopup();
+    if (a === 'otvori') pocni(z.ring, z.naziv, z);
+    else if (a === 'csv') csvIz(z.naziv, z.linije || []);
+    else if (a === 'sakrij') { z.naKarti = false; if (svPisi(list)) { npRenderLista(); svCrtaj(); } }
+  };
+  if (typeof _kartaKlikIzvor === 'function') _kartaKlikIzvor((ll, kp) => svCitaj().filter(z => z.naKarti !== false && Array.isArray(z.ring) && z.ring.length >= 3 && !(stanje && stanje.sid === z.id)).map(z => {
+    const lls = z.ring.map(p => L.latLng(p[0], p[1]));
+    const otvori = at => { if (!crt) L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng(at).setContent(svPopup(z)).openOn(map); };
+    if (npUnutra(ll.lat, ll.lng, z.ring)) return { vrsta: 'poligon', pov: _pxPovrsina(lls), otvori };
+    return { vrsta: 'linija', d: _pxDoLinije(kp, lls, true), otvori };
+  }));
   function npRenderLista() {
     const el = document.getElementById('ng-lista'); if (!el) return;
     const list = svCitaj();

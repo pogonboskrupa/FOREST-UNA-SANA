@@ -1035,6 +1035,49 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #tem-table-box > div:nth-child(2) > button { background: var(--pn-bg-3) !important; border-color: var(--pn-line) !important; color: #d5e6dc !important; border-radius: 10px !important; }
 #poz-sim-box #poz-sim-play { background: linear-gradient(135deg, #c2410c, #9a3412) !important; border-color: #fb923c !important; color: #fff !important; }
 
+/* ═══ Kartica u popupu na karti (tragovi, KML/SHP, mjerenja, nagibi) ═══ */
+.pk-pop .leaflet-popup-content { margin: 12px 12px 12px; width: auto !important; min-width: 220px; }
+.pk-pop .leaflet-popup-content-wrapper { padding: 0; border-radius: 16px; }
+.pk-pop a.leaflet-popup-close-button { top: 8px !important; right: 8px !important; width: 30px !important; height: 30px !important; border-radius: 10px; background: var(--pn-bg-3); border: 1px solid var(--pn-line); color: #cfe3d8 !important; font: 18px/28px Arial, sans-serif !important; text-align: center; }
+.pk { font-family: 'DM Sans', Arial, sans-serif; color: var(--pn-txt); }
+.pk-hdr { display: flex; align-items: center; gap: 10px; padding-right: 34px; margin-bottom: 10px; }
+.pk-ico { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-size: 18px;
+  background: color-mix(in srgb, var(--pk-boja) 22%, #0c1a13); border: 1px solid color-mix(in srgb, var(--pk-boja) 55%, transparent); }
+.pk-nasl { min-width: 0; }
+.pk-nasl b { display: block; font-size: 15px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.pk-nasl small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--pn-mut); }
+.pk-redovi { background: var(--pn-bg-2); border: 1px solid var(--pn-line); border-radius: 12px; padding: 4px 10px; margin-bottom: 10px; }
+.pk-red { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 12.5px; border-top: 1px solid rgba(134,239,172,.08); }
+.pk-red:first-child { border-top: none; }
+.pk-red span { color: var(--pn-mut); }
+.pk-red b { font-weight: 750; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pk-opis { font-size: 12.5px; line-height: 1.5; color: #d5e6dc; max-height: 260px; overflow: auto; margin-bottom: 10px; overflow-wrap: anywhere; }
+.pk-opis table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.pk-opis td, .pk-opis th { border: 1px solid var(--pn-line); padding: 3px 6px; text-align: left; }
+.pk-opis a { color: #86efac; }
+.pk-opis img, .pk img.pk-slika { display: block; width: 100%; max-width: 100%; height: auto; max-height: 220px; object-fit: cover; border-radius: 10px; margin: 6px 0; cursor: zoom-in; background: var(--pn-bg-2); min-height: 40px; }
+.pk img.pk-slika.nema { cursor: default; min-height: 0; font-size: 11px; color: var(--pn-dim); padding: 6px; }
+.pk-klizac { display: block; font-size: 12px; color: var(--pn-mut); margin-bottom: 10px; }
+.pk-klizac span { float: right; color: var(--pn-txt); font-weight: 700; }
+.pk-klizac input { width: 100%; margin-top: 6px; accent-color: #4ade80; }
+.pk-traka { height: 10px; margin: 0 0 10px; }
+.pk-akc { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; }
+.pk-akc button { min-height: 38px; padding: 6px 8px; border-radius: 11px; border: 1px solid var(--pn-line); background: var(--pn-bg-3); color: #d5e6dc; font: 700 12px 'DM Sans', Arial, sans-serif; cursor: pointer; }
+.pk-akc button:active { transform: scale(.97); }
+.pk-akc button.glavno { grid-column: 1 / -1; background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
+.pk-akc button.opasno { color: #fca5a5; border-color: rgba(239,68,68,.35); background: rgba(127,29,29,.22); }
+
+/* ═══ Pregled fotografije ═══ */
+#slika-pregled { position: fixed; inset: 0; z-index: 999950; display: none; flex-direction: column; background: rgba(2,6,4,.96); }
+#slika-pregled.show { display: flex; }
+#slika-pregled .sp-hdr { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top,0px)) 12px 10px 16px; color: var(--pn-txt); font-weight: 800; }
+#slika-pregled .sp-hdr span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#slika-pregled .sp-hdr button { width: 40px; height: 40px; border-radius: 12px; background: var(--pn-bg-3); border: 1px solid var(--pn-line); color: #fff; font-size: 18px; }
+#slika-pregled .sp-okvir { flex: 1; overflow: auto; display: grid; place-items: center; padding: 8px; touch-action: pan-x pan-y pinch-zoom; }
+#slika-pregled .sp-okvir img { width: min(100%, 1400px); max-width: 100%; max-height: calc(100vh - 90px); object-fit: contain; border-radius: 8px; }
+#slika-pregled .sp-okvir.uvecano { place-items: start; }
+#slika-pregled .sp-okvir.uvecano img { max-width: none; max-height: none; width: 220%; }
+
 /* Nagib poligona prati isto sidro kad nije ručno pomjeren */
 #np-card:not([style*="top"]) { bottom: calc(var(--dock-b) + var(--rec-h)); }
 #np-card { border-radius: var(--pn-r); box-shadow: var(--pn-sh); border-color: var(--pn-line); }
@@ -2085,6 +2128,84 @@ function _genUUID() {
   });
 }
 function _escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Kartica u popupu na karti — isti izgled za tragove, KML, mjerenja, nagib.
+// dugmad: [{ t: tekst, on: "js poziv", v: 'glavno'|'opasno'|'' }]; on je UVIJEK
+// interni poziv sa internim id-em, nikad tekst iz fajla.
+function _popKartica({ ikona = '', boja = '#4ade80', naslov = '', tip = '', meta = '', redovi = [], opis = '', vise = '', dugmad = [] }) {
+  const red = ([k, v]) => `<div class="pk-red"><span>${_escHtml(k)}</span><b>${_escHtml(v)}</b></div>`;
+  return `<div class="pk" style="--pk-boja:${/^#[0-9a-f]{3,8}$/i.test(boja) ? boja : '#4ade80'}">
+    <div class="pk-hdr"><span class="pk-ico">${ikona}</span><div class="pk-nasl"><b>${_escHtml(naslov || '(bez imena)')}</b>${tip || meta ? `<small>${_escHtml([tip, meta].filter(Boolean).join(' · '))}</small>` : ''}</div></div>
+    ${redovi.length ? `<div class="pk-redovi">${redovi.map(red).join('')}</div>` : ''}
+    ${opis ? `<div class="pk-opis">${opis}</div>` : ''}${vise}
+    ${dugmad.length ? `<div class="pk-akc">${dugmad.map(d => `<button class="${d.v || ''}" onclick="${d.on}">${d.t}</button>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+// Opis iz KML-a je tuđi HTML: dozvoljen je samo mali skup oznaka, bez skripti,
+// stilova, događaja i javascript: linkova. Relativne slike idu iz KMZ-a (IndexedDB).
+const _OPIS_OZNAKE = new Set(['b','strong','i','em','u','br','p','div','span','ul','ol','li','table','thead','tbody','tr','td','th','img','a','h1','h2','h3','h4','hr','small','font','center']);
+const _OPIS_BRISI = new Set(['script','style','iframe','object','embed','link','meta','form','input','button','textarea','select','svg','math','noscript','template','base']);
+function _kmlOpisHtml(desc, kmlIme) {
+  const t = String(desc || '').trim();
+  if (!t) return '';
+  if (!/[<&]/.test(t)) return _escHtml(t).replace(/\n/g, '<br>');
+  const doc = new DOMParser().parseFromString('<div>' + t + '</div>', 'text/html');
+  const cisti = el => {
+    [...el.childNodes].forEach(n => {
+      if (n.nodeType === 3) return;
+      if (n.nodeType !== 1) { n.remove(); return; }
+      const tag = n.tagName.toLowerCase();
+      if (_OPIS_BRISI.has(tag)) { n.remove(); return; }
+      cisti(n);
+      if (!_OPIS_OZNAKE.has(tag) || tag === 'font' || tag === 'center') { n.replaceWith(...n.childNodes); return; }
+      const src = n.getAttribute('src'), href = n.getAttribute('href'), cs = n.getAttribute('colspan'), rs = n.getAttribute('rowspan');
+      [...n.attributes].forEach(a => n.removeAttribute(a.name));
+      if (cs && /^\d{1,2}$/.test(cs)) n.setAttribute('colspan', cs);
+      if (rs && /^\d{1,2}$/.test(rs)) n.setAttribute('rowspan', rs);
+      if (tag === 'a') {
+        if (href && /^https?:\/\//i.test(href.trim())) { n.setAttribute('href', href.trim()); n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); }
+        else n.replaceWith(...n.childNodes);
+      }
+      if (tag === 'img') {
+        const s0 = (src || '').trim();
+        if (/^(https?:\/\/|data:image\/(png|jpe?g|gif|webp);)/i.test(s0)) n.setAttribute('src', s0);
+        else if (s0 && !/^[a-z][a-z0-9+.-]*:/i.test(s0) && kmlIme) { n.setAttribute('data-kmz', s0); n.setAttribute('data-kml', kmlIme); n.setAttribute('alt', 'Učitavam fotografiju…'); }
+        else { n.remove(); return; }
+        n.setAttribute('loading', 'lazy'); n.classList.add('pk-slika');
+      }
+    });
+  };
+  const koren = doc.body.firstChild;
+  cisti(koren);
+  return koren.innerHTML;
+}
+// Poslije otvaranja popupa: relativne KMZ slike iz IndexedDB-a.
+function _popPopuniSlike(el) {
+  (el || document).querySelectorAll('img[data-kmz]').forEach(async img => {
+    const url = await _kmzSlikaUrl(img.getAttribute('data-kml'), img.getAttribute('data-kmz')).catch(() => null);
+    if (url) { img.src = url; img.removeAttribute('data-kmz'); }
+    else { img.alt = 'Fotografija nije u KMZ-u'; img.classList.add('nema'); }
+  });
+}
+// Pregled fotografije preko cijelog ekrana; dvostruki dodir uvećava.
+function _slikaPrikazi(src, naslov) {
+  let ov = document.getElementById('slika-pregled');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'slika-pregled';
+    ov.innerHTML = '<div class="sp-hdr"><span id="sp-nasl"></span><button aria-label="Zatvori">✕</button></div><div class="sp-okvir"><img alt=""></div>';
+    ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('.sp-hdr button')) ov.classList.remove('show'); });
+    ov.querySelector('img').addEventListener('dblclick', e => { e.currentTarget.parentElement.classList.toggle('uvecano'); });
+    document.body.appendChild(ov);
+  }
+  ov.querySelector('img').src = src; ov.querySelector('.sp-okvir').classList.remove('uvecano');
+  ov.querySelector('#sp-nasl').textContent = naslov || 'Fotografija';
+  ov.classList.add('show');
+}
+document.addEventListener('click', e => {
+  const img = e.target.closest && e.target.closest('.pk img.pk-slika');
+  if (img && img.src && !img.hasAttribute('data-kmz')) { e.preventDefault(); _slikaPrikazi(img.src, img.closest('.pk')?.querySelector('.pk-nasl b')?.textContent); }
+});
 function _escXml(s) { return _escHtml(s); }
 function _hexToKmlColor(hex) {
   const h = hex.replace('#','');
@@ -2745,28 +2866,31 @@ function _tragRegAddLayer(t) {
   const line = L.polyline(lls, { color: t.color || '#f97316', weight: t.weight || _lineStyle.tragW, opacity: (_lineStyle.tragOp||85)/100, dashArray, interactive: false, pane: 'tragMsrLines' });
   const hit = L.polyline(lls, { weight: 24, opacity: 0.001, color: '#000', interactive: true, pane: 'tragMsrLines' });
   const lenM = _tragCalcLen(t.pts);
-  line.bindPopup(() => _tragPopupHtml(t, lenM), { maxWidth: 260 });
+  line.bindPopup(() => _tragPopupHtml(t, lenM), { maxWidth: 300, minWidth: 220, className: 'pk-pop' });
   hit.on('click', e => {
+    if (_msrOn || window._npHvataKlik) return;
     L.DomEvent.stopPropagation(e);
     if (e.originalEvent) e.originalEvent.stopPropagation();
-    line.openPopup(e.latlng);
+    const h = _kartaPogodak(e.latlng);
+    if (h) h.otvori(e.latlng); else line.openPopup(e.latlng);
   });
   if (t.visible !== false) { line.addTo(map); hit.addTo(map); }
   _tragLayers[t.id] = line;
   _tragHitLayers[t.id] = hit;
 }
 function _tragPopupHtml(t, lenM) {
-  const dt = fmtDateShort(t.date);
-  return `<div class="trag-popup">
-    <b>${_escHtml(t.name)}</b>
-    <div class="trag-popup-meta">${dt} · ${_tragFmtLen(lenM)} · ${t.pts.length} tačaka</div>
-    <div class="trag-popup-btns">
-      <button onclick="_tragRegRename('${t.id}')">✏ Preimenuj</button>
-      <button onclick="_tragRegShare('${t.id}')">📤 Pošalji</button>
-      <button onclick="_tragRegToggle('${t.id}')">${t.visible!==false?'🙈 Sakrij':'👁 Prikaži'}</button>
-      <button onclick="_tragRegDeleteConfirm('${t.id}')" style="color:#f87171;border-color:#7f1d1d;">🗑 Briši</button>
-    </div>
-  </div>`;
+  const p = t.pts || [], t0 = p[0] && p[0][3], t1 = p.length && p[p.length - 1][3];
+  const trajanje = (t0 > 1e12 && t1 > t0) ? Math.round((t1 - t0) / 60000) : null;
+  const al = p.map(x => x[2]).filter(Number.isFinite), uspon = al.slice(1).reduce((s, a, i) => s + Math.max(0, a - al[i]), 0);
+  const redovi = [['Dužina', _tragFmtLen(lenM)], ['Tačaka', String(p.length)]];
+  if (trajanje !== null) redovi.push(['Trajanje', trajanje >= 60 ? Math.floor(trajanje / 60) + ' h ' + (trajanje % 60) + ' min' : trajanje + ' min']);
+  if (al.length > 1) redovi.push(['Visina', Math.round(Math.min(...al)) + '–' + Math.round(Math.max(...al)) + ' m'], ['Uspon', Math.round(uspon) + ' m']);
+  return _popKartica({ ikona: '🥾', boja: t.color || '#f97316', naslov: t.name, tip: 'GPS trag', meta: fmtDateShort(t.date), redovi, dugmad: [
+    { t: '✏ Preimenuj', on: `_tragRegRename('${t.id}')` },
+    { t: '📤 Pošalji', on: `_tragRegShare('${t.id}')` },
+    { t: t.visible !== false ? '🙈 Sakrij' : '👁 Prikaži', on: `_tragRegToggle('${t.id}');map.closePopup()` },
+    { t: '🗑 Briši', on: `_tragRegDeleteConfirm('${t.id}')`, v: 'opasno' }
+  ] });
 }
 function _tragPopupRefresh(id) {
   const t = _tragRegistry.find(x => x.id === id), line = _tragLayers[id];
@@ -3605,35 +3729,25 @@ function _msrDrawAllSaved() {
   });
 }
 function _msrPopupHtml(m) {
-  const mode = m.mode || 'dist';
-  let totalDist = 0;
-  for (let i = 0; i < m.pts.length - 1; i++) totalDist += _msrHaversine(m.pts[i].lat, m.pts[i].lng, m.pts[i+1].lat, m.pts[i+1].lng);
-  let html = `<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:4px;">${_escHtml(m.name)}</div>`;
-  html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">${fmtDateShort(m.date)}</div>`;
-  if (mode === 'nagib' && m.pts.length >= 2) {
-    const a = m.pts[0], b = m.pts[m.pts.length-1];
-    const d = _msrHaversine(a.lat,a.lng,b.lat,b.lng);
-    const dh = (a.elev!=null&&b.elev!=null) ? b.elev-a.elev : null;
-    const pct = (dh!=null&&d>0) ? (dh/d*100).toFixed(1) : null;
-    html += `<div style="font-size:13px;color:#374151;">📏 ${_msrFmt(d)}</div>`;
-    if (pct != null) html += `<div style="font-size:13px;color:#374151;">📐 Nagib: ${pct>0?'+':''}${pct}%</div>`;
-  } else if (mode === 'area' && m.pts.length >= 3) {
-    const aM2 = _msrPoligonPovrsina(m.pts);
-    html += `<div style="font-size:13px;color:#374151;">📏 Obim: ${_msrFmt(totalDist)}</div>`;
-    html += `<div style="font-size:13px;color:#374151;">◻ ${Math.round(aM2).toLocaleString('bs')} m² (${(aM2/10000).toFixed(2)} ha)</div>`;
-    const fop = Math.round((m.fillOpacity||0.18)*100);
-    html += `<div style="margin-top:8px;font-size:12px;color:#64748b;">Transparentnost ispune: <span id="mfop-lbl-${m.id}" style="font-weight:700;color:#374151;">${fop}%</span><br><input type="range" min="0" max="100" value="${fop}" style="width:100%;margin-top:4px;" oninput="_msrSetFillOpacity('${m.id}', this.value/100)"></div>`;
-  } else {
-    html += `<div style="font-size:13px;color:#374151;">📏 ${_msrFmt(totalDist)}</div>`;
-  }
-  if (mode === 'area' && m.pts.length >= 3 && typeof npIzMjerenja === 'function') {
-    html += `<button onclick="npIzMjerenja('${m.id}')" style="margin-top:8px;width:100%;padding:6px 8px;background:#1e3a5f;color:#dbeafe;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">📐 Nagib poligona</button>`;
-  }
-  html += `<div style="margin-top:10px;display:flex;gap:6px;">
-    <button onclick="_msrRegZoom('${m.id}')" style="flex:1;padding:5px 8px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">✏ Edituj</button>
-    <button onclick="_msrRegDeleteConfirm('${m.id}')" style="padding:5px 8px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🗑</button>
-  </div></div>`;
-  return html;
+  const mode = m.mode || 'dist', P = m.pts || [];
+  let d = 0; for (let i = 0; i < P.length - 1; i++) d += _msrHaversine(P[i].lat, P[i].lng, P[i+1].lat, P[i+1].lng);
+  const redovi = [], dugmad = [];
+  let vise = '';
+  if (mode === 'nagib' && P.length >= 2) {
+    const a = P[0], b = P[P.length - 1], dd = _msrHaversine(a.lat, a.lng, b.lat, b.lng);
+    const dh = (a.elev != null && b.elev != null) ? b.elev - a.elev : null;
+    redovi.push(['Udaljenost', _msrFmt(dd)]);
+    if (dh != null && dd > 0) redovi.push(['Nagib', (dh > 0 ? '+' : '') + (dh / dd * 100).toFixed(1) + ' %'], ['Visinska razlika', Math.round(dh) + ' m']);
+  } else if (mode === 'area' && P.length >= 3) {
+    const aM2 = _msrPoligonPovrsina(P);
+    redovi.push(['Površina', (aM2 / 10000).toFixed(2) + ' ha'], ['', Math.round(aM2).toLocaleString('bs') + ' m²'], ['Obim', _msrFmt(d)]);
+    const fop = Math.round((m.fillOpacity || 0.18) * 100);
+    vise = `<label class="pk-klizac">Ispuna <span id="mfop-lbl-${m.id}">${fop}%</span><input type="range" min="0" max="100" value="${fop}" oninput="_msrSetFillOpacity('${m.id}', this.value/100)"></label>`;
+    if (typeof npIzMjerenja === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzMjerenja('${m.id}')`, v: 'glavno' });
+  } else redovi.push(['Dužina', _msrFmt(d)], ['Tačaka', String(P.length)]);
+  dugmad.push({ t: '✏ Uredi', on: `_msrRegZoom('${m.id}')` }, { t: '✎ Preimenuj', on: `_msrRegRename('${m.id}')` }, { t: '🗑 Briši', on: `_msrRegDeleteConfirm('${m.id}')`, v: 'opasno' });
+  const tip = { area: 'Površina', nagib: 'Nagib', dist: 'Udaljenost' }[mode] || 'Mjerenje';
+  return _popKartica({ ikona: mode === 'area' ? '◻' : mode === 'nagib' ? '📐' : '📏', boja: m.color || '#fbbf24', naslov: m.name, tip, meta: fmtDateShort(m.date), redovi, vise, dugmad });
 }
 function _msrSetFillOpacity(id, val) {
   const m = _msrRegistry.find(x => x.id === id);
@@ -3734,16 +3848,73 @@ function _msrHitTest(latlng) {
   });
   return (naj && najD <= _MSR_HIT_PX) ? naj : null;
 }
-function _msrOpenPopupNa(m, latlng) { if (!m || !window.map) return; try { L.popup({ maxWidth: 260 }).setLatLng(latlng).setContent(_msrPopupHtml(m)).openOn(map); } catch(e) {} }
+function _msrOpenPopupNa(m, latlng) { if (!m || !window.map) return; try { L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng(latlng).setContent(_msrPopupHtml(m)).openOn(map); } catch(e) {} }
 
+// ── Jedinstven klik na sve što je korisnik napravio ili učitao ─────────
+// Ne oslanja se na DOM događaje slojeva: u canvas modu gornji pane (npr.
+// sačuvani nagibi) pokrije donji i njegov klik se izgubi. Svaki izvor vraća
+// pogotke {d: px do objekta, vrsta: 'tacka'|'linija'|'poligon', pov, otvori};
+// pobjeđuje tačka, pa linija, pa najmanji poligon ispod prsta.
+const _KLIK_IZVORI = [];
+function _kartaKlikIzvor(fn) { _KLIK_IZVORI.push(fn); }
+const _KLIK_TOL = { tacka: 22, linija: 22 };
+function _pxDoLinije(kp, lls, zatvoren) {
+  let m = Infinity;
+  const px = lls.map(ll => map.latLngToContainerPoint(ll));
+  for (let i = 1; i < px.length; i++) m = Math.min(m, _distToSegPx(kp, px[i - 1], px[i]));
+  if (zatvoren && px.length > 2) m = Math.min(m, _distToSegPx(kp, px[px.length - 1], px[0]));
+  return m;
+}
+function _pxPovrsina(lls) { const px = lls.map(ll => map.latLngToContainerPoint(ll)); let a = 0; for (let i = 0, j = px.length - 1; i < px.length; j = i++) a += (px[j].x + px[i].x) * (px[j].y - px[i].y); return Math.abs(a / 2); }
+function _kartaPogodak(latlng) {
+  let kp; try { kp = map.latLngToContainerPoint(latlng); } catch(e) { return null; }
+  let naj = null, nb = Infinity;
+  for (const fn of _KLIK_IZVORI) {
+    let r = []; try { r = fn(latlng, kp) || []; } catch(e) {}
+    for (const h of r) {
+      if (h.vrsta !== 'poligon' && !(h.d <= _KLIK_TOL[h.vrsta])) continue;
+      const b = h.vrsta === 'tacka' ? h.d : h.vrsta === 'linija' ? 100 + h.d : 1000 + Math.log10(1 + (h.pov || 0));
+      if (b < nb) { nb = b; naj = h; }
+    }
+  }
+  return naj;
+}
 map.on('click', e => {
   if (_msrOn || window._npHvataKlik) return; // izmjera / nagib poligona preuzimaju klikove
-  const mm = _msrHitTest(e.latlng);
-  if (mm) { _msrOpenPopupNa(mm, e.latlng); return; }
-  const kl = _kmlHitTest(e.latlng);
-  if (kl) { _kmlOpenPopup(kl, e.latlng); return; }
-  // Buduće provjere (Požari tačke) idu OVDJE, istim redoslijedom kao pane
-  // z-index (niži prvo) — vidi napomenu na vrhu ove sekcije.
+  const h = _kartaPogodak(e.latlng);
+  if (h) h.otvori(e.latlng);
+});
+_kartaKlikIzvor((ll, kp) => _tragRegistry.filter(t => t.visible !== false && t.pts && t.pts.length > 1 && _tragLayers[t.id] && map.hasLayer(_tragLayers[t.id])).map(t => ({
+  vrsta: 'linija', d: _pxDoLinije(kp, t.pts.map(p => L.latLng(p[0], p[1]))),
+  otvori: at => { const line = _tragLayers[t.id]; if (line) line.openPopup(at); }
+})));
+_kartaKlikIzvor((ll, kp) => (_msrRegistry || []).filter(m => m.id !== _mqmId && m.pts && m.pts.length >= 2).map(m => {
+  const lls = m.pts.map(p => L.latLng(p.lat, p.lng)), pov = (m.mode || 'dist') === 'area' && lls.length >= 3;
+  if (pov && _msrTackaUPoligonu(ll, m.pts)) return { vrsta: 'poligon', pov: _pxPovrsina(lls), otvori: at => _msrOpenPopupNa(m, at) };
+  return { vrsta: 'linija', d: _pxDoLinije(kp, lls, pov), otvori: at => _msrOpenPopupNa(m, at) };
+}));
+_kartaKlikIzvor((ll, kp) => {
+  const out = [], lp = map.latLngToLayerPoint(ll);
+  kmlLs.forEach(k => {
+    if (!k || !k.grp || k.vis === false || !map.hasLayer(k.grp)) return;
+    k.grp.eachLayer(function walk(l) {
+      if (l.eachLayer && !l.getLatLngs && !l.getLatLng) { l.eachLayer(walk); return; }
+      if (l._kmlName === undefined) return;
+      const otvori = at => _kmlOpenPopup(l, at);
+      if (l._kmlIsPoint || (!l.getLatLngs && l.getLatLng)) { out.push({ vrsta: 'tacka', d: kp.distanceTo(map.latLngToContainerPoint(l.getLatLng())), otvori }); return; }
+      const lls = l.getLatLngs();
+      if (l._kmlIsPolygon) {
+        const prsten = Array.isArray(lls[0]) ? (Array.isArray(lls[0][0]) ? lls[0][0] : lls[0]) : lls;
+        let unutra = false; try { unutra = !!(l._containsPoint && l._containsPoint(lp)); } catch(e) {}
+        if (!unutra) { try { unutra = l.getBounds().contains(ll) && _msrTackaUPoligonu(ll, prsten.map(p => ({ lat: p.lat, lng: p.lng }))); } catch(e) {} }
+        if (unutra) out.push({ vrsta: 'poligon', pov: _pxPovrsina(prsten), otvori });
+        else out.push({ vrsta: 'linija', d: _kmlRingDistPx(lls, kp), otvori });
+        return;
+      }
+      out.push({ vrsta: 'linija', d: _kmlRingDistPx(lls, kp), otvori });
+    });
+  });
+  return out;
 });
 
 _msrRegLoad();
@@ -3813,7 +3984,7 @@ function pkml(doc, col, op) {
   return g;
 }
 function _bindKmlPopup(layer) {
-  const onClick = e => { if (window._npHvataKlik) return; L.DomEvent.stopPropagation(e); _kmlOpenPopup(layer, e.latlng); };
+  const onClick = e => { if (window._npHvataKlik || _msrOn) return; L.DomEvent.stopPropagation(e); const h = _kartaPogodak(e.latlng); if (h) h.otvori(e.latlng); else _kmlOpenPopup(layer, e.latlng); };
   layer.on('click', onClick);
   // Tanke/isprekidane linije rijetko pogode prst na terenu — širi nevidljiv
   // hit-sloj (isti obrazac kao attachPolyClick za trag). Poligoni (fill hit-
@@ -3827,30 +3998,25 @@ function _bindKmlPopup(layer) {
   }
 }
 function _kmlPopupHtml(layer) {
-  const nm = layer._kmlName || '(bez imena)';
-  const desc = layer._kmlDesc || '';
-  const ext = layer._kmlExtData || {};
-  const type = layer._kmlIsPolygon ? 'Poligon' : (layer._kmlIsPoint ? 'Tačka' : 'Linija');
-  const typeIco = layer._kmlIsPolygon ? '▣' : (layer._kmlIsPoint ? '●' : '━');
-  let html = `<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;color:#1e293b;">${typeIco} ${_escHtml(nm)}</div>`;
-  html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${type}</div>`;
-  if (desc) html += `<div style="font-size:12px;color:#374151;margin-top:4px;">${_escHtml(desc)}</div>`;
-  const extKeys = Object.keys(ext);
-  if (extKeys.length) {
-    html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;">` +
-      extKeys.map(k => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;"><span style="color:#94a3b8;">${_escHtml(k)}</span><span style="color:#374151;text-align:right;">${_escHtml(ext[k])}</span></div>`).join('') + `</div>`;
-  }
-  if (layer._kmlIsPolygon && typeof npIzKml === 'function') {
-    html += `<button onclick="npIzKml(${L.stamp(layer)})" style="margin-top:8px;width:100%;padding:8px;border:none;border-radius:8px;background:#1e3a5f;color:#dbeafe;font-size:12px;font-weight:700;cursor:pointer;">📐 Nagib poligona</button>`;
-  }
-  if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') {
-    html += `<button onclick="_odjelIzvjestaj(${L.stamp(layer)})" style="margin-top:8px;width:100%;padding:8px;border:none;border-radius:8px;background:#14532d;color:#dcfce7;font-size:12px;font-weight:700;cursor:pointer;">📊 Izvještaj odjela</button>`;
-  }
-  html += '</div>';
-  return html;
+  const ext = layer._kmlExtData || {}, id = L.stamp(layer);
+  const tip = layer._kmlIsPolygon ? 'Poligon' : (layer._kmlIsPoint ? 'Tačka' : 'Linija');
+  const ikona = layer._kmlIsPolygon ? '▣' : (layer._kmlIsPoint ? '📍' : '〰');
+  const sloj = kmlLs.find(k => k.grp && k.grp.hasLayer && k.grp.hasLayer(layer));
+  const redovi = Object.keys(ext).map(k => [k, ext[k]]);
+  try {
+    if (layer._kmlIsPolygon && typeof turf !== 'undefined') { const gj = layer.toGeoJSON(); redovi.unshift(['Površina', (turf.area(gj) / 10000).toLocaleString('bs-BA', { maximumFractionDigits: 2 }) + ' ha']); }
+    else if (layer._kmlIsPoint) { const ll = layer.getLatLng(); redovi.unshift(['Koordinate', ll.lat.toFixed(5) + ', ' + ll.lng.toFixed(5)]); }
+    else if (layer.getLatLngs) { const l = layer.getLatLngs().flat(3); let d = 0; for (let i = 1; i < l.length; i++) d += l[i - 1].distanceTo(l[i]); redovi.unshift(['Dužina', d >= 1000 ? (d / 1000).toFixed(2) + ' km' : Math.round(d) + ' m']); }
+  } catch(e) {}
+  const dugmad = [];
+  if (layer._kmlIsPolygon && typeof npIzKml === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzKml(${id})`, v: 'glavno' });
+  if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
+  if (layer._kmlIsPoint) { const ll = layer.getLatLng(); dugmad.push({ t: '🎯 Centriraj', on: `map.setView([${ll.lat},${ll.lng}],Math.max(map.getZoom(),16))` }); }
+  return _popKartica({ ikona, boja: layer.options && layer.options.color, naslov: layer._kmlName, tip, meta: sloj ? sloj.name : '', redovi, opis: _kmlOpisHtml(layer._kmlDesc, sloj && sloj.name), dugmad });
 }
 function _kmlOpenPopup(layer, latlng) {
-  L.popup({ maxWidth: 280, minWidth: 180 }).setLatLng(latlng).setContent(_kmlPopupHtml(layer)).openOn(map);
+  const pop = L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng(layer._kmlIsPoint ? layer.getLatLng() : latlng).setContent(_kmlPopupHtml(layer)).openOn(map);
+  _popPopuniSlike(pop.getElement());
 }
 // Zašto proximity fallback: karta radi u canvas modu (preferCanvas:true).
 // Kad Požari tačke (viši pane) budu dodane, njihov canvas hvata DOM klik na
@@ -3907,6 +4073,8 @@ async function _vectorFileChosen(e) {
       const buf = await f.arrayBuffer();
       const kmlText = await _kmzExtractKml(buf);
       if (!kmlText) { showToast('⚠ KMZ ne sadrži .kml: ' + f.name); continue; }
+      const slika = await _kmzSacuvajSlike(buf, f.name.replace(/\.kmz$/i, '.kml'));
+      if (slika) showToast('🖼 ' + slika + ' fotografija iz ' + f.name + ' sačuvano za offline');
       const blob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
       _kmlLoadFile(new File([blob], f.name.replace(/\.kmz$/i, '.kml')));
     } catch(err) { showToast('⚠ KMZ greška: ' + (err.message || f.name)); }
@@ -3925,37 +4093,89 @@ async function _vectorFileChosen(e) {
   if (!handled) showToast('⚠ Izaberi .kml, .kmz ili .shp fajl');
 }
 // Minimalni ZIP parser za .kmz — vraća sadržaj prve .kml datoteke
-async function _kmzExtractKml(buf) {
-  const bytes = new Uint8Array(buf);
-  let off = 0;
-  while (off + 30 < bytes.length) {
-    if (bytes[off] !== 0x50 || bytes[off+1] !== 0x4b || bytes[off+2] !== 0x03 || bytes[off+3] !== 0x04) break;
-    const flags = bytes[off+6] | (bytes[off+7] << 8);
-    const comp = bytes[off+8] | (bytes[off+9] << 8);
-    const compLen = bytes[off+18] | (bytes[off+19]<<8) | (bytes[off+20]<<16) | (bytes[off+21]<<24);
-    const fnLen = bytes[off+26] | (bytes[off+27] << 8);
-    const exLen = bytes[off+28] | (bytes[off+29] << 8);
-    const fnBytes = bytes.slice(off+30, off+30+fnLen);
-    const fname = new TextDecoder().decode(fnBytes);
-    const dataOff = off + 30 + fnLen + exLen;
-    if (/\.kml$/i.test(fname) && compLen > 0) {
-      const chunk = bytes.slice(dataOff, dataOff + compLen);
-      if (comp === 0) return new TextDecoder('utf-8').decode(chunk);
-      if (comp === 8) {
-        try {
-          const ds = new DecompressionStream('deflate-raw');
-          const wr = ds.writable.getWriter(); wr.write(chunk); wr.close();
-          const out = []; const rd = ds.readable.getReader();
-          for(;;) { const {done,value} = await rd.read(); if(done) break; out.push(value); }
-          const total = out.reduce((a,b)=>a+b.length,0), merged = new Uint8Array(total);
-          let p=0; for(const c of out){merged.set(c,p);p+=c.length;}
-          return new TextDecoder('utf-8').decode(merged);
-        } catch(e) { throw new Error('Dekompresija KMZ nije uspjela'); }
-      }
-    }
-    off = dataOff + compLen;
+// ZIP preko centralnog direktorija: veličine su tačne i kad lokalno zaglavlje
+// nosi 0 (bit 3 — Android/Java/MOBAC upisuju veličinu iza podataka).
+function _zipUlazi(buf) {
+  const b = new Uint8Array(buf), dv = new DataView(buf);
+  let eocd = -1;
+  for (let i = b.length - 22; i >= Math.max(0, b.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('nije ZIP/KMZ arhiva');
+  const n = dv.getUint16(eocd + 10, true); let o = dv.getUint32(eocd + 16, true);
+  const ulazi = [], dek = new TextDecoder();
+  for (let k = 0; k < n && dv.getUint32(o, true) === 0x02014b50; k++) {
+    const metoda = dv.getUint16(o + 10, true), cVel = dv.getUint32(o + 20, true);
+    const imeLen = dv.getUint16(o + 28, true), exLen = dv.getUint16(o + 30, true), komLen = dv.getUint16(o + 32, true);
+    const lok = dv.getUint32(o + 42, true), ime = dek.decode(b.subarray(o + 46, o + 46 + imeLen));
+    ulazi.push({ ime, metoda, cVel, lok });
+    o += 46 + imeLen + exLen + komLen;
   }
-  return null;
+  return ulazi;
+}
+async function _zipIzvuci(buf, u) {
+  const b = new Uint8Array(buf), dv = new DataView(buf);
+  const start = u.lok + 30 + dv.getUint16(u.lok + 26, true) + dv.getUint16(u.lok + 28, true);
+  const chunk = b.slice(start, start + u.cVel);
+  if (u.metoda === 0) return chunk;
+  if (u.metoda !== 8) throw new Error('nepodržana kompresija u KMZ-u');
+  const ds = new DecompressionStream('deflate-raw');
+  const out = await new Response(new Blob([chunk]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(out);
+}
+async function _kmzExtractKml(buf) {
+  const ulazi = _zipUlazi(buf);
+  const kml = ulazi.find(u => /(^|\/)doc\.kml$/i.test(u.ime)) || ulazi.find(u => /\.kml$/i.test(u.ime));
+  if (!kml) return null;
+  try { return new TextDecoder('utf-8').decode(await _zipIzvuci(buf, kml)); }
+  catch(e) { throw new Error('Dekompresija KMZ nije uspjela'); }
+}
+// Fotografije iz KMZ-a → IndexedDB (ključ "ime.kml::putanja"), da rade offline
+// i poslije ponovnog pokretanja; localStorage je premali za slike.
+const _KMZ_SLIKA_RE = /\.(jpe?g|png|gif|webp|bmp)$/i;
+let _kmzDbP = null;
+function _kmzDb() {
+  if (!_kmzDbP) _kmzDbP = new Promise((res, rej) => { const r = indexedDB.open('usf_kmz', 1); r.onupgradeneeded = () => r.result.createObjectStore('slike'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  return _kmzDbP;
+}
+async function _kmzSacuvajSlike(buf, kmlIme) {
+  let n = 0;
+  for (const u of _zipUlazi(buf).filter(u => _KMZ_SLIKA_RE.test(u.ime))) {
+    try {
+      const bytes = await _zipIzvuci(buf, u), ext = u.ime.split('.').pop().toLowerCase();
+      const blob = new Blob([bytes], { type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) });
+      const db = await _kmzDb();
+      await new Promise((res, rej) => { const tx = db.transaction('slike', 'readwrite'); tx.objectStore('slike').put(blob, kmlIme + '::' + u.ime); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+      n++;
+    } catch(e) {}
+  }
+  return n;
+}
+const _kmzUrlKes = new Map();
+async function _kmzSlikaUrl(kmlIme, putanja) {
+  let p = String(putanja || '').replace(/^\.\//, '');
+  try { p = decodeURIComponent(p); } catch(e) {}
+  const kljuc = kmlIme + '::' + p;
+  if (_kmzUrlKes.has(kljuc)) return _kmzUrlKes.get(kljuc);
+  const db = await _kmzDb();
+  const blob = await new Promise(res => {
+    const st = db.transaction('slike').objectStore('slike'), r = st.get(kljuc);
+    r.onsuccess = () => {
+      if (r.result) return res(r.result);
+      // Putanja u opisu često nema folder ("IMG_1.jpg" umjesto "files/IMG_1.jpg").
+      const baza = p.split('/').pop().toLowerCase(), c = st.openCursor(IDBKeyRange.bound(kmlIme + '::', kmlIme + '::￿'));
+      c.onsuccess = () => { const k = c.result; if (!k) return res(null); if (String(k.key).split('/').pop().toLowerCase() === baza) return res(k.value); k.continue(); };
+      c.onerror = () => res(null);
+    };
+    r.onerror = () => res(null);
+  });
+  const url = blob ? URL.createObjectURL(blob) : null;
+  if (url) _kmzUrlKes.set(kljuc, url);
+  return url;
+}
+async function _kmzObrisiSlike(kmlIme) {
+  try {
+    const db = await _kmzDb(), tx = db.transaction('slike', 'readwrite');
+    tx.objectStore('slike').delete(IDBKeyRange.bound(kmlIme + '::', kmlIme + '::￿'));
+  } catch(e) {}
 }
 
 function _shpReadDbf(buf) {
@@ -4167,6 +4387,7 @@ function _kmlDelete(id) {
   if (!k) return;
   try { map.removeLayer(k.grp); } catch(e) {}
   kmlLs = kmlLs.filter(x => x.id !== id);
+  if (!kmlLs.some(x => x.name === k.name)) _kmzObrisiSlike(k.name);
   try {
     const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
     delete store[k.name];

@@ -68,7 +68,7 @@ t('statistika po rasponima: prosjek, medijan, udio i ha', () => {
 });
 
 t('integracija: urednik raspona, dugme u terenu, KML i mjerenje, keš i APK', () => {
-  ['id="terrain-slope-editor"', 'onclick="npNacrtaj()"', 'npIzKml(${L.stamp(layer)})', "npIzMjerenja('${m.id}')", '<script src="static/js/nagib-poligon.js">', 'window._npHvataKlik'].forEach(x => assert.ok(HTML.includes(x), x));
+  ['id="terrain-slope-editor"', 'onclick="npNacrtaj()"', 'npIzKml(${id})', 'id = L.stamp(layer)', "npIzMjerenja('${m.id}')", '<script src="static/js/nagib-poligon.js">', 'window._npHvataKlik'].forEach(x => assert.ok(HTML.includes(x), x));
   const sw = fs.readFileSync(path.join(__dirname, '../../sw.js'), 'utf8');
   const kop = fs.readFileSync(path.join(__dirname, '../../android/copy-assets.sh'), 'utf8');
   assert.ok(sw.includes("'./static/js/nagib-poligon.js'") && kop.includes('static/js/nagib-poligon.js'));
