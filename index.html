@@ -4134,12 +4134,13 @@ function _sqlmapSyncLayerSwitch() {
 }
 function _sqlmapThumb(db, meta) {
   try {
-    const z = parseInt(meta.minzoom, 10) || 0;
-    const stmt = db.prepare('SELECT tile_data FROM tiles WHERE zoom_level=? ORDER BY tile_column, tile_row LIMIT 1');
-    stmt.bind([z]);
-    if (!stmt.step()) { stmt.free(); return Promise.resolve(_SQL_THUMB); }
-    const bytes = stmt.getAsObject().tile_data; stmt.free();
-    const mime = (meta.format || 'png').toLowerCase().includes('jpg') ? 'image/jpeg' : 'image/png';
+    const sema = meta._sema; if (!sema) return Promise.resolve(_SQL_THUMB);
+    const z = parseInt(meta.minzoom, 10) || 0, q = '"' + String(sema.tabela).replace(/"/g, '""') + '"';
+    const r = sema.tip === 'mbtiles'
+      ? _sqlJedan(db, 'SELECT tile_data FROM ' + q + ' WHERE zoom_level=? ORDER BY tile_column, tile_row LIMIT 1', [z])
+      : _sqlJedan(db, 'SELECT "' + sema.slika + '" FROM ' + q + ' WHERE z=? LIMIT 1', [sema.inv ? 17 - z : z]);
+    if (!r || !r[0]) return Promise.resolve(_SQL_THUMB);
+    const bytes = r[0], mime = _sqlMime(bytes, meta.format);
     return new Promise(resolve => { const fr = new FileReader(); fr.onload = () => resolve(fr.result || _SQL_THUMB); fr.onerror = () => resolve(_SQL_THUMB); fr.readAsDataURL(new Blob([bytes], { type:mime })); });
   } catch(e) { return Promise.resolve(_SQL_THUMB); }
 }
@@ -4292,6 +4293,64 @@ function _sqlParseBounds(metaMap) {
   const [minLon, minLat, maxLon, maxLat] = parts;
   return L.latLngBounds([minLat, minLon], [maxLat, maxLon]);
 }
+// Šema pločica (ista pravila kao SqliteTileMath.java u APK-u):
+// MBTiles tiles(zoom_level,tile_column,tile_row,tile_data) — TMS y;
+// .sqlitedb (RMaps/Locus/OsmAnd/MOBAC) bilo koja tabela z/x/y + slika — XYZ y,
+// često BigPlanet numeracija z_u_bazi = 17 − zoom.
+function _sqlJedan(db, sql, par) {
+  const st = db.prepare(sql);
+  try { if (par) st.bind(par); return st.step() ? st.get() : null; } finally { st.free(); }
+}
+function _sqlSema(db) {
+  const tabele = [];
+  try { const st = db.prepare("SELECT name FROM sqlite_master WHERE type='table'"); while (st.step()) tabele.push(st.get()[0]); st.free(); } catch(e) { return null; }
+  const q = t => '"' + String(t).replace(/"/g, '""') + '"';
+  for (const t of tabele) {
+    let kol = [];
+    try { const st = db.prepare('PRAGMA table_info(' + q(t) + ')'); while (st.step()) kol.push(String(st.getAsObject().name).toLowerCase()); st.free(); } catch(e) { continue; }
+    if (kol.includes('zoom_level') && kol.includes('tile_column') && kol.includes('tile_row') && kol.includes('tile_data')) return { tip: 'mbtiles', tabela: t };
+    const slika = ['image', 'tile_data', 'data', 'tile', 'blob'].find(c => kol.includes(c));
+    if (!(kol.includes('x') && kol.includes('y') && kol.includes('z') && slika)) continue;
+    const mm = _sqlJedan(db, 'SELECT MIN(z), MAX(z) FROM ' + q(t));
+    if (!mm || mm[0] === null) continue;
+    const [zMin, zMax] = mm.map(Number);
+    const broj = z => Number(_sqlJedan(db, 'SELECT COUNT(*) FROM ' + q(t) + ' WHERE z=?', [z])[0]);
+    let numeracija = null;
+    try { const r = _sqlJedan(db, 'SELECT tilenumbering FROM info LIMIT 1'); numeracija = r ? r[0] : null; } catch(e) {}
+    let inv = false;
+    if (zMin >= 0 && zMax <= 17) {
+      const cMin = broj(zMin), cMax = broj(zMax);
+      inv = (zMin !== zMax && cMin !== cMax) ? cMin > cMax : (!numeracija || !String(numeracija).trim() || /^bigplanet$/i.test(String(numeracija).trim()));
+    }
+    const real = z => inv ? 17 - z : z;
+    const minzoom = Math.min(real(zMin), real(zMax)), maxzoom = Math.max(real(zMin), real(zMax));
+    const zNajmanje = inv ? zMax : zMin, zr = real(zNajmanje);
+    let bounds = null;
+    const g = _sqlJedan(db, 'SELECT MIN(x), MAX(x), MIN(y), MAX(y) FROM ' + q(t) + ' WHERE z=?', [zNajmanje]);
+    if (g && g[0] !== null) {
+      const n = 2 ** zr, lon = x => x / n * 360 - 180, lat = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+      bounds = [lon(g[0]), lat(g[3] + 1), lon(g[1] + 1), lat(g[2])].map(v => v.toFixed(6)).join(',');
+    }
+    return { tip: 'sqlitedb', tabela: t, slika, inv, minzoom, maxzoom, bounds };
+  }
+  return null;
+}
+// Bajtovi pločice za Leaflet z/x/y (XYZ), bez obzira na šemu; null ako je nema.
+function _sqlPlocica(db, sema, z, x, y) {
+  if (!sema) return null;
+  const q = '"' + String(sema.tabela).replace(/"/g, '""') + '"';
+  const r = sema.tip === 'mbtiles'
+    ? _sqlJedan(db, 'SELECT tile_data FROM ' + q + ' WHERE zoom_level=? AND tile_column=? AND tile_row=?', [z, x, _sqlTmsY(z, y)])
+    : _sqlJedan(db, 'SELECT "' + sema.slika + '" FROM ' + q + ' WHERE z=? AND x=? AND y=?', [sema.inv ? 17 - z : z, x, y]);
+  return r && r[0] ? r[0] : null;
+}
+// MIME iz zaglavlja bajtova — metadata.format često nedostaje ili laže.
+function _sqlMime(b, format) {
+  if (b && b[0] === 0xFF && b[1] === 0xD8) return 'image/jpeg';
+  if (b && b[0] === 0x89 && b[1] === 0x50) return 'image/png';
+  if (b && b[0] === 0x52 && b[1] === 0x49 && b[8] === 0x57 && b[9] === 0x45) return 'image/webp';
+  return /jpe?g/i.test(format || '') ? 'image/jpeg' : 'image/png';
+}
 function _sqlReadMetadata(db) {
   const meta = {};
   try {
@@ -4299,6 +4358,13 @@ function _sqlReadMetadata(db) {
     while (stmt.step()) { const r = stmt.getAsObject(); meta[r.name] = r.value; }
     stmt.free();
   } catch(e) {}
+  const sema = _sqlSema(db);
+  Object.defineProperty(meta, '_sema', { value: sema, enumerable: false });
+  if (sema && sema.tip === 'sqlitedb') {
+    if (meta.minzoom == null) meta.minzoom = String(sema.minzoom);
+    if (meta.maxzoom == null) meta.maxzoom = String(sema.maxzoom);
+    if (!meta.bounds && sema.bounds) meta.bounds = sema.bounds;
+  }
   return meta;
 }
 
@@ -4308,24 +4374,16 @@ const _SqlTileLayer = L.GridLayer.extend({
   createTile(coords, done) {
     const tile = document.createElement('img');
     tile.alt = '';
-    const db = this.options.db;
-    const z = coords.z;
-    const tmsY = _sqlTmsY(z, coords.y); // MBTiles je TMS (od dna), Leaflet XYZ (odozgo)
     try {
-      const stmt = db.prepare('SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?');
-      stmt.bind([z, coords.x, tmsY]);
-      if (stmt.step()) {
-        const row = stmt.getAsObject();
-        const bytes = row.tile_data;
-        const mime = (this.options.format === 'jpg' || this.options.format === 'jpeg') ? 'image/jpeg' : 'image/png';
-        const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+      const bytes = _sqlPlocica(this.options.db, this.options.sema, coords.z, coords.x, coords.y);
+      if (bytes) {
+        const url = URL.createObjectURL(new Blob([bytes], { type: _sqlMime(bytes, this.options.format) }));
         tile.onload = () => { URL.revokeObjectURL(url); done(null, tile); };
         tile.onerror = () => { URL.revokeObjectURL(url); done(null, tile); };
         tile.src = url;
       } else {
         done(null, tile); // nema pločice na ovoj zoom/pozicija — providno, ne greška
       }
-      stmt.free();
     } catch(e) { done(null, tile); }
     return tile;
   }
@@ -4340,7 +4398,7 @@ async function _sqlmapAddLayer(name, db, opts) {
   const meta = _sqlReadMetadata(db);
   const bounds = _sqlParseBounds(meta);
   const layer = new _SqlTileLayer({
-    db, format: meta.format || 'png',
+    db, format: meta.format || 'png', sema: meta._sema,
     pane: 'offlineBasePane',
     ..._sqlZoomOpts(meta.minzoom, meta.maxzoom),
     tileSize: 256
@@ -4367,6 +4425,7 @@ async function _sqlmapLoadFile(file) {
     setStatus('⏳ Učitavam ' + name + '...');
     const buf = await file.arrayBuffer();
     const db = await _sqlmapOpenDb(buf);
+    if (!_sqlReadMetadata(db)._sema) throw new Error('fajl nema tabelu pločica (MBTiles ili .sqlitedb z/x/y)');
     const thumb = await _sqlmapThumb(db, _sqlReadMetadata(db));
     const rec = await _sqlmapAddLayer(name, db, { thumb, active:false });
     // Sačuvaj sirov fajl u IndexedDB TEK poslije uspješnog otvaranja — pokvaren

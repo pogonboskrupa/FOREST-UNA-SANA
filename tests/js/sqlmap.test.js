@@ -145,4 +145,44 @@ t('_sqlmapPokriva: tačka unutar/izvan granica karte, bez granica = pokriva', ()
   assert.strictEqual(f(null, { lat: 46 }), true);
 });
 
-console.log('\n' + pass + ' prošlo, 0 palo — učitaj karta');
+// sql.js u Node-u: prava baza u .sqlitedb (BigPlanet) i MBTiles šemi.
+(async () => {
+  const SQL = await require('../../static/libs/sql-wasm.js')({ locateFile: f => path.join(__dirname, '../../static/libs', f) });
+  const fns = ['_sqlJedan', '_sqlSema', '_sqlPlocica', '_sqlMime', '_sqlTmsY'].map(extractFn).join('\n');
+  const F = new Function(fns + '\nreturn { _sqlSema, _sqlPlocica, _sqlMime };')();
+  const PNG = n => new Uint8Array([0x89, 0x50, 0x4E, 0x47, n]), JPG = n => new Uint8Array([0xFF, 0xD8, 0xFF, n]);
+  const piramida = (fn, zOd, zDo) => { for (let z = zOd; z <= zDo; z++) { const k = 2 ** (z - zOd); for (let x = 0; x < k; x++) for (let y = 0; y < k; y++) fn(z, 8800 * 2 ** (z - 14) + x, 5900 * 2 ** (z - 14) + y); } };
+  t('.sqlitedb: obrnuti zoom (17 − z) iz broja pločica, XYZ y, JPEG iz bajtova', () => {
+    const db = new SQL.Database();
+    db.run('CREATE TABLE tiles (x int, y int, z int, s int, image blob, PRIMARY KEY (x,y,z,s)); CREATE TABLE info (maxzoom Int, minzoom Int)');
+    piramida((z, x, y) => db.run('INSERT INTO tiles VALUES (?,?,?,0,?)', [x, y, 17 - z, JPG(z)]), 14, 16);
+    const s = F._sqlSema(db);
+    assert.deepStrictEqual([s.tip, s.inv, s.minzoom, s.maxzoom], ['sqlitedb', true, 14, 16]);
+    const b = F._sqlPlocica(db, s, 15, 17600, 11800);
+    assert.ok(b && b[3] === 15, 'pločica na stvarnom zoomu 15');
+    assert.strictEqual(F._sqlMime(b, 'png'), 'image/jpeg');
+    assert.strictEqual(F._sqlPlocica(db, s, 3, 17600, 11800), null);
+    const [w, so, e, n] = s.bounds.split(',').map(Number);
+    assert.ok(w < e && so < n && w > 13 && e < 14 && n > 44 && so < 45, 'granice iz nivoa s najmanje pločica: ' + s.bounds);
+  });
+  t('.sqlitedb: tilenumbering=simple i jedan nivo → nije obrnut', () => {
+    const db = new SQL.Database();
+    db.run('CREATE TABLE tiles (x int, y int, z int, s int, image blob); CREATE TABLE info (tilenumbering text); INSERT INTO info VALUES (\'simple\')');
+    db.run('INSERT INTO tiles VALUES (8800,5900,14,0,?)', [PNG(1)]);
+    const s = F._sqlSema(db);
+    assert.strictEqual(s.inv, false); assert.strictEqual(s.minzoom, 14);
+    assert.ok(F._sqlPlocica(db, s, 14, 8800, 5900));
+  });
+  t('MBTiles: TMS red; nepoznata šema → null (jasna greška pri uvozu)', () => {
+    const db = new SQL.Database();
+    db.run('CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob)');
+    db.run('INSERT INTO tiles VALUES (14, 8800, ?, ?)', [2 ** 14 - 1 - 5900, PNG(7)]);
+    const s = F._sqlSema(db);
+    assert.strictEqual(s.tip, 'mbtiles');
+    assert.strictEqual(F._sqlPlocica(db, s, 14, 8800, 5900)[4], 7);
+    const prazna = new SQL.Database(); prazna.run('CREATE TABLE nesto (a int)');
+    assert.strictEqual(F._sqlSema(prazna), null);
+    assert.ok(HTML.includes("if (!_sqlReadMetadata(db)._sema) throw new Error("), 'uvoz odbija fajl bez pločica');
+  });
+  console.log('\n' + pass + ' prošlo, ' + (process.exitCode ? 'IMA PALIH' : '0 palo') + ' — učitaj karta');
+})();

@@ -48,7 +48,9 @@ sa najmanje pločica = `MAX(z)` kod obrnutog).
 - Offline podloga je u pane-u `offlineBasePane` (z 210). Svaki sloj koji mora
   biti IZNAD nje treba vlastiti pane (npr. `sumarstvoPane` z 420).
   `L.tileLayer` bez `pane` ide u `tilePane` (z 200) → ISPOD offline karte.
-- Web put (bez APK-a, sql.js u `_SqlTileLayer`) zna samo MBTiles šemu.
+- Web put (bez APK-a, sql.js u `_SqlTileLayer`) zna OBJE šeme: `_sqlSema`
+  (index.html) je JS kopija pravila iz `SqliteTileMath` (obrnuti zoom, granice
+  iz pločica), `_sqlMime` čita MIME iz bajtova. Mijenjaš jedno — mijenjaj oba.
 - Zoom opcije sloja idu ISKLJUČIVO kroz `_sqlZoomOpts(minzoom, maxzoom)`:
   `maxZoom` = zoom karte (22), a raspon fajla u `maxNativeZoom`/`minNativeZoom`.
   Ako je `maxZoom` = najveći zoom fajla, Leaflet cijeli sloj ukloni čim se
