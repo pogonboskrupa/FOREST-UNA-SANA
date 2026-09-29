@@ -20,7 +20,7 @@ OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.sy
             'https://maps.mail.ru/osm/tools/overpass/api/interpreter']
 USK = ['Bihać', 'Bosanska Krupa', 'Bosanski Petrovac', 'Bužim', 'Cazin', 'Ključ', 'Sanski Most', 'Velika Kladuša']
 GRAD = {'Bihać', 'Cazin'}
-UPIT = """[out:xml][timeout:300];
+UPIT_NEKORISTEN = """[out:xml][timeout:300];
 rel["boundary"="administrative"]["admin_level"~"^(6)$"]["name"~"Unsko"];
 map_to_area->.k;
 rel(area.k)["boundary"="administrative"]["admin_level"~"^(7|8)$"];
@@ -28,20 +28,25 @@ rel(area.k)["boundary"="administrative"]["admin_level"~"^(7|8)$"];
 out body;"""
 
 
+PBF = 'https://download.geofabrik.de/europe/bosnia-herzegovina-latest.osm.pbf'
+
+
 def preuzmi():
-    for u in OVERPASS:
-        for i in range(3):
-            try:
-                print('OVERPASS', u, flush=True)
-                d = urllib.request.urlopen(u, urllib.parse.urlencode({'data': UPIT}).encode(), timeout=400).read()
-                if len(d) > 10000:
-                    open('/tmp/usk.osm', 'wb').write(d)
-                    print('OSM bajtova', len(d))
-                    return
-                print('premalo podataka', d[:300])
-            except Exception as e:  # noqa: BLE001
-                print('greška', e); time.sleep(10 * (i + 1))
-    raise RuntimeError('Overpass nedostupan')
+    # Geofabrik izvod BiH (~70 MB) — pouzdaniji od Overpass servera.
+    req = urllib.request.Request(PBF, headers={'User-Agent': 'FOREST-UNA-SANA-ci/1.0 (github.com/pogonboskrupa)'})
+    for i in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=600) as r, open('/tmp/bih.osm.pbf', 'wb') as f:
+                while True:
+                    b = r.read(1 << 20)
+                    if not b:
+                        break
+                    f.write(b)
+            print('PBF bajtova', __import__('os').path.getsize('/tmp/bih.osm.pbf'), flush=True)
+            return
+        except Exception as e:  # noqa: BLE001
+            print('greška', e); time.sleep(15 * (i + 1))
+    raise RuntimeError('Geofabrik nedostupan')
 
 
 def norm(s):
@@ -50,12 +55,14 @@ def norm(s):
 
 def main(gb_path, izlaz, izlaz_obris):
     preuzmi()
-    subprocess.run(['ogr2ogr', '-f', 'GeoJSON', '/tmp/osm_mp.geojson', '/tmp/usk.osm', 'multipolygons',
-                    '-oo', 'CONFIG_FILE=/usr/share/gdal/osmconf.ini'], check=True)
+    subprocess.run(['ogr2ogr', '-f', 'GeoJSON', '/tmp/osm_mp.geojson', '/tmp/bih.osm.pbf', 'multipolygons',
+                    '-spat', '15.6', '44.1', '17.0', '45.35', '-where', "boundary='administrative'"], check=True)
     osm = json.load(open('/tmp/osm_mp.geojson'))
     print('OSM poligona', len(osm['features']))
     for f in osm['features']:
         p = f['properties']
+        if norm(p.get('name')) not in USK and 'Unsko' not in (p.get('name') or ''):
+            continue
         print('  OSM', p.get('name'), '| admin', p.get('admin_level'), '| boundary', p.get('boundary'), '| other', (p.get('other_tags') or '')[:160])
     gb = {f['properties']['ime']: ogr.CreateGeometryFromJson(json.dumps(f['geometry'])) for f in json.load(open(gb_path))['features']}
     izbor = {}
@@ -67,7 +74,9 @@ def main(gb_path, izlaz, izlaz_obris):
             continue
         g = ogr.CreateGeometryFromJson(json.dumps(f['geometry']))
         # admin_level 7 ima prednost (općina/grad); 8 samo ako 7 nema
-        if kand not in izbor or (p.get('admin_level') == '7' and izbor[kand][1] != '7'):
+        # Najmanji administrativni nivo koji nosi to ime je općina/grad (ne mjesna zajednica)
+        lvl = int(p.get('admin_level') or 99)
+        if kand not in izbor or lvl < int(izbor[kand][1] or 99):
             izbor[kand] = (g, p.get('admin_level'))
     nema = [u for u in USK if u not in izbor]
     print('NEDOSTAJE u OSM:', nema)
@@ -109,7 +118,7 @@ def main(gb_path, izlaz, izlaz_obris):
         return o
     for f in feats:
         f['geometry']['coordinates'] = zaokruzi(f['geometry']['coordinates'])
-    json.dump({'type': 'FeatureCollection', 'izvor': '© OpenStreetMap saradnici (ODbL), admin_level 7, pojednostavljeno ~10 m', 'features': feats},
+    json.dump({'type': 'FeatureCollection', 'izvor': '© OpenStreetMap saradnici (ODbL), Geofabrik izvod, pojednostavljeno ~10 m', 'features': feats},
               open(izlaz, 'w'), ensure_ascii=False, separators=(',', ':'))
     u = None
     for ime in USK:
