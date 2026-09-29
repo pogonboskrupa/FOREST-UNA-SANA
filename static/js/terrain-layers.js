@@ -97,12 +97,15 @@ if (typeof window !== 'undefined') {
       const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
       (async()=>{
         // Neighbour pixels make central differences continuous at tile boundaries.
-        const [a,w,e,n,s]=await Promise.all([dem(c.z,c.x,c.y),dem(c.z,c.x-1,c.y),dem(c.z,c.x+1,c.y),dem(c.z,c.x,c.y-1),dem(c.z,c.x,c.y+1)]);
+        // Susjedne pločice su opcione: na rubu obuhvata (offline, van 5 općina)
+        // nema ih, pa se rub pločice računa iz njenih vlastitih piksela.
+        const opc=(z,x,y)=>Promise.race([dem(z,x,y).catch(()=>null),new Promise(r=>setTimeout(()=>r(null),3000))]);
+        const [a,w,e,n,s]=await Promise.all([dem(c.z,c.x,c.y),opc(c.z,c.x-1,c.y),opc(c.z,c.x+1,c.y),opc(c.z,c.x,c.y-1),opc(c.z,c.x,c.y+1)]);
         const ctx=canvas.getContext('2d'), out=ctx.createImageData(256,256);
         // Ekspozicija na širem razmaku (3 px ≈ 20 m) — manje šuma piksela i krošnji.
         const K=this.options.mode==='aspect'?3:1;
-        const vx=(x,y)=>x<0?w[y*256+256+x]:x>255?e[y*256+x-256]:a[y*256+x];
-        const vy=(x,y)=>y<0?n[(256+y)*256+x]:y>255?s[(y-256)*256+x]:a[y*256+x];
+        const vx=(x,y)=>x<0?(w?w[y*256+256+x]:a[y*256]):x>255?(e?e[y*256+x-256]:a[y*256+255]):a[y*256+x];
+        const vy=(x,y)=>y<0?(n?n[(256+y)*256+x]:a[x]):y>255?(s?s[(y-256)*256+x]:a[255*256+x]):a[y*256+x];
         for(let y=0;y<256;y++) {
           const lat=Math.atan(Math.sinh(Math.PI*(1-2*(c.y+(y+.5)/256)/2**c.z)));
           const metres=40075016.686*Math.cos(lat)/(256*2**c.z);
@@ -115,7 +118,7 @@ if (typeof window !== 'undefined') {
           }
         }
         ctx.putImageData(out,0,0);done(null,canvas);
-      })().catch(err=>{document.getElementById('terrain-status').textContent='Dio terena nije dostupan. Za nepreuzete pločice uključi internet.';done(err,canvas);});
+      })().catch(err=>{document.getElementById('terrain-status').textContent='Bez interneta teren radi unutar 5 općina (ugrađeni DEM) i za ranije pregledana područja; ostalo se učita kad veza proradi.';done(err,canvas);});
       return canvas;
     }
   });
@@ -221,13 +224,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.5.3';
+      if (label) label.textContent = 'v1.5.4';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v1.5.3';
+  if (badge) badge.textContent = 'Grmeč Navigator v1.5.4';
 })();
 
 

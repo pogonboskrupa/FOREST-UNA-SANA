@@ -146,6 +146,26 @@ t('ekspozicija u poligonu: udio po strani, ravno posebno', () => {
   assert.ok(Math.abs(r.ravno.ha - 1) < 1e-9);
 });
 
+t('sačuvana mjerenja ostaju na karti; prikaz/skrivanje iz liste; bez DEM-a i interneta', () => {
+  const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
+  assert.ok(js.includes("map.createPane('nagibSvPane')") && js.includes("pane: 'nagibSvPane'"), 'vlastiti pane');
+  assert.ok(js.includes('data-sv="karta"') && js.includes('z.naKarti = z.naKarti === false'), 'prekidač u listi');
+  assert.ok(js.includes("naKarti: true"), 'novo mjerenje je odmah na karti');
+  const sv = js.slice(js.indexOf('function svCrtaj'), js.indexOf('function npRenderLista'));
+  assert.ok(sv.includes('npNagibLinije(l.ha, l.hb') && !sv.includes('visinaNa') && !sv.includes('fetch'), 'crta iz sačuvanih visina');
+  assert.ok(js.includes('r.nagibi.length >= 0.5 * r.ukupno'), 'poligon preko granice općina: statistika iz pokrivenog dijela');
+});
+
+t('slab signal: pločice terena padaju na lokalni DEM, susjedi opcioni, SW ima rok', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+  const terr = html.slice(html.indexOf('async function _getTerrariumTile'), html.indexOf('function _terrariumDecodeTile'));
+  assert.ok(terr.includes('setTimeout(() => r(CEKAJ), 2500)') && terr.includes('_javiPosmatracu'), 'lokalno poslije 2,5 s; neuspjeh ide u posmatrač veze');
+  const tl = fs.readFileSync(path.join(__dirname, '../../static/js/terrain-layers.js'), 'utf8');
+  assert.ok(tl.includes('dem(z,x,y).catch(()=>null),new Promise(r=>setTimeout(()=>r(null),3000))'), 'susjedne pločice opcione s rokom');
+  const sw = fs.readFileSync(path.join(__dirname, '../../sw.js'), 'utf8');
+  assert.ok(sw.includes('setTimeout(() => r(null), 4000)') && sw.includes('event.waitUntil(mreza.catch'), 'SW: mreža 4 s pa keš');
+});
+
 t('pohrana: dugme Sačuvaj/Ažuriraj, lista s prikazom, CSV, preimenovanjem i brisanjem', () => {
   const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
   assert.ok(js.includes("'usf_nagib_mjerenja'") && js.includes("data-a=\"sacuvaj\""));

@@ -382,6 +382,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .ng-red .ng-prosjek small { display:block; font-weight:600; }
 .ng-red .ng-akc { grid-column:2 / 4; display:flex; gap:6px; }
 .ng-red .ng-akc button { flex:1; padding:7px 4px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:11.5px; cursor:pointer; }
+.ng-red .ng-akc button.na-karti { border-color:#3b82f6; color:#dbeafe; background:#1e3a5f; }
 .ng-red .ng-akc button.prikazi { background:#14532d; border-color:#22c55e; color:#dcfce7; font-weight:700; flex:1.6; }
 .ng-prazno { color:#80958a; font-size:12px; padding:4px 0; }
 .tse-pct { color:#fbbf24; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -6998,13 +6999,24 @@ async function _getTerrariumTile(z, x, y) {
     if (navigator.onLine === false || (typeof _vezaLoša === 'function' && _vezaLoša())) {
       const l = await lokalno(); if (l) return l;
     }
-    try {
-      const resp = await fetch(url, fetchOpts);
-      if (resp?.ok) {
+    // Ishod ide u posmatrač veze: poslije 3 neuspjeha u minuti sve pločice
+    // idu odmah na lokalni DEM umjesto da svaka čeka istek od 10 s.
+    const t0 = Date.now(), javi = ok => { try { if (typeof _javiPosmatracu === 'function') _javiPosmatracu({ ok, ms: Date.now() - t0, vrsta: ok ? 'ok' : 'istek' }); } catch(e) {} };
+    const mreza = (async () => {
+      try {
+        const resp = await fetch(url, fetchOpts);
+        javi(true);
+        if (!resp?.ok) return null;
         if ('caches' in window) { try { const cache = await caches.open(_TERR_CACHE); await cache.put(url, resp.clone()); } catch(e) {} }
-        blob = await resp.blob();
-      }
-    } catch(e) {}
+        return await resp.blob();
+      } catch(e) { javi(false); return null; }
+    })();
+    // Slab signal: ako internet ne odgovori za 2,5 s, a lokalni DEM pokriva
+    // dio pločice, crta se odmah lokalno; mreža u pozadini puni keš.
+    const CEKAJ = {};
+    const prvi = (window.USFDem && z >= 10) ? await Promise.race([mreza, new Promise(r => setTimeout(() => r(CEKAJ), 2500))]) : await mreza;
+    if (prvi === CEKAJ) { const l = await lokalno(); if (l) return l; blob = await mreza; }
+    else blob = prvi;
     if (!blob) return lokalno();
   }
   if (typeof createImageBitmap !== 'undefined') return createImageBitmap(blob);

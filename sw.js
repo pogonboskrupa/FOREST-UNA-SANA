@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '1.5.3';
+const APP_VERSION = '1.5.4';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -149,16 +149,24 @@ self.addEventListener('fetch', event => {
     // verziju do isteka max-age pa update kasni. Ostalo: normalan network-first.
     const isNav = event.request.mode === 'navigate';
     const req = isNav ? new Request(event.request, { cache: 'no-store' }) : event.request;
-    event.respondWith(
-      fetch(req)
-        .then(async resp => {
-          if (resp.ok) {
-            try { const rc = resp.clone(); const c = await caches.open(APP_CACHE); await c.put(event.request, rc); } catch(e) {}
-          }
-          return resp;
-        })
-        .catch(async () => (await caches.match(event.request)) || (isNav && await caches.match('./index.html')) || new Response('Nije dostupno offline', { status: 503 }))
-    );
+    // Slab signal: mreža ima 4 s, zatim keš; mreža nastavlja u pozadini i
+    // osvježi keš za sljedeće otvaranje.
+    const izKesa = async () => (await caches.match(event.request)) || (isNav && await caches.match('./index.html')) || null;
+    const mreza = fetch(req).then(async resp => {
+      if (resp.ok) {
+        try { const rc = resp.clone(); const c = await caches.open(APP_CACHE); await c.put(event.request, rc); } catch(e) {}
+      }
+      return resp;
+    });
+    event.waitUntil(mreza.catch(() => {}));
+    event.respondWith((async () => {
+      const rok = new Promise(r => setTimeout(() => r(null), 4000));
+      const prvi = await Promise.race([mreza.catch(() => null), rok]);
+      if (prvi) return prvi;
+      const k = await izKesa();
+      if (k) return k;
+      try { return await mreza; } catch(e) { return new Response('Nije dostupno offline', { status: 503 }); }
+    })());
   }
 });
 
