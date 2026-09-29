@@ -1,0 +1,35 @@
+name: Granice općina priprema
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/practical-pasteur-p2npth]
+    paths: ['.github/workflows/granice-priprema.yml', 'tools/granice_priprema.py']
+
+permissions:
+  contents: write
+
+jobs:
+  priprema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: GDAL
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y gdal-bin python3-gdal >/dev/null
+      - name: OSM granice USK i poređenje sa geoBoundaries
+        run: |
+          set -eu
+          /usr/bin/python3 tools/granice_priprema.py static/data/opcine_usk.geojson static/data/opcine_usk_osm.geojson static/data/usk_granica_osm.geojson
+          ls -la static/data/*osm*
+      - name: Sačuvaj rezultat na granu
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/data/opcine_usk_osm.geojson static/data/usk_granica_osm.geojson
+          git commit -m "data: granice općina USK iz OpenStreetMap-a (automatski)" || echo "nema promjena"
+          for i in 1 2 3 4 5; do
+            git pull -q --rebase origin ${GITHUB_REF_NAME} && git push -q origin HEAD:${GITHUB_REF_NAME} && break
+            sleep $((i * 5))
+          done
