@@ -137,6 +137,15 @@ t('procenti su jedini prikaz (stepeni uklonjeni); sažetak za pohranu', () => {
   assert.ok(js.includes("'nagib_pct', 'nagib_st'"), 'CSV: procenat prije stepeni');
 });
 
+t('ekspozicija u poligonu: udio po strani, ravno posebno', () => {
+  const T = require('../../static/js/terrain-layers.js');
+  const nag = [10, 10, 10, 1, 10], eks = [0, 90, 180, 270, 350];
+  const r = N.npEkspozicija(nag, eks, 4, (e, st) => T.terrainAspectKlasa(e, st, 4), 50000);
+  assert.deepStrictEqual(r.strane.map(x => x.udio), [0.4, 0.2, 0.2, 0]);
+  assert.strictEqual(r.ravno.udio, 0.2);
+  assert.ok(Math.abs(r.ravno.ha - 1) < 1e-9);
+});
+
 t('pohrana: dugme Sačuvaj/Ažuriraj, lista s prikazom, CSV, preimenovanjem i brisanjem', () => {
   const js = fs.readFileSync(path.join(__dirname, '../../static/js/nagib-poligon.js'), 'utf8');
   assert.ok(js.includes("'usf_nagib_mjerenja'") && js.includes("data-a=\"sacuvaj\""));

@@ -8,9 +8,23 @@ assert.equal(terrainGradient(-1,0).aspect,90);
 assert.equal(terrainGradient(0,-1).aspect,180);
 assert.equal(terrainGradient(1,0).aspect,270);
 assert.equal(terrainGradient(1,0).slope,45);
-assert.equal(terrainColor('aspect',0,0),'#a1a1aa');
-assert.equal(terrainColor('aspect',Math.tan(10*Math.PI/180),0),'#a1a1aa');
-assert.notEqual(terrainColor('aspect',Math.tan(10.1*Math.PI/180),0),'#a1a1aa');
+// Ekspozicija: ravno do 5 % se ne boji (null = prozirno), 4 ili 8 strana.
+const T = require('../../static/js/terrain-layers.js');
+assert.equal(terrainColor('aspect',0,0),null);
+assert.equal(terrainColor('aspect',0.05,0),null, 'tačno 5 % je ravno');
+assert.equal(terrainColor('aspect',0,0.051),'#3b82f6', 'okrenut sjeveru');
+assert.equal(terrainColor('aspect',-0.2,0),'#22c55e', 'okrenut istoku (8 strana)');
+assert.equal(T.terrainAspectKlasa(44, 10, 8), 1);
+assert.equal(T.terrainAspectKlasa(44, 10, 4), 0, 'SI 44° je u 4 strane Sjever');
+assert.equal(T.terrainAspectKlasa(46, 10, 4), 1, '46° je Istok');
+assert.equal(T.terrainAspectKlasa(180, 10, 4), 2);
+assert.equal(T.terrainAspectKlasa(315, 10, 4), 0, 'granica 315° ide Sjeveru');
+assert.equal(T.terrainAspectKlasa(270, 2, 4), null, '2° ≈ 3,5 % je ravno');
+T.setAspectBroj(4);
+assert.equal(terrainColor('aspect',0.2,0),'#facc15', 'okrenut zapadu (4 strane)');
+assert.equal(terrainColor('aspect',0,-0.3),'#ef4444', 'okrenut jugu (4 strane)');
+T.setAspectBroj(8);
+assert.ok(html.includes('_terrainAspectBroj(4)') && html.includes('_terrainAspectBroj(8)'), 'izbor 4/8 ekspozicija u UI');
 // Šest šumarskih klasa nagiba u procentima (stepeni samo za prikaz): 0–10, 11–20, 21–30, 31–40, 41–50, >50 %.
 const nag = p => terrainColor('slope', p / 100, 0);
 assert.equal(nag(0), '#22c55e'); assert.equal(nag(9.9), '#22c55e');

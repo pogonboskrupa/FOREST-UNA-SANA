@@ -74,17 +74,17 @@ function npCelije(d, ring, nagibFn) {
   const la = ring.map(p => p[0]), lo = ring.map(p => p[1]);
   const x0 = Math.max(1, Math.floor((Math.min(...lo) - d.ox) / d.rx)), x1 = Math.min(d.W - 2, Math.ceil((Math.max(...lo) - d.ox) / d.rx));
   const y0 = Math.max(1, Math.floor((Math.max(...la) - d.oy) / d.ry)), y1 = Math.min(d.H - 2, Math.ceil((Math.min(...la) - d.oy) / d.ry));
-  const nagibi = [], celije = []; let ukupno = 0;
+  const nagibi = [], celije = [], eksp = []; let ukupno = 0;
   for (let iy = y0; iy <= y1; iy++) {
     const lat = d.oy + (iy + 0.5) * d.ry;
     for (let ix = x0; ix <= x1; ix++) {
       if (!npUnutra(lat, d.ox + (ix + 0.5) * d.rx, ring)) continue;
       ukupno++;
       const g = nagibFn(ix, iy, lat);
-      if (g) { nagibi.push(g.nagib); celije.push([ix, iy, g.nagib]); }
+      if (g) { nagibi.push(g.nagib); eksp.push(g.eksp); celije.push([ix, iy, g.nagib]); }
     }
   }
-  return { nagibi, ukupno, celije };
+  return { nagibi, ukupno, celije, eksp };
 }
 
 // ── Linije niz padinu ─────────────────────────────────────────────────
@@ -169,6 +169,14 @@ async function npPratiPad(p, visinaFn, ring, pola, korak = 15) {
   };
   return Promise.all([prati(true), prati(false)]);
 }
+// Udio površine po ekspoziciji; ravno (nagib ≤ pragPct) ide posebno.
+// klasaFn(eksp, nagib) → indeks strane ili null (ravno).
+function npEkspozicija(nagibi, eksp, n, klasaFn, povrsina) {
+  const brojac = new Array(n).fill(0); let ravno = 0;
+  nagibi.forEach((st, i) => { const k = klasaFn(eksp[i], st); if (k === null || k === undefined) ravno++; else brojac[k]++; });
+  const uk = nagibi.length || 1, ha = povrsina / 10000;
+  return { strane: brojac.map(c => ({ udio: c / uk, ha: ha * c / uk })), ravno: { udio: ravno / uk, ha: ha * ravno / uk } };
+}
 const npPct = st => Math.tan(st * Math.PI / 180) * 100;
 const npSt = pct => Math.atan(pct / 100) * 180 / Math.PI;
 // Sažetak za pohranu/listu: prosjek linija u % i °.
@@ -182,7 +190,7 @@ function npAutoDuzina(povrsina) {
   return Math.max(60, Math.min(300, Math.round(0.45 * Math.sqrt(povrsina) / 10) * 10));
 }
 
-if (typeof module !== 'undefined') module.exports = { npUnutra, npPovrsina, npAutoRazmak, npMreza, npStatistika, npNagibIzVisina, npCelije, npDist, npPomak, npAzimutPada, npNagibLinije, npKandidati, npSjemena, npLinijaKroz, npPratiPad, npAutoDuzina, npPct, npSt, npSazetak };
+if (typeof module !== 'undefined') module.exports = { npUnutra, npPovrsina, npAutoRazmak, npMreza, npStatistika, npNagibIzVisina, npCelije, npDist, npPomak, npAzimutPada, npNagibLinije, npKandidati, npSjemena, npLinijaKroz, npPratiPad, npAutoDuzina, npPct, npSt, npSazetak, npEkspozicija };
 
 if (typeof window !== 'undefined' && typeof map !== 'undefined') (function () {
   // Rasponi nagiba u poligonu (raster ćelija DEM-a) ispod linija i obrisa.
@@ -715,6 +723,15 @@ body.np-open #terrain-map-legend { display:none !important; }
   const miniBtn = () => card.classList.contains('mini')
     ? '<button data-a="mini" title="Proširi">▢</button>'
     : '<button data-a="mini" title="Minimiziraj">−</button>';
+  function ekspozicijaHtml(s, pov) {
+    if (!s.celije || !s.celije.eksp || typeof terrainAspectKlasa === 'undefined') return '';
+    const sm = terrainAspectSema(), n = sm.boje.length;
+    const r = npEkspozicija(s.celije.nagibi, s.celije.eksp, n, (e, st) => terrainAspectKlasa(e, st, n), pov);
+    const red = (boja, txt, x) => `<div class="np-zas"><i style="background:${boja}"></i><span>${txt}</span><b>${fmt(x.udio * 100, x.udio > 0 && x.udio < 0.01 ? 1 : 0)} %</b><span>${fmt(x.ha, 2)} ha</span></div>`;
+    return `<div class="np-naslov">Ekspozicija <small>(površina · ravno ≤5 %)</small></div>
+      <div class="np-traka">${r.strane.map((x, i) => `<u style="width:${(x.udio * 100).toFixed(2)}%;background:${sm.boje[i]}" title="${sm.nazivi[i]}"></u>`).join('')}<u style="width:${(r.ravno.udio * 100).toFixed(2)}%;background:#475569" title="Ravno"></u></div>
+      ${r.strane.map((x, i) => x.udio > 0 ? red(sm.boje[i], sm.nazivi[i], x) : '').join('')}${r.ravno.udio > 0 ? red('#475569', 'Ravno (≤5 %)', r.ravno) : ''}`;
+  }
   function prikazi() {
     if (crt) {
       card.innerHTML = `<div class="np-hdr"><span>📐 Crtaj poligon</span>${miniBtn()}<button data-a="x" aria-label="Zatvori">✕</button></div>
@@ -733,6 +750,7 @@ body.np-open #terrain-map-legend { display:none !important; }
       <div class="np-tijelo">
       <div class="np-sub">${fmt(pov / 10000, 2)} ha · ${s.linije.length} linija niz padinu · do ${s.duzinaAkt} m (od vrha do podnožja padine)${s.racuna ? ' · računam…' : ''}</div>
       ${zastupljenostHtml(s, kl, pov)}
+      ${ekspozicijaHtml(s, pov)}
       <div class="np-naslov">Linije niz padinu</div>
       ${stat ? `<div class="np-kpi"><div><b>${pctSt(sz.pct, sz.st)}</b><small>prosjek linija</small></div><div><b>${pctSt(statPct.med, npSt(statPct.med), 0)}</b><small>medijan</small></div><div><b>${pctSt(statPct.min, npSt(statPct.min), 0)}</b><small>min</small></div><div><b>${pctSt(statPct.max, npSt(statPct.max), 0)}</b><small>max</small></div></div>
       ${stat.poKlasi.map((p, i) => `<div class="np-kl${p.k.on === false ? ' off' : ''}"><i style="background:${p.k.color}"></i><span>${klasaTxt(p.k, i, kl)}</span><span class="bar"><u style="width:${(p.udio * 100).toFixed(1)}%;background:${p.k.color}"></u></span><span>${p.n} lin.</span></div>`).join('')}` : '<div class="np-sub">Čekam visinske podatke…</div>'}

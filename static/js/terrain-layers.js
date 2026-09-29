@@ -18,6 +18,19 @@ const terrainSlopeClasses = [
   { max: Infinity, color: '#7e22ce', label: '>50 %', labelSt: '(>27°)' }
 ];
 const terrainAspectLabels = ['S','SI','I','JI','J','JZ','Z','SZ'];
+// Ekspozicija: 8 strana ili samo 4 glavne (S/I/J/Z, sektori po 90°).
+// Nagib do 5 % je ravan teren — nema ekspozicije i ne boji se.
+const terrainAspectRavnoPct = 5;
+const terrainAspect4 = { boje: ['#3b82f6', '#22c55e', '#ef4444', '#facc15'], oznake: ['S', 'I', 'J', 'Z'], nazivi: ['Sjever', 'Istok', 'Jug', 'Zapad'] };
+const terrainAspect8 = { boje: terrainAspectColors, oznake: terrainAspectLabels, nazivi: ['Sjever', 'Sjeveroistok', 'Istok', 'Jugoistok', 'Jug', 'Jugozapad', 'Zapad', 'Sjeverozapad'] };
+let terrainAspectBroj = 8;
+const terrainAspectSema = n => ((n || terrainAspectBroj) === 4 ? terrainAspect4 : terrainAspect8);
+// aspect u ° od sjevera (kazaljka), slope u °; null = ravno.
+function terrainAspectKlasa(aspect, slope, n) {
+  if (!(terrainPct(slope) > terrainAspectRavnoPct + 1e-9)) return null;
+  const k = (n || terrainAspectBroj) === 4 ? 4 : 8, sektor = 360 / k;
+  return Math.floor((((aspect % 360) + 360) % 360 + sektor / 2) / sektor) % k;
+}
 // Korisnički rasponi: [{max, color, on}] — max je gornja granica (°), zadnji
 // raspon ide do beskonačnosti. Isključen raspon se ne crta (prozirno).
 const terrainSlopePaleta = ['#22c55e','#84cc16','#facc15','#f59e0b','#f97316','#dc2626','#be185d','#7e22ce'];
@@ -44,17 +57,18 @@ function terrainSetSlopeKlase(list) { terrainSlopeAktivne = list && list.length 
 function terrainSlopeKlasa(slope, klase) { const p = terrainPct(slope); return (klase || terrainSlopeAktivne).find(k => p < k.max) || null; }
 function terrainColor(mode, east, south) {
   const g = terrainGradient(east, south);
-  if (mode === 'aspect') return g.slope <= 10 ? '#a1a1aa' : terrainAspectColors[Math.floor((g.aspect+22.5)/45)%8];
+  if (mode === 'aspect') { const i = terrainAspectKlasa(g.aspect, g.slope); return i === null ? null : terrainAspectSema().boje[i]; }
   if (mode === 'slope') { const k = terrainSlopeKlasa(g.slope); return k && k.on !== false ? k.color : null; }
   // Sun from NW, elevation 45 degrees; unit normal (-east,+south,1).
   const light = Math.max(0, (east*0.5 + south*0.5 + Math.SQRT1_2)/Math.sqrt(1+east*east+south*south));
   const n = Math.round(35 + 220*light);
   return '#' + n.toString(16).padStart(2,'0').repeat(3);
 }
-if (typeof module !== 'undefined') module.exports = {terrainGradient,terrainColor,terrainSlopeClasses,terrainSlopeNormalize,terrainSetSlopeKlase,terrainSlopeKlasa,terrainPct,terrainDeg};
+if (typeof module !== 'undefined') module.exports = {terrainAspectKlasa,terrainAspectSema,terrainAspectRavnoPct,setAspectBroj:n=>{terrainAspectBroj=n===4?4:8;},terrainGradient,terrainColor,terrainSlopeClasses,terrainSlopeNormalize,terrainSetSlopeKlase,terrainSlopeKlasa,terrainPct,terrainDeg};
 if (typeof window !== 'undefined') {
   const saved = (()=>{try{return JSON.parse(localStorage.getItem('usf_terrain')||'{}');}catch(e){return {};}})();
   const layers = {}, decoded = new Map();
+  if (saved.aspectBroj === 4) terrainAspectBroj = 4;
   let opacity = Math.max(.15,Math.min(.85,Number(saved.opacity)||.55));
   // Stari zapis (granice u stepenima) se pretvara u procente.
   if (Array.isArray(saved.nagibKlase)) terrainSetSlopeKlase(saved.nagibKlase.map(k => ({ ...k, max: k.max === null ? Infinity : (saved.nagibJed === 'pct' ? k.max : Math.round(terrainPct(k.max))) })));
@@ -85,12 +99,16 @@ if (typeof window !== 'undefined') {
         // Neighbour pixels make central differences continuous at tile boundaries.
         const [a,w,e,n,s]=await Promise.all([dem(c.z,c.x,c.y),dem(c.z,c.x-1,c.y),dem(c.z,c.x+1,c.y),dem(c.z,c.x,c.y-1),dem(c.z,c.x,c.y+1)]);
         const ctx=canvas.getContext('2d'), out=ctx.createImageData(256,256);
+        // Ekspozicija na širem razmaku (3 px ≈ 20 m) — manje šuma piksela i krošnji.
+        const K=this.options.mode==='aspect'?3:1;
+        const vx=(x,y)=>x<0?w[y*256+256+x]:x>255?e[y*256+x-256]:a[y*256+x];
+        const vy=(x,y)=>y<0?n[(256+y)*256+x]:y>255?s[(y-256)*256+x]:a[y*256+x];
         for(let y=0;y<256;y++) {
           const lat=Math.atan(Math.sinh(Math.PI*(1-2*(c.y+(y+.5)/256)/2**c.z)));
           const metres=40075016.686*Math.cos(lat)/(256*2**c.z);
           for(let x=0;x<256;x++) {
-            const dx=((x===255?e[y*256]:a[y*256+x+1])-(x===0?w[y*256+255]:a[y*256+x-1]))/(2*metres);
-            const dy=((y===255?s[x]:a[(y+1)*256+x])-(y===0?n[255*256+x]:a[(y-1)*256+x]))/(2*metres);
+            const dx=(vx(x+K,y)-vx(x-K,y))/(2*K*metres);
+            const dy=(vy(x,y+K)-vy(x,y-K))/(2*K*metres);
             const color=terrainColor(this.options.mode,dx,dy), i=(y*256+x)*4;
             if(!color){out.data[i+3]=0;continue;}
             out.data[i]=parseInt(color.slice(1,3),16);out.data[i+1]=parseInt(color.slice(3,5),16);out.data[i+2]=parseInt(color.slice(5,7),16);out.data[i+3]=255;
@@ -112,13 +130,14 @@ if (typeof window !== 'undefined') {
   const legend=()=>{
     let rows=[];
     if(saved.slope)rows.push(...terrainSlopeAktivne.filter(k=>k.on!==false).map(k=>[k.color,k.label+' '+k.labelSt]));
-    if(saved.aspect)rows.push(['#a1a1aa','Neutralno ≤10°'],...['Sjever','Sjeveroistok','Istok','Jugoistok','Jug','Jugozapad','Zapad','Sjeverozapad'].map((t,i)=>[terrainAspectColors[i],t]));
-    document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
+    if(saved.aspect){const sm=terrainAspectSema();rows.push(...sm.nazivi.map((t,i)=>[sm.boje[i],t]));}
+    document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.aspect?'<div>Ravan teren (nagib do 5 %) nema ekspoziciju i ostaje bez boje.</div>':'')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
     const stavka=(c,t)=>`<span class="tml-item"><i style="background:${c}"></i>${t}</span>`;
     let html='';
     const vidljive=terrainSlopeAktivne.filter(k=>k.on!==false);
     if(saved.slope)html=`<div class="tml-title">Nagib terena (%)</div><div class="tml-row tml-slope" style="grid-template-columns:repeat(${Math.min(5,Math.max(1,vidljive.length))},minmax(0,1fr))">${vidljive.map(k=>stavka(k.color,k.label.replace(' %',''))).join('')}</div>`;
-    else if(saved.aspect)html=`<div class="tml-title">Ekspozicija</div><div class="tml-row tml-aspect">${terrainAspectLabels.map((t,i)=>stavka(terrainAspectColors[i],t)).join('')}${stavka('#a1a1aa','ravno')}</div>`;
+    else if(saved.aspect){const sm=terrainAspectSema();html=`<div class="tml-title">Ekspozicija · ravno ≤5 % bez boje</div><div class="tml-row tml-aspect${terrainAspectBroj===4?' a4':''}">${sm.oznake.map((t,i)=>stavka(sm.boje[i],t)).join('')}</div>`;}
+    document.querySelectorAll('[data-asp-broj]').forEach(b=>b.classList.toggle('on',Number(b.dataset.aspBroj)===terrainAspectBroj));
     mapLegend.innerHTML=html;
     mapLegend.style.display=html?'block':'none';
   };
@@ -165,6 +184,12 @@ if (typeof window !== 'undefined') {
     });
   }
   urednik();
+  window._terrainAspectBroj=n=>{
+    terrainAspectBroj=n===4?4:8;saved.aspectBroj=terrainAspectBroj;persist();
+    if(layers.aspect)layers.aspect.redraw();
+    if(!saved.aspect)window._terrainToggle('aspect',true);else legend();
+    try{window.dispatchEvent(new CustomEvent('usf-nagib-klase'));}catch(e){}
+  };
   window._terrainOpacity=value=>{opacity=Number(value)/100;klizaci().forEach(i=>{if(Number(i.value)!==Number(value))i.value=value;});Object.values(layers).forEach(l=>l.setOpacity(opacity));persist();};
   for(const mode of ['shade','slope','aspect'])if(saved[mode])window._terrainToggle(mode,true);
   legend();
@@ -196,13 +221,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v1.5.2';
+      if (label) label.textContent = 'v1.5.3';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v1.5.2';
+  if (badge) badge.textContent = 'Grmeč Navigator v1.5.3';
 })();
 
 
