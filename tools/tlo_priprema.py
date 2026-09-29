@@ -1,118 +1,183 @@
-"""Pedološka karta za Unsko-sanski kanton (granica iz static/data/usk_granica.geojson).
+"""Pedološka karta za Unsko-sanski kanton (granica static/data/usk_granica.geojson).
 
-Izvor: ISRIC SoilGrids 2.0 (Poggio i sar. 2021), WRB "MostProbable" 250 m —
-referentne grupe tala po World Reference Base, klasifikaciji koju je FAO
-razvio iz legende FAO-UNESCO karte tala svijeta. Licenca CC BY 4.0.
+Izvor: HWSD v2.0 — Harmonized World Soil Database (FAO & IIASA, 2023), 30"
+(~1 km). Za Evropu se zasniva na Evropskoj bazi tala 1:1 000 000 (nacionalne
+karte tala, za BiH jugoslavenske), sa FAO-90 klasifikacijom (nasljednik
+FAO-UNESCO legende karte tala svijeta) i WRB. Svaka kartografska jedinica
+(SMU) ima više komponenti tla sa udjelom i svojstvima po slojevima.
 
 Izlaz (static/data/):
-  tlo_usk.tif   Byte COG, EPSG:4326, ~250 m: kod klase (0 = nema/van USK)
-  tlo_usk.json  legenda samo za klase prisutne u USK: naziv, boja, ha, udio
+  tlo_usk.tif   UInt16 COG, EPSG:4326, 30": indeks jedinice (0 = van USK)
+  tlo_usk.json  jedinice: dominantno tlo (FAO-90, WRB), komponente, svojstva
+                gornjeg sloja dominantne komponente, površina u USK, boja
 """
+import csv
+import io
 import json
+import os
+import re
+import subprocess
 import sys
 import urllib.request
+import zipfile
 
 import numpy as np
 from osgeo import gdal
 
 gdal.UseExceptions()
-gdal.SetConfigOption('GDAL_HTTP_MAX_RETRY', '5')
-gdal.SetConfigOption('GDAL_HTTP_RETRY_DELAY', '3')
-IZVOR = '/vsicurl/https://files.isric.org/soilgrids/latest/data/wrb/MostProbable.vrt'
-LEGENDE = [
-    'https://files.isric.org/soilgrids/latest/data/wrb/MostProbable.qml',
-    'https://files.isric.org/soilgrids/latest/data/wrb/MostProbable.sld',
-]
-# WRB 2006 referentne grupe — bosanski nazivi (FAO/WRB terminologija u regiji).
+BAZA = 'https://s3.eu-west-1.amazonaws.com/data.gaezdev.aws.fao.org/HWSD/'
+RASTER_ZIP, DB_ZIP = 'HWSD2_RASTER.zip', 'HWSD2_DB.zip'
+QML = 'https://files.isric.org/soilgrids/latest/data/wrb/MostProbable.qml'
 BS = {
     'Acrisols': 'Akrisoli', 'Albeluvisols': 'Albeluvisoli', 'Alisols': 'Alisoli', 'Andosols': 'Andosoli',
     'Arenosols': 'Arenosoli', 'Calcisols': 'Kalcisoli', 'Cambisols': 'Kambisoli (smeđa tla)',
-    'Chernozems': 'Černozemi', 'Cryosols': 'Kriosoli', 'Durisols': 'Durisoli', 'Ferralsols': 'Feralsoli',
-    'Fluvisols': 'Fluvisoli (aluvijalna tla)', 'Gleysols': 'Glejsoli (glejna tla)', 'Gypsisols': 'Gipsisoli',
-    'Histosols': 'Histosoli (tresetna tla)', 'Kastanozems': 'Kastanozemi', 'Leptosols': 'Leptosoli (plitka tla)',
-    'Lixisols': 'Liksisoli', 'Luvisols': 'Luvisoli (lesivirana tla)', 'Nitisols': 'Nitisoli',
-    'Phaeozems': 'Feozemi', 'Planosols': 'Planosoli (pseudoglej)', 'Plinthosols': 'Plintosoli',
-    'Podzols': 'Podzoli', 'Regosols': 'Regosoli', 'Solonchaks': 'Solončaci', 'Solonetz': 'Soloneci',
-    'Stagnosols': 'Stagnosoli (pseudoglej)', 'Umbrisols': 'Umbrisoli', 'Vertisols': 'Vertisoli',
-    'Technosols': 'Tehnosoli', 'Anthrosols': 'Antrosoli', 'Retisols': 'Retisoli',
+    'Chernozems': 'Černozemi', 'Fluvisols': 'Fluvisoli (aluvijalna tla)', 'Gleysols': 'Glejsoli (glejna tla)',
+    'Histosols': 'Histosoli (tresetna tla)', 'Kastanozems': 'Kastanozemi', 'Leptosols': 'Leptosoli (plitka, kamenita tla)',
+    'Luvisols': 'Luvisoli (lesivirana tla)', 'Phaeozems': 'Feozemi', 'Planosols': 'Planosoli (pseudoglej)',
+    'Podzols': 'Podzoli', 'Regosols': 'Regosoli (nerazvijena tla)', 'Stagnosols': 'Stagnosoli (pseudoglej)',
+    'Umbrisols': 'Umbrisoli (humusna kisela tla)', 'Vertisols': 'Vertisoli', 'Technosols': 'Tehnosoli',
+    'Anthrosols': 'Antrosoli', 'Retisols': 'Retisoli', 'Podzoluvisols': 'Podzoluvisoli', 'Rendzinas': 'Rendzine',
+    'Lithosols': 'Litosoli (kamenjar)', 'Rankers': 'Rankeri', 'Solonchaks': 'Solončaci', 'Solonetz': 'Soloneci',
+    'Nitisols': 'Nitisoli', 'Plinthosols': 'Plintosoli', 'Ferralsols': 'Feralsoli', 'Gypsisols': 'Gipsisoli',
+    'Durisols': 'Durisoli', 'Cryosols': 'Kriosoli', 'Lixisols': 'Liksisoli',
 }
+RUCNE_BOJE = {'Rendzinas': '#d9c27a', 'Lithosols': '#c9c9c9', 'Rankers': '#8c7a5b', 'Podzoluvisols': '#c7a2d6'}
 
 
-def legenda_iz_trake(b):
-    imena = b.GetCategoryNames() or []
-    ct = b.GetColorTable()
-    out = {}
-    n = max(len(imena), ct.GetCount() if ct else 0)
-    for i in range(n):
-        naziv = imena[i] if i < len(imena) else ''
-        boja = ct.GetColorEntry(i) if ct and i < ct.GetCount() else None
-        if naziv or boja:
-            out[i] = {'wrb': naziv, 'boja': '#%02x%02x%02x' % boja[:3] if boja else None}
-    return out
+def preuzmi(ime):
+    if not os.path.exists(ime):
+        print('PREUZIMAM', BAZA + ime, flush=True)
+        urllib.request.urlretrieve(BAZA + ime, ime)
+    print('ZIP', ime, os.path.getsize(ime), zipfile.ZipFile(ime).namelist()[:20])
+    zipfile.ZipFile(ime).extractall('hwsd')
 
 
-def legenda_iz_qml():
-    import re
-    for u in LEGENDE:
-        try:
-            t = urllib.request.urlopen(u, timeout=60).read().decode('utf-8', 'replace')
-        except Exception as e:  # noqa: BLE001
-            print('LEGENDA', u, 'greška', e)
-            continue
-        print('LEGENDA', u, len(t), 'znakova; početak:', t[:400].replace('\n', ' '))
-        out = {}
-        for m in re.finditer(r'<(?:paletteEntry|item)[^>]*?(?:value|quantity)="(\d+)"[^>]*?/?>', t):
-            s = m.group(0)
-            v = int(m.group(1))
-            lab = re.search(r'label="([^"]*)"', s)
-            col = re.search(r'color="(#[0-9a-fA-F]{6})', s)
-            out[v] = {'wrb': lab.group(1) if lab else '', 'boja': col.group(1).lower() if col else None}
-        if out:
-            return out
-    return {}
+def tabela(mdb, ime):
+    t = subprocess.run(['mdb-export', mdb, ime], capture_output=True, check=True).stdout.decode('utf-8', 'replace')
+    return list(csv.DictReader(io.StringIO(t)))
+
+
+def kljuc(red, *mog):
+    for m in mog:
+        for k in red:
+            if k.upper() == m.upper():
+                return k
+    return None
+
+
+def boje_grupa():
+    try:
+        t = urllib.request.urlopen(QML, timeout=60).read().decode('utf-8', 'replace')
+        return {m.group(2): m.group(1).lower() for m in re.finditer(r'color="(#[0-9a-fA-F]{6})[^"]*"[^>]*label="([A-Za-z]+)"', t)} | \
+               {m.group(1): m.group(2).lower() for m in re.finditer(r'label="([A-Za-z]+)"[^>]*color="(#[0-9a-fA-F]{6})', t)}
+    except Exception as e:  # noqa: BLE001
+        print('QML boje nedostupne', e)
+        return {}
 
 
 def main(granica, izlaz_tif, izlaz_json):
-    info = gdal.Info(IZVOR, format='json')
-    b0 = info['bands'][0]
-    print('IZVOR', info['size'], info['coordinateSystem']['wkt'][:120], 'tip', b0.get('type'), 'nodata', b0.get('noDataValue'))
-    ds = gdal.Open(IZVOR)
-    leg = legenda_iz_trake(ds.GetRasterBand(1))
-    print('LEGENDA iz trake:', len(leg), list(leg.items())[:6])
-    if sum(1 for v in leg.values() if v['wrb']) < 5:
-        dodatno = legenda_iz_qml()
-        print('LEGENDA iz QML/SLD:', len(dodatno), list(dodatno.items())[:6])
-        for k, v in dodatno.items():
-            leg.setdefault(k, {}).update({x: y for x, y in v.items() if y})
+    preuzmi(RASTER_ZIP); preuzmi(DB_ZIP)
+    fajlovi = [os.path.join(k, f) for k, _, fs in os.walk('hwsd') for f in fs]
+    print('FAJLOVI', fajlovi)
+    ras = next(f for f in fajlovi if f.lower().endswith(('.bil', '.tif')))
+    mdb = next(f for f in fajlovi if f.lower().endswith(('.mdb', '.accdb')))
+    print('RASTER', ras, gdal.Info(ras, format='json')['size'], 'MDB', mdb)
+    tabele = subprocess.run(['mdb-tables', '-1', mdb], capture_output=True, check=True).stdout.decode().split()
+    print('TABELE', tabele)
 
-    # 1/400° ≈ 280 m (lat) × 200 m (lon) — blizu izvornih 250 m, bez gubitka klasa.
-    rez = gdal.Warp('/vsimem/tlo.tif', IZVOR, dstSRS='EPSG:4326', cutlineDSName=granica, cropToCutline=True,
-                    xRes=1 / 400, yRes=1 / 400, resampleAlg='near', dstNodata=255, outputType=gdal.GDT_Byte,
-                    multithread=True, warpOptions=['NUM_THREADS=ALL_CPUS'])
+    rez = gdal.Warp('/vsimem/t.tif', ras, cutlineDSName=granica, cropToCutline=True, dstNodata=0,
+                    resampleAlg='near', outputType=gdal.GDT_UInt16, xRes=1 / 120, yRes=1 / 120, targetAlignedPixels=True)
     a = rez.GetRasterBand(1).ReadAsArray()
-    ok = a != 255
-    kodovi, broj = np.unique(a[ok], return_counts=True)
+    ok = a > 0
+    ids, broj = np.unique(a[ok], return_counts=True)
     gt = rez.GetGeoTransform()
     lat_c = gt[3] + gt[5] * a.shape[0] / 2
     piksel_ha = abs(gt[1] * 111320 * np.cos(np.radians(lat_c)) * gt[5] * 111132) / 10000
-    ukupno = broj.sum()
-    print('VELIČINA', a.shape, 'klasa u USK:', len(kodovi), 'piksel ha', round(piksel_ha, 2))
-    out = np.where(ok, a + 1, 0).astype(np.uint8)  # 0 = nema; kod = vrijednost + 1
-    mem = gdal.GetDriverByName('MEM').Create('', rez.RasterXSize, rez.RasterYSize, 1, gdal.GDT_Byte)
+    print('USK', a.shape, 'jedinica', len(ids), dict(zip(ids.tolist(), broj.tolist())))
+
+    ime_t = lambda *m: next((t for t in tabele if t.upper() in [x.upper() for x in m]), None)
+    t_slo = ime_t('HWSD2_LAYERS')
+    t_smu = ime_t('HWSD2_SMU')
+    slojevi = tabela(mdb, t_slo) if t_slo else []
+    smu = tabela(mdb, t_smu) if t_smu else []
+    if slojevi:
+        print('KOLONE slojevi', list(slojevi[0].keys()))
+    if smu:
+        print('KOLONE smu', list(smu[0].keys()))
+    rjecnici = {}
+    for t in tabele:
+        if t.upper().startswith('D_'):
+            try:
+                red = tabela(mdb, t)
+                if red:
+                    kk, kv = kljuc(red[0], 'CODE', 'ID'), kljuc(red[0], 'VALUE', 'DESCRIPTION', 'NAME')
+                    if kk and kv:
+                        rjecnici[t.upper()[2:]] = {r[kk]: r[kv] for r in red}
+            except Exception as e:  # noqa: BLE001
+                print('rječnik', t, e)
+    print('RJEČNICI', {k: list(v.items())[:3] for k, v in rjecnici.items()})
+
+    def prevod(polje, v):
+        for ime in (polje, polje.split('_')[0]):
+            if ime.upper() in rjecnici and v in rjecnici[ime.upper()]:
+                return rjecnici[ime.upper()][v]
+        return v
+
+    k_id = kljuc(slojevi[0], 'HWSD2_SMU_ID') if slojevi else None
+    jedinice = {int(i): {'komponente': []} for i in ids.tolist()}
+    for r in slojevi:
+        try:
+            sid = int(float(r[k_id]))
+        except (TypeError, ValueError):
+            continue
+        if sid not in jedinice:
+            continue
+        lay = r.get(kljuc(r, 'LAYER') or '', '')
+        if lay and lay.upper() not in ('D1', '1'):
+            continue
+        komp = {}
+        for polje in ('SEQUENCE', 'SHARE', 'WRB4', 'WRB2', 'FAO90', 'ROOT_DEPTH', 'DRAINAGE', 'TEXTURE_USDA',
+                      'COARSE', 'SAND', 'SILT', 'CLAY', 'PH_WATER', 'ORG_CARBON', 'BULK', 'TOPDEP', 'BOTDEP'):
+            k = kljuc(r, polje)
+            if k is not None and r[k] not in ('', None):
+                komp[polje] = r[k]
+        jedinice[sid]['komponente'].append(komp)
+    boje = boje_grupa()
+    print('BOJE grupa', list(boje.items())[:8])
+    izlaz = []
+    for n, (sid, c) in enumerate(sorted(zip(ids.tolist(), broj.tolist()), key=lambda x: -x[1])):
+        ks = sorted(jedinice[sid]['komponente'], key=lambda k: -float(k.get('SHARE', 0) or 0))
+        kom = []
+        for k in ks:
+            fao = prevod('FAO90', k.get('FAO90', ''))
+            wrb = prevod('WRB2', k.get('WRB2', '')) if k.get('WRB2') else prevod('WRB4', k.get('WRB4', ''))
+            kom.append({'udio': round(float(k.get('SHARE', 0) or 0)), 'fao90': fao, 'wrb': wrb})
+        dom = ks[0] if ks else {}
+        naziv_eng = (kom[0]['wrb'] or kom[0]['fao90']) if kom else 'nepoznato'
+        grupa = next((g for g in sorted(BS, key=len, reverse=True) if g.lower()[:-1] in naziv_eng.lower()), None)
+        sv = {}
+        for polje, oz, jed in (('TEXTURE_USDA', 'Tekstura (USDA)', ''), ('PH_WATER', 'pH (H₂O)', ''), ('ROOT_DEPTH', 'Dubina korijena', ''),
+                               ('DRAINAGE', 'Drenaža', ''), ('COARSE', 'Skelet', ' %'), ('CLAY', 'Glina', ' %'), ('SAND', 'Pijesak', ' %'),
+                               ('ORG_CARBON', 'Organski C', ' %')):
+            if dom.get(polje) not in (None, '', '-9', '-9.0'):
+                sv[oz] = str(prevod(polje, dom[polje])) + jed
+        izlaz.append({'kod': n + 1, 'smu': sid, 'naziv': BS.get(grupa, naziv_eng), 'wrb': kom[0]['wrb'] if kom else '',
+                      'fao90': kom[0]['fao90'] if kom else '', 'grupa': grupa or '',
+                      'boja': boje.get(grupa) or RUCNE_BOJE.get(grupa) or '#999999',
+                      'komponente': kom[:5], 'svojstva': sv, 'ha': round(c * piksel_ha), 'udio': round(c / broj.sum(), 4)})
+        print('JEDINICA', sid, izlaz[-1]['naziv'], '|', izlaz[-1]['fao90'], '|', izlaz[-1]['wrb'], '|', round(100 * c / broj.sum(), 1), '%', sv, kom[:3])
+    # raster: SMU id → redni kod (Byte-friendly, stabilan redoslijed po površini)
+    mapa = {j['smu']: j['kod'] for j in izlaz}
+    out = np.zeros(a.shape, np.uint16)
+    for sid, kod in mapa.items():
+        out[a == sid] = kod
+    mem = gdal.GetDriverByName('MEM').Create('', rez.RasterXSize, rez.RasterYSize, 1, gdal.GDT_UInt16)
     mem.SetGeoTransform(gt); mem.SetProjection(rez.GetProjection())
     mem.GetRasterBand(1).WriteArray(out); mem.GetRasterBand(1).SetNoDataValue(0)
     gdal.Translate(izlaz_tif, mem, format='COG', creationOptions=['COMPRESS=DEFLATE', 'LEVEL=9', 'BLOCKSIZE=256', 'OVERVIEWS=NONE'])
-
-    klase = []
-    for k, n in sorted(zip(kodovi.tolist(), broj.tolist()), key=lambda x: -x[1]):
-        l = leg.get(k, {})
-        wrb = l.get('wrb') or ('klasa ' + str(k))
-        grupa = next((g for g in BS if g.lower() in wrb.lower()), None)
-        klase.append({'kod': k + 1, 'wrb': wrb, 'naziv': BS.get(grupa, wrb) if grupa else wrb,
-                      'boja': l.get('boja') or '#999999', 'ha': round(n * piksel_ha), 'udio': round(n / ukupno, 4)})
-        print('KLASA', k, wrb, l.get('boja'), n, round(100 * n / ukupno, 1), '%')
-    json.dump({'izvor': 'ISRIC SoilGrids 2.0 — WRB MostProbable, 250 m (CC BY 4.0)', 'klasifikacija': 'WRB 2006 (FAO; nasljednik FAO-UNESCO legende)',
-               'klase': klase}, open(izlaz_json, 'w'), ensure_ascii=False, indent=1)
+    json.dump({'izvor': 'HWSD v2.0 — Harmonized World Soil Database (FAO & IIASA, 2023), 30″ (~1 km); Evropa: ESDB 1:1 000 000',
+               'klasifikacija': 'FAO-90 (nasljednik FAO-UNESCO legende) i WRB', 'jedinice': izlaz},
+              open(izlaz_json, 'w'), ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':
