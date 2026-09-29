@@ -1,4 +1,4 @@
-"""Zimski (bez lišća) Sentinel-2 mozaik za Unsko-sanski kanton → XYZ pločice.
+"""Zimski (bez lišća) Sentinel-2 mozaik za Unsko-sanski kanton (granica OSM) → XYZ pločice.
 
 Zimi listopadna šuma nema lišća: četinarske kulture (tamnozelene) se jasno
 odvajaju od bukve/hrasta (sivo-smeđe), a vidljivi su putevi, vlake i sječine

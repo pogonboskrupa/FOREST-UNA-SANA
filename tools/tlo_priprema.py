@@ -1,4 +1,4 @@
-"""Pedološka karta za Unsko-sanski kanton (granica static/data/usk_granica.geojson).
+"""Pedološka karta za Unsko-sanski kanton (granica static/data/usk_granica.geojson, OSM).
 
 Izvor: HWSD v2.0 — Harmonized World Soil Database (FAO & IIASA, 2023), 30"
 (~1 km). Za Evropu se zasniva na Evropskoj bazi tala 1:1 000 000 (nacionalne
