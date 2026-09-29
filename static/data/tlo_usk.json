@@ -1,38 +1,374 @@
 {
- "izvor": "ISRIC SoilGrids 2.0 — WRB MostProbable, 250 m (CC BY 4.0)",
- "klasifikacija": "WRB 2006 (FAO; nasljednik FAO-UNESCO legende)",
- "klase": [
+ "izvor": "HWSD v2.0 — Harmonized World Soil Database (FAO & IIASA, 2023), 30″ (~1 km); Evropa: ESDB 1:1 000 000",
+ "klasifikacija": "FAO-90 (nasljednik FAO-UNESCO legende) i WRB",
+ "jedinice": [
+  {
+   "kod": 1,
+   "smu": 10550,
+   "naziv": "Kalkokambisol (smeđe tlo na krečnjaku) — kompleks s luvisol",
+   "wrb": "Cambisols",
+   "fao90": "Chromic Cambisols",
+   "grupa": "Cambisols",
+   "boja": "#c2410c",
+   "komponente": [
+    {
+     "udio": 60,
+     "fao90": "Chromic Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Kalkokambisol (smeđe tlo na krečnjaku)"
+    },
+    {
+     "udio": 25,
+     "fao90": "Chromic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Luvisol (lesivirano tlo)"
+    },
+    {
+     "udio": 10,
+     "fao90": "Rendzic Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku)"
+    },
+    {
+     "udio": 3,
+     "fao90": "Haplic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Luvisol (lesivirano tlo)"
+    },
+    {
+     "udio": 2,
+     "fao90": "Dystric Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Distrični kambisol (kiselo smeđe tlo)"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "duboko (> 100 cm)",
+    "Tekstura": "glinasta ilovača",
+    "Drenaža": "umjereno dobro dreniran",
+    "pH (H₂O)": "6,1",
+    "Skelet": "5 %",
+    "Glina / pijesak": "36 / 33 %",
+    "Organski ugljik": "1,9 %"
+   },
+   "ha": 266074,
+   "udio": 0.6343
+  },
+  {
+   "kod": 2,
+   "smu": 10554,
+   "naziv": "Luvisol (lesivirano tlo) — kompleks s akrisol",
+   "wrb": "Luvisols",
+   "fao90": "Chromic Luvisols",
+   "grupa": "Luvisols",
+   "boja": "#9333ea",
+   "komponente": [
+    {
+     "udio": 55,
+     "fao90": "Chromic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Luvisol (lesivirano tlo)"
+    },
+    {
+     "udio": 20,
+     "fao90": "Haplic Acrisols",
+     "wrb": "Acrisols",
+     "naziv": "Akrisol"
+    },
+    {
+     "udio": 15,
+     "fao90": "Dystric Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Distrični kambisol (kiselo smeđe tlo)"
+    },
+    {
+     "udio": 10,
+     "fao90": "Dystric Podzoluvisols",
+     "wrb": "Retisols",
+     "naziv": "Podzoluvisol"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "duboko (> 100 cm)",
+    "Tekstura": "glinasta ilovača",
+    "Drenaža": "umjereno dobro dreniran",
+    "pH (H₂O)": "6,5",
+    "Skelet": "11 %",
+    "Glina / pijesak": "30 / 37 %",
+    "Organski ugljik": "1,7 %"
+   },
+   "ha": 47173,
+   "udio": 0.1125
+  },
+  {
+   "kod": 3,
+   "smu": 10545,
+   "naziv": "Distrični kambisol (kiselo smeđe tlo)",
+   "wrb": "Cambisols",
+   "fao90": "Dystric Cambisols",
+   "grupa": "Cambisols",
+   "boja": "#eab308",
+   "komponente": [
+    {
+     "udio": 65,
+     "fao90": "Dystric Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Distrični kambisol (kiselo smeđe tlo)"
+    },
+    {
+     "udio": 15,
+     "fao90": "Haplic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Luvisol (lesivirano tlo)"
+    },
+    {
+     "udio": 10,
+     "fao90": "Chromic Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Kalkokambisol (smeđe tlo na krečnjaku)"
+    },
+    {
+     "udio": 3,
+     "fao90": "Umbric Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Ranker (umbrični leptosol)"
+    },
+    {
+     "udio": 2,
+     "fao90": "Eutric Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Eutrični kambisol (eutrično smeđe tlo)"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "duboko (> 100 cm)",
+    "Tekstura": "ilovača",
+    "Drenaža": "umjereno dobro dreniran",
+    "pH (H₂O)": "5,2",
+    "Skelet": "17 %",
+    "Glina / pijesak": "20 / 44 %",
+    "Organski ugljik": "2,6 %"
+   },
+   "ha": 33259,
+   "udio": 0.0793
+  },
+  {
+   "kod": 4,
+   "smu": 10523,
+   "naziv": "Fluvisol (karbonatno aluvijalno tlo)",
+   "wrb": "Fluvisols",
+   "fao90": "Calcaric Fluvisols",
+   "grupa": "Fluvisols",
+   "boja": "#0ea5e9",
+   "komponente": [
+    {
+     "udio": 75,
+     "fao90": "Calcaric Fluvisols",
+     "wrb": "Fluvisols",
+     "naziv": "Fluvisol (karbonatno aluvijalno tlo)"
+    },
+    {
+     "udio": 15,
+     "fao90": "Calcic Gleysols",
+     "wrb": "Gleysols",
+     "naziv": "Glej (karbonatni)"
+    },
+    {
+     "udio": 5,
+     "fao90": "Dystric Fluvisols",
+     "wrb": "Fluvisols",
+     "naziv": "Distrični fluvisol (aluvij)"
+    },
+    {
+     "udio": 5,
+     "fao90": "Eutric Fluvisols",
+     "wrb": "Fluvisols",
+     "naziv": "Eutrični fluvisol (aluvij)"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "duboko (> 100 cm)",
+    "Tekstura": "ilovača",
+    "Drenaža": "umjereno dobro dreniran",
+    "pH (H₂O)": "7,9",
+    "Skelet": "11 %",
+    "Glina / pijesak": "19 / 47 %",
+    "Organski ugljik": "0,9 %"
+   },
+   "ha": 23251,
+   "udio": 0.0554
+  },
+  {
+   "kod": 5,
+   "smu": 10534,
+   "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku)",
+   "wrb": "Leptosols",
+   "fao90": "Rendzic Leptosols",
+   "grupa": "Leptosols",
+   "boja": "#65a30d",
+   "komponente": [
+    {
+     "udio": 80,
+     "fao90": "Rendzic Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku)"
+    },
+    {
+     "udio": 10,
+     "fao90": "Lithic Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Litosol (kamenjar)"
+    },
+    {
+     "udio": 5,
+     "fao90": "Chromic Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Kalkokambisol (smeđe tlo na krečnjaku)"
+    },
+    {
+     "udio": 3,
+     "fao90": "Eutric Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Eutrični kambisol (eutrično smeđe tlo)"
+    },
+    {
+     "udio": 2,
+     "fao90": "Calcaric Regosols",
+     "wrb": "Regosols",
+     "naziv": "Karbonatni regosol"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "plitko (< 50 cm)",
+    "Tekstura": "ilovača",
+    "Drenaža": "nepotpuno dreniran",
+    "pH (H₂O)": "7,7",
+    "Skelet": "19 %",
+    "Glina / pijesak": "27 / 36 %",
+    "Organski ugljik": "3,0 %"
+   },
+   "ha": 20444,
+   "udio": 0.0487
+  },
+  {
+   "kod": 6,
+   "smu": 10538,
+   "naziv": "Vertisol (smonica)",
+   "wrb": "Vertisols",
+   "fao90": "Eutric Vertisols",
+   "grupa": "Vertisols",
+   "boja": "#475569",
+   "komponente": [
+    {
+     "udio": 70,
+     "fao90": "Eutric Vertisols",
+     "wrb": "Vertisols",
+     "naziv": "Vertisol (smonica)"
+    },
+    {
+     "udio": 15,
+     "fao90": "Vertic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Vertični luvisol"
+    },
+    {
+     "udio": 5,
+     "fao90": "Eutric Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Eutrični kambisol (eutrično smeđe tlo)"
+    },
+    {
+     "udio": 3,
+     "fao90": "Haplic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Luvisol (lesivirano tlo)"
+    },
+    {
+     "udio": 2,
+     "fao90": "Dystric Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Distrični kambisol (kiselo smeđe tlo)"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "duboko (> 100 cm)",
+    "Tekstura": "laka glina",
+    "Drenaža": "slabo dreniran (vlažno)",
+    "pH (H₂O)": "6,8",
+    "Skelet": "4 %",
+    "Glina / pijesak": "55 / 13 %",
+    "Organski ugljik": "1,8 %"
+   },
+   "ha": 15012,
+   "udio": 0.0358
+  },
   {
    "kod": 7,
-   "wrb": "Cambisols",
-   "naziv": "Kambisoli (smeđa tla)",
-   "boja": "#8e3a23",
-   "ha": 407880,
-   "udio": 0.9734
-  },
-  {
-   "kod": 19,
-   "wrb": "Luvisols",
-   "naziv": "Luvisoli (lesivirana tla)",
-   "boja": "#ac4fc5",
-   "ha": 5827,
-   "udio": 0.0139
-  },
-  {
-   "kod": 17,
+   "smu": 10535,
+   "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku) — kompleks s kalkokambisol",
    "wrb": "Leptosols",
-   "naziv": "Leptosoli (plitka tla)",
-   "boja": "#7ccd5f",
-   "ha": 4641,
-   "udio": 0.0111
+   "fao90": "Rendzic Leptosols",
+   "grupa": "Leptosols",
+   "boja": "#aacc7a",
+   "komponente": [
+    {
+     "udio": 50,
+     "fao90": "Rendzic Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku)"
+    },
+    {
+     "udio": 30,
+     "fao90": "Chromic Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Kalkokambisol (smeđe tlo na krečnjaku)"
+    },
+    {
+     "udio": 15,
+     "fao90": "Chromic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Luvisol (lesivirano tlo)"
+    },
+    {
+     "udio": 5,
+     "fao90": "Lithic Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Litosol (kamenjar)"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "plitko (< 50 cm)",
+    "Tekstura": "ilovača",
+    "Drenaža": "nepotpuno dreniran",
+    "pH (H₂O)": "7,7",
+    "Skelet": "19 %",
+    "Glina / pijesak": "27 / 36 %",
+    "Organski ugljik": "3,0 %"
+   },
+   "ha": 13792,
+   "udio": 0.0329
   },
   {
-   "kod": 12,
-   "wrb": "Fluvisols",
-   "naziv": "Fluvisoli (aluvijalna tla)",
-   "boja": "#a2705c",
-   "ha": 692,
-   "udio": 0.0017
+   "kod": 8,
+   "smu": 7001,
+   "naziv": "Naselja, kopovi i sl.",
+   "wrb": "Technosols",
+   "fao90": "Urban, mining, etc.",
+   "grupa": "Technosols",
+   "boja": "#6b7280",
+   "komponente": [
+    {
+     "udio": 100,
+     "fao90": "Urban, mining, etc.",
+     "wrb": "Technosols",
+     "naziv": "Naselja, kopovi i sl."
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "duboko (> 100 cm)"
+   },
+   "ha": 488,
+   "udio": 0.0012
   }
  ]
 }
