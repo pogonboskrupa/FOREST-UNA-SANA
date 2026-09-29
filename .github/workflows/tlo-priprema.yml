@@ -1,0 +1,34 @@
+name: Pedološka karta priprema
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/practical-pasteur-p2npth]
+    paths: ['.github/workflows/tlo-priprema.yml', 'tools/tlo_priprema.py']
+
+permissions:
+  contents: write
+
+jobs:
+  priprema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: GDAL
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y gdal-bin python3-gdal python3-numpy >/dev/null
+      - name: SoilGrids WRB za USK
+        run: |
+          set -eu
+          /usr/bin/python3 tools/tlo_priprema.py static/data/usk_granica.geojson static/data/tlo_usk.tif static/data/tlo_usk.json
+          ls -la static/data/tlo_usk.*
+          cat static/data/tlo_usk.json
+      - name: Sačuvaj rezultat na granu
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull -q --rebase origin ${GITHUB_REF_NAME} || true
+          git add static/data/tlo_usk.tif static/data/tlo_usk.json
+          git commit -m "data: pedološka karta USK — SoilGrids WRB 250 m (automatski)" || echo "nema promjena"
+          git push origin HEAD:${GITHUB_REF_NAME}
