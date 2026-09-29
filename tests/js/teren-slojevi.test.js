@@ -80,6 +80,18 @@ t('podloge USK: podaci u APK-u i SW-u, vlastiti pane-ovi iznad offline podloge',
   ['id="uk-granice-switch"', 'id="uk-tlo-switch"', 'id="uk-zima-switch"', '<script src="static/js/usk-slojevi.js">'].forEach(x => assert.ok(HTML.includes(x), x));
 });
 
+t('zimski snimak: pločice z8–14 unutar USK, metapodaci, sloj iznad offline podloge', () => {
+  const z = JSON.parse(R('static/data/zima.json'));
+  assert.deepStrictEqual(z.zoom, [8, 14]);
+  assert.ok(z.scena >= 10 && z.pločica > 1000, 'dovoljno scena i pločica');
+  const dir = path.join(__dirname, '../../static/data/zima');
+  for (let k = z.zoom[0]; k <= z.zoom[1]; k++) assert.ok(fs.existsSync(path.join(dir, String(k))), 'zoom ' + k);
+  const f = path.join(dir, '10/558/369.webp'), b = fs.readFileSync(f);
+  assert.ok(b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP', 'WebP pločica');
+  const js = R('static/js/usk-slojevi.js');
+  assert.ok(js.includes("L.tileLayer('static/data/zima/{z}/{x}/{y}.webp'") && js.includes('maxNativeZoom: zimaMeta.zoom[1]') && js.includes('errorTileUrl: PROZIRNO'));
+});
+
 (async () => {
   for (const [ime, fn] of testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + ime); }

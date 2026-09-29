@@ -20,3 +20,16 @@
   `tools/dem_priprema.py`, workflowi `efda-priprema` / `dem-priprema`) —
   ovo okruženje nema pristup Zenodu/AWS-u. Granice odjela: `geo/odjeli.kml`
   (učitava `static/js/odjeli.js`; bez fajla rade KML-ovi iz "Učitaj KML").
+- **Podloge cijelog USK (8 općina)** u Šumarstvu (`static/js/usk-slojevi.js`):
+  `opcine_usk.geojson` + `usk_granica.geojson` (geoBoundaries ADM3),
+  `tlo_usk.*` (HWSD v2, `tools/tlo_priprema.py`), `zima/{z}/{x}/{y}.webp` +
+  `zima.json` (Sentinel-2 dec–mart, `tools/zima_priprema.py`, ~20 min u CI-ju).
+  Prave se na istoj data grani; poslije CI-ja fajlove prekopirati na `codex-forest`
+  (`git show origin/<grana>:static/data/...`).
+- **Klik na kartu** ide kroz `_kartaKlikIzvor` (index.html), ne kroz DOM
+  događaje slojeva: u canvas modu gornji pane pojede dodir donjeg. Novi sloj koji
+  treba popup registruje izvor i ima `pointerEvents='none'` na svom pane-u.
+- `map` je `const`, `lastP` je `let` — leksički globalni; `window.map` je
+  `<div id="map">`. U modulima koristiti gola imena (`typeof map !== 'undefined'`).
+- Terenske tačke (`static/js/tacke.js`): localStorage `usf_tacke`, fotografije u
+  IndexedDB `usf_foto`; APK kamera ide kroz `imageIntent()` u MainActivity.

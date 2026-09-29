@@ -1,0 +1,20 @@
+{
+ "izvor": "Copernicus Sentinel-2 L2A (ESA), Microsoft Planetary Computer",
+ "rezolucija_m": 10,
+ "zoom": [
+  8,
+  14
+ ],
+ "obuhvat": [
+  15.7243,
+  44.24273,
+  16.89806,
+  45.23229
+ ],
+ "scena": 34,
+ "od": "2019-12-14",
+ "do": "2025-03-19",
+ "mjeseci": "decembar–mart",
+ "pločica": 4962,
+ "mb": 19.0
+}
