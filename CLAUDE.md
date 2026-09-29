@@ -21,7 +21,8 @@
   ovo okruženje nema pristup Zenodu/AWS-u. Granice odjela: `geo/odjeli.kml`
   (učitava `static/js/odjeli.js`; bez fajla rade KML-ovi iz "Učitaj KML").
 - **Podloge cijelog USK (8 općina)** u Šumarstvu (`static/js/usk-slojevi.js`):
-  `opcine_usk.geojson` + `usk_granica.geojson` (geoBoundaries ADM3),
+  `opcine_usk.geojson` + `usk_granica.geojson` (OSM admin granice iz Geofabrik
+  izvoda, `tools/granice_priprema.py`; geoBoundaries odstupa 1,5–3,7 km — ne koristiti),
   `tlo_usk.*` (HWSD v2, `tools/tlo_priprema.py`), `zima/{z}/{x}/{y}.webp` +
   `zima.json` (Sentinel-2 dec–mart, `tools/zima_priprema.py`, ~20 min u CI-ju).
   Prave se na istoj data grani; poslije CI-ja fajlove prekopirati na `codex-forest`
