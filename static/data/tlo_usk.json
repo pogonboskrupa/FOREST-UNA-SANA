@@ -51,8 +51,8 @@
     "Glina / pijesak": "36 / 33 %",
     "Organski ugljik": "1,9 %"
    },
-   "ha": 266074,
-   "udio": 0.6343
+   "ha": 268251,
+   "udio": 0.6372
   },
   {
    "kod": 2,
@@ -97,8 +97,8 @@
     "Glina / pijesak": "30 / 37 %",
     "Organski ugljik": "1,7 %"
    },
-   "ha": 47173,
-   "udio": 0.1125
+   "ha": 46010,
+   "udio": 0.1093
   },
   {
    "kod": 3,
@@ -149,8 +149,8 @@
     "Glina / pijesak": "20 / 44 %",
     "Organski ugljik": "2,6 %"
    },
-   "ha": 33259,
-   "udio": 0.0793
+   "ha": 33562,
+   "udio": 0.0797
   },
   {
    "kod": 4,
@@ -195,8 +195,8 @@
     "Glina / pijesak": "19 / 47 %",
     "Organski ugljik": "0,9 %"
    },
-   "ha": 23251,
-   "udio": 0.0554
+   "ha": 23493,
+   "udio": 0.0558
   },
   {
    "kod": 5,
@@ -247,11 +247,57 @@
     "Glina / pijesak": "27 / 36 %",
     "Organski ugljik": "3,0 %"
    },
-   "ha": 20444,
-   "udio": 0.0487
+   "ha": 18673,
+   "udio": 0.0444
   },
   {
    "kod": 6,
+   "smu": 10535,
+   "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku) — kompleks s kalkokambisol",
+   "wrb": "Leptosols",
+   "fao90": "Rendzic Leptosols",
+   "grupa": "Leptosols",
+   "boja": "#aacc7a",
+   "komponente": [
+    {
+     "udio": 50,
+     "fao90": "Rendzic Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku)"
+    },
+    {
+     "udio": 30,
+     "fao90": "Chromic Cambisols",
+     "wrb": "Cambisols",
+     "naziv": "Kalkokambisol (smeđe tlo na krečnjaku)"
+    },
+    {
+     "udio": 15,
+     "fao90": "Chromic Luvisols",
+     "wrb": "Luvisols",
+     "naziv": "Luvisol (lesivirano tlo)"
+    },
+    {
+     "udio": 5,
+     "fao90": "Lithic Leptosols",
+     "wrb": "Leptosols",
+     "naziv": "Litosol (kamenjar)"
+    }
+   ],
+   "svojstva": {
+    "Dubina tla": "plitko (< 50 cm)",
+    "Tekstura": "ilovača",
+    "Drenaža": "nepotpuno dreniran",
+    "pH (H₂O)": "7,7",
+    "Skelet": "19 %",
+    "Glina / pijesak": "27 / 36 %",
+    "Organski ugljik": "3,0 %"
+   },
+   "ha": 15500,
+   "udio": 0.0368
+  },
+  {
+   "kod": 7,
    "smu": 10538,
    "naziv": "Vertisol (smonica)",
    "wrb": "Vertisols",
@@ -299,54 +345,8 @@
     "Glina / pijesak": "55 / 13 %",
     "Organski ugljik": "1,8 %"
    },
-   "ha": 15012,
-   "udio": 0.0358
-  },
-  {
-   "kod": 7,
-   "smu": 10535,
-   "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku) — kompleks s kalkokambisol",
-   "wrb": "Leptosols",
-   "fao90": "Rendzic Leptosols",
-   "grupa": "Leptosols",
-   "boja": "#aacc7a",
-   "komponente": [
-    {
-     "udio": 50,
-     "fao90": "Rendzic Leptosols",
-     "wrb": "Leptosols",
-     "naziv": "Rendzina / kalkomelanosol (plitko tlo na krečnjaku)"
-    },
-    {
-     "udio": 30,
-     "fao90": "Chromic Cambisols",
-     "wrb": "Cambisols",
-     "naziv": "Kalkokambisol (smeđe tlo na krečnjaku)"
-    },
-    {
-     "udio": 15,
-     "fao90": "Chromic Luvisols",
-     "wrb": "Luvisols",
-     "naziv": "Luvisol (lesivirano tlo)"
-    },
-    {
-     "udio": 5,
-     "fao90": "Lithic Leptosols",
-     "wrb": "Leptosols",
-     "naziv": "Litosol (kamenjar)"
-    }
-   ],
-   "svojstva": {
-    "Dubina tla": "plitko (< 50 cm)",
-    "Tekstura": "ilovača",
-    "Drenaža": "nepotpuno dreniran",
-    "pH (H₂O)": "7,7",
-    "Skelet": "19 %",
-    "Glina / pijesak": "27 / 36 %",
-    "Organski ugljik": "3,0 %"
-   },
-   "ha": 13792,
-   "udio": 0.0329
+   "ha": 15011,
+   "udio": 0.0357
   },
   {
    "kod": 8,
