@@ -36,7 +36,14 @@ function _uCsv(kolone, redovi) {
   return '\ufeff' + [kolone, ...redovi].map(r => r.map(e).join(',')).join('\n');
 }
 function _izvozFajl(fname, sadrzaj, mime, naslov) {
-  if (typeof AndroidShare !== 'undefined' && AndroidShare.shareFile) {
+  // Binarni sadržaj (KMZ sa fotografijama) kao Blob: base64 kroz FileReader.
+  if (sadrzaj instanceof Blob) {
+    if (typeof AndroidShare !== 'undefined' && AndroidShare.shareFile) {
+      const fr = new FileReader();
+      fr.onload = () => { try { AndroidShare.shareFile(fname, 'data:' + mime + ';base64,' + String(fr.result).split(',')[1], naslov, naslov); } catch (e) { showToast('⚠ Dijeljenje nije uspjelo'); } };
+      fr.readAsDataURL(sadrzaj); return;
+    }
+  } else if (typeof AndroidShare !== 'undefined' && AndroidShare.shareFile) {
     try { AndroidShare.shareFile(fname, 'data:' + mime + ';base64,' + btoa(unescape(encodeURIComponent(sadrzaj))), naslov, naslov); return; } catch (e) {}
   }
   const file = new File([sadrzaj], fname, { type: mime });

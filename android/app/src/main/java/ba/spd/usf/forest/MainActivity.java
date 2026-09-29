@@ -79,6 +79,8 @@ public class MainActivity extends Activity {
     private static BroadcastReceiver sRecActionReceiver;
     private boolean reusedWebView = false;
     private ValueCallback<Uri[]> fileCallback;
+    // Fotografija iz kamere za terenske tačke (FileProvider u cache/foto).
+    private Uri cameraUri;
     private WebViewAssetLoader assetLoader;
     private BroadcastReceiver recActionReceiver;
     private volatile File pendingUpdateApk;
@@ -273,8 +275,11 @@ public class MainActivity extends Activity {
                 }
                 fileCallback = filePathCallback;
                 pendingOfflineMapImport = isOfflineMapChooser(fileChooserParams);
+                cameraUri = null;
                 Intent intent;
-                if (pendingOfflineMapImport) {
+                if (!pendingOfflineMapImport && isImageChooser(fileChooserParams)) {
+                    intent = imageIntent(fileChooserParams.isCaptureEnabled());
+                } else if (pendingOfflineMapImport) {
                     intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType("*/*");
@@ -329,6 +334,40 @@ public class MainActivity extends Activity {
         });
 
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+    }
+
+    private boolean isImageChooser(WebChromeClient.FileChooserParams params) {
+        String[] types = params.getAcceptTypes();
+        if (types == null) return false;
+        for (String type : types) if (type != null && type.toLowerCase().startsWith("image/")) return true;
+        return false;
+    }
+
+    // capture=true → odmah kamera; inače izbor: kamera ili galerija (više slika).
+    private Intent imageIntent(boolean samoKamera) {
+        Intent kamera = null;
+        try {
+            File dir = new File(getCacheDir(), "foto");
+            if (!dir.exists()) dir.mkdirs();
+            File[] stari = dir.listFiles();
+            if (stari != null) for (File o : stari) if (o.lastModified() < System.currentTimeMillis() - 86400000L) o.delete();
+            File f = new File(dir, "IMG_" + System.currentTimeMillis() + ".jpg");
+            cameraUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", f);
+            kamera = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            kamera.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
+            kamera.setClipData(android.content.ClipData.newRawUri("foto", cameraUri));
+            kamera.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (Exception e) {
+            cameraUri = null;
+        }
+        if (samoKamera && kamera != null) return kamera;
+        Intent galerija = new Intent(Intent.ACTION_GET_CONTENT);
+        galerija.setType("image/*");
+        galerija.addCategory(Intent.CATEGORY_OPENABLE);
+        galerija.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        Intent izbor = Intent.createChooser(galerija, "Fotografija");
+        if (kamera != null) izbor.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{kamera});
+        return izbor;
     }
 
     private boolean isOfflineMapChooser(WebChromeClient.FileChooserParams params) {
@@ -1377,6 +1416,12 @@ public class MainActivity extends Activity {
                     results = new Uri[]{Uri.parse(data.getDataString())};
                 }
             }
+            // Kamera ne vraća Uri u data — fotografija je u cameraUri fajlu.
+            if (resultCode == RESULT_OK && results == null && cameraUri != null) {
+                File f = new File(new File(getCacheDir(), "foto"), cameraUri.getLastPathSegment());
+                if (f.length() > 0) results = new Uri[]{cameraUri};
+            }
+            cameraUri = null;
             if (pendingOfflineMapImport && results != null && results.length > 0) {
                 fileCallback.onReceiveValue(null);
                 webView.evaluateJavascript("_baseLoadStatus('⏳ Kopiram offline kartu u brzo spremište…')", null);
