@@ -185,8 +185,13 @@ def main(granica, izlaz_dir, izlaz_json):
     gdal.Warp('/tmp/zima_cut.tif', '/tmp/zima8.vrt', cutlineDSName=granica, dstAlpha=True, dstSRS='EPSG:3857',
               xRes=9.55, yRes=9.55, resampleAlg='bilinear', creationOptions=['TILED=YES', 'COMPRESS=DEFLATE'],
               multithread=True, warpOptions=['NUM_THREADS=ALL_CPUS'])
+    os.environ['GDAL_PAM_ENABLED'] = 'NO'  # bez .aux.xml uz svaku pločicu
     subprocess.run(['gdal2tiles.py', '--xyz', '-z', '8-14', '-r', 'bilinear', '-w', 'none', '--processes=4',
                     '--tiledriver=WEBP', '--webp-quality=78', '/tmp/zima_cut.tif', izlaz_dir], check=True)
+    for kor, _, fs in os.walk(izlaz_dir):
+        for f in fs:
+            if f.endswith('.aux.xml'):
+                os.remove(os.path.join(kor, f))
     broj, vel = 0, 0
     for kor, _, fs in os.walk(izlaz_dir):
         for f in fs:
