@@ -97,7 +97,7 @@ def citaj(href, granice, sirina, visina, srs, alg):
 
 
 def main(granica, izlaz_dir, izlaz_json):
-    g = ogr.Open(granica); lyr = g.GetLayer(0); geom = lyr.GetNextFeature().GetGeometryRef().Clone()
+    g = ogr.Open(granica); lyr = g.GetLayer(0); feat = lyr.GetNextFeature(); geom = feat.GetGeometryRef().Clone()
     wgs = osr.SpatialReference(); wgs.ImportFromEPSG(4326); wgs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     utm = osr.SpatialReference(); utm.ImportFromEPSG(32633); utm.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     minx, maxx, miny, maxy = geom.GetEnvelope()
