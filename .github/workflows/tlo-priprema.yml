@@ -28,7 +28,9 @@ jobs:
           set -eu
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull -q --rebase origin ${GITHUB_REF_NAME} || true
           git add static/data/tlo_usk.tif static/data/tlo_usk.json
           git commit -m "data: pedološka karta USK — HWSD v2 (FAO-90/WRB) (automatski)" || echo "nema promjena"
-          git push origin HEAD:${GITHUB_REF_NAME}
+          for i in 1 2 3 4 5; do
+            git pull -q --rebase origin ${GITHUB_REF_NAME} && git push -q origin HEAD:${GITHUB_REF_NAME} && break
+            sleep $((i * 5))
+          done

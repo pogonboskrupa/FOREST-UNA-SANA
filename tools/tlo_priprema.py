@@ -41,6 +41,43 @@ BS = {
     'Nitisols': 'Nitisoli', 'Plinthosols': 'Plintosoli', 'Ferralsols': 'Feralsoli', 'Gypsisols': 'Gipsisoli',
     'Durisols': 'Durisoli', 'Cryosols': 'Kriosoli', 'Lixisols': 'Liksisoli',
 }
+# Domaći nazivi (približni ekvivalenti u pedologiji BiH) za FAO-90 jedinice.
+DOMACE = {
+    'Chromic Cambisols': 'Kalkokambisol (smeđe tlo na krečnjaku)', 'Dystric Cambisols': 'Distrični kambisol (kiselo smeđe tlo)',
+    'Eutric Cambisols': 'Eutrični kambisol (eutrično smeđe tlo)', 'Chromic Luvisols': 'Luvisol (lesivirano tlo)',
+    'Haplic Luvisols': 'Luvisol (lesivirano tlo)', 'Vertic Luvisols': 'Vertični luvisol', 'Calcaric Fluvisols': 'Fluvisol (karbonatno aluvijalno tlo)',
+    'Dystric Fluvisols': 'Distrični fluvisol (aluvij)', 'Eutric Fluvisols': 'Eutrični fluvisol (aluvij)',
+    'Rendzic Leptosols': 'Rendzina / kalkomelanosol (plitko tlo na krečnjaku)', 'Lithic Leptosols': 'Litosol (kamenjar)',
+    'Umbric Leptosols': 'Ranker (umbrični leptosol)', 'Eutric Vertisols': 'Vertisol (smonica)', 'Calcic Gleysols': 'Glej (karbonatni)',
+    'Haplic Acrisols': 'Akrisol', 'Dystric Podzoluvisols': 'Podzoluvisol', 'Calcaric Regosols': 'Karbonatni regosol',
+    'Urban, mining, etc.': 'Naselja, kopovi i sl.',
+}
+TEKSTURA = {'Clay loam': 'glinasta ilovača', 'Loam': 'ilovača', 'Clay (light)': 'laka glina', 'Clay (heavy)': 'teška glina',
+            'Silty clay': 'praškasta glina', 'Sandy loam': 'pjeskovita ilovača', 'Silt loam': 'praškasta ilovača',
+            'Sandy clay loam': 'pjeskovito-glinasta ilovača', 'Silty clay loam': 'praškasto-glinasta ilovača',
+            'Sandy clay': 'pjeskovita glina', 'Loamy sand': 'ilovasti pijesak', 'Sand': 'pijesak', 'Silt': 'prah'}
+DRENAZA = {'Excessively drained': 'pretjerano dreniran', 'Somewhat excessively drained': 'jako dreniran', 'Well drained': 'dobro dreniran',
+           'Moderately well drained': 'umjereno dobro dreniran', 'Imperfectly drained': 'nepotpuno dreniran',
+           'Poorly drained': 'slabo dreniran (vlažno)', 'Very poorly drained': 'vrlo slabo dreniran (mokro)'}
+DUBINA = {'Deep': 'duboko (> 100 cm)', 'Moderately Deep': 'srednje duboko (< 100 cm)', 'Shallow': 'plitko (< 50 cm)', 'Very shallow': 'vrlo plitko (< 30 cm)'}
+BOJE_FAO = {'Chromic Cambisols': '#c2410c', 'Dystric Cambisols': '#eab308', 'Eutric Cambisols': '#f59e0b', 'Chromic Luvisols': '#9333ea',
+            'Haplic Luvisols': '#c084fc', 'Calcaric Fluvisols': '#0ea5e9', 'Rendzic Leptosols': '#65a30d', 'Lithic Leptosols': '#a8a29e',
+            'Eutric Vertisols': '#475569', 'Urban, mining, etc.': '#6b7280'}
+
+
+def svijetlija(hexc, f=0.45):
+    r, g, b = (int(hexc[i:i + 2], 16) for i in (1, 3, 5))
+    return '#%02x%02x%02x' % tuple(round(c + (255 - c) * f) for c in (r, g, b))
+
+
+def cisto(tekst, rjecnik):
+    t = ' '.join(str(tekst).split())
+    for k, v in rjecnik.items():
+        if t.lower().startswith(k.lower()):
+            return v
+    return t
+
+
 RUCNE_BOJE = {'Rendzinas': '#d9c27a', 'Lithosols': '#c9c9c9', 'Rankers': '#8c7a5b', 'Podzoluvisols': '#c7a2d6'}
 
 
@@ -76,6 +113,8 @@ def boje_grupa():
 
 
 def main(granica, izlaz_tif, izlaz_json):
+    granica, izlaz_tif, izlaz_json = (os.path.abspath(x) for x in (granica, izlaz_tif, izlaz_json))
+    os.makedirs('/tmp/hwsd_rad', exist_ok=True); os.chdir('/tmp/hwsd_rad')
     preuzmi(RASTER_ZIP); preuzmi(DB_ZIP)
     fajlovi = [os.path.join(k, f) for k, _, fs in os.walk('hwsd') for f in fs]
     print('FAJLOVI', fajlovi)
@@ -156,14 +195,30 @@ def main(granica, izlaz_tif, izlaz_json):
         naziv_eng = (kom[0]['wrb'] or kom[0]['fao90']) if kom else 'nepoznato'
         grupa = next((g for g in sorted(BS, key=len, reverse=True) if g.lower()[:-1] in naziv_eng.lower()), None)
         sv = {}
-        for polje, oz, jed in (('TEXTURE_USDA', 'Tekstura (USDA)', ''), ('PH_WATER', 'pH (H₂O)', ''), ('ROOT_DEPTH', 'Dubina korijena', ''),
-                               ('DRAINAGE', 'Drenaža', ''), ('COARSE', 'Skelet', ' %'), ('CLAY', 'Glina', ' %'), ('SAND', 'Pijesak', ' %'),
-                               ('ORG_CARBON', 'Organski C', ' %')):
-            if dom.get(polje) not in (None, '', '-9', '-9.0'):
-                sv[oz] = str(prevod(polje, dom[polje])) + jed
-        izlaz.append({'kod': n + 1, 'smu': sid, 'naziv': BS.get(grupa, naziv_eng), 'wrb': kom[0]['wrb'] if kom else '',
-                      'fao90': kom[0]['fao90'] if kom else '', 'grupa': grupa or '',
-                      'boja': boje.get(grupa) or RUCNE_BOJE.get(grupa) or '#999999',
+        def ok(v):
+            try:
+                return v not in (None, '') and float(v) >= 0
+            except ValueError:
+                return bool(v)
+        if ok(dom.get('ROOT_DEPTH')): sv['Dubina tla'] = cisto(prevod('ROOT_DEPTH', dom['ROOT_DEPTH']).split('(')[0], DUBINA)
+        if ok(dom.get('TEXTURE_USDA')): sv['Tekstura'] = cisto(prevod('TEXTURE_USDA', dom['TEXTURE_USDA']), TEKSTURA)
+        if ok(dom.get('DRAINAGE')): sv['Drenaža'] = cisto(prevod('DRAINAGE', dom['DRAINAGE']), DRENAZA)
+        if ok(dom.get('PH_WATER')): sv['pH (H₂O)'] = ('%.1f' % float(dom['PH_WATER'])).replace('.', ',')
+        if ok(dom.get('COARSE')): sv['Skelet'] = str(round(float(dom['COARSE']))) + ' %'
+        if ok(dom.get('CLAY')): sv['Glina / pijesak'] = str(round(float(dom['CLAY']))) + ' / ' + str(round(float(dom.get('SAND') or 0))) + ' %'
+        if ok(dom.get('ORG_CARBON')): sv['Organski ugljik'] = ('%.1f' % float(dom['ORG_CARBON'])).replace('.', ',') + ' %'
+        fao0 = kom[0]['fao90'] if kom else ''
+        naziv = DOMACE.get(fao0) or BS.get(grupa, naziv_eng)
+        if kom and kom[0]['udio'] <= 60 and len(kom) > 1:
+            naziv += ' — kompleks s ' + (DOMACE.get(kom[1]['fao90']) or kom[1]['fao90']).split(' (')[0].lower()
+        boja = BOJE_FAO.get(fao0) or boje.get(grupa) or RUCNE_BOJE.get(grupa) or '#999999'
+        while boja in [j['boja'] for j in izlaz]:
+            boja = svijetlija(boja)
+        for k in kom:
+            k['naziv'] = DOMACE.get(k['fao90']) or k['fao90']
+        izlaz.append({'kod': n + 1, 'smu': sid, 'naziv': naziv, 'wrb': kom[0]['wrb'] if kom else '',
+                      'fao90': fao0, 'grupa': grupa or '',
+                      'boja': boja,
                       'komponente': kom[:5], 'svojstva': sv, 'ha': round(c * piksel_ha), 'udio': round(c / broj.sum(), 4)})
         print('JEDINICA', sid, izlaz[-1]['naziv'], '|', izlaz[-1]['fao90'], '|', izlaz[-1]['wrb'], '|', round(100 * c / broj.sum(), 1), '%', sv, kom[:3])
     # raster: SMU id → redni kod (Byte-friendly, stabilan redoslijed po površini)

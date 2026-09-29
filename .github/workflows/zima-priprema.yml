@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 330
     env:
-      PROBA: '1'
+      PROBA: '0'
       PO_PLOCICI: '12'
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,9 @@ jobs:
           cat static/data/zima.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull -q --rebase origin ${GITHUB_REF_NAME} || true
           git add static/data/zima static/data/zima.json
           git commit -q -m "data: zimski Sentinel-2 mozaik USK, pločice z8–14 (automatski)" || echo "nema promjena"
-          git push origin HEAD:${GITHUB_REF_NAME}
+          for i in 1 2 3 4 5; do
+            git pull -q --rebase origin ${GITHUB_REF_NAME} && git push -q origin HEAD:${GITHUB_REF_NAME} && break
+            sleep $((i * 5))
+          done
