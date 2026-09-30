@@ -185,17 +185,16 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #main-tabs .mtab.active::before { content:''; position:absolute; top:4px; width:22px; height:2px; border-radius:2px; background:#4ade80; box-shadow:0 0 8px rgba(74,222,128,.7); }
 #main-tabs .mtab-ico { display:grid; place-items:center; width:27px; height:25px; font-size:21px; line-height:1; }
 
-/* === Centar-tačka + udaljenost od moje lokacije (samo dok je GPS uključen,
-   sakriveno tokom mjerenja — vidi _locCenterRefresh) === */
+/* === Centar karte: stalna sitna bijela tačka (nišan za "Crtaj", Moja lokacija,
+   tapkanje). Udaljenost do GPS-a samo dok je GPS uključen — vidi _locCenterRefresh === */
 #loc-center-dot {
-  display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-  width:14px; height:14px; border-radius:50%; background:#3b82f6; border:2.5px solid #fff;
-  box-shadow:0 0 6px rgba(0,0,0,0.6), 0 0 8px rgba(59,130,246,0.8);
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:6px; height:6px; border-radius:50%; background:#fff;
+  box-shadow:0 0 0 1.5px rgba(15,23,42,.85), 0 0 4px rgba(0,0,0,.6);
   z-index:550; pointer-events:none;
 }
-#loc-center-dot.show { display:block; }
 #loc-dist-badge {
-  display:none; position:fixed; left:50%; top:calc(50% + 16px); transform:translateX(-50%);
+  display:none; position:fixed; left:50%; top:calc(50% + 10px); transform:translateX(-50%);
   background:rgba(15,23,42,0.85); color:#e2e8f0; font-size:11px; font-weight:600;
   padding:4px 10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.35);
   z-index:550; pointer-events:none; white-space:nowrap;
@@ -2511,20 +2510,16 @@ function stopGPS() {
   _locCenterRefresh();
 }
 
-// ── Centar-tačka + udaljenost od moje lokacije ─────────────────────────
-// Fiksna tačka na SREDINI EKRANA (ne na karti — ne pomjera se sa panom) uz
-// live udaljenost do stvarne GPS pozicije, korisno da forester nacilja
-// lokaciju na karti bez fizičkog hoda do nje. Namjerno NEZAVISNO od Mjerenja
-// (koje ima svoj crosshair kursor za tapkanje tačaka) — prikazuje se ISKLJUČIVO
-// dok je Moja lokacija uključena i mjerenje NIJE aktivno, da se dva vizuelna
-// pomagala ne preklapaju na istom mjestu.
+// ── Centar karte + udaljenost od moje lokacije ────────────────────────
+// Bijela tačka na SREDINI EKRANA je uvijek vidljiva (osim dok je otvoren popup):
+// na dodiru nema kursora, a "Crtaj" u Mjerenjima i "Tačka ovdje" rade baš po
+// centru. Udaljenost do stvarne GPS pozicije se dodaje samo dok je Moja lokacija
+// uključena i mjerenje NIJE aktivno (mjerenje ima svoje oznake dužine).
 function _locCenterVisible() { return gpsOn && !!lastP && !_msrOn; }
 function _locCenterRefresh() {
-  const dot = document.getElementById('loc-center-dot');
   const badge = document.getElementById('loc-dist-badge');
-  if (!dot || !badge) return;
+  if (!badge) return;
   const on = _locCenterVisible();
-  dot.classList.toggle('show', on);
   badge.classList.toggle('show', on);
   if (on) { map.on('move', _locCenterUpdateDist); _locCenterUpdateDist(); }
   else map.off('move', _locCenterUpdateDist);
@@ -3854,10 +3849,34 @@ function _msrRegAddFromActive() {
   _msrDrawAllSaved();
 }
 
+// ── Razmjera karte ─────────────────────────────────────────────────────
+// Nazivnik razmjere na centru (0,0002646 m = piksel na 96 dpi, isto kao
+// zoomForScale). Sitnije od 1:20 000 mali objekti postaju par piksela, a
+// etiketa ih prekrije — tada se etikete skrivaju (body.razmjera-sitna) i
+// mjerenja dobijaju oznaku u boji (_razmjeraOznake) da ostanu vidljiva.
+const RAZMJERA_SITNA = 20000;
+function _razmjera() { const c = map.getCenter(); return 156543.03392 * Math.cos(c.lat * Math.PI / 180) / Math.pow(2, map.getZoom()) / 0.0002646; }
+function _razmjeraSitna() { return _razmjera() > RAZMJERA_SITNA; }
+const _razmjeraGrupe = [];
+function _razmjeraOznake(grupa) { if (!_razmjeraGrupe.includes(grupa)) _razmjeraGrupe.push(grupa); _razmjeraOsvjezi(); return grupa; }
+function _razmjeraOsvjezi() {
+  const sitna = _razmjeraSitna();
+  document.body.classList.toggle('razmjera-sitna', sitna);
+  _razmjeraGrupe.forEach(g => { if (sitna && !map.hasLayer(g)) g.addTo(map); else if (!sitna && map.hasLayer(g)) map.removeLayer(g); });
+}
+map.on('zoomend', _razmjeraOsvjezi);
+function _razmjeraTacka(lls, boja, pane) {
+  const b = L.latLngBounds(lls);
+  return L.circleMarker(b.getCenter(), { radius: 4.5, color: '#fff', weight: 1.5, fillColor: boja, fillOpacity: 1, interactive: false, pane });
+}
+
+let _msrPinLayer = null;
 function _msrDrawAllSaved() {
   if (!window.map) return;
   if (!_msrSavedLayer) _msrSavedLayer = L.layerGroup().addTo(map);
+  if (!_msrPinLayer) _msrPinLayer = _razmjeraOznake(L.layerGroup());
   _msrSavedLayer.clearLayers();
+  _msrPinLayer.clearLayers();
   _msrRegistry.forEach(m => {
     if (m.id === _mqmId) return;
     if (!m.pts || m.pts.length < 2) return;
@@ -3868,6 +3887,7 @@ function _msrDrawAllSaved() {
     const line = L.polyline(drawLL, { color, weight:3, opacity:0.9, pane:'tragMsrLines' });
     line.bindPopup(() => _msrPopupHtml(m), { maxWidth: 260 });
     line.addTo(_msrSavedLayer);
+    _razmjeraTacka(latlngs, color, 'tragMsrLines').addTo(_msrPinLayer);
     if (mode === 'area' && m.pts.length >= 3) {
       L.polygon(latlngs, { color, weight:1, dashArray:'4 4', fillColor:color, fillOpacity:m.fillOpacity ?? 0.18, pane:'tragMsrLines' }).bindPopup(() => _msrPopupHtml(m), { maxWidth:260 }).addTo(_msrSavedLayer);
     }

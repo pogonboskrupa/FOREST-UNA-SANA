@@ -268,6 +268,7 @@ body.np-open #terrain-map-legend { display:none !important; }
 .np-lbl { display:inline-block; white-space:nowrap; padding:1px 6px; border-radius:9px; border:1.5px solid #0b1220; color:#0b1220; font:700 11px/15px system-ui,sans-serif; box-shadow:0 1px 3px rgba(0,0,0,.55); transform:translate(-50%,-50%); }
 .np-lbl.rucno { border-color:#fff; box-shadow:0 0 0 2px #0b1220; }
 .np-lbl.skr { opacity:.45; }
+body.razmjera-sitna .np-sv-lbl { display:none; }
 .np-e { width:14px; height:14px; border-radius:50%; border:2.5px solid #fff; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,.6); }
 .np-e.vrh { background:#0b1220 !important; }
 .np-v { width:16px; height:16px; border-radius:4px; background:#fff; border:2px solid #2563eb; box-sizing:border-box; }
@@ -637,13 +638,17 @@ body.np-open #terrain-map-legend { display:none !important; }
   }
   // Crta se iz sačuvanih visina linija — bez DEM-a i interneta.
   const svGrp = L.layerGroup().addTo(map);
+  // Sitnije od 1:20 000 etiketa prekrije poligon → etiketa se skriva, ostaje oznaka u boji.
+  const svPin = typeof _razmjeraOznake === 'function' ? _razmjeraOznake(L.layerGroup()) : null;
   function svCrtaj() {
     svGrp.clearLayers();
+    if (svPin) svPin.clearLayers();
     svCitaj().forEach(z => {
       if (z.naKarti === false || !Array.isArray(z.ring) || z.ring.length < 3) return;
       if (stanje && stanje.sid === z.id) return;
       const k = z.sazetak ? klasaOd(z.sazetak.st) : null, boja = k ? k.color : '#94a3b8';
       L.polygon(z.ring, { pane: 'nagibSvPane', color: boja, weight: 2, fillColor: boja, fillOpacity: 0.12, interactive: false }).addTo(svGrp);
+      if (svPin) _razmjeraTacka(z.ring, boja, 'nagibSvPane').addTo(svPin);
       (z.linije || []).forEach(l => {
         if (!Number.isFinite(l.ha) || !Number.isFinite(l.hb)) return;
         const kl = klasaOd(npNagibLinije(l.ha, l.hb, npDist(l.a, l.b)).st);
@@ -651,7 +656,7 @@ body.np-open #terrain-map-legend { display:none !important; }
       });
       const c = L.polygon(z.ring).getBounds().getCenter();
       const txt = String(z.naziv).replace(/[&<>"']/g, '') + (z.sazetak ? ' · ' + fmt(z.sazetak.pct, 0) + ' %' : '');
-      L.marker(c, { pane: 'nagibSvPane', interactive: false, icon: L.divIcon({ className: '', html: `<span class="np-lbl" style="background:${boja}">${txt}</span>`, iconSize: [0, 0] }) }).addTo(svGrp);
+      L.marker(c, { pane: 'nagibSvPane', interactive: false, icon: L.divIcon({ className: '', html: `<span class="np-lbl np-sv-lbl" style="background:${boja}">${txt}</span>`, iconSize: [0, 0] }) }).addTo(svGrp);
     });
   }
   function svPopup(z) {
