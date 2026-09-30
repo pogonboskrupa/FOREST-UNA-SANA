@@ -26,7 +26,7 @@ jobs:
           import sys, re, html
           t = open(sys.argv[1], encoding='utf-8', errors='ignore').read()
           if 'Just a moment' in t: print('CLOUDFLARE'); sys.exit()
-          for u in sorted(set(re.findall(r'https?://[^\s"'<>]+', t))): print('URL', html.unescape(u))
+          for u in sorted(set(re.findall(r'https?://[^\s"<>\x27]+', t))): print('URL', html.unescape(u))
           for tag in ['title','abstract','protocol','name','description','useLimitation','otherConstraints','accessConstraints','beginPosition','endPosition','distance','denominator','dateStamp']:
               for m in re.findall(r'<[a-z]+:%s[^>]*>\s*(?:<[^>]+>)?\s*([^<]{1,400})' % tag, t)[:6]: print(tag.upper(), m.strip())
           PY
