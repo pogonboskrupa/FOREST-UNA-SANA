@@ -39,3 +39,11 @@
   `<div id="map">`. U modulima koristiti gola imena (`typeof map !== 'undefined'`).
 - Terenske tačke (`static/js/tacke.js`): localStorage `usf_tacke`, fotografije u
   IndexedDB `usf_foto`; APK kamera ide kroz `imageIntent()` u MainActivity.
+- **Zdravlje šume** (Šumarstvo): `static/js/tlo-potkornjak.js` — Open-Meteo (CORS *,
+  bez ključa): ERA5-Land tlo + klimatologija 1991–2020 (kvantili po ćeliji 0,1° u
+  localStorage `usf_tlo_klima_*`), IFS prognoza, PHENIPS; zadnji rezultat
+  `usf_tlo_zadnje` za offline. `static/js/vegetacija.js` — NDVI/EVI/NDMI preko CDSE
+  Sentinel Hub WMS s našim EVALSCRIPT-om (diskretna paleta → dodir dekodira raspon);
+  ID konfiguracije unosi korisnik (localStorage `usf_veg`), NIKAD u repozitorij;
+  pločice 512 px u Cache Storage `usf-veg` (svježe 5 dana). Kvota CDSE: 10 000
+  zahtjeva/mj po računu. GEE nije ugrađen (tile URL ističe, traži server/ključ).
