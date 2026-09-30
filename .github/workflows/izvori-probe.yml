@@ -1,0 +1,73 @@
+name: Izvori probe (FGU ortofoto)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/practical-pasteur-p2npth]
+    paths: ['.github/workflows/izvori-probe.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: katastar.ba — stranice o servisima i uslovima
+        run: |
+          set -u
+          for p in servisi podaci koristenje korisnici geoportal; do
+            echo "=================== /$p"
+            curl -sSL -m 30 "https://www.katastar.ba/$p" -o "$p.html" -w 'HTTP %{http_code} %{size_download}B\n' || true
+            python3 - "$p.html" <<'PY'
+          import sys, re, html
+          t = open(sys.argv[1], encoding='utf-8', errors='ignore').read()
+          for u in sorted(set(re.findall(r'https?://[^\s"\'<>]+', t))):
+              if re.search(r'wms|wmts|wfs|geoserver|mapserver|arcgis|ortofoto|tile|service', u, re.I): print('URL', u)
+          t = re.sub(r'(?s)<(script|style)[^>]*>.*?</\1>', ' ', t)
+          t = html.unescape(re.sub(r'<[^>]+>', ' ', t))
+          t = re.sub(r'\s+', ' ', t)
+          i = t.find('WMS'); print(t[max(0, i-1500):i+3500] if i >= 0 else t[:3000])
+          PY
+          done
+      - name: preglednik — traži WMS/WMTS adrese u HTML/JS
+        run: |
+          set -u
+          B=https://www.katastar.ba/geoportal/preglednik/
+          curl -sSL -m 30 "$B" -o prg.html -w 'HTTP %{http_code}\n' || true
+          grep -oiE '(src|href)="[^"]+\.(js|json)[^"]*"' prg.html | sed -E 's/^(src|href)="//;s/"$//' | sort -u > js.txt
+          cat js.txt
+          : > sve.txt
+          cat prg.html >> sve.txt
+          while read -r j; do
+            case "$j" in http*) u="$j";; /*) u="https://www.katastar.ba$j";; *) u="$B$j";; esac
+            curl -sSL -m 30 "$u" >> sve.txt 2>/dev/null || true
+          done < js.txt
+          grep -oiE 'https?://[^"'"'"' ]*(wms|wmts|geoserver|mapserver|arcgis|MapServer|ows|tile)[^"'"'"' ]*' sve.txt | sort -u | head -80
+          grep -oiE '"(layers?|LAYERS|name)"\s*:\s*"[^"]*(orto|dof|ortho)[^"]*"' sve.txt | sort -u | head -40
+          grep -oiE '[a-z0-9_:.-]*(ortofoto|orto_|dof_?20|ortho)[a-z0-9_:.-]*' sve.txt | sort -u | head -60
+      - name: GetCapabilities kandidata
+        run: |
+          set -u
+          grep -oiE 'https?://[^"'"'"' ?]*(wms|wmts|geoserver|ows|MapServer)[^"'"'"' ?]*' sve.txt | sort -u > kand.txt || true
+          for u in https://www.katastar.ba/geoserver/wms https://geoportal.katastar.ba/geoserver/wms https://www.fgu.com.ba/geoserver/wms https://katastar.ba/geoserver/ows; do echo "$u" >> kand.txt; done
+          sort -u kand.txt | while read -r u; do
+            for q in 'service=WMS&request=GetCapabilities' 'SERVICE=WMTS&REQUEST=GetCapabilities'; do
+              s="?"; case "$u" in *\?*) s="&";; esac
+              code=$(curl -sSL -m 25 "$u$s$q" -o cap.xml -w '%{http_code}' || echo ERR)
+              echo "---- $code $u$s$q ($(wc -c < cap.xml 2>/dev/null)B)"
+              if grep -qiE 'Capabilities' cap.xml 2>/dev/null; then
+                n=$(echo "$u$q" | md5sum | cut -c1-8); mkdir -p istrazivanje; cp cap.xml "istrazivanje/cap_$n.xml"; echo "$u$s$q" > "istrazivanje/cap_$n.url"
+                grep -oiE '<(ows:)?(Title|Name|Identifier|Fees|AccessConstraints)>[^<]{0,200}' cap.xml | head -60
+              fi
+            done
+          done
+      - name: Sačuvaj nalaze
+        run: |
+          mkdir -p istrazivanje
+          cp sve.txt istrazivanje/preglednik_sve.txt 2>/dev/null || true
+          for p in servisi podaci koristenje; do cp "$p.html" istrazivanje/ 2>/dev/null || true; done
+          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add istrazivanje && git commit -qm "probe: FGU ortofoto servisi" || exit 0
+          for i in 1 2 3 4; do git pull -q --rebase origin claude/practical-pasteur-p2npth && git push -q origin HEAD:claude/practical-pasteur-p2npth && break; sleep $((i*3)); done
