@@ -101,6 +101,16 @@ t('zimski snimak: pločice z8–14 unutar USK, metapodaci, sloj iznad offline po
   ['id="zp-pod"', 'id="zp-zoom"', 'id="zp-preuzmi"', 'USKZima.prekini()', '<script src="static/js/zima.js">'].forEach(x => assert.ok(HTML.includes(x), x));
 });
 
+t('centar karte i razmjera: bijela tačka uvijek, sitnije od 1:20 000 oznake umjesto etiketa', () => {
+  assert.ok(/#loc-center-dot \{[^}]*background:#fff/.test(HTML) && !/#loc-center-dot \{[^}]*display:none/.test(HTML), 'stalna bijela tačka');
+  assert.ok(HTML.includes('const RAZMJERA_SITNA = 20000;') && HTML.includes("map.on('zoomend', _razmjeraOsvjezi)"));
+  assert.ok(HTML.includes("_razmjeraTacka(latlngs, color, 'tragMsrLines').addTo(_msrPinLayer)"), 'mjerenja: oznaka na sitnoj razmjeri');
+  const np = R('static/js/nagib-poligon.js');
+  assert.ok(np.includes('body.razmjera-sitna .np-sv-lbl { display:none; }') && np.includes("_razmjeraTacka(z.ring, boja, 'nagibSvPane')"), 'nagib: etiketa ne prekriva poligon');
+  const i = HTML.indexOf('function _razmjera()'), j = HTML.indexOf('<script src="static/js/nagib-poligon.js">');
+  assert.ok(i > 0 && j > i, 'nagib-poligon.js se učitava poslije _razmjeraOznake');
+});
+
 (async () => {
   for (const [ime, fn] of testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + ime); }
