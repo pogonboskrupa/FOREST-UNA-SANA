@@ -37,3 +37,17 @@ jobs:
           grep -i 'access-control' h2.txt
           echo "=== klimatologija tla (ERA5-Land 1991-2020 isti dan, 3 godine uzorak)"
           for y in 2019 2021 2023; do curl -sS -m 60 "https://archive-api.open-meteo.com/v1/archive?$LL&start_date=$y-08-01&end_date=$y-08-01&daily=soil_moisture_0_to_7cm_mean,soil_moisture_28_to_100cm_mean&models=era5_land" | head -c 400; echo; done
+      - name: CDSE Sentinel Hub OGC — dokumentacija i CORS
+        run: |
+          set -u
+          for u in https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/OGC/AdditionalRequestParameters.html https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/OGC/WMS.html https://documentation.dataspace.copernicus.eu/Quotas.html; do
+            echo "=================== $u"
+            curl -sSL -m 30 "$u" | python3 -c "
+          import sys,re,html
+          t=sys.stdin.read(); t=re.sub(r'(?s)<(script|style|nav|header|footer)[^>]*>.*?</\1>',' ',t)
+          t=html.unescape(re.sub(r'<[^>]+>',' ',t)); t=re.sub(r'[ \t]+',' ',t); t=re.sub(r'\n\s*\n+','\n',t)
+          i=t.find('On this page'); print(t[:9000])"
+          done
+          echo "=== CORS bez instance"
+          curl -sS -m 30 -D - -o /dev/null -H 'Origin: https://appassets.androidplatform.net' "https://sh.dataspace.copernicus.eu/ogc/wms/00000000-0000-0000-0000-000000000000?SERVICE=WMS&REQUEST=GetCapabilities" | grep -iE 'HTTP/|access-control'
+          curl -sS -m 30 -X OPTIONS -D - -o /dev/null -H 'Origin: https://appassets.androidplatform.net' -H 'Access-Control-Request-Method: GET' "https://sh.dataspace.copernicus.eu/ogc/wms/00000000-0000-0000-0000-000000000000" | grep -iE 'HTTP/|access-control'
