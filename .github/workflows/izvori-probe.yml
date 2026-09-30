@@ -12,42 +12,8 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Open-Meteo — tlo, temperatura, CORS
-        run: |
-          set -u
-          LL='latitude=44.88&longitude=16.15'
-          O='-H Origin:https://appassets.androidplatform.net'
-          echo "=== forecast ERA/IFS slojevi 0-7/7-28/28-100"
-          curl -sS -m 30 $O -D h1.txt "https://api.open-meteo.com/v1/forecast?$LL&hourly=soil_moisture_0_to_7cm,soil_moisture_7_to_28cm,soil_moisture_28_to_100cm,soil_temperature_0_to_7cm,soil_temperature_7_to_28cm,soil_temperature_28_to_100cm&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,et0_fao_evapotranspiration&past_days=7&forecast_days=7&timezone=Europe%2FSarajevo" | head -c 1500; echo
-          grep -i 'access-control' h1.txt
-          echo "=== forecast s models=ecmwf_ifs025"
-          curl -sS -m 30 "https://api.open-meteo.com/v1/forecast?$LL&hourly=soil_moisture_0_to_7cm,soil_moisture_7_to_28cm,soil_moisture_28_to_100cm,soil_temperature_0_to_7cm&models=ecmwf_ifs025&past_days=2&forecast_days=3" | python3 -c "import sys,json;d=json.load(sys.stdin);print({k:(v[:3],v[-3:]) for k,v in d.get('hourly',{}).items()} if 'hourly' in d else d)"
-          echo "=== forecast default (best match) sa standardnim slojevima"
-          curl -sS -m 30 "https://api.open-meteo.com/v1/forecast?$LL&hourly=soil_moisture_0_to_1cm,soil_moisture_1_to_3cm,soil_moisture_3_to_9cm,soil_moisture_9_to_27cm,soil_moisture_27_to_81cm,soil_temperature_0cm,soil_temperature_6cm,soil_temperature_18cm,soil_temperature_54cm&past_days=2&forecast_days=3" | python3 -c "import sys,json;d=json.load(sys.stdin);print({k:(v[:2],v[-2:]) for k,v in d.get('hourly',{}).items()} if 'hourly' in d else d)"
-          echo "=== past_days max"
-          curl -sS -m 30 "https://api.open-meteo.com/v1/forecast?$LL&daily=temperature_2m_mean&past_days=92&forecast_days=16" | python3 -c "import sys,json;d=json.load(sys.stdin);t=d.get('daily',{}).get('time',[]);print(len(t),t[:1],t[-1:]) if t else print(d)"
-          echo "=== archive ERA5-Land od 1.3."
-          Y=$(date +%Y)
-          curl -sS -m 60 $O -D h2.txt "https://archive-api.open-meteo.com/v1/archive?$LL&start_date=$Y-03-01&end_date=$(date -d '-3 day' +%F)&daily=temperature_2m_mean,temperature_2m_max&hourly=soil_moisture_0_to_7cm,soil_moisture_7_to_28cm,soil_moisture_28_to_100cm&models=era5_land&timezone=Europe%2FSarajevo" | python3 -c "
-          import sys,json;d=json.load(sys.stdin)
-          if 'daily' not in d: print(d); sys.exit()
-          t=d['daily']['time']; m=d['daily']['temperature_2m_mean']
-          print('dana',len(t),t[0],t[-1],'zadnji tmean',m[-5:])
-          h=d['hourly']; print({k:(len(v),[x for x in v if x is not None][-2:]) for k,v in h.items()})"
-          grep -i 'access-control' h2.txt
-          echo "=== klimatologija tla (ERA5-Land 1991-2020 isti dan, 3 godine uzorak)"
-          for y in 2019 2021 2023; do curl -sS -m 60 "https://archive-api.open-meteo.com/v1/archive?$LL&start_date=$y-08-01&end_date=$y-08-01&daily=soil_moisture_0_to_7cm_mean,soil_moisture_28_to_100cm_mean&models=era5_land" | head -c 400; echo; done
-      - name: CDSE Sentinel Hub OGC — dokumentacija i CORS
-        run: |
-          set -u
-          for u in https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/OGC/AdditionalRequestParameters.html https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/OGC/WMS.html https://documentation.dataspace.copernicus.eu/Quotas.html; do
-            echo "=================== $u"
-            curl -sSL -m 30 "$u" | python3 -c "
-          import sys,re,html
-          t=sys.stdin.read(); t=re.sub(r'(?s)<(script|style|nav|header|footer)[^>]*>.*?</\1>',' ',t)
-          t=html.unescape(re.sub(r'<[^>]+>',' ',t)); t=re.sub(r'[ \t]+',' ',t); t=re.sub(r'\n\s*\n+','\n',t)
-          i=t.find('On this page'); print(t[:9000])"
-          done
-          echo "=== CORS bez instance"
-          curl -sS -m 30 -D - -o /dev/null -H 'Origin: https://appassets.androidplatform.net' "https://sh.dataspace.copernicus.eu/ogc/wms/00000000-0000-0000-0000-000000000000?SERVICE=WMS&REQUEST=GetCapabilities" | grep -iE 'HTTP/|access-control'
-          curl -sS -m 30 -X OPTIONS -D - -o /dev/null -H 'Origin: https://appassets.androidplatform.net' -H 'Access-Control-Request-Method: GET' "https://sh.dataspace.copernicus.eu/ogc/wms/00000000-0000-0000-0000-000000000000" | grep -iE 'HTTP/|access-control'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: tlo-potkornjak.js na stvarnom Open-Meteo
+        run: node istrazivanje/tlo_test.mjs
