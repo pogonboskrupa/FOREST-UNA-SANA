@@ -6,7 +6,8 @@ const S = require('../../static/js/sjekacke.js');
 const R = f => fs.readFileSync(path.join(__dirname, '../..', f), 'utf8');
 
 let pass = 0;
-const t = (ime, fn) => { try { fn(); pass++; console.log('  ✔ ' + ime); } catch (e) { console.error('  ✘ ' + ime + '\n      ' + e.message); process.exitCode = 1; } };
+const testovi = [];
+const t = (ime, fn) => testovi.push([ime, fn]);
 console.log('Sjekačke linije:');
 
 // Pravougaonik 300 m (istok–zapad) × 200 m (sjever–jug) oko 44,8° N.
@@ -121,6 +122,51 @@ t('izlomljena linija: dužina po segmentima, vodič prati najbliži segment', ()
   assert.ok(v.duz < 0, 'ispod dna'); v = S.slVodic(lin, ...pr(0, 140)); assert.ok(v.duz > v.len, 'iznad vrha');
 });
 
+t('odstupanje od pada i ocjena pravca (po izohipsi)', () => {
+  assert.strictEqual(S.slOdstupanje(180, 180), 0); assert.strictEqual(S.slOdstupanje(0, 180), 0, 'smjer linije nebitan');
+  assert.strictEqual(S.slOdstupanje(90, 180), 90); assert.strictEqual(S.slOdstupanje(225, 180), 45);
+  const o = S.slOcjenaPravca([{ dev: 10, nagib: 15 }, { dev: 70, nagib: 15 }, { dev: 80, nagib: 12 }, { dev: 85, nagib: 4 }]);
+  assert.ok(Math.abs(o.udio - 2 / 3) < 1e-9 && o.max === 80, 'blago (< 8 %) se ne broji');
+  assert.strictEqual(S.slOcjenaPravca([{ dev: 80, nagib: 4 }]), null);
+});
+
+t('lepeza: susjedi skreću postepeno, partija se ne sabija ispod 60 %', () => {
+  // lijeva polovina padine gleda na jug (180°), desna naglo na istok (90°)
+  const zelj = [180, 180, 180, 180, 90, 90, 90, 90], pola = zelj.map(() => 300);
+  const az = S.slLepeza(zelj, pola, 60, 180);
+  const dmax = Math.asin(0.4 * 60 / 300) * 180 / Math.PI;
+  for (let i = 1; i < az.length; i++) assert.ok(Math.abs(az[i] - az[i - 1]) <= dmax + 1e-9, 'skok ' + (az[i] - az[i - 1]).toFixed(2) + '° > ' + dmax.toFixed(2));
+  assert.ok(az[0] > az[7], 'lijevo bliže jugu, desno bliže istoku');
+  assert.ok(Math.abs(az[0] - 180) <= 45 && Math.abs(az[7] - 90) <= 45, 'obje strane < 45° od svog pada (ne po izohipsi): ' + az.map(v => v.toFixed(0)).join(' '));
+  // jednolična padina → sve paralelno
+  assert.deepStrictEqual(S.slLepeza([150, 150, 150], [200, 200, 200], 60, 150).map(v => Math.round(v)), [150, 150, 150]);
+  // prelaz preko 0°/360°
+  const w = S.slLepeza([355, 5], [100, 100], 60, 0); assert.ok(Math.abs(((w[0] - w[1] + 540) % 360) - 180) <= 10.1);
+});
+
+t('najmanji razmak dvije linije', () => {
+  assert.ok(Math.abs(S.slMinRazmak([pr(0, -100), pr(0, 100)], [pr(60, -100), pr(60, 100)]) - 60) < 0.01);
+  assert.ok(S.slMinRazmak([pr(0, -100), pr(0, 100)], [pr(60, -100), pr(10, 100)]) < 10.1, 'konvergencija na kraju');
+  const f = S.slLepeza([180, 90], [300, 300], 60, 180, [0.5]);
+  assert.ok(Math.abs(f[0] - f[1]) <= Math.asin(0.4 * 60 / 300) * 180 / Math.PI * 0.5 + 1e-9, 'faktor smanjuje skretanje');
+});
+
+t('lepeza: prava kroz sjeme odsječena granicom', () => {
+  const seg = S.slLinijaKroz(kvadrat, pr(0, 0), 135); // jugoistok
+  const a = L.u(seg[0][0], seg[0][1]), b = L.u(seg[1][0], seg[1][1]);
+  assert.ok(Math.abs(a[1] + 100) < 0.5 && Math.abs(a[0] - 100) < 0.5, 'dno na jugoistoku: ' + a.map(v => v.toFixed(1)));
+  assert.ok(Math.abs(b[1] - 100) < 0.5 && Math.abs(b[0] + 100) < 0.5, 'vrh na sjeverozapadu');
+  assert.strictEqual(S.slLinijaKroz(kvadrat, pr(500, 500), 180), null, 'sjeme van poligona');
+});
+
+t('površine partija između krivih linija = površina poligona', () => {
+  const g1 = [pr(-90, -100), pr(-60, 0), pr(-90, 100)], g2 = [pr(30, -100), pr(30, 100)];
+  const ha = S.slPoljaTeren(kvadrat, [g1, g2]);
+  assert.strictEqual(ha.length, 3); assert.ok(Math.abs(ha.reduce((a, b) => a + b, 0) - 6) < 0.05, 'zbir 6 ha');
+  // lijeva partija: linija ide −90 → −60 → −90, prosjek −75 → (150 − 75)·200 m = 1,5 ha
+  assert.ok(Math.abs(ha[0] - 1.5) < 0.1 && Math.abs(ha[2] - 2.4) < 0.1, ha.map(v => v.toFixed(2)).join('/'));
+});
+
 t('dominantan pad i dosljednost', () => {
   // visina raste prema sjeveru (dzy > 0) → pad na jug 180°
   const d = S.slDominantniPad(Array.from({ length: 20 }, () => [0, 0.5]));
@@ -150,4 +196,9 @@ t('UI: Planiranje ispod Tematske karte, panel, vodič, dijeljenje KML-om', () =>
   assert.ok(R('sw.js').includes("'./static/js/sjekacke.js'") && R('android/copy-assets.sh').includes('static/js/sjekacke.js'));
 });
 
-console.log('\n' + pass + ' prošlo, ' + (process.exitCode ? 'IMA PALIH' : '0 palo') + ' — sjekačke linije');
+(async () => {
+  for (const [ime, fn] of testovi) {
+    try { await fn(); pass++; console.log('  ✔ ' + ime); } catch (e) { console.error('  ✘ ' + ime + '\n      ' + e.message); process.exitCode = 1; }
+  }
+  console.log('\n' + pass + ' prošlo, ' + (process.exitCode ? 'IMA PALIH' : '0 palo') + ' — sjekačke linije');
+})();
