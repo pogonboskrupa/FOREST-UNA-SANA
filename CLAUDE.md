@@ -49,7 +49,8 @@
   zahtjeva/mj po računu. GEE nije ugrađen (tile URL ističe, traži server/ključ).
 - **Sjekačke linije** (Planiranje, `static/js/sjekacke.js`): poligon (crtanje dodirom/
   GPS-om, mjerenje, KML, odjel) → paralelne linije u smjeru dominantnog pada (DEM preko
-  `npVisinaNa` iz nagib-poligon.js), prva linija tačno 1 razmak od granice, preusko
-  zadnje polje se optimizuje (`slRaspored`). localStorage `usf_sjekacke`; dijeljenje
+  `npVisinaNa` iz nagib-poligon.js); linija = granica sjekačke partije, UVIJEK uz
+  padinu (obaranje). Prva linija 1 širinu od granice, dublje (≤ 1,6×) ako je rub
+  uzak; preuska zadnja partija → `slRaspored`; komadi < ½ širine se izbacuju. localStorage `usf_sjekacke`; dijeljenje
   KML-om s projektom u `ExtendedData usf_sjekacke` (isti parametri ⇒ iste linije).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.

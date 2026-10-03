@@ -1859,12 +1859,12 @@ body.sl-crta #sl-crt { display: block; }
   <div class="up-hdr"><h2>🪓 Sjekačke linije</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body">
     <section class="ng-card ul-hero">
-      <div class="ul-hero-top"><span class="ul-ico">🪓</span><div><h3>Polja za sjekače uzbrdo</h3><p>Paralelne linije uz padinu (smjer najvećeg pada iz DEM-a) na razmaku ~2 visine stabla. Svaki radnik ide uzbrdo u svom polju, susjed mu je bočno na sigurnoj udaljenosti. Na terenu 🧭 vodi radnika duž linije dok farba.</p></div></div>
+      <div class="ul-hero-top"><span class="ul-ico">🪓</span><div><h3>Sjekačke partije uzbrdo</h3><p>Linije su granice partija: idu uz padinu (smjer najvećeg pada iz DEM-a) zbog obaranja, širina partije ~2 visine stabla. Svaka partija radi uzbrdo u svom pojasu, susjedna je bočno. Na terenu 🧭 vodi radnika duž linije dok farba.</p></div></div>
     </section>
     <section class="ng-card">
       <h3>Novi projekat</h3>
       <div class="sl-dug"><button class="zp-glavno" onclick="USFSjek.crtPocni()">✏ Nacrtaj granicu sječe</button></div>
-      <p class="uk-izvor">Dodirom na kartu ili obilaskom granice: na svakom lomu granice dodaj 📍 Moja pozicija. Prva linija je tačno jednu širinu polja od granice.</p>
+      <p class="uk-izvor">Dodirom na kartu ili obilaskom granice: na svakom lomu granice dodaj 📍 Moja pozicija. Prva linija je jednu širinu partije od granice (dublje ako je rub uzak, da partija ne bude mala).</p>
       <select id="sl-izvor" class="sl-izvor"></select>
       <div class="sl-dug"><button onclick="USFSjek.izIzvora()">Napravi linije iz izabranog</button></div>
       <div class="sl-dug"><button onclick="USFSjek.izOdjela()">🌲 Odjel pod centrom karte</button><button onclick="document.getElementById('sl-uvoz').click()">📂 Uvezi KML</button></div>

@@ -16,7 +16,7 @@ const kvadrat = [pr(-150, -100), pr(150, -100), pr(150, 100), pr(-150, 100)];
 const dist = (a, b) => { const p = L.u(a[0], a[1]), q = L.u(b[0], b[1]); return Math.hypot(p[0] - q[0], p[1] - q[1]); };
 
 t('pad prema jugu: linije sjever–jug, razmak 60 m, cijela visina poligona', () => {
-  const r = S.slLinije(kvadrat, 180, 60, 'pad');
+  const r = S.slLinije(kvadrat, 180, 60);
   assert.strictEqual(r.linije.length, 4, '300 m / 60 m → 4 unutrašnje linije');
   r.linije.forEach(l => { assert.ok(Math.abs(l.duz - 200) < 0.5, 'dužina 200 m'); assert.ok(l.dno[0] < l.vrh[0], 'dno je južno (nizbrdo)'); });
   const x = r.linije.map(l => L.u(l.dno[0], l.dno[1])[0]);
@@ -28,22 +28,22 @@ t('pad prema jugu: linije sjever–jug, razmak 60 m, cijela visina poligona', ()
 
 t('L1 počinje s lijeve strane gledano uzbrdo', () => {
   // pad na jug → uzbrdo je sjever → lijevo je zapad
-  const r = S.slLinije(kvadrat, 180, 60, 'pad');
+  const r = S.slLinije(kvadrat, 180, 60);
   assert.ok(L.u(r.linije[0].dno[0], r.linije[0].dno[1])[0] < 0, 'L1 na zapadnoj strani');
   // pad na sjever → uzbrdo je jug → lijevo je istok
-  const r2 = S.slLinije(kvadrat, 0, 60, 'pad');
+  const r2 = S.slLinije(kvadrat, 0, 60);
   assert.ok(L.u(r2.linije[0].dno[0], r2.linije[0].dno[1])[0] > 0, 'L1 na istočnoj strani');
 });
 
 t('bez optimizacije: prva linija tačno razmak od ruba, ostatak u zadnjem polju', () => {
-  const r = S.slLinije(kvadrat, 180, 70, 'pad', 0, false);
+  const r = S.slLinije(kvadrat, 180, 70, false);
   assert.strictEqual(r.linije.length, 4); assert.strictEqual(r.opt, null);
   assert.ok(Math.abs(r.polja[0].sirina - 70) < 0.01, 'prva linija 70 m od ruba');
   assert.ok(Math.abs(r.polja[r.polja.length - 1].sirina - 20) < 0.01, 'zadnje polje 300 − 4·70 = 20 m');
 });
 
 t('optimizacija: preusko zadnje polje → zadnja polja malo uža, sva ≥ 80 % razmaka', () => {
-  const r = S.slLinije(kvadrat, 180, 70, 'pad');
+  const r = S.slLinije(kvadrat, 180, 70);
   const sir = r.polja.map(f => +f.sirina.toFixed(2));
   assert.deepStrictEqual(sir, [70, 57.5, 57.5, 57.5, 57.5]);
   assert.strictEqual(r.opt.nacin, 'suzeno'); assert.strictEqual(r.opt.k, 4);
@@ -59,19 +59,28 @@ t('optimizacija: preusko zadnje polje → zadnja polja malo uža, sva ≥ 80 % r
 
 t('konkavni poligon (U oblik): linija koja presijeca "zaliv" ima dva dijela', () => {
   const U = [pr(-150, -100), pr(150, -100), pr(150, 100), pr(50, 100), pr(50, -20), pr(-50, -20), pr(-50, 100), pr(-150, 100)];
-  const r = S.slLinije(U, 180, 60, 'pad');
+  const r = S.slLinije(U, 180, 60);
   const ukupno = r.linije.reduce((s, l) => s + l.duz, 0);
   // linije na x = -90, -30, 30, 90: dvije pune (200 m), dvije kroz zaliv (80 m)
   assert.strictEqual(r.linije.length, 4); assert.ok(Math.abs(ukupno - 560) < 1, 'ukupno ' + ukupno);
-  const r2 = S.slLinije([pr(-150, -100), pr(150, -100), pr(150, 100), pr(-150, 100), pr(-150, 40), pr(100, 40), pr(100, -40), pr(-150, -40)], 180, 50, 'pad');
+  const r2 = S.slLinije([pr(-150, -100), pr(150, -100), pr(150, 100), pr(-150, 100), pr(-150, 40), pr(100, 40), pr(100, -40), pr(-150, -40)], 180, 50);
   assert.ok(r2.linije.some(l => l.dio === 1), 'dio 1 kad prava dvaput ulazi u poligon');
 });
 
-t('po izohipsi: razmak niz padinu preračunat na horizontalu (cos nagiba)', () => {
-  const r = S.slLinije(kvadrat, 180, 60, 'izohipsa', 30);
-  assert.ok(Math.abs(r.korak - 60 * Math.cos(Math.PI / 6)) < 1e-9);
-  r.linije.forEach(l => assert.ok(Math.abs(l.duz - 300) < 0.5, 'linije istok–zapad'));
-  assert.strictEqual(r.linije.length, Math.floor(200 / r.korak - 1e-9));
+t('krivudav poligon: prva linija nije kratka, nema malih komada', () => {
+  // lijevi kraj se sužava u šiljak (x −300 → −150), desno pun pravougaonik
+  const klin = [pr(-300, 0), pr(-150, -100), pr(150, -100), pr(150, 100), pr(-150, 100)];
+  const raw = S.slLinije(klin, 180, 60, false), r = S.slLinije(klin, 180, 60);
+  assert.ok(raw.linije[0].duz < 100, 'bez optimizacije prva linija 60 m od šiljka je kratka: ' + raw.linije[0].duz.toFixed(0));
+  assert.ok(r.linije[0].duz >= 99.5, 'prva linija pomjerena do pune dužine: ' + r.linije[0].duz.toFixed(0));
+  assert.ok(r.opt.rubL > 60 && r.opt.rubL <= 96, 'pomak najviše 1,6 × razmak: ' + r.opt.rubL);
+  assert.ok(r.polja.every(f => f.sirina >= 48 - 1e-6 && f.sirina <= 96 + 1e-6), 'sve partije 0,8–1,6 × širine');
+  // usjek s boka ostavlja tanak pojas (10 m) uz gornju granicu: linije ga sijeku u kratke komade
+  const izb = [pr(-150, -100), pr(150, -100), pr(150, 60), pr(-60, 60), pr(-60, 90), pr(150, 90), pr(150, 100), pr(-150, 100)];
+  const r2 = S.slLinije(izb, 180, 60);
+  assert.ok(r2.linije.every(l => l.duz >= 30), 'nijedan komad kraći od pola širine');
+  const raw2 = S.slLinije(izb, 180, 60, false);
+  assert.ok(raw2.linije.some(l => l.duz < 30) && r2.opt.izbaceno >= 1, 'mali komad izbačen');
 });
 
 t('dominantan pad i dosljednost', () => {
