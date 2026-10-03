@@ -881,6 +881,7 @@ body.razmjera-sitna .np-sv-lbl { display:none; }
   });
 
   window.npNacrtaj = crtaj;
+  window.npVisinaNa = visinaNa; // dijele Sjekačke linije (isti DEM/Terrarium keš)
   window.npIzKml = id => {
     let sloj = null;
     (typeof kmlLs !== 'undefined' ? kmlLs : []).forEach(k => k.grp && k.grp.eachLayer(function walk(l) {

@@ -47,3 +47,9 @@
   ID konfiguracije unosi korisnik (localStorage `usf_veg`), NIKAD u repozitorij;
   pločice 512 px u Cache Storage `usf-veg` (svježe 5 dana). Kvota CDSE: 10 000
   zahtjeva/mj po računu. GEE nije ugrađen (tile URL ističe, traži server/ključ).
+- **Sjekačke linije** (Planiranje, `static/js/sjekacke.js`): poligon (crtanje dodirom/
+  GPS-om, mjerenje, KML, odjel) → paralelne linije u smjeru dominantnog pada (DEM preko
+  `npVisinaNa` iz nagib-poligon.js), prva linija tačno 1 razmak od granice, preusko
+  zadnje polje se optimizuje (`slRaspored`). localStorage `usf_sjekacke`; dijeljenje
+  KML-om s projektom u `ExtendedData usf_sjekacke` (isti parametri ⇒ iste linije).
+  Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.

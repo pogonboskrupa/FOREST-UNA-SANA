@@ -182,7 +182,7 @@ t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
   const meni = HTML.slice(a, b);
   assert.ok((meni.match(/class="meni-grp"/g) || []).length >= 4);
   const kartice = meni.match(/<button type="button" class="meni-card"[\s\S]*?<\/button>/g) || [];
-  assert.strictEqual(kartice.length, 9, 'Sječa i vjetroizvale uklonjena (pokriva Šumarstvo); Tačke i fotografije dodane');
+  assert.strictEqual(kartice.length, 10, 'Sječa i vjetroizvale uklonjena (pokriva Šumarstvo); Tačke i fotografije, Sjekačke linije dodane');
   for (const k of kartice) {
     assert.ok(/<span class="mc-ico"><svg/.test(k), 'ikona mora biti SVG');
     assert.ok(!/\p{Extended_Pictographic}/u.test(k), 'bez emoji u kartici');

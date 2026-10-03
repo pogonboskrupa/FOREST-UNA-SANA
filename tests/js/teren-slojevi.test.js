@@ -49,7 +49,7 @@ t('tačke: kategorije, globalni map/lastP (ne window.map = <div id="map">), klik
 });
 
 t('tačke: UI — dugme na karti, Moja lokacija, traka snimanja, meni, panel, izvoz binarnog KMZ-a', () => {
-  ['id="ab-tacka"', 'USFTacke.naGps(true)', 'id="rb-tacka"', 'id="mc-tacke"', 'id="tacke-panel"', "'tacke-panel'];", '<script src="static/js/tacke.js">'].forEach(x => assert.ok(HTML.includes(x), x));
+  ['id="ab-tacka"', 'USFTacke.naGps(true)', 'id="rb-tacka"', 'id="mc-tacke"', 'id="tacke-panel"', "'tacke-panel'", '<script src="static/js/tacke.js">'].forEach(x => assert.ok(HTML.includes(x), x));
   assert.ok(R('static/js/odjeli.js').includes('if (sadrzaj instanceof Blob)'), '_izvozFajl prima Blob');
   assert.ok(/USFTacke\.fotoUrl\(img\.dataset\.foto, true\)/.test(HTML), 'pregled otvara punu fotografiju, ne minijaturu');
 });
