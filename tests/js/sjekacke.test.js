@@ -99,6 +99,28 @@ t('krivudav poligon: prva linija nije kratka, nema malih komada', () => {
   assert.ok(raw2.linije.some(l => l.duz < 30) && r2.opt.izbaceno >= 1, 'mali komad izbačen');
 });
 
+t('brojanje s desna: obrnuti redni brojevi linija i partija, isti položaji', () => {
+  const l = S.slLinije(kvadrat, 180, 60), d = S.slLinije(kvadrat, 180, 60, true, [], true);
+  assert.deepStrictEqual(d.linije.map(x => x.br), [1, 2, 3, 4], 'sortirano po broju');
+  assert.deepStrictEqual(d.linije.map(x => x.k), l.linije.map(x => x.k).reverse(), 'L1 je sad krajnja desna');
+  assert.deepStrictEqual(d.polja.map(f => f.br), [1, 2, 3, 4, 5]);
+  assert.ok(Math.abs(d.polja[0].ha - l.polja[l.polja.length - 1].ha) < 1e-9);
+  // pad na jug → uzbrdo sjever → desno je istok: L1 na istočnoj strani
+  assert.ok(L.u(d.linije[0].dno[0], d.linije[0].dno[1])[0] > 0);
+});
+
+t('izlomljena linija: dužina po segmentima, vodič prati najbliži segment', () => {
+  const lin = { dno: pr(0, -100), vrh: pr(0, 100), geo: [pr(0, -100), pr(20, 0), pr(0, 100)] };
+  assert.ok(Math.abs(S.slDuzina(S.slGeo(lin)) - 2 * Math.hypot(20, 100)) < 0.01);
+  assert.strictEqual(S.slGeo({ dno: [1, 2], vrh: [3, 4] }).length, 2, 'ravna: dno i vrh');
+  // tačka 5 m zapadno od loma: lijevo od linije (gledano uzbrdo) → bocno < 0
+  let v = S.slVodic(lin, ...pr(15, 0));
+  assert.ok(v.bocno < 0 && Math.abs(Math.abs(v.bocno) - 5 * Math.cos(Math.atan(20 / 100))) < 0.05, 'bočno ' + v.bocno);
+  assert.ok(Math.abs(v.duz - Math.hypot(20, 100)) < 1, 'na pola puta');
+  v = S.slVodic(lin, ...pr(0, -130));
+  assert.ok(v.duz < 0, 'ispod dna'); v = S.slVodic(lin, ...pr(0, 140)); assert.ok(v.duz > v.len, 'iznad vrha');
+});
+
 t('dominantan pad i dosljednost', () => {
   // visina raste prema sjeveru (dzy > 0) → pad na jug 180°
   const d = S.slDominantniPad(Array.from({ length: 20 }, () => [0, 0.5]));
@@ -120,7 +142,7 @@ t('UI: Planiranje ispod Tematske karte, panel, vodič, dijeljenje KML-om', () =>
   const H = R('index.html');
   const i = H.indexOf('id="mc-tematska"'), j = H.indexOf('id="mc-sjekacke"'), k = H.indexOf('<h3>Podaci i karte</h3>');
   assert.ok(i > 0 && j > i && j < k, 'kartica odmah ispod Tematske karte');
-  ['id="sjekacke-panel"', 'id="sl-vodic"', "'sjekacke-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
+  ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', "'sjekacke-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
   assert.ok(H.indexOf('<script src="static/js/nagib-poligon.js">') < H.indexOf('<script src="static/js/sjekacke.js">'), 'DEM pomoćne funkcije prije');
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes("style.pointerEvents = 'none'") && js.includes('_kartaKlikIzvor') && js.includes('name="usf_sjekacke"'));

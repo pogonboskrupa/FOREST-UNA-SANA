@@ -1133,6 +1133,15 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 body.sl-vodi #sl-vodic { display: block; }
 #sl-crt { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #fde68a; border-left: 6px solid #fde68a; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
 body.sl-crta #sl-crt { display: block; }
+#sl-ured { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #38bdf8; border-left: 6px solid #38bdf8; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
+body.sl-uredi #sl-ured { display: block; }
+#sl-ured .sl-v-dug button:first-child { background: #166534; border-color: #22c55e; }
+#sl-ured .sl-v-dug button:last-child { flex: 0 0 48px; }
+.sl-ur { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; border-radius: 50%; font: 900 13px/1 system-ui, sans-serif; color: #0b1220; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.sl-ur::before { content: ''; position: absolute; inset: -12px; border-radius: 50%; } /* veća površina za prst */
+.sl-ur.kraj { width: 26px; height: 26px; background: #f59e0b; border: 2.5px solid #0b1220; }
+.sl-ur.lom { width: 22px; height: 22px; background: #38bdf8; border: 2.5px solid #fff; }
+.sl-ur.plus { width: 22px; height: 22px; background: rgba(255,255,255,.88); border: 2px solid #38bdf8; color: #0369a1; font-size: 16px; }
 #sl-crt .sl-v-dug button:nth-child(2), #sl-crt .sl-v-dug button:nth-child(4) { flex: 0 0 48px; }
 #sl-crt .sl-v-dug button:first-child { background: #0f172a; border-color: #334155; }
 #sl-crt .sl-v-dug button:nth-child(3) { background: #166534; border-color: #22c55e; }
@@ -1268,6 +1277,7 @@ body.sl-crta #sl-crt { display: block; }
 <div id="loc-center-dot"></div>
 <div id="sl-vodic"></div>
 <div id="sl-crt" class="sl-traka"></div>
+<div id="sl-ured" class="sl-traka"></div>
 <div id="loc-dist-badge"></div>
 
 <div id="poz-legends">

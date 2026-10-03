@@ -52,8 +52,10 @@
   `npVisinaNa` iz nagib-poligon.js); linija = granica sjekačke partije, UVIJEK uz
   padinu (obaranje). Prva linija 1 širinu od granice, dublje (≤ 1,6×) ako je rub
   uzak; preuska zadnja partija → `slRaspored`; nema linija/komada < 100 m. Obrisane
-  linije: `p.izbrisane` (ključ = udaljenost od ruba), id linije = položaj, ne broj. localStorage `usf_sjekacke`; dijeljenje
+  linije: `p.izbrisane` (ključ = udaljenost od ruba), id linije = položaj, ne broj.
+  Brojanje `p.brojanje` 'L'/'D' (gledano uzbrdo). Ručni lom: `lin.geo` [dno…vrh]
+  (`slGeo`, vodič po segmentima) — čuva se uz id kroz brisanja i prenumeraciju. localStorage `usf_sjekacke`; dijeljenje
   KML-om s projektom u `ExtendedData usf_sjekacke` (isti parametri ⇒ iste linije).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
-- JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `dijalog_naslov`
-  ("Dendro Map") — bez override-a WebView piše appassets.androidplatform.net.
+- JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
+  ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

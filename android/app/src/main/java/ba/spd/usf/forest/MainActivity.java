@@ -239,7 +239,7 @@ public class MainActivity extends Activity {
                     final android.webkit.JsResult result) {
                 if (isFinishing() || isDestroyed()) { result.cancel(); return true; }
                 new android.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle(getString(R.string.dijalog_naslov))
+                        .setTitle(getString(R.string.app_name))
                         .setMessage(message)
                         .setPositiveButton(android.R.string.ok,
                                 (dialog, which) -> result.confirm())
@@ -254,7 +254,7 @@ public class MainActivity extends Activity {
                     final android.webkit.JsResult result) {
                 if (isFinishing() || isDestroyed()) { result.cancel(); return true; }
                 new android.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle(getString(R.string.dijalog_naslov))
+                        .setTitle(getString(R.string.app_name))
                         .setMessage(message)
                         .setPositiveButton(android.R.string.ok,
                                 (dialog, which) -> result.confirm())
@@ -278,7 +278,7 @@ public class MainActivity extends Activity {
                 okvir.setPadding(pad, pad / 2, pad, 0);
                 okvir.addView(unos);
                 new android.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle(getString(R.string.dijalog_naslov))
+                        .setTitle(getString(R.string.app_name))
                         .setMessage(message)
                         .setView(okvir)
                         .setPositiveButton(android.R.string.ok,

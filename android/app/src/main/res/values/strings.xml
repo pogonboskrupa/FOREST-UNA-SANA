@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Grmeč Navigator</string>
-    <!-- Naslov JS dijaloga (alert/confirm/prompt) — bez njega WebView piše appassets.androidplatform.net -->
-    <string name="dijalog_naslov">Dendro Map</string>
 </resources>
