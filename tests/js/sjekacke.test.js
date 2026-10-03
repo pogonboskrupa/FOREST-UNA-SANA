@@ -57,14 +57,30 @@ t('optimizacija: preusko zadnje polje → zadnja polja malo uža, sva ≥ 80 % r
   assert.deepStrictEqual(S.slRaspored(340, 60).sir.map(v => +v.toFixed(2)), [60, 60, 60, 60, 50, 50]);
 });
 
-t('konkavni poligon (U oblik): linija koja presijeca "zaliv" ima dva dijela', () => {
+t('konkavni poligon (U oblik): bez optimizacije dva dijela, s optimizacijom nema linija < 100 m', () => {
   const U = [pr(-150, -100), pr(150, -100), pr(150, 100), pr(50, 100), pr(50, -20), pr(-50, -20), pr(-50, 100), pr(-150, 100)];
-  const r = S.slLinije(U, 180, 60);
-  const ukupno = r.linije.reduce((s, l) => s + l.duz, 0);
+  const raw = S.slLinije(U, 180, 60, false);
   // linije na x = -90, -30, 30, 90: dvije pune (200 m), dvije kroz zaliv (80 m)
-  assert.strictEqual(r.linije.length, 4); assert.ok(Math.abs(ukupno - 560) < 1, 'ukupno ' + ukupno);
-  const r2 = S.slLinije([pr(-150, -100), pr(150, -100), pr(150, 100), pr(-150, 100), pr(-150, 40), pr(100, 40), pr(100, -40), pr(-150, -40)], 180, 50);
-  assert.ok(r2.linije.some(l => l.dio === 1), 'dio 1 kad prava dvaput ulazi u poligon');
+  assert.strictEqual(raw.linije.length, 4); assert.ok(Math.abs(raw.linije.reduce((s, l) => s + l.duz, 0) - 560) < 1);
+  const r = S.slLinije(U, 180, 60);
+  assert.ok(r.linije.length && r.linije.every(l => l.duz >= 100), 'sve linije ≥ 100 m');
+  assert.deepStrictEqual(r.linije.map(l => l.br), r.linije.map((_, i) => i + 1), 'redni brojevi bez rupa');
+  const C = [pr(-150, -100), pr(150, -100), pr(150, 100), pr(-150, 100), pr(-150, 40), pr(100, 40), pr(100, -40), pr(-150, -40)];
+  assert.ok(S.slLinije(C, 180, 50, false).linije.some(l => l.dio === 1), 'dio 1 kad prava dvaput ulazi u poligon');
+  // mali poligon (sve tetive < 100 m): prag je 90 % najduže tetive, linije ostaju
+  const mali = [pr(-150, -40), pr(150, -40), pr(150, 40), pr(-150, 40)];
+  assert.strictEqual(S.slLinije(mali, 180, 60).linije.length, 4);
+});
+
+t('brisanje linije: partije se spajaju, ostale linije se prenumerišu, ključ stabilan', () => {
+  const r = S.slLinije(kvadrat, 180, 60);
+  assert.strictEqual(r.linije.length, 4);
+  const k2 = r.linije[1].k;
+  const b = S.slLinije(kvadrat, 180, 60, true, [k2]);
+  assert.deepStrictEqual(b.linije.map(l => l.br), [1, 2, 3], 'L3 i L4 postaju L2 i L3');
+  assert.deepStrictEqual(b.linije.map(l => l.k), [r.linije[0].k, r.linije[2].k, r.linije[3].k], 'ključ = položaj, ne broj');
+  assert.strictEqual(b.polja.length, 4); assert.ok(Math.abs(b.polja[1].sirina - 120) < 0.01, 'spojena partija 120 m');
+  assert.strictEqual(b.opt.obrisano, 1);
 });
 
 t('krivudav poligon: prva linija nije kratka, nema malih komada', () => {

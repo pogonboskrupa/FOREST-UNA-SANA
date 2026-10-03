@@ -232,14 +232,14 @@ public class MainActivity extends Activity {
                 callback.invoke(origin, true, true);
             }
 
-            // Bez ovih override-a WebView za JS alert()/confirm() prikazuje SVOJ
-            // default dijalog sa naslovom URL-a porijekla — ovdje se koristi ime app-e.
+            // Bez ovih override-a WebView za JS alert()/confirm()/prompt() prikazuje SVOJ
+            // default dijalog sa naslovom porijekla (appassets.androidplatform.net).
             @Override
             public boolean onJsAlert(WebView view, String url, String message,
                     final android.webkit.JsResult result) {
                 if (isFinishing() || isDestroyed()) { result.cancel(); return true; }
                 new android.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle(getString(R.string.app_name))
+                        .setTitle(getString(R.string.dijalog_naslov))
                         .setMessage(message)
                         .setPositiveButton(android.R.string.ok,
                                 (dialog, which) -> result.confirm())
@@ -254,10 +254,35 @@ public class MainActivity extends Activity {
                     final android.webkit.JsResult result) {
                 if (isFinishing() || isDestroyed()) { result.cancel(); return true; }
                 new android.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle(getString(R.string.app_name))
+                        .setTitle(getString(R.string.dijalog_naslov))
                         .setMessage(message)
                         .setPositiveButton(android.R.string.ok,
                                 (dialog, which) -> result.confirm())
+                        .setNegativeButton(android.R.string.cancel,
+                                (dialog, which) -> result.cancel())
+                        .setOnCancelListener(dialog -> result.cancel())
+                        .setCancelable(false)
+                        .show();
+                return true;
+            }
+
+            @Override
+            public boolean onJsPrompt(WebView view, String url, String message,
+                    String defaultValue, final android.webkit.JsPromptResult result) {
+                if (isFinishing() || isDestroyed()) { result.cancel(); return true; }
+                final android.widget.EditText unos = new android.widget.EditText(MainActivity.this);
+                unos.setSingleLine(true);
+                if (defaultValue != null) { unos.setText(defaultValue); unos.setSelection(defaultValue.length()); }
+                int pad = (int) (20 * getResources().getDisplayMetrics().density);
+                android.widget.FrameLayout okvir = new android.widget.FrameLayout(MainActivity.this);
+                okvir.setPadding(pad, pad / 2, pad, 0);
+                okvir.addView(unos);
+                new android.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle(getString(R.string.dijalog_naslov))
+                        .setMessage(message)
+                        .setView(okvir)
+                        .setPositiveButton(android.R.string.ok,
+                                (dialog, which) -> result.confirm(unos.getText().toString()))
                         .setNegativeButton(android.R.string.cancel,
                                 (dialog, which) -> result.cancel())
                         .setOnCancelListener(dialog -> result.cancel())

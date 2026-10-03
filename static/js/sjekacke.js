@@ -68,9 +68,12 @@ function slRaspored(W, razmak, optimizuj) {
 //    komad linije < pola tipične dužine), pomjera se dublje — najviše do 1,6 ×
 //    razmak — da prva/zadnja partija ne bude mala krpa uz krivudav rub (isto s desne);
 //  • između njih puni razmak, a preuska zadnja partija ide kroz slRaspored;
-//  • komadi linije kraći od pola razmaka (lukovi, zalivi) se izbacuju — taj
-//    komad pripada susjednoj partiji, ne treba ga farbati.
-function slLinije(ring, azPada, razmak, optimizuj) {
+//  • nema linija ni komada kraćih od 100 m (lukovi, zalivi, šiljci) — taj komad
+//    pripada susjednoj partiji; u malom poligonu prag je 90 % najduže tetive.
+// izbrisane: ključevi linija koje je korisnik obrisao (udaljenost od lijevog
+// ruba, 0,1 m) — ostale se prenumerišu, a dvije partije se spajaju.
+const SL_MIN_DUZ = 100;
+function slLinije(ring, azPada, razmak, optimizuj, izbrisane) {
   const opt = optimizuj !== false;
   const lat0 = ring.reduce((s, p) => s + p[0], 0) / ring.length, lon0 = ring.reduce((s, p) => s + p[1], 0) / ring.length;
   const L = slLokalno(lat0, lon0), poly = ring.map(p => L.u(p[0], p[1]));
@@ -81,7 +84,10 @@ function slLinije(ring, azPada, razmak, optimizuj) {
   const glavni = off => komadi(off).reduce((m, [a, b]) => Math.max(m, b - a), 0);
   const uz = []; for (let i = 1; i < 40; i++) uz.push(glavni(min + W * i / 40));
   uz.sort((a, b) => a - b);
-  const Lmin = 0.5 * uz[Math.floor(uz.length * 0.75)], MAXP = 1.6 * razmak, MALI = 0.5 * razmak;
+  const MALI = Math.min(SL_MIN_DUZ, 0.9 * uz[uz.length - 1]);
+  const Lmin = Math.max(MALI, 0.5 * uz[Math.floor(uz.length * 0.75)]), MAXP = 1.6 * razmak;
+  const bez = new Set((izbrisane || []).map(Number));
+  const kljuc = off => Math.round((off - min) * 10) / 10;
   function rubni(od, sm) {
     for (let t = razmak; t <= MAXP + 1e-9; t += 1) if (glavni(od + sm * t) >= Lmin) return t;
     let naj = razmak, nl = -1;
@@ -107,12 +113,13 @@ function slLinije(ring, azPada, razmak, optimizuj) {
     }
   }
   // komadi po liniji; male komade izbaci, liniju bez ijednog komada spoji s partijom
-  let izbaceno = 0;
+  let izbaceno = 0, obrisano = 0;
   const unut = [];
   for (let k = 1; k + 1 < granice.length; k++) {
     const sv = komadi(granice[k]), ok = opt ? sv.filter(([t0, t1]) => t1 - t0 >= MALI) : sv;
     izbaceno += sv.length - ok.length;
-    if (ok.length) unut.push({ off: granice[k], ok });
+    if (ok.length && bez.has(kljuc(granice[k]))) obrisano++;
+    else if (ok.length) unut.push({ off: granice[k], ok });
   }
   const g2 = [min, ...unut.map(u => u.off), max];
   const linije = [];
@@ -121,7 +128,7 @@ function slLinije(ring, azPada, razmak, optimizuj) {
     u.ok.forEach(([t0, t1], dio) => {
       // d gleda nizbrdo: veći t = niže → dno je kraj s većim t
       const A = [o[0] + d[0] * t1, o[1] + d[1] * t1], B = [o[0] + d[0] * t0, o[1] + d[1] * t0];
-      linije.push({ br: i + 1, dio, dno: L.n(A[0], A[1]), vrh: L.n(B[0], B[1]), duz: t1 - t0, off: u.off });
+      linije.push({ br: i + 1, dio, k: kljuc(u.off), dno: L.n(A[0], A[1]), vrh: L.n(B[0], B[1]), duz: t1 - t0, off: u.off });
     });
   });
   const polja = [];
@@ -131,6 +138,7 @@ function slLinije(ring, azPada, razmak, optimizuj) {
   }
   if (info && izbaceno) info.izbaceno = izbaceno;
   if (info && !info.rubL && !info.rubD && !info.nacin && !info.izbaceno) info = null;
+  if (obrisano) (info = info || {}).obrisano = obrisano;
   return { linije, polja, korak: razmak, ha: slPovrsinaXY(poly) / 1e4, opt: info };
 }
 
@@ -222,9 +230,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slLinije
     aktivni = p.id; crtaj(); render(); zoom(p.id);
   }
   async function generisi(p) {
-    const r = slLinije(p.ring, p.az, p.razmak, p.opt !== false);
-    const stari = new Map((p.linije || []).map(x => [x.br + '.' + x.dio, x]));
-    p.linije = r.linije.map(x => { const s = stari.get(x.br + '.' + x.dio) || {}; return { ...x, id: x.br + '.' + x.dio, status: s.status || 'ne', radnik: s.radnik || '' }; });
+    const r = slLinije(p.ring, p.az, p.razmak, p.opt !== false, p.izbrisane);
+    // id = položaj linije (ne redni broj) → status i radnik ostaju uz liniju i kad se prenumeriše
+    const stari = new Map((p.linije || []).map(x => [x.id, x]));
+    p.linije = r.linije.map(x => { const id = x.k + '.' + x.dio, s = stari.get(id) || {}; return { ...x, id, status: s.status || 'ne', radnik: s.radnik || '' }; });
     p.polja = r.polja; p.ha = r.ha; p.korak = r.korak; p.optInfo = r.opt;
     status('⏳ Visine krajeva linija…');
     for (const x of p.linije) { x.hDno = await visina(x.dno); x.hVrh = await visina(x.vrh); }
@@ -268,7 +277,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slLinije
     if (lin.radnik) redovi.push(['Radnik', lin.radnik]);
     L.popup({ maxWidth: 290, minWidth: 220, className: 'pk-pop' }).setLatLng(at).setContent(_popKartica({
       ikona: '🪓', boja: s.c, naslov: oznaka(lin) + ' · ' + p.naziv, tip: 'Sjekačka linija', meta: 'razmak ' + p.razmak + ' m', redovi,
-      dugmad: [{ t: '🧭 Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: '✓ Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }]
+      dugmad: [{ t: '🧭 Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: '✓ Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }, { t: '🗑 Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
     })).openOn(map);
   }
 
@@ -365,7 +374,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slLinije
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
           <button data-a="st" data-id="${p.id}" data-l="${lin.id}" style="--c:${s.c}">${s.t}</button>
           <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">🧭</button></div>`; }).join('')}</div>
-        <div class="sl-dug"><button data-a="kml" data-id="${p.id}">⤓ KML za radnike</button><button data-a="vid" data-id="${p.id}">${p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij'}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
+        <div class="sl-dug">${(p.izbrisane || []).length ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${p.izbrisane.length})</button>` : ''}<button data-a="kml" data-id="${p.id}">⤓ KML za radnike</button><button data-a="vid" data-id="${p.id}">${p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij'}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
       return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>🪓 ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
     }).join('');
   }
@@ -375,6 +384,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slLinije
     if (o.rubL) t.push('prva linija pomjerena na ' + fmt(o.rubL) + ' m od granice (uz rub bi bila prekratka)');
     if (o.rubD) t.push('zadnja linija ' + fmt(o.rubD) + ' m od granice');
     if (o.nacin) t.push(o.nacin === 'suzeno' ? 'zadnje ' + o.k + ' partije sužene na ' + fmt(o.w) + ' m (ostatak bi bio ' + fmt(o.ostatak) + ' m)' : 'ostatak ' + fmt(o.ostatak) + ' m raspoređen na zadnje ' + o.k + ' partije (' + fmt(o.w) + ' m)');
+    if (o.obrisano) t.push(o.obrisano + ' linij' + (o.obrisano === 1 ? 'a ručno obrisana' : 'e ručno obrisane'));
     if (o.izbaceno) t.push(o.izbaceno + ' kratk' + (o.izbaceno === 1 ? 'i komad linije izbačen' : 'a komada linija izbačena') + ' (krivudav rub)');
     return `<div class="sl-info">↔ ${t.join('; ')}.</div>`;
   }
@@ -385,8 +395,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slLinije
   async function akcija(el) {
     const a = el.dataset.a, p = nadji(el.dataset.id); if (!p) return;
     if (a === 'otvori') { aktivni = aktivni === p.id ? null : p.id; crtaj(); render(); if (aktivni) zoom(p.id); return; }
-    if (a === 'az-' || a === 'az+') { p.az = (p.az + (a === 'az+' ? 5 : -5) + 360) % 360; await generisi(p); }
-    else if (a === 'raz') { p.razmak = Number(el.dataset.v); await generisi(p); }
+    if (a === 'az-' || a === 'az+') { p.az = (p.az + (a === 'az+' ? 5 : -5) + 360) % 360; p.izbrisane = []; await generisi(p); }
+    else if (a === 'raz') { p.razmak = Number(el.dataset.v); p.izbrisane = []; await generisi(p); }
+    else if (a === 'vrati') { p.izbrisane = []; await generisi(p); }
     else if (a === 'st') { const lin = p.linije.find(x => x.id === el.dataset.l), red = ['ne', 'rad', 'gotovo']; lin.status = red[(red.indexOf(lin.status) + 1) % 3]; }
     else if (a === 'vodi') { switchMainTab('karta'); vodi(p.id, el.dataset.l); return; }
     else if (a === 'kml') { izvozKml(p); return; }
@@ -400,6 +411,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slLinije
     if (a === 'razmak') p.razmak = Math.max(10, Math.min(200, Number(el.value) || 60));
     if (a === 'az') p.az = ((Math.round(Number(el.value)) || 0) % 360 + 360) % 360;
     if (a === 'opt') p.opt = !!el.checked;
+    p.izbrisane = []; // ključevi obrisanih važe samo za iste parametre
     await generisi(p); sacuvaj(p); crtaj(); render();
   }
 
@@ -408,7 +420,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slLinije
     const x = s => typeof _xmlEsc === 'function' ? _xmlEsc(s) : esc(s);
     const k = q => q[1].toFixed(7) + ',' + q[0].toFixed(7);
     const lin = p.linije.map(l => `<Placemark><name>${x(oznaka(l))}</name><description>${x(fmt(l.duz) + ' m · ' + (STATUS[l.status] || STATUS.ne).t + (l.radnik ? ' · ' + l.radnik : ''))}</description><styleUrl>#lin</styleUrl><LineString><coordinates>${k(l.dno)} ${k(l.vrh)}</coordinates></LineString></Placemark>`).join('');
-    const proj = JSON.stringify({ v: 1, naziv: p.naziv, ring: p.ring, razmak: p.razmak, az: p.az, nagibSt: p.nagibSt, opt: p.opt !== false, linije: p.linije.map(l => ({ id: l.id, status: l.status, radnik: l.radnik })) });
+    const proj = JSON.stringify({ v: 1, naziv: p.naziv, ring: p.ring, razmak: p.razmak, az: p.az, nagibSt: p.nagibSt, opt: p.opt !== false, izbrisane: p.izbrisane || [], linije: p.linije.map(l => ({ id: l.id, status: l.status, radnik: l.radnik })) });
     const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x('Sjekačke linije · ' + p.naziv)}</name>
 <ExtendedData><Data name="usf_sjekacke"><value>${x(proj)}</value></Data></ExtendedData>
@@ -428,8 +440,8 @@ ${lin}</Document></kml>`;
         const j = JSON.parse(d.getElementsByTagName('value')[0].textContent);
         if (!Array.isArray(j.ring) || j.ring.length < 3 || !j.ring.every(q => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite))) throw new Error('neispravan poligon');
         const p = { id: 'sl_' + Date.now().toString(36), naziv: String(j.naziv || 'Sječa').slice(0, 60), datum: new Date().toISOString(), ring: j.ring,
-          razmak: Math.max(10, Math.min(200, Number(j.razmak) || 60)), az: ((Number(j.az) || 0) % 360 + 360) % 360, azDem: null, nagibSt: Number(j.nagibSt) || 0, opt: j.opt !== false,
-          linije: (j.linije || []).map(l => ({ id: String(l.id), br: parseInt(l.id, 10) || 0, dio: parseInt(String(l.id).split('.')[1], 10) || 0, status: STATUS[l.status] ? l.status : 'ne', radnik: String(l.radnik || '').slice(0, 24) })) };
+          razmak: Math.max(10, Math.min(200, Number(j.razmak) || 60)), az: ((Number(j.az) || 0) % 360 + 360) % 360, azDem: null, nagibSt: Number(j.nagibSt) || 0, opt: j.opt !== false, izbrisane: (Array.isArray(j.izbrisane) ? j.izbrisane : []).map(Number).filter(Number.isFinite),
+          linije: (j.linije || []).map(l => ({ id: String(l.id), status: STATUS[l.status] ? l.status : 'ne', radnik: String(l.radnik || '').slice(0, 24) })) };
         await generisi(p); // iste postavke ⇒ iste linije na svakom telefonu
         const l = citaj(); l.unshift(p); pisi(l); aktivni = p.id; crtaj(); render(); zoom(p.id);
         showToast('🪓 Uvezen projekat: ' + p.naziv); return;
@@ -448,6 +460,16 @@ ${lin}</Document></kml>`;
     izOdjela() { const o = odjelPodCentrom(); if (!o) { showToast('⚠ Pod centrom karte nema odjela (geo/odjeli.kml)'); return; } napravi(o.ring, o.naziv); },
     izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { showToast('⚠ Poligon nije pronađen'); return; } _openStubPanel('sjekacke-panel', 'meni'); napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
     uvoz, vodi, vodicKraj, crtPocni, crtGps, crtZavrsi,
+    async obrisiLiniju(pid, lid) {
+      const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin) return;
+      map.closePopup();
+      const br = lin.br, n = p.linije.reduce((m, x) => Math.max(m, x.br), 0);
+      if (!confirm('Obrisati liniju ' + oznaka(lin) + '?\n\nPartije s obje strane se spajaju' + (br < n ? ', a linije L' + (br + 1) + '–L' + n + ' dobijaju nove brojeve (L' + br + '–L' + (n - 1) + ').' : '.'))) return;
+      p.izbrisane = (p.izbrisane || []).concat([lin.k]);
+      if (vodic && vodic.pid === pid && vodic.lid === lid) vodicKraj();
+      await generisi(p); sacuvaj(p); crtaj(); render();
+      showToast('🗑 ' + oznaka(lin) + ' obrisana — linije prenumerisane');
+    },
     crtVrati() { if (crt) { crt.pts.pop(); crtOsvjezi(); } },
     crtOdustani() { crtKraj(); },
     status(pid, lid, s) { const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin || !STATUS[s]) return; lin.status = s; sacuvaj(p); map.closePopup(); if (s === 'gotovo' && vodic && vodic.lid === lid) { vodicKraj(); showToast('✓ ' + oznaka(lin) + ' ofarbana'); } crtaj(); render(); }

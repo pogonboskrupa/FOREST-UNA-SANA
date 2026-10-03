@@ -51,6 +51,9 @@
   GPS-om, mjerenje, KML, odjel) → paralelne linije u smjeru dominantnog pada (DEM preko
   `npVisinaNa` iz nagib-poligon.js); linija = granica sjekačke partije, UVIJEK uz
   padinu (obaranje). Prva linija 1 širinu od granice, dublje (≤ 1,6×) ako je rub
-  uzak; preuska zadnja partija → `slRaspored`; komadi < ½ širine se izbacuju. localStorage `usf_sjekacke`; dijeljenje
+  uzak; preuska zadnja partija → `slRaspored`; nema linija/komada < 100 m. Obrisane
+  linije: `p.izbrisane` (ključ = udaljenost od ruba), id linije = položaj, ne broj. localStorage `usf_sjekacke`; dijeljenje
   KML-om s projektom u `ExtendedData usf_sjekacke` (isti parametri ⇒ iste linije).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
+- JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `dijalog_naslov`
+  ("Dendro Map") — bez override-a WebView piše appassets.androidplatform.net.
