@@ -1,0 +1,76 @@
+name: DEM probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/practical-pasteur-p2npth]
+    paths: ['.github/workflows/dem-probe.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: FathomDEM (Zenodo 14511570) — licenca i fajlovi
+        continue-on-error: true
+        run: |
+          curl -sSL https://zenodo.org/api/records/14511570 -o f.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('f.json')); m=r.get('metadata',{})
+          print('NASLOV',m.get('title'),'| verzija',m.get('version'),'| datum',m.get('publication_date'))
+          print('LICENCA',m.get('license'))
+          print('OPIS',(m.get('description') or '')[:1500])
+          fs=r.get('files',[]); print('BROJ FAJLOVA',len(fs))
+          for f in fs[:40]: print('FAJL',f['key'],f['size'],f['links']['self'])
+          for f in fs:
+              if any(t in f['key'] for t in ['N40E010','n40e010','N44','N45']): print('NAŠ',f['key'],f['size'],f['links']['self'])
+          PY
+      - name: FABDEM v1-2 (data.bris) — lista fajlova
+        continue-on-error: true
+        run: |
+          curl -sSL "https://data.bris.ac.uk/data/dataset/s5hqmjcdj8yo2ibzi9b4ew3sn" -o fab.html; echo "HTTP velicina $(wc -c < fab.html)"
+          grep -oE 'href="[^"]*(N40E010|N40E000|zip|tif)[^"]*"' fab.html | sort -u | head -30
+          grep -oiE 'licen[cs]e[^<]{0,200}' fab.html | head -5
+          curl -sSL "https://data.bris.ac.uk/data/api/3/action/package_show?id=s5hqmjcdj8yo2ibzi9b4ew3sn" -o fab.json; python3 -c "
+          import json;r=json.load(open('fab.json'))['result'];print('LICENCA',r.get('license_title'),r.get('license_id'))
+          rs=r.get('resources',[]);print('RESURSA',len(rs))
+          [print('RES',x.get('name'),x.get('size'),x.get('url')) for x in rs if 'N40E010' in (x.get('name') or '') or 'N40E010' in (x.get('url') or '')]" || true
+      - name: FBiH metapodaci — DMR 5 m i LiDAR 2018
+        continue-on-error: true
+        run: |
+          for id in adbbd0cd-a68a-43cc-b999-d38d7ace03d4 2cfd6c83-748e-45ec-acc8-a9729e3173dc; do
+            echo "=== $id"; curl -sSL -H 'Accept: application/xml' "https://metapodaci.ippfbih.gov.ba/srv/api/records/$id/formatters/xml" -o m.xml; echo "velicina $(wc -c < m.xml)"
+            python3 - <<'PY'
+          import re
+          t=open('m.xml',encoding='utf-8',errors='ignore').read()
+          txt=re.sub(r'<[^>]+>',' ',t); txt=re.sub(r'\s+',' ',txt)
+          print(txt[:2500])
+          print('URL-ovi:',sorted(set(re.findall(r'https?://[^\s<"]+',t)))[:30])
+          PY
+          done
+      - name: Vijesti — LiDAR BiH status
+        continue-on-error: true
+        run: |
+          for u in "https://www.klix.ba/scitech/nauka/bosna-i-hercegovina-uskoro-dobija-prvu-jedinstvenu-3d-kartu-zemlje-zavrseno-lidar-snimanje/260825121" "https://mcp.gov.ba/hr/portal/objava/projekat-lidar-snimanje-bosne-i-hercegovine-638632980020000000" "https://www.rgurs.org/sr-lat/stranica/lidar" "https://rtv-hb.com/bosna-i-hercegovina/prvo-lidar-mapiranje-bih-u-zavrsnoj-fazi-snimanje-zavrseno-slijedi-konacna"; do
+            echo "=== $u"; curl -sSL -A 'Mozilla/5.0' "$u" -o v.html; python3 - <<'PY'
+          import re,html
+          t=open('v.html',encoding='utf-8',errors='ignore').read()
+          t=re.sub(r'(?s)<(script|style)[^>]*>.*?</\1>',' ',t); x=html.unescape(re.sub(r'<[^>]+>',' ',t)); x=re.sub(r'\s+',' ',x)
+          for k in ['LiDAR','LIDAR','lidar']:
+              for m in re.finditer(k,x):
+                  pass
+          i=x.find('LiDAR') if 'LiDAR' in x else x.find('LIDAR')
+          print(x[max(0,i-300):i+2500])
+          print('DATUMI',sorted(set(re.findall(r'\b\d{1,2}\.\s?\d{1,2}\.\s?20\d\d',x)))[:10])
+          PY
+          done
+      - name: Geoportal FGU — WMS/WCS slojevi s reljefom
+        continue-on-error: true
+        run: |
+          for u in "https://geoportal.fgu.com.ba/geoserver/ows?service=WMS&request=GetCapabilities" "https://www.fgu.com.ba/geoserver/ows?service=WMS&request=GetCapabilities" "https://geoportal.katastar.ba/geoserver/ows?service=WMS&request=GetCapabilities"; do
+            echo "=== $u"; curl -sSL -m 30 -A 'Mozilla/5.0' "$u" -o c.xml; echo "velicina $(wc -c < c.xml) $(head -c 200 c.xml | tr '\n' ' ')"
+            grep -oiE '<Name>[^<]*(dmr|dtm|dem|lidar|relje|hill|sjen)[^<]*</Name>' c.xml | head -20 || true
+          done
