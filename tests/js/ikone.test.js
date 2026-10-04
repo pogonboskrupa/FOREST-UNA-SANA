@@ -24,6 +24,12 @@ t('Android: mipmap po gustini, adaptivna pozadina u boji ikone, splash s ikonom'
   }
   const boje = fs.readFileSync(R('android/app/src/main/res/values/colors.xml'), 'utf8');
   assert.ok(boje.includes('<color name="ic_launcher_background">#02341C</color>') && boje.includes('<color name="colorSplash">#02341C</color>'));
-  assert.ok(fs.readFileSync(R('android/app/src/main/res/drawable/splash_screen.xml'), 'utf8').includes('@mipmap/ic_launcher'));
+  // <bitmap> na adaptivnu ikonu (mipmap-anydpi-v26 XML) ruši app pri pokretanju — samo PNG
+  const splash = fs.readFileSync(R('android/app/src/main/res/drawable/splash_screen.xml'), 'utf8');
+  for (const m of splash.matchAll(/<bitmap[^>]*android:src="@(\w+)\/(\w+)"/g)) {
+    assert.notStrictEqual(m[1], 'mipmap', '<bitmap> ne smije koristiti @mipmap (adaptive-icon)');
+    assert.ok(['drawable-nodpi', 'drawable'].some(d => fs.existsSync(R('android/app/src/main/res/' + d + '/' + m[2] + '.png'))), m[2] + '.png postoji');
+  }
+  assert.deepStrictEqual(dim('android/app/src/main/res/drawable-nodpi/splash_logo.png'), [384, 384]);
 });
 console.log('\n' + pass + ' prošlo, ' + (process.exitCode ? 'IMA PALIH' : '0 palo') + ' — ikone');

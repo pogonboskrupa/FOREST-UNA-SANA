@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- <bitmap> mora pokazivati na PNG: @mipmap/ic_launcher je na API 26+ adaptive-icon XML
+     i ruši Activity pri pokretanju (windowBackground se inflate-uje prije onCreate). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/colorSplash" />
     <item>
-        <bitmap android:gravity="center" android:src="@mipmap/ic_launcher" />
+        <bitmap android:gravity="center" android:src="@drawable/splash_logo" />
     </item>
 </layer-list>
