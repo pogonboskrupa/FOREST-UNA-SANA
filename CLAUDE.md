@@ -89,5 +89,8 @@
   adaptivni foreground: sadržaj ~83 % vidljivih 72dp, umetak 0, pozadina `#02341C`;
   splash `drawable-nodpi/splash_logo.png`
   — `<bitmap>` NIKAD na `@mipmap/ic_launcher` (adaptive XML na API 26+ ⇒ pad pri pokretanju).
+- **Birač fajlova u APK-u** (`onShowFileChooser`): offline karta se prepoznaje u
+  `IzborFajla.jeOfflineKarta` po CIJELIM tokenima accept-a (`.dbf` iz KML/SHP birača sadrži
+  `.db` — podstring je slao svaki KML u uvoz offline karte). Test: `android/test-java/IzborFajlaTest.java`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

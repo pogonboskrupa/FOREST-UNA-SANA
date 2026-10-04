@@ -26,6 +26,8 @@ jobs:
         run: |
           javac -encoding UTF-8 -d /tmp/jt android/app/src/main/java/ba/spd/usf/forest/SqliteTileMath.java android/test-java/SqliteTileMathTest.java
           java -ea -cp /tmp/jt ba.spd.usf.forest.SqliteTileMathTest
+          javac -encoding UTF-8 -d /tmp/jt android/app/src/main/java/ba/spd/usf/forest/IzborFajla.java android/test-java/IzborFajlaTest.java
+          java -ea -cp /tmp/jt ba.spd.usf.forest.IzborFajlaTest
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools'
@@ -36,7 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # APK_RELEASE_VERSION=1.7.6
+          # APK_RELEASE_VERSION=1.7.7
           # UI/runtime oznaka i servisni keš se održavaju zasebno dok se
           # veliki index.html migrira u modularne skripte.
           WEB_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"

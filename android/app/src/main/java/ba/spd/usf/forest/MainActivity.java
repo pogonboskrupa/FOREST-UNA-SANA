@@ -396,14 +396,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean isOfflineMapChooser(WebChromeClient.FileChooserParams params) {
-        String[] types = params.getAcceptTypes();
-        if (types == null) return false;
-        for (String type : types) {
-            String s = type == null ? "" : type.toLowerCase();
-            if (s.contains("mbtiles") || s.contains("sqlite") || s.contains("sqlmap")
-                    || s.contains(".db")) return true;
-        }
-        return false;
+        return IzborFajla.jeOfflineKarta(params.getAcceptTypes());
     }
 
     private File mbtilesDir() {
