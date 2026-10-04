@@ -1136,6 +1136,19 @@ body.sl-crta #sl-crt { display: block; }
 #sl-ured { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #38bdf8; border-left: 6px solid #38bdf8; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
 body.sl-uredi #sl-ured { display: block; }
 #sl-ured .sl-v-dug button:first-child { background: #166534; border-color: #22c55e; }
+#sl-vodic .sl-v-dug button:not(:first-child) { flex: 0 0 48px; }
+#sl-vodic .sl-v-dug button.on { background: #0e7490; border-color: #22d3ee; }
+.sl-v-snim { font-size: 12px; color: #a5f3fc; margin-top: 4px; }
+.sl-v-snim b { color: #fff; }
+.sl-strel { position: absolute; color: #fde047; font-size: 14px; line-height: 1; text-shadow: 0 0 3px #0b1220, 0 0 3px #0b1220; }
+.sl-zona { margin-top: 10px; border: 1px solid rgba(56,189,248,.45); background: rgba(56,189,248,.08); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: #bae6fd; line-height: 1.45; }
+.sl-zona b { color: #e0f2fe; }
+.sl-zona-red { display: flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--pn-txt); }
+.sl-zona-red span { flex: 1; }
+.sl-zona-red button { min-width: 48px; min-height: 34px; border-radius: 8px; border: 1px solid var(--pn-line); background: rgba(255,255,255,.04); color: var(--pn-txt); font-weight: 700; }
+.sl-sazetak { margin: 10px 0 4px; font-size: 11.5px; color: var(--pn-dim); line-height: 1.4; }
+.sl-sazetak b, .sl-ha { color: var(--pn-txt); }
+.sl-gps { font-style: normal; font-size: 10px; font-weight: 800; color: #0b1220; background: #22d3ee; border-radius: 5px; padding: 0 4px; }
 #sl-ured .sl-v-dug button:last-child { flex: 0 0 48px; }
 .sl-ur { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; border-radius: 50%; font: 900 13px/1 system-ui, sans-serif; color: #0b1220; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
 .sl-ur::before { content: ''; position: absolute; inset: -12px; border-radius: 50%; } /* veća površina za prst */

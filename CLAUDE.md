@@ -62,6 +62,12 @@
   NE koristiti: slijevaju se u jarke i sabijaju partije. localStorage `usf_sjekacke`; izvoz KML:
   linije po statusu + tačke-natpisi (`ExtendedData usf_oznaka`) koje "Učitaj KML"
   crta kao stalnu etiketu. Uvoz projekta i "odjel pod centrom" su uklonjeni.
+  Drugi pad (`p.zona` {lid, strana, az}): poligon se dijeli sjekačkom linijom
+  (`slPodijeli`), drugi dio dobija svoj pad i linije s id prefiksom `z:` koje završavaju
+  na toj liniji; numeracija ide preko oba dijela. GPS vodič snima trag (`lin.trag`),
+  „Završi liniju“ ⇒ `lin.stvarna` (slGeo je preferira). Površina partije po liniji
+  (`lin.ha`): od granice do L1, L1–L2 … (`slPoljaTeren` po dijelu, `slSpojiTrake`,
+  `slTrakeULinije`); stvarna linija se računa kao produžena do granice.
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

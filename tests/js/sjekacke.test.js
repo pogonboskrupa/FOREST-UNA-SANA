@@ -167,6 +167,32 @@ t('površine partija između krivih linija = površina poligona', () => {
   assert.ok(Math.abs(ha[0] - 1.5) < 0.1 && Math.abs(ha[2] - 2.4) < 0.1, ha.map(v => v.toFixed(2)).join('/'));
 });
 
+t('podjela poligona sjekačkom linijom: lijevo/desno gledano uzbrdo, zbir = cijeli', () => {
+  const pov = r => { const P = r.map(q => L.u(q[0], q[1])); let a = 0; for (let i = 0, j = P.length - 1; i < P.length; j = i++) a += P[j][0] * P[i][1] - P[i][0] * P[j][1]; return Math.abs(a) / 2; };
+  // izlomljena linija od juga (dno) do sjevera (vrh): uzbrdo = sjever → desno = istok
+  const d = S.slPodijeli(kvadrat, [pr(30, -100), pr(50, 0), pr(30, 100)]);
+  assert.ok(Math.abs(pov(d.lijevo) - 38000) < 1 && Math.abs(pov(d.desno) - 22000) < 1, pov(d.lijevo) + ' / ' + pov(d.desno));
+  assert.ok(S.slUnutra(pr(100, 0), d.desno) && S.slUnutra(pr(-100, 0), d.lijevo));
+  // linija ne dodiruje granicu tačno (GPS): krajevi se prislone na granicu
+  const e = S.slPodijeli(kvadrat, [pr(0, -95), pr(0, 96)]);
+  assert.ok(Math.abs(pov(e.lijevo) - 30000) < 1 && Math.abs(pov(e.desno) - 30000) < 1);
+});
+
+t('površina partije uz liniju: od granice do L1, L1–L2 …; brojanje s desna obrnuto', () => {
+  assert.deepStrictEqual(S.slSpojiTrake([[1, 2, 0.1], [0.2, 3]]).map(v => +v.toFixed(2)), [1, 2, 0.3, 3], 'rub dijelova je ista partija');
+  assert.deepStrictEqual(S.slTrakeULinije([1, 2, 3], false), { poLiniji: [1, 2], ostatak: 3 });
+  assert.deepStrictEqual(S.slTrakeULinije([1, 2, 3], true), { poLiniji: [2, 3], ostatak: 1 });
+  // stvarna linija koja ne dotiče granicu računa se kao produžena do granice
+  const ha = S.slPoljaTeren(kvadrat, [[pr(-90, -80), pr(-90, 70)], [pr(-30, -100), pr(-30, 100)]]);
+  assert.ok(Math.abs(ha[0] - 1.2) < 0.05 && Math.abs(ha[1] - 1.2) < 0.05, ha.map(v => v.toFixed(2)).join('/'));
+});
+
+t('GPS trag: uprošćavanje čuva oblik, izbacuje šum na pravcu', () => {
+  const g = []; for (let y = -100; y <= 100; y += 5) g.push(pr((y % 10 === 0 ? 0.5 : -0.5), y));
+  const u = S.slUprosti(g, 2);
+  assert.ok(u.length === 2 && Math.abs(S.slDuzina(u) - 200) < 0.5, 'cik-cak ±0,5 m → prava (' + u.length + ')');
+});
+
 t('dominantan pad i dosljednost', () => {
   // visina raste prema sjeveru (dzy > 0) → pad na jug 180°
   const d = S.slDominantniPad(Array.from({ length: 20 }, () => [0, 0.5]));
@@ -188,7 +214,7 @@ t('UI: Planiranje ispod Tematske karte, panel, vodič, dijeljenje KML-om', () =>
   const H = R('index.html');
   const i = H.indexOf('id="mc-tematska"'), j = H.indexOf('id="mc-sjekacke"'), k = H.indexOf('<h3>Podaci i karte</h3>');
   assert.ok(i > 0 && j > i && j < k, 'kartica odmah ispod Tematske karte');
-  ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', "'sjekacke-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
+  ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', '.sl-strel', '.sl-zona', "'sjekacke-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
   assert.ok(H.indexOf('<script src="static/js/nagib-poligon.js">') < H.indexOf('<script src="static/js/sjekacke.js">'), 'DEM pomoćne funkcije prije');
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes("style.pointerEvents = 'none'") && js.includes('_kartaKlikIzvor') && js.includes('name="usf_oznaka"'), 'KML s natpisima linija');

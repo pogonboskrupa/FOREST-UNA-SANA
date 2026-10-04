@@ -156,8 +156,9 @@ function slDominantniPad(grad) {
   return { azimut: (Math.atan2(sx, sy) * 180 / Math.PI + 360) % 360, dosljednost: Math.hypot(sx, sy) / sm, nagibSt: sn / n };
 }
 
-// Tačke linije od dna do vrha; ručno izlomljena linija ima i lomove između.
-const slGeo = lin => (Array.isArray(lin.geo) && lin.geo.length >= 2 ? lin.geo : Array.isArray(lin.teren) && lin.teren.length >= 2 ? lin.teren : [lin.dno, lin.vrh]);
+// Tačke linije od dna do vrha: stvarna (GPS trag radnika) > ručni lom > lepeza > ravna.
+const slIma = a => Array.isArray(a) && a.length >= 2;
+const slGeo = lin => (slIma(lin.stvarna) ? lin.stvarna : slIma(lin.geo) ? lin.geo : slIma(lin.teren) ? lin.teren : [lin.dno, lin.vrh]);
 function slDuzina(geo) {
   const L = slLokalno(geo[0][0], geo[0][1]); let s = 0;
   for (let i = 1; i < geo.length; i++) { const a = L.u(geo[i - 1][0], geo[i - 1][1]), b = L.u(geo[i][0], geo[i][1]); s += Math.hypot(b[0] - a[0], b[1] - a[1]); }
@@ -250,7 +251,67 @@ function slPoljaTeren(ring, geos) {
   return n.map(c => (uk ? c / uk * ha : 0));
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
+// Douglas–Peucker u lokalnim metrima (tol m) — za GPS trag radnika.
+function slUprosti(pts, tol) {
+  if (pts.length < 3) return pts.slice();
+  const L = slLokalno(pts[0][0], pts[0][1]), P = pts.map(q => L.u(q[0], q[1])), keep = new Uint8Array(pts.length);
+  keep[0] = keep[pts.length - 1] = 1;
+  const st = [[0, pts.length - 1]];
+  while (st.length) {
+    const [i, j] = st.pop(), a = P[i], b = P[j], ex = b[0] - a[0], ey = b[1] - a[1], ln = Math.hypot(ex, ey) || 1;
+    let mx = -1, mi = -1;
+    for (let k = i + 1; k < j; k++) { const d = Math.abs((P[k][0] - a[0]) * ey - (P[k][1] - a[1]) * ex) / ln; if (d > mx) { mx = d; mi = k; } }
+    if (mx > tol) { keep[mi] = 1; st.push([i, mi], [mi, j]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+// Podjela poligona sjekačkom linijom (dno → vrh): krajevi se prislone na najbližu
+// tačku granice, pa svaki dio = luk granice + linija. Vraća {lijevo, desno} gledano uzbrdo.
+function slPodijeli(ring, geo) {
+  if (!slIma(geo) || ring.length < 3) return null;
+  const L = slLokalno(ring[0][0], ring[0][1]), P = ring.map(q => L.u(q[0], q[1])), G = geo.map(q => L.u(q[0], q[1]));
+  const naRub = q => {
+    let naj = null;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], ex = b[0] - a[0], ey = b[1] - a[1], l2 = ex * ex + ey * ey || 1;
+      const t = Math.max(0, Math.min(1, ((q[0] - a[0]) * ex + (q[1] - a[1]) * ey) / l2)), x = [a[0] + t * ex, a[1] + t * ey], d = Math.hypot(q[0] - x[0], q[1] - x[1]);
+      if (!naj || d < naj.d) naj = { i, t, x, d };
+    }
+    return naj;
+  };
+  const A = naRub(G[0]), B = naRub(G[G.length - 1]);
+  if (A.i === B.i && Math.abs(A.t - B.t) < 1e-9) return null;
+  const luk = (od, doo) => { // od tačke od, naprijed po granici, do tačke doo
+    const out = [od.x]; let i = od.i;
+    const isti = od.i === doo.i && doo.t > od.t;
+    if (!isti) { for (let k = 0; k < P.length; k++) { i = (i + 1) % P.length; out.push(P[i]); if (i === doo.i) break; } }
+    out.push(doo.x); return out;
+  };
+  const unutra = G.slice(1, -1);
+  const r1 = luk(A, B).concat(unutra.slice().reverse()), r2 = luk(B, A).concat(unutra);
+  const nazad = r => r.map(q => L.n(q[0], q[1]));
+  // desno od linije (gledano uzbrdo): tačka malo desno od sredine najdužeg segmenta
+  let si = 1, sl = -1; for (let i = 1; i < G.length; i++) { const d = Math.hypot(G[i][0] - G[i - 1][0], G[i][1] - G[i - 1][1]); if (d > sl) { sl = d; si = i; } }
+  const a = G[si - 1], b = G[si], ux = (b[0] - a[0]) / (sl || 1), uy = (b[1] - a[1]) / (sl || 1);
+  const t = L.n((a[0] + b[0]) / 2 + uy * 2, (a[1] + b[1]) / 2 - ux * 2);
+  const R1 = nazad(r1), R2 = nazad(r2);
+  return slUnutra(t, R1) ? { desno: R1, lijevo: R2 } : { desno: R2, lijevo: R1 };
+}
+// Trake susjednih dijelova (s lijeva nadesno): zadnja traka dijela i prva sljedećeg
+// su ista partija (između zadnje linije jednog i prve linije drugog dijela).
+function slSpojiTrake(nizovi) {
+  const S = [];
+  nizovi.forEach((n, j) => { if (!n.length) return; if (j && S.length) { S[S.length - 1] += n[0]; S.push(...n.slice(1)); } else S.push(...n); });
+  return S;
+}
+// Površina partije pridružena liniji: L — od prethodne linije (ili granice) do nje,
+// gledano s lijeva; D — s desna. Trake S (n+1) za n linija s lijeva nadesno.
+function slTrakeULinije(S, sDesna) {
+  const n = S.length - 1;
+  return sDesna ? { poLiniji: S.slice(1), ostatak: S[0] } : { poLiniji: S.slice(0, n), ostatak: S[n] };
+}
+
+if (typeof module !== 'undefined' && module.exports) module.exports = { slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
 
 (function () {
   if (typeof window === 'undefined' || typeof L === 'undefined' || typeof map === 'undefined') return;
@@ -347,58 +408,97 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
     const l = citaj(); l.unshift(p); pisi(l);
     aktivni = p.id; crtaj(); render(); zoom(p.id);
   }
-  async function generisi(p) {
-    const r = slLinije(p.ring, p.az, p.razmak, p.opt !== false, p.izbrisane, p.brojanje === 'D');
-    // id = položaj linije (ne redni broj) → status i radnik ostaju uz liniju i kad se prenumeriše
-    const stari = new Map((p.linije || []).map(x => [x.id, x]));
-    p.linije = r.linije.map(x => {
-      const id = x.k + '.' + x.dio, s = stari.get(id) || {}, o = { ...x, id, status: s.status || 'ne', radnik: s.radnik || '' };
-      if (Array.isArray(s.geo) && s.geo.length >= 2) { o.geo = s.geo; o.dno = s.geo[0]; o.vrh = s.geo[s.geo.length - 1]; o.duz = slDuzina(s.geo); }
+  // Linije jednog dijela (poligon ili drugi dio iza sjekačke linije): ključevi + prenos
+  // statusa, radnika, ručnog loma i stvarne (GPS) linije sa starih linija istog id-a.
+  function linijeDijela(r, prefiks, stari) {
+    return r.linije.map(x => {
+      const id = prefiks + x.k + '.' + x.dio, s = stari.get(id) || {}, o = { ...x, id, status: s.status || 'ne', radnik: s.radnik || '' };
+      if (prefiks) o.zona = 1;
+      for (const k of ['geo', 'stvarna', 'trag']) if (slIma(s[k])) o[k] = s[k];
+      const g = slIma(o.stvarna) ? o.stvarna : slIma(o.geo) ? o.geo : null;
+      if (g) { o.dno = g[0]; o.vrh = g[g.length - 1]; o.duz = slDuzina(g); }
       return o;
     });
-    p.polja = r.polja; p.ha = r.ha; p.korak = r.korak; p.optInfo = r.opt;
-    if (p.plan === 'teren') {
-      // lepeza: smjer pada u pojasu svake linije (±⅓ širine, svakih 40 m), ograničeno skretanje susjeda
-      const red = p.linije.slice().sort((a, b) => a.k - b.k || a.dio - b.dio), zeljeni = [], pola = [];
-      let i = 0;
-      for (const x of red) {
-        status('⏳ Smjer pada po linijama… ' + (++i) + '/' + red.length);
-        const sj = [(x.dno[0] + x.vrh[0]) / 2, (x.dno[1] + x.vrh[1]) / 2], Lx = slLokalno(sj[0], sj[1]);
-        const d = slSmjer(slAzimut(x.vrh, x.dno)), nrm = [-d[1], d[0]], m = Math.max(2, Math.round(x.duz / 40)), grad = [];
-        for (let j = 0; j <= m; j++) for (const o of [-p.razmak / 3, 0, p.razmak / 3]) {
-          const t = (j / m - 0.5) * x.duz, q = Lx.n(d[0] * t + nrm[0] * o, d[1] * t + nrm[1] * o);
-          if (!slUnutra(q, p.ring)) continue;
-          const s = await padNa(q); if (!s) continue;
-          const tg = Math.tan(s.nagib * Math.PI / 180), r = s.azimut * Math.PI / 180;
-          grad.push([-Math.sin(r) * tg, -Math.cos(r) * tg]);
-        }
-        const dp = slDominantniPad(grad);
-        zeljeni.push(dp ? dp.azimut : p.az); pola.push(x.duz / 2 + p.razmak);
+  }
+  const sredina = x => { const g = slGeo(x), m = g[Math.floor(g.length / 2)], n = g[Math.max(0, Math.floor(g.length / 2) - 1)]; return g.length > 2 ? m : [(n[0] + m[0]) / 2, (n[1] + m[1]) / 2]; };
+  async function lepeza(p, linije, ring) {
+    // smjer pada u pojasu svake linije (±⅓ širine, svakih 40 m), ograničeno skretanje susjeda
+    const red = linije.slice().sort((a, b) => a.k - b.k || a.dio - b.dio), zeljeni = [], pola = [];
+    let i = 0;
+    for (const x of red) {
+      status('⏳ Smjer pada po linijama… ' + (++i) + '/' + red.length);
+      const sj = [(x.dno[0] + x.vrh[0]) / 2, (x.dno[1] + x.vrh[1]) / 2], Lx = slLokalno(sj[0], sj[1]);
+      const d = slSmjer(slAzimut(x.vrh, x.dno)), nrm = [-d[1], d[0]], m = Math.max(2, Math.round(x.duz / 40)), grad = [];
+      for (let j = 0; j <= m; j++) for (const o of [-p.razmak / 3, 0, p.razmak / 3]) {
+        const t = (j / m - 0.5) * x.duz, q = Lx.n(d[0] * t + nrm[0] * o, d[1] * t + nrm[1] * o);
+        if (!slUnutra(q, ring)) continue;
+        const s = await padNa(q); if (!s) continue;
+        const tg = Math.tan(s.nagib * Math.PI / 180), r = s.azimut * Math.PI / 180;
+        grad.push([-Math.sin(r) * tg, -Math.cos(r) * tg]);
       }
-      // zarotirana linija se drugačije odsiječe (može biti duža) → provjeri stvarni razmak
-      // susjeda cijelom dužinom i parovima koji se sabiju ispod 60 % smanji skretanje
-      const sjeme = red.map(x => [(x.dno[0] + x.vrh[0]) / 2, (x.dno[1] + x.vrh[1]) / 2]), fak = red.map(() => 1);
-      let az = [], segs = [];
-      for (let it = 0; it < 12; it++) {
-        az = slLepeza(zeljeni, pola, p.razmak, p.az, fak);
-        segs = red.map((x, j) => slLinijaKroz(p.ring, sjeme[j], az[j]));
-        let ok = true;
-        for (let j = 0; j + 1 < red.length; j++) {
-          if (!segs[j] || !segs[j + 1] || red[j].k === red[j + 1].k) continue;
-          if (slMinRazmak(segs[j], segs[j + 1]) < 0.6 * p.razmak) { fak[j] *= 0.6; ok = false; }
-        }
-        if (ok) break;
-        if (it === 11) { az = red.map(() => p.az); segs = red.map((x, j) => slLinijaKroz(p.ring, sjeme[j], p.az)); }
-      }
-      red.forEach((x, j) => {
-        const seg = segs[j];
-        if (seg && slDuzina(seg) >= Math.min(SL_MIN_DUZ, x.duz)) { x.teren = seg; x.azTeren = Math.round(az[j]); if (!x.geo) { x.dno = seg[0]; x.vrh = seg[1]; x.duz = slDuzina(seg); } }
-      });
-      const ha = slPoljaTeren(p.ring, red.filter(x => !x.dio).map(slGeo));
-      p.polja = (p.brojanje === 'D' ? ha.slice().reverse() : ha).map((h, j) => ({ br: j + 1, ha: h, sirina: null }));
+      const dp = slDominantniPad(grad);
+      zeljeni.push(dp ? dp.azimut : p.az); pola.push(x.duz / 2 + p.razmak);
     }
+    // zarotirana linija se drugačije odsiječe (može biti duža) → provjeri stvarni razmak
+    // susjeda cijelom dužinom i parovima koji se sabiju ispod 60 % smanji skretanje
+    const sjeme = red.map(x => [(x.dno[0] + x.vrh[0]) / 2, (x.dno[1] + x.vrh[1]) / 2]), fak = red.map(() => 1);
+    let az = [], segs = [];
+    for (let it = 0; it < 12; it++) {
+      az = slLepeza(zeljeni, pola, p.razmak, p.az, fak);
+      segs = red.map((x, j) => slLinijaKroz(ring, sjeme[j], az[j]));
+      let ok = true;
+      for (let j = 0; j + 1 < red.length; j++) {
+        if (!segs[j] || !segs[j + 1] || red[j].k === red[j + 1].k) continue;
+        if (slMinRazmak(segs[j], segs[j + 1]) < 0.6 * p.razmak) { fak[j] *= 0.6; ok = false; }
+      }
+      if (ok) break;
+      if (it === 11) { az = red.map(() => p.az); segs = red.map((x, j) => slLinijaKroz(ring, sjeme[j], p.az)); }
+    }
+    red.forEach((x, j) => {
+      const seg = segs[j];
+      if (seg && slDuzina(seg) >= Math.min(SL_MIN_DUZ, x.duz)) { x.teren = seg; x.azTeren = Math.round(az[j]); if (!slIma(x.geo) && !slIma(x.stvarna)) { x.dno = seg[0]; x.vrh = seg[1]; x.duz = slDuzina(seg); } }
+    });
+  }
+  async function generisi(p) {
+    const r = slLinije(p.ring, p.az, p.razmak, p.opt !== false, p.izbrisane, false);
+    // id = položaj linije (ne redni broj) → status i radnik ostaju uz liniju i kad se prenumeriše
+    const stari = new Map((p.linije || []).map(x => [x.id, x]));
+    const osnovne = linijeDijela(r, '', stari);
+    p.ha = r.ha; p.korak = r.korak; p.optInfo = r.opt; delete p.polja;
+    if (p.plan === 'teren') await lepeza(p, osnovne, p.ring);
+    // Drugi dio odjela (druga ekspozicija) iza izabrane sjekačke linije: svoj pad iz DEM-a,
+    // linije završavaju na toj sjekačkoj liniji (ona je granica dijela), ne na granici poligona.
+    let dijelovi = [{ ring: p.ring, linije: osnovne }];
+    if (p.zona) {
+      const raz = osnovne.find(x => x.id === p.zona.lid), pod = raz && slPodijeli(p.ring, slGeo(raz));
+      if (!pod) { p.zona = null; showToast('⚠ Podjela uklonjena — sjekačka linija za podjelu više ne postoji'); }
+      else {
+        const zRing = p.zona.strana === 'L' ? pod.lijevo : pod.desno, aRing = p.zona.strana === 'L' ? pod.desno : pod.lijevo;
+        if (p.zona.az == null) { status('⏳ Pad drugog dijela iz DEM-a…'); const pd = await padPoligona(zRing); p.zona.az = p.zona.azDem = pd ? Math.round(pd.azimut) : p.az; }
+        const zr = slLinije(zRing, p.zona.az, p.razmak, p.opt !== false, p.zona.izbrisane, false);
+        const zLin = linijeDijela(zr, 'z:', stari);
+        const aLin = osnovne.filter(x => x === raz || slUnutra(sredina(x), aRing));
+        p.zona.ha = zr.ha; p.zona.optInfo = zr.opt;
+        const A = { ring: aRing, linije: aLin }, Z = { ring: zRing, linije: zLin };
+        dijelovi = p.zona.strana === 'L' ? [Z, A] : [A, Z];
+      }
+    }
+    // numeracija preko svih dijelova s lijeva nadesno; komadi iste linije dijele broj
+    const red = [];
+    dijelovi.forEach((d, di) => d.linije.slice().sort((a, b) => a.k - b.k || a.dio - b.dio).forEach(x => red.push({ x, di })));
+    let br = 0, pk = null;
+    red.forEach(({ x, di }) => { const kl = di + ':' + x.k; if (kl !== pk) { br++; pk = kl; } x.br = br; });
+    if (p.brojanje === 'D') red.forEach(({ x }) => { x.br = br + 1 - x.br; });
+    p.linije = red.map(o => o.x).sort((a, b) => a.br - b.br || a.dio - b.dio);
+    // površina partije po liniji (stvarne linije se računaju kao da dosežu granicu)
+    status('⏳ Površine partija…');
+    const S = slSpojiTrake(dijelovi.map(d => slPoljaTeren(d.ring, d.linije.filter(x => !x.dio).sort((a, b) => a.k - b.k).map(slGeo))));
+    const lr = red.map(o => o.x).filter(x => !x.dio), pov = slTrakeULinije(S, p.brojanje === 'D');
+    lr.forEach((x, j) => { x.ha = pov.poLiniji[j]; });
+    p.linije.forEach(x => { if (x.dio) x.ha = null; });
+    p.ostatakHa = pov.ostatak;
     status('⏳ Provjera pravca prema padu…');
-    for (const x of p.linije) await provjeriPravac(x);
+    for (const x of p.linije) if (!slIma(x.stvarna)) await provjeriPravac(x); else x.izo = null;
     status('⏳ Visine krajeva linija…');
     for (const x of p.linije) { x.hDno = await visina(x.dno); x.hVrh = await visina(x.vrh); }
     status('');
@@ -413,20 +513,38 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
     citaj().filter(p => p.vidljiv !== false).forEach(p => {
       const akt = p.id === aktivni;
       L.polygon(p.ring, { pane: 'sjekackePane', color: '#fde68a', weight: akt ? 2.5 : 1.5, dashArray: '6 4', fill: false, interactive: false }).addTo(grp);
+      const vodiOvdje = vodic && vodic.pid === p.id;
       p.linije.forEach(lin => {
-        const s = STATUS[lin.status] || STATUS.ne, vodi = vodic && vodic.pid === p.id && vodic.lid === lin.id;
+        const s = STATUS[lin.status] || STATUS.ne, vodi = vodiOvdje && vodic.lid === lin.id;
         if (ured && ured.pid === p.id && ured.lid === lin.id) return; // crta ga uređivač
-        L.polyline(slGeo(lin), { pane: 'sjekackePane', color: '#0b1220', weight: vodi ? 9 : 6, opacity: 0.55, interactive: false }).addTo(grp);
-        L.polyline(slGeo(lin), { pane: 'sjekackePane', color: s.c, weight: vodi ? 5 : 3, opacity: 1, interactive: false }).addTo(grp);
-        if (lin.izo) L.polyline(slGeo(lin), { pane: 'sjekackePane', color: '#ef4444', weight: 3, dashArray: '2 8', opacity: 1, interactive: false }).addTo(grp);
+        const prig = vodiOvdje && !vodi ? 0.35 : 1, stv = slIma(lin.stvarna);
+        L.polyline(slGeo(lin), { pane: 'sjekackePane', color: '#0b1220', weight: vodi ? 11 : 6, opacity: 0.55 * prig, interactive: false }).addTo(grp);
+        // plan isprekidano, stvarna (GPS) linija puna
+        L.polyline(slGeo(lin), { pane: 'sjekackePane', color: vodi ? '#fde047' : s.c, weight: vodi ? 6 : 3, opacity: prig, dashArray: stv || vodi ? null : '10 6', interactive: false }).addTo(grp);
+        if (lin.izo && !vodiOvdje) L.polyline(slGeo(lin), { pane: 'sjekackePane', color: '#ef4444', weight: 3, dashArray: '2 8', opacity: 1, interactive: false }).addTo(grp);
+        if (vodi) strelice(lin);
         if (akt || vodi || map.getZoom() >= 15) {
           // broj na oba kraja: radnik koji kreće odozdo i onaj koji provjerava s vrha vide istu oznaku
           L.circleMarker(lin.dno, { pane: 'sjekackePane', radius: 4, color: '#fff', weight: 1.5, fillColor: s.c, fillOpacity: 1, interactive: false }).addTo(grp);
-          L.marker(lin.dno, { pane: 'sjekackePane', interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl" style="--c:${s.c}">${oznaka(lin)}</span>` }) }).addTo(grp);
-          L.marker(lin.vrh, { pane: 'sjekackePane', interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl vrh" style="--c:${s.c}">${oznaka(lin)} ▲</span>` }) }).addTo(grp);
+          L.marker(lin.dno, { pane: 'sjekackePane', interactive: false, opacity: prig, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl" style="--c:${s.c}">${oznaka(lin)}${lin.ha != null && (akt || vodi) ? ' · ' + fmt(lin.ha, 2) + ' ha' : ''}</span>` }) }).addTo(grp);
+          L.marker(lin.vrh, { pane: 'sjekackePane', interactive: false, opacity: prig, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl vrh" style="--c:${s.c}">${oznaka(lin)} ▲</span>` }) }).addTo(grp);
         }
       });
+      if (vodiOvdje && slIma(vodic.trag)) L.polyline(vodic.trag, { pane: 'sjekackePane', color: '#22d3ee', weight: 4, opacity: 1, interactive: false }).addTo(grp);
     });
+  }
+  // strelice uzbrdo svakih ~60 m duž linije koju radnik prati
+  function strelice(lin) {
+    const g = slGeo(lin), uk = slDuzina(g); let put = 0;
+    for (let i = 1; i < g.length; i++) {
+      const a = g[i - 1], b = g[i], dl = slDuzina([a, b]), az = slAzimut(a, b);
+      for (let t = Math.ceil(put / 60) * 60 - put; t < dl; t += 60) {
+        if (put + t < 20 || uk - put - t < 20) continue;
+        const f = t / dl, q = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+        L.marker(q, { pane: 'sjekackePane', interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-strel" style="transform:translate(-50%,-50%) rotate(${az.toFixed(0)}deg)">▲</span>` }) }).addTo(grp);
+      }
+      put += dl;
+    }
   }
   let zZadnji = map.getZoom();
   map.on('zoomend', () => { const z = map.getZoom(); if ((z >= 15) !== (zZadnji >= 15)) crtaj(); zZadnji = z; });
@@ -440,43 +558,85 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
   function popup(p, lin, at) {
     const s = STATUS[lin.status] || STATUS.ne;
     const redovi = [['Dužina', fmt(lin.duz) + ' m'], ['Dno → vrh', (lin.hDno != null ? lin.hDno + ' m' : '—') + ' → ' + (lin.hVrh != null ? lin.hVrh + ' m' : '—')], ['Status', s.t]];
+    if (lin.ha != null) redovi.push(['Partija', fmt(lin.ha, 2) + ' ha']);
+    if (slIma(lin.stvarna)) redovi.push(['Stvarna (GPS)', fmt(slDuzina(lin.stvarna)) + ' m']);
+    else if (slIma(lin.trag)) redovi.push(['Snimljeno', fmt(slDuzina(lin.trag)) + ' m (nastavlja se)']);
     if (lin.radnik) redovi.push(['Radnik', lin.radnik]);
     if (lin.geo) redovi.push(['Lomova', String(lin.geo.length - 2)]);
     if (lin.izo) redovi.push(['⚠ Po izohipsi', fmt(lin.izo.udio * 100) + ' % dužine (do ' + fmt(lin.izo.max) + '°)']);
     L.popup({ maxWidth: 290, minWidth: 220, className: 'pk-pop' }).setLatLng(at).setContent(_popKartica({
       ikona: '🪓', boja: s.c, naslov: oznaka(lin) + ' · ' + p.naziv, tip: 'Sjekačka linija', meta: 'razmak ' + p.razmak + ' m', redovi,
-      dugmad: [{ t: '🧭 Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: '✓ Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }, { t: '✏ Lomi liniju', on: `USFSjek.uredi('${p.id}','${lin.id}')` }, { t: '🗑 Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
+      dugmad: [{ t: '🧭 Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: '✓ Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }, { t: '✏ Lomi liniju', on: `USFSjek.uredi('${p.id}','${lin.id}')` },
+        ...(slIma(lin.stvarna) || slIma(lin.trag) ? [{ t: '↺ Poništi GPS liniju', on: `USFSjek.ponistiStvarnu('${p.id}','${lin.id}')` }] : []),
+        ...(!lin.zona ? [{ t: '✂ Drugi pad iza ove linije', on: `USFSjek.zona('${p.id}','${lin.id}')` }] : []),
+        { t: '🗑 Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
     })).openOn(map);
   }
 
   // ── GPS vodič ────────────────────────────────────────────────────────
+  // Izabrana linija se ističe (ostale prigušene, strelice uzbrdo), karta prati radnika,
+  // a njegov put se snima (tačnost ≤ 20 m, korak ≥ 3 m) — to je stvarna linija.
+  // "✓ Završi liniju" pretvara snimak u stvarnu liniju (od dna prema vrhu) i ofarbano.
   function vodi(pid, lid) {
     map.closePopup();
     const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin) return;
     if (typeof gpsOn !== 'undefined' && !gpsOn && typeof startGPS === 'function') startGPS();
-    if (vodic) clearInterval(vodic.t);
-    vodic = { pid, lid, t: setInterval(vodicOsvjezi, 1000) };
+    if (vodic) { clearInterval(vodic.t); sacuvajTrag(); }
+    vodic = { pid, lid, t: setInterval(vodicOsvjezi, 1000), trag: slIma(lin.trag) ? lin.trag.slice() : [], snima: true, prati: true, nesacuvano: 0 };
     if (lin.status === 'ne') { lin.status = 'rad'; sacuvaj(p); }
     document.body.classList.add('sl-vodi');
     crtaj(); render(); vodicOsvjezi();
     map.fitBounds(L.latLngBounds(slGeo(lin)).pad(0.25), { maxZoom: 18 });
   }
-  function vodicKraj() { if (vodic) clearInterval(vodic.t); vodic = null; document.body.classList.remove('sl-vodi'); crtaj(); render(); }
+  map.on('dragstart', () => { if (vodic && vodic.prati) { vodic.prati = false; vodicOsvjezi(); } });
+  function sacuvajTrag() {
+    if (!vodic) return;
+    const p = nadji(vodic.pid), lin = p && p.linije.find(x => x.id === vodic.lid); if (!lin) return;
+    lin.trag = vodic.trag.slice(); vodic.nesacuvano = 0; sacuvaj(p);
+  }
+  function vodicKraj() { if (vodic) { clearInterval(vodic.t); sacuvajTrag(); } vodic = null; document.body.classList.remove('sl-vodi'); crtaj(); render(); }
+  async function zavrsiLiniju() {
+    if (!vodic) return;
+    const p = nadji(vodic.pid), lin = p && p.linije.find(x => x.id === vodic.lid); if (!lin) { vodicKraj(); return; }
+    let tr = vodic.trag.slice();
+    clearInterval(vodic.t); vodic = null; document.body.classList.remove('sl-vodi');
+    if (tr.length >= 2 && slDuzina(tr) >= 20) {
+      // orijentacija dno → vrh kao planirana linija
+      const dPrvi = slDuzina([tr[0], lin.dno]), dZadnji = slDuzina([tr[tr.length - 1], lin.dno]);
+      if (dZadnji < dPrvi) tr.reverse();
+      lin.stvarna = slUprosti(tr, 2); delete lin.trag;
+    }
+    lin.status = 'gotovo';
+    status('⏳ Površine partija…');
+    await generisi(p); sacuvaj(p); crtaj(); render();
+    const nova = p.linije.find(x => x.id === lin.id) || lin;
+    showToast('✓ ' + oznaka(nova) + ' ofarbana' + (slIma(nova.stvarna) ? ' · stvarna linija ' + fmt(slDuzina(nova.stvarna)) + ' m' + (nova.ha != null ? ' · partija ' + fmt(nova.ha, 2) + ' ha' : '') : ''));
+  }
   function vodicOsvjezi() {
     const el = document.getElementById('sl-vodic'); if (!el || !vodic) return;
     const p = nadji(vodic.pid), lin = p && p.linije.find(x => x.id === vodic.lid); if (!lin) { vodicKraj(); return; }
     const gps = typeof lastP !== 'undefined' && lastP && Number.isFinite(lastP.la) ? lastP : null;
     let glavno = '📍 Čekam GPS…', sporedno = '', boja = '#64748b';
     if (gps) {
+      // snimanje stvarne linije
+      const zad = vodic.trag[vodic.trag.length - 1];
+      if (vodic.snima && (gps.ac || 99) <= 20 && (!zad || slDuzina([zad, [gps.la, gps.lo]]) >= 3)) {
+        vodic.trag.push([gps.la, gps.lo]);
+        if (++vodic.nesacuvano >= 5) sacuvajTrag();
+        crtaj();
+      }
+      if (vodic.prati) map.panTo([gps.la, gps.lo], { animate: true });
       const v = slVodic(lin, gps.la, gps.lo), b = Math.abs(v.bocno), tol = Math.max(3, Math.min(8, (gps.ac || 5) * 0.8));
       boja = b <= tol ? '#22c55e' : b <= 15 ? '#f59e0b' : '#ef4444';
       glavno = b <= tol ? '✓ Na liniji' : (v.bocno > 0 ? '← ' : '') + fmt(b, b < 10 ? 1 : 0) + ' m do linije' + (v.bocno < 0 ? ' →' : '');
       sporedno = v.duz < -5 ? fmt(-v.duz) + ' m ispod dna linije' : v.duz > v.len + 5 ? fmt(v.duz - v.len) + ' m iznad vrha — linija završena' : fmt(Math.max(0, v.duz)) + ' / ' + fmt(v.len) + ' m uzbrdo';
       sporedno += ' · GPS ±' + fmt(gps.ac || 0) + ' m';
     }
+    const snimljeno = vodic.trag.length >= 2 ? fmt(slDuzina(vodic.trag)) + ' m' : '—';
     el.style.setProperty('--c', boja);
-    el.innerHTML = `<div class="sl-v-nasl">🪓 ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>gledano uzbrdo</small></div><div class="sl-v-glavno">${glavno}</div><div class="sl-v-sporedno">${sporedno}</div>
-      <div class="sl-v-dug"><button onclick="USFSjek.status('${p.id}','${lin.id}','gotovo')">✓ Ofarbano</button><button onclick="USFSjek.vodicKraj()">✕ Zatvori</button></div>`;
+    el.innerHTML = `<div class="sl-v-nasl">🪓 ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>gledano uzbrdo${lin.ha != null ? ' · partija ' + fmt(lin.ha, 2) + ' ha' : ''}</small></div><div class="sl-v-glavno">${glavno}</div><div class="sl-v-sporedno">${sporedno}</div>
+      <div class="sl-v-snim">${vodic.snima ? '🔴' : '⏸'} Stvarna linija: <b>${snimljeno}</b></div>
+      <div class="sl-v-dug"><button onclick="USFSjek.zavrsiLiniju()">✓ Završi liniju</button><button onclick="USFSjek.snimanje()">${vodic.snima ? '⏸' : '▶'}</button><button onclick="USFSjek.prati()" class="${vodic.prati ? 'on' : ''}">🎯</button><button onclick="USFSjek.vodicKraj()">✕</button></div>`;
   }
 
   // ── Crtanje poligona: dodirom na kartu ili obilaskom granice s GPS-om ──
@@ -590,22 +750,30 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
           <label class="sl-chk"><input type="checkbox" data-a="opt" data-id="${p.id}"${p.opt !== false ? ' checked' : ''}> Bez malih linija <small>rubne partije i zadnja partija prilagođene obliku poligona</small></label>
           <label>Smjer pada <span><button data-a="az-" data-id="${p.id}">−5°</button><input type="number" min="0" max="359" value="${p.az}" data-a="az" data-id="${p.id}">°<button data-a="az+" data-id="${p.id}">+5°</button></span><small>${p.azDem != null ? 'DEM: ' + p.azDem + '° (' + strana(p.azDem) + '), nagib ~' + Math.round(p.nagibSt) + '°' : 'bez DEM-a'}</small></label>
         </div>${dos}${izoHtml(p)}${optHtml(p.optInfo)}
-        <div class="sl-polja">${(p.polja || []).map(f => `<span>P${f.br}<b>${fmt(f.ha, 2)} ha</b>${f.sirina != null ? `<small>${fmt(f.sirina)} m</small>` : ''}</span>`).join('')}</div>
+        ${zonaHtml(p)}
+        <div class="sl-sazetak">Površina partije uz svaku liniju: od ${p.brojanje === 'D' ? 'desne' : 'lijeve'} granice do L1, od L1 do L2 … ${p.ostatakHa != null ? '· ostatak do granice <b>' + fmt(p.ostatakHa, 2) + ' ha</b>' : ''}</div>
         <div class="sl-lin">${p.linije.map(lin => { const s = STATUS[lin.status] || STATUS.ne; return `<div class="sl-lin-red">
-          <b style="--c:${s.c}">${oznaka(lin)}${lin.izo ? ' <i title="ide po izohipsi">⚠</i>' : ''}</b><span>${fmt(lin.duz)} m${lin.hDno != null && lin.hVrh != null ? ' · ' + lin.hDno + '→' + lin.hVrh + ' m' : ''}</span>
+          <b style="--c:${s.c}">${oznaka(lin)}${lin.izo ? ' <i title="ide po izohipsi">⚠</i>' : ''}</b><span>${lin.ha != null ? '<b class="sl-ha">' + fmt(lin.ha, 2) + ' ha</b> · ' : ''}${fmt(lin.duz)} m${slIma(lin.stvarna) ? ' <i class="sl-gps">GPS</i>' : ''}</span>
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
           <button data-a="st" data-id="${p.id}" data-l="${lin.id}" style="--c:${s.c}">${s.t}</button>
           <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">🧭</button></div>`; }).join('')}</div>
-        <div class="sl-dug">${(p.izbrisane || []).length ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${p.izbrisane.length})</button>` : ''}<button data-a="kml" data-id="${p.id}">⤓ KML za radnike</button><button data-a="vid" data-id="${p.id}">${p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij'}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
+        <div class="sl-dug">${(p.izbrisane || []).length ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${p.izbrisane.length})</button>` : ''}<button data-a="kml" data-id="${p.id}">⤓ KML sve linije</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij'}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
       return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>🪓 ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
     }).join('');
+  }
+  function zonaHtml(p) {
+    if (!p.zona) return '';
+    const raz = p.linije.find(x => x.id === p.zona.lid), n = p.linije.filter(x => x.zona).length;
+    return `<div class="sl-zona"><b>✂ Drugi pad iza ${raz ? oznaka(raz) : 'linije'}</b> — dio ${p.zona.strana === 'L' ? 'lijevo' : 'desno'} od nje (gledano uzbrdo), ${fmt(p.zona.ha || 0, 2)} ha, ${n} linija; linije završavaju na ${raz ? oznaka(raz) : 'liniji'}.
+      <div class="sl-zona-red"><span>Pad ${p.zona.az}°${p.zona.azDem != null ? ' (DEM ' + p.zona.azDem + '°, ' + strana(p.zona.azDem) + ')' : ''}</span><button data-a="zona-az-" data-id="${p.id}">−5°</button><button data-a="zona-az+" data-id="${p.id}">+5°</button></div>
+      <div class="sl-dug"><button data-a="zona-strana" data-id="${p.id}">↔ Druga strana</button><button data-a="zona-ukloni" data-id="${p.id}" class="opasno">✕ Ukloni podjelu</button></div></div>`;
   }
   function izoHtml(p) {
     const los = p.linije.filter(x => x.izo);
     if (!los.length) return '';
     const mx = Math.max(...los.map(x => x.izo.max));
     return `<div class="sl-upoz sl-izo">⚠ ${los.map(oznaka).join(', ')} ${los.length === 1 ? 'ide' : 'idu'} dijelom po izohipsi (do ${fmt(mx)}° od pada) — tu obaranje niz padinu nije sigurno.
-      ${p.plan !== 'teren' ? `<button data-a="plan-teren" data-id="${p.id}">🔀 Napravi lepezu po terenu</button>` : `<small>Lepeza već prati pad poprijeko. Ostalo je promjena pada duž linije (greben, vrtača): izlomi liniju (✏) ili podijeli poligon po grebenu.</small>`}</div>`;
+      ${p.plan !== 'teren' ? `<button data-a="plan-teren" data-id="${p.id}">🔀 Napravi lepezu po terenu</button>` : `<small>Lepeza već prati pad poprijeko. Ostalo je promjena pada duž linije (greben, vrtača): izlomi liniju (✏) ili na liniji na prelazu uključi „✂ Drugi pad iza ove linije“.</small>`}</div>`;
   }
   function optHtml(o) {
     if (!o) return '';
@@ -630,7 +798,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
     else if (a === 'vrati') { p.izbrisane = []; await generisi(p); }
     else if (a === 'st') { const lin = p.linije.find(x => x.id === el.dataset.l), red = ['ne', 'rad', 'gotovo']; lin.status = red[(red.indexOf(lin.status) + 1) % 3]; }
     else if (a === 'vodi') { switchMainTab('karta'); vodi(p.id, el.dataset.l); return; }
-    else if (a === 'kml') { izvozKml(p); return; }
+    else if (a === 'kml') { izvozKml(p, false); return; }
+    else if (a === 'kml-gotove') { izvozKml(p, true); return; }
+    else if (a === 'zona-strana') { p.zona.strana = p.zona.strana === 'L' ? 'D' : 'L'; p.zona.az = null; p.zona.izbrisane = []; await generisi(p); }
+    else if (a === 'zona-az-' || a === 'zona-az+') { p.zona.az = (p.zona.az + (a === 'zona-az+' ? 5 : -5) + 360) % 360; p.zona.izbrisane = []; await generisi(p); }
+    else if (a === 'zona-ukloni') { p.zona = null; await generisi(p); }
     else if (a === 'vid') p.vidljiv = p.vidljiv === false;
     else if (a === 'brisi') { if (!confirm('Obrisati projekat "' + p.naziv + '"?')) return; pisi(citaj().filter(x => x.id !== p.id)); if (vodic && vodic.pid === p.id) vodicKraj(); crtaj(); render(); return; }
     sacuvaj(p); crtaj(); render();
@@ -647,49 +819,73 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
     await generisi(p); sacuvaj(p); crtaj(); render();
   }
 
-  // ── Dijeljenje među radnicima: KML (linije + projekat u ExtendedData) ──
-  // KML za radnike: linije (boja po statusu) + natpis na dnu i vrhu svake linije kao
-  // tačka s nazivom — Google Earth, Locus, QGIS i naš "Učitaj KML" ga prikazuju stalno.
-  function izvozKml(p) {
+  // KML za radnike: linije (boja po statusu; ofarbane = stvarna GPS linija) + natpis
+  // na dnu ("L3 · 2,41 ha") i vrhu ("L3 ▲") kao tačka s nazivom — Google Earth, Locus,
+  // QGIS i naš "Učitaj KML" ga prikazuju stalno. samoGotove: samo ofarbane linije.
+  function izvozKml(p, samoGotove) {
     const x = s => typeof _xmlEsc === 'function' ? _xmlEsc(s) : esc(s);
     const k = q => q[1].toFixed(7) + ',' + q[0].toFixed(7);
     const KML_BOJA = { ne: 'ff0b9ef5', rad: 'fff8bd38', gotovo: 'ff5ec522' }; // aabbggrr
     const stilovi = Object.entries(KML_BOJA).map(([st, c]) => `<Style id="lin-${st}"><LineStyle><color>${c}</color><width>4</width></LineStyle></Style>
 <Style id="oz-${st}"><IconStyle><scale>0.6</scale><color>${c}</color><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle><LabelStyle><color>${c}</color><scale>1.1</scale></LabelStyle></Style>`).join('\n');
-    const oz = (l, q, ime, st) => `<Placemark><name>${x(ime)}</name><styleUrl>#oz-${st}</styleUrl><ExtendedData><Data name="usf_oznaka"><value>1</value></Data></ExtendedData><Point><coordinates>${k(q)}</coordinates></Point></Placemark>`;
-    const lin = p.linije.map(l => {
-      const st = STATUS[l.status] ? l.status : 'ne', ime = oznaka(l);
-      const opis = fmt(l.duz) + ' m · ' + STATUS[st].t + (l.radnik ? ' · ' + l.radnik : '') + (l.hDno != null && l.hVrh != null ? ' · ' + l.hDno + '→' + l.hVrh + ' m' : '');
-      return `<Placemark><name>${x(ime)}</name><description>${x(opis)}</description><styleUrl>#lin-${st}</styleUrl><LineString><tessellate>1</tessellate><coordinates>${slGeo(l).map(k).join(' ')}</coordinates></LineString></Placemark>
-${oz(l, l.dno, ime, st)}
-${oz(l, l.vrh, ime + ' ▲', st)}`;
-    }).join('\n');
+    const oz = (q, ime, st) => `<Placemark><name>${x(ime)}</name><styleUrl>#oz-${st}</styleUrl><ExtendedData><Data name="usf_oznaka"><value>1</value></Data></ExtendedData><Point><coordinates>${k(q)}</coordinates></Point></Placemark>`;
+    const placemark = l => {
+      const st = STATUS[l.status] ? l.status : 'ne', ime = oznaka(l), ha = l.ha != null ? fmt(l.ha, 2) + ' ha' : '', g = slGeo(l);
+      const opis = [ha && 'partija ' + ha, fmt(slDuzina(g)) + ' m', slIma(l.stvarna) ? 'stvarna linija (GPS)' : 'planirana', STATUS[st].t, l.radnik, l.hDno != null && l.hVrh != null ? l.hDno + '→' + l.hVrh + ' m' : ''].filter(Boolean).join(' · ');
+      return `<Placemark><name>${x(ime + (ha ? ' · ' + ha : ''))}</name><description>${x(opis)}</description><styleUrl>#lin-${st}</styleUrl><ExtendedData><Data name="linija"><value>${x(ime)}</value></Data><Data name="povrsina_ha"><value>${l.ha != null ? l.ha.toFixed(3) : ''}</value></Data><Data name="duzina_m"><value>${Math.round(slDuzina(g))}</value></Data><Data name="izvor"><value>${slIma(l.stvarna) ? 'GPS' : 'plan'}</value></Data></ExtendedData><LineString><tessellate>1</tessellate><coordinates>${g.map(k).join(' ')}</coordinates></LineString></Placemark>
+${oz(g[0], ime + (ha ? ' · ' + ha : ''), st)}
+${oz(g[g.length - 1], ime + ' ▲', st)}`;
+    };
+    const gotove = p.linije.filter(l => slIma(l.stvarna)), plan = p.linije.filter(l => !slIma(l.stvarna));
+    const folderi = `<Folder><name>Ofarbane (stvarne GPS) linije</name>\n${gotove.map(placemark).join('\n')}\n</Folder>` + (samoGotove ? '' : `\n<Folder><name>Planirane linije</name>\n${plan.map(placemark).join('\n')}\n</Folder>`);
+    const ukupno = p.linije.filter(l => l.ha != null).reduce((a, l) => a + l.ha, 0);
     const kml = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x('Sjekačke linije · ' + p.naziv)}</name>
-<description>${x('Širina partije ' + p.razmak + ' m · ' + p.linije.length + ' linija · ' + fmt(p.ha || 0, 2) + ' ha')}</description>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x('Sjekačke linije · ' + p.naziv + (samoGotove ? ' · ofarbane' : ''))}</name>
+<description>${x('Širina partije ' + p.razmak + ' m · ' + p.linije.length + ' linija (' + gotove.length + ' ofarbano) · ' + fmt(p.ha || 0, 2) + ' ha · partije uz linije ' + fmt(ukupno, 2) + ' ha, ostatak do granice ' + fmt(p.ostatakHa || 0, 2) + ' ha')}</description>
 ${stilovi}
 <Style id="pol"><LineStyle><color>ff8ae6fd</color><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
 <Placemark><name>${x(p.naziv)}</name><styleUrl>#pol</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>${p.ring.concat([p.ring[0]]).map(k).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
-<Folder><name>Linije</name>
-${lin}
-</Folder></Document></kml>`;
-    _izvozFajl('sjekacke_' + p.naziv.normalize('NFKD').replace(/[^\w-]+/g, '_') + '.kml', kml, 'application/vnd.google-earth.kml+xml', 'Sjekačke linije');
+${folderi}
+</Document></kml>`;
+    _izvozFajl('sjekacke_' + p.naziv.normalize('NFKD').replace(/[^\w-]+/g, '_') + (samoGotove ? '_ofarbane' : '') + '.kml', kml, 'application/vnd.google-earth.kml+xml', 'Sjekačke linije');
   }
-
-
 
   window.USFSjek = {
     otvori() { _openStubPanel('sjekacke-panel', 'meni'); aktivni = aktivni || (citaj()[0] || {}).id || null; crtaj(); render(); },
     izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
     izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { showToast('⚠ Poligon nije pronađen'); return; } _openStubPanel('sjekacke-panel', 'meni'); napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
-    vodi, vodicKraj, crtPocni, crtGps, crtZavrsi, uredi, urediKraj,
+    vodi, vodicKraj, zavrsiLiniju, crtPocni,
+    snimanje() { if (vodic) { vodic.snima = !vodic.snima; vodicOsvjezi(); } },
+    prati() { if (vodic) { vodic.prati = !vodic.prati; vodicOsvjezi(); } },
+    async ponistiStvarnu(pid, lid) {
+      const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin) return;
+      map.closePopup();
+      if (!confirm('Poništiti GPS liniju za ' + oznaka(lin) + '? Ostaje planirana linija.')) return;
+      delete lin.stvarna; delete lin.trag; if (lin.status === 'gotovo') lin.status = 'rad';
+      if (vodic && vodic.lid === lid) vodic.trag = [];
+      await generisi(p); sacuvaj(p); crtaj(); render();
+    },
+    // Drugi pad: dio iza linije (manji dio, ili izabrana strana) dobija svoj smjer pada,
+    // a njegove linije završavaju na toj sjekačkoj liniji.
+    async zona(pid, lid) {
+      const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin) return;
+      map.closePopup();
+      if (p.zona && !confirm('Postojeća podjela (po ' + (p.linije.find(x => x.id === p.zona.lid) ? oznaka(p.linije.find(x => x.id === p.zona.lid)) : 'liniji') + ') se zamjenjuje. Nastaviti?')) return;
+      const pod = slPodijeli(p.ring, slGeo(lin)); if (!pod) { showToast('⚠ Linija ne dijeli poligon'); return; }
+      const st = npPovrsina(pod.desno) <= npPovrsina(pod.lijevo) ? 'D' : 'L';
+      p.zona = { lid, strana: st, az: null, izbrisane: [] };
+      _openStubPanel('sjekacke-panel', 'meni'); aktivni = p.id;
+      await generisi(p); sacuvaj(p); crtaj(); render();
+      showToast('✂ Drugi dio ima svoj pad ' + p.zona.az + '° (' + strana(p.zona.az) + ')');
+    }, crtGps, crtZavrsi, uredi, urediKraj,
     urediSacuvaj: () => urediSacuvaj(false), urediRavno: () => urediSacuvaj(true),
     async obrisiLiniju(pid, lid) {
       const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin) return;
       map.closePopup();
       const br = lin.br, n = p.linije.reduce((m, x) => Math.max(m, x.br), 0);
       if (!confirm('Obrisati liniju ' + oznaka(lin) + '?\n\nPartije s obje strane se spajaju' + (br < n ? ', a linije L' + (br + 1) + '–L' + n + ' dobijaju nove brojeve (L' + br + '–L' + (n - 1) + ').' : '.'))) return;
-      p.izbrisane = (p.izbrisane || []).concat([lin.k]);
+      if (lin.zona) p.zona.izbrisane = (p.zona.izbrisane || []).concat([lin.k]);
+      else p.izbrisane = (p.izbrisane || []).concat([lin.k]);
       if (vodic && vodic.pid === pid && vodic.lid === lid) vodicKraj();
       await generisi(p); sacuvaj(p); crtaj(); render();
       showToast('🗑 ' + oznaka(lin) + ' obrisana — linije prenumerisane');
