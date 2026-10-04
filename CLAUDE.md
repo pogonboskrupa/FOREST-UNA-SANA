@@ -68,6 +68,10 @@
   „Završi liniju“ ⇒ `lin.stvarna` (slGeo je preferira). Površina partije po liniji
   (`lin.ha`): od granice do L1, L1–L2 … (`slPoljaTeren` po dijelu, `slSpojiTrake`,
   `slTrakeULinije`); stvarna linija se računa kao produžena do granice.
+  Vodič snima preko native GpsService (`window.usfPozadina.pocni/zavrsi`, isti zajednički
+  bafer kao "Snimi trag" — `_drainNativeGpsBuffer` predaje tačke svim slušaocima
+  `_bgSnimanja`): radi pod zaključanim ekranom; `usf_sjek_vodic` nastavlja vodič poslije
+  ubijanja app-a. Površina (ha) samo u popup-u linije, ne na karti.
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

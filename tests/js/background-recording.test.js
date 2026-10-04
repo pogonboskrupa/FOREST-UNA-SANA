@@ -26,7 +26,7 @@ function fn(name) {
     _nativeBufPotvrdi:()=>data.set('ack',true),
     showToast:()=>{}, localStorage:{setItem:(k,v)=>data.set(k,v)}
   });
-  vm.runInContext(fn('_crashSaveTrag') + '\n' + fn('_drainNativeGpsBuffer') + `
+  vm.runInContext('const _bgSnimanja = new Map();\n' + fn('_bgPredaj') + '\n' + fn('_anyRecOn') + '\n' + fn('_crashSaveTrag') + '\n' + fn('_drainNativeGpsBuffer') + `
     function _addTragPoint(la,lo,ac,al,sp,t) { _tragPts.push([la,lo,al,t]); _tragLastT=t; }
   `, context);
   assert.equal(vm.runInContext('_crashSaveTrag()', context), true);
@@ -35,6 +35,15 @@ function fn(name) {
   assert.equal(context._tragPts.length, 2, 'new foreground fix must not discard background points');
   await vm.runInContext('_drainNativeGpsBuffer()', context);
   assert.equal(context._tragPts.length, 2, 'repeated batch must not duplicate fixes');
+  // drugi slušalac (vodič sjekačkih linija) dobija iste tačke iz zajedničkog bafera
+  const vodic = [];
+  vm.runInContext('_bgSnimanja.set("v", pts => vodicPts.push(...pts))', Object.assign(context, { vodicPts: vodic }));
+  await vm.runInContext('_drainNativeGpsBuffer()', context);
+  assert.equal(vodic.length, 2, 'drain predaje bafer i drugim snimanjima');
+  context._tragOn = false;
+  await vm.runInContext('_drainNativeGpsBuffer()', context);
+  assert.equal(vodic.length, 4, 'drain radi i bez traga dok vodič snima');
+  context._tragOn = true; vm.runInContext('_bgSnimanja.clear()', context);
   data.delete('ack');
   context.localStorage.setItem = () => { throw Error('quota'); };
   assert.equal(await vm.runInContext('_drainNativeGpsBuffer()', context), false);

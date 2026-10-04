@@ -3078,7 +3078,7 @@ async function togTragPause() {
   if (!_tragOn) return;
   await _drainNativeGpsBuffer();
   _tragPaused = !_tragPaused;
-  if (typeof AndroidGps !== 'undefined' && AndroidGps.setPaused) AndroidGps.setPaused(_tragPaused);
+  _nativePauzaSync();
   _crashSaveTrag();
   if (_tragPaused) {
     _tragLiveClear(); _tragBuf = []; _tragLastT = 0;
@@ -3499,7 +3499,11 @@ async function _crashCheck() {
   _crashCheck._busy = true;
   try {
     const snapT = (() => { try { const r = localStorage.getItem(_CRASH_TRAG_KEY); return r ? JSON.parse(r) : null; } catch { return null; } })();
-    if (!snapT) return;
+    if (!snapT) {
+      // servis ostao upaljen a niko ne snima (app ubijen, vodič nije nastavljen)
+      if (!_anyRecOn() && typeof AndroidGps !== 'undefined' && AndroidGps.isRecording && AndroidGps.isRecording()) { try { AndroidGps.stopRecording(); } catch(e) {} _nativeBufPotvrdi(); }
+      return;
+    }
     const age = (snap) => { const m = Math.round((Date.now() - snap.ts) / 60000); return m < 60 ? `${m} min` : `${Math.round(m/60)} h`; };
     const nativeActive = typeof AndroidGps !== 'undefined' && AndroidGps.isRecording && AndroidGps.isRecording();
     const ok = nativeActive || await _dlgConfirm(`⚠ Nađeno nedovršeno snimanje traga:\n\n${snapT.pts.length} tač. (${age(snapT)} ago)\n\nŽeliš li oporaviti?`, { okLabel:'Oporavi', cancelLabel:'Odbaci' });
@@ -3508,7 +3512,8 @@ async function _crashCheck() {
     // je hladan start (visibilitychange nikad ne opali za već-vidljivu stranicu).
     let bufPts;
     try { bufPts = _nativeBufUzmi(); } catch(e) { showToast('⚠ Oporavak čeka slobodnu memoriju'); return; }
-    if (!ok) { if (typeof AndroidGps !== 'undefined') AndroidGps.stopRecording(); _crashClearTrag(); _nativeBufPotvrdi(); return; }
+    _bgPredaj(bufPts);
+    if (!ok) { if (typeof AndroidGps !== 'undefined' && !_bgSnimanja.size) AndroidGps.stopRecording(); _crashClearTrag(); _nativeBufPotvrdi(); return; }
     try {
       _tragPts = snapT.pts;
       if (_tragLine) { map.removeLayer(_tragLine); _tragLine = null; }
@@ -3572,19 +3577,22 @@ let _nativeReplayLast = { trag: 0 };
 let _nativeDrainTimer = null;
 async function _drainNativeGpsBuffer() {
   if (typeof AndroidGps === 'undefined' || typeof AndroidGps.readNativeBuffer !== 'function') return;
-  if (!_tragOn) return;
+  if (!_anyRecOn()) return;
   if (_drainNativeGpsBuffer._busy || _crashCheck._busy) return;
   _drainNativeGpsBuffer._busy = true;
   try {
     const pts = _nativeBufUzmi();
     if (!pts.length) return true;
-    for (const p of pts) {
-      if (p.t > Math.max(_tragLastT, _nativeReplayLast.trag)) {
-        _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t);
-        _nativeReplayLast.trag = p.t;
+    if (_tragOn) {
+      for (const p of pts) {
+        if (p.t > Math.max(_tragLastT, _nativeReplayLast.trag)) {
+          _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t);
+          _nativeReplayLast.trag = p.t;
+        }
       }
+      localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused }));
     }
-    localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused }));
+    _bgPredaj(pts);
     _nativeBufPotvrdi();
     return true;
   } catch(e) { showToast('⚠ GPS dopuna čeka sigurno spremanje: ' + e.message); return false; }
@@ -3633,13 +3641,35 @@ async function _checkBatteryOptHint() {
   const ok = await _dlgConfirm('Da GPS snimanje ne prekine telefonski poziv ili druga aplikacija, dozvoli ovoj aplikaciji rad bez ograničenja baterije.', { title:'🔋 Pouzdano snimanje u pozadini', okLabel:'Otvori postavke' });
   if (ok) { try { AndroidGps.requestBatteryOptExemption(); } catch(e) {} }
 }
-function _anyRecOn() { return _tragOn; }
+// Drugi moduli (vodič sjekačkih linija) snimaju preko istog foreground servisa.
+// Bafer je zajednički i destruktivan, pa svaki drain predaje tačke svim
+// slušaocima — inače bi trag i vodič jedan drugom "pojeli" fiksove.
+const _bgSnimanja = new Map();
+function _bgPredaj(pts) { _bgSnimanja.forEach(fn => { try { fn(pts); } catch(e) {} }); }
+function _anyRecOn() { return _tragOn || _bgSnimanja.size > 0; }
+function _nativePauzaSync() {
+  if (typeof AndroidGps === 'undefined' || !AndroidGps.setPaused) return;
+  try { AndroidGps.setPaused(_tragOn && _tragPaused && !_bgSnimanja.size); } catch(e) {}
+}
+window.usfPozadina = {
+  nativno: () => typeof AndroidGps !== 'undefined' && typeof AndroidGps.readNativeBuffer === 'function',
+  pocni(id, naslov, fn) {
+    _bgSnimanja.set(id, fn);
+    if (_tragOn) { _nativePauzaSync(); return; } // servis već radi za trag
+    _bgRecStart(naslov);
+  },
+  zavrsi(id) {
+    if (!_bgSnimanja.delete(id)) return;
+    _bgRecStopIfIdle();
+  },
+  dopuni: () => _drainNativeGpsBuffer(),
+};
 function _bgRecStart(label) {
   _iosBgRecWarn();
   if (typeof AndroidGps !== 'undefined') {
     try {
       AndroidGps.startRecording(label || 'GPS Snimanje');
-      if (AndroidGps.setPaused) AndroidGps.setPaused(_tragPaused);
+      _nativePauzaSync();
       clearInterval(_nativeDrainTimer);
       _nativeDrainTimer = setInterval(_drainNativeGpsBuffer, 2000);
       _checkBatteryOptHint();
@@ -3659,7 +3689,7 @@ function _bgRecStart(label) {
   _checkBatteryOptHint();
 }
 function _bgRecStopIfIdle() {
-  if (_anyRecOn()) return;
+  if (_anyRecOn()) { _nativePauzaSync(); return; }
   clearInterval(_nativeDrainTimer); _nativeDrainTimer = null;
   _releaseWakeLock(); _stopBgAudio(); _stopSWHeartbeat(); _stopGpsWatchdog();
   const sw = navigator.serviceWorker?.controller;

@@ -526,7 +526,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slUprost
         if (akt || vodi || map.getZoom() >= 15) {
           // broj na oba kraja: radnik koji kreće odozdo i onaj koji provjerava s vrha vide istu oznaku
           L.circleMarker(lin.dno, { pane: 'sjekackePane', radius: 4, color: '#fff', weight: 1.5, fillColor: s.c, fillOpacity: 1, interactive: false }).addTo(grp);
-          L.marker(lin.dno, { pane: 'sjekackePane', interactive: false, opacity: prig, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl" style="--c:${s.c}">${oznaka(lin)}${lin.ha != null && (akt || vodi) ? ' · ' + fmt(lin.ha, 2) + ' ha' : ''}</span>` }) }).addTo(grp);
+          L.marker(lin.dno, { pane: 'sjekackePane', interactive: false, opacity: prig, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl" style="--c:${s.c}">${oznaka(lin)}</span>` }) }).addTo(grp);
           L.marker(lin.vrh, { pane: 'sjekackePane', interactive: false, opacity: prig, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl vrh" style="--c:${s.c}">${oznaka(lin)} ▲</span>` }) }).addTo(grp);
         }
       });
@@ -577,12 +577,36 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slUprost
   // Izabrana linija se ističe (ostale prigušene, strelice uzbrdo), karta prati radnika,
   // a njegov put se snima (tačnost ≤ 20 m, korak ≥ 3 m) — to je stvarna linija.
   // "✓ Završi liniju" pretvara snimak u stvarnu liniju (od dna prema vrhu) i ofarbano.
-  function vodi(pid, lid) {
+  // U APK-u tačke dolaze iz native foreground servisa (GpsService) kao i kod "Snimi trag":
+  // snima i pod zaključanim ekranom; vodič se nastavlja i ako Android ubije app.
+  const KLJUC_VODIC = 'usf_sjek_vodic', BG_ID = 'sjekacke';
+  const pozadina = () => (typeof window !== 'undefined' && window.usfPozadina) || null;
+  function vodicDodaj(la, lo, ac, t) {
+    if (!vodic || !vodic.snima || !(ac <= 20) || !(t > vodic.zadT)) return false;
+    const zad = vodic.trag[vodic.trag.length - 1];
+    if (zad && slDuzina([zad, [la, lo]]) < 3) return false;
+    vodic.trag.push([la, lo]); vodic.zadT = t;
+    if (++vodic.nesacuvano >= 5) sacuvajTrag();
+    return true;
+  }
+  function vodicNativno(pts) {
+    let n = 0;
+    for (const q of pts) if (vodicDodaj(q.la, q.lo, Number.isFinite(q.ac) ? q.ac : 99, q.t)) n++;
+    if (n) crtaj();
+  }
+  function vodicPozadinaKraj() {
+    const bg = pozadina(); if (bg) bg.zavrsi(BG_ID);
+    try { localStorage.removeItem(KLJUC_VODIC); } catch (e) {}
+  }
+  function vodi(pid, lid, odT) {
     map.closePopup();
     const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin) return;
     if (typeof gpsOn !== 'undefined' && !gpsOn && typeof startGPS === 'function') startGPS();
     if (vodic) { clearInterval(vodic.t); sacuvajTrag(); }
-    vodic = { pid, lid, t: setInterval(vodicOsvjezi, 1000), trag: slIma(lin.trag) ? lin.trag.slice() : [], snima: true, prati: true, nesacuvano: 0 };
+    const bg = pozadina();
+    vodic = { pid, lid, t: setInterval(vodicOsvjezi, 1000), trag: slIma(lin.trag) ? lin.trag.slice() : [], snima: true, prati: true, nesacuvano: 0, zadT: odT || Date.now(), nat: !!(bg && bg.nativno()) };
+    if (bg) bg.pocni(BG_ID, 'Sjekačka linija ' + oznaka(lin), vodicNativno);
+    try { localStorage.setItem(KLJUC_VODIC, JSON.stringify({ pid, lid, t: vodic.zadT })); } catch (e) {}
     if (lin.status === 'ne') { lin.status = 'rad'; sacuvaj(p); }
     document.body.classList.add('sl-vodi');
     crtaj(); render(); vodicOsvjezi();
@@ -593,13 +617,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slUprost
     if (!vodic) return;
     const p = nadji(vodic.pid), lin = p && p.linije.find(x => x.id === vodic.lid); if (!lin) return;
     lin.trag = vodic.trag.slice(); vodic.nesacuvano = 0; sacuvaj(p);
+    try { localStorage.setItem(KLJUC_VODIC, JSON.stringify({ pid: vodic.pid, lid: vodic.lid, t: vodic.zadT })); } catch (e) {}
   }
-  function vodicKraj() { if (vodic) { clearInterval(vodic.t); sacuvajTrag(); } vodic = null; document.body.classList.remove('sl-vodi'); crtaj(); render(); }
+  function vodicKraj() { if (vodic) { clearInterval(vodic.t); sacuvajTrag(); vodicPozadinaKraj(); } vodic = null; document.body.classList.remove('sl-vodi'); crtaj(); render(); }
   async function zavrsiLiniju() {
     if (!vodic) return;
     const p = nadji(vodic.pid), lin = p && p.linije.find(x => x.id === vodic.lid); if (!lin) { vodicKraj(); return; }
+    const bg = pozadina();
+    if (bg) { try { await bg.dopuni(); } catch (e) {} } // zadnji fiksovi iz native bafera
+    if (!vodic) return;
     let tr = vodic.trag.slice();
     clearInterval(vodic.t); vodic = null; document.body.classList.remove('sl-vodi');
+    vodicPozadinaKraj();
     if (tr.length >= 2 && slDuzina(tr) >= 20) {
       // orijentacija dno → vrh kao planirana linija
       const dPrvi = slDuzina([tr[0], lin.dno]), dZadnji = slDuzina([tr[tr.length - 1], lin.dno]);
@@ -618,13 +647,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slUprost
     const gps = typeof lastP !== 'undefined' && lastP && Number.isFinite(lastP.la) ? lastP : null;
     let glavno = '📍 Čekam GPS…', sporedno = '', boja = '#64748b';
     if (gps) {
-      // snimanje stvarne linije
-      const zad = vodic.trag[vodic.trag.length - 1];
-      if (vodic.snima && (gps.ac || 99) <= 20 && (!zad || slDuzina([zad, [gps.la, gps.lo]]) >= 3)) {
-        vodic.trag.push([gps.la, gps.lo]);
-        if (++vodic.nesacuvano >= 5) sacuvajTrag();
-        crtaj();
-      }
+      // snimanje stvarne linije; u APK-u isključivo iz native bafera (inače dupli fiksovi)
+      if (!vodic.nat && vodicDodaj(gps.la, gps.lo, gps.ac || 99, Date.now())) crtaj();
       if (vodic.prati) map.panTo([gps.la, gps.lo], { animate: true });
       const v = slVodic(lin, gps.la, gps.lo), b = Math.abs(v.bocno), tol = Math.max(3, Math.min(8, (gps.ac || 5) * 0.8));
       boja = b <= tol ? '#22c55e' : b <= 15 ? '#f59e0b' : '#ef4444';
@@ -634,7 +658,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slUprost
     }
     const snimljeno = vodic.trag.length >= 2 ? fmt(slDuzina(vodic.trag)) + ' m' : '—';
     el.style.setProperty('--c', boja);
-    el.innerHTML = `<div class="sl-v-nasl">🪓 ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>gledano uzbrdo${lin.ha != null ? ' · partija ' + fmt(lin.ha, 2) + ' ha' : ''}</small></div><div class="sl-v-glavno">${glavno}</div><div class="sl-v-sporedno">${sporedno}</div>
+    el.innerHTML = `<div class="sl-v-nasl">🪓 ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>gledano uzbrdo</small></div><div class="sl-v-glavno">${glavno}</div><div class="sl-v-sporedno">${sporedno}</div>
       <div class="sl-v-snim">${vodic.snima ? '🔴' : '⏸'} Stvarna linija: <b>${snimljeno}</b></div>
       <div class="sl-v-dug"><button onclick="USFSjek.zavrsiLiniju()">✓ Završi liniju</button><button onclick="USFSjek.snimanje()">${vodic.snima ? '⏸' : '▶'}</button><button onclick="USFSjek.prati()" class="${vodic.prati ? 'on' : ''}">🎯</button><button onclick="USFSjek.vodicKraj()">✕</button></div>`;
   }
@@ -900,4 +924,10 @@ ${folderi}
     panel.addEventListener('change', e => { const el = e.target.closest('[data-a]'); if (el) promjena(el); });
   }
   crtaj(); render();
+  // Android je ubio app usred vodiča → nastavi; tačke iz native bafera nakon zadnjeg snimka idu u liniju
+  try {
+    const v = JSON.parse(localStorage.getItem(KLJUC_VODIC) || 'null'), p = v && nadji(v.pid), lin = p && p.linije.find(x => x.id === v.lid);
+    if (lin && lin.status !== 'gotovo') { vodi(v.pid, v.lid, v.t); if (typeof showToast === 'function') showToast('🪓 Nastavljen vodič ' + oznaka(lin)); }
+    else localStorage.removeItem(KLJUC_VODIC);
+  } catch (e) {}
 })();

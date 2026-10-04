@@ -224,6 +224,19 @@ t('UI: Planiranje ispod Tematske karte, panel, vodič, dijeljenje KML-om', () =>
   assert.ok(R('sw.js').includes("'./static/js/sjekacke.js'") && R('android/copy-assets.sh').includes('static/js/sjekacke.js'));
 });
 
+t('vodič snima pod zaključanim ekranom (native servis), površina samo u info linije', () => {
+  const H = R('index.html'), js = R('static/js/sjekacke.js');
+  // zajednički destruktivni bafer: drain predaje tačke svim snimanjima, servis se ne gasi dok ijedno traje
+  assert.ok(/function _anyRecOn\(\) \{ return _tragOn \|\| _bgSnimanja\.size > 0; \}/.test(H));
+  assert.ok(/if \(!_anyRecOn\(\)\) return;\n  if \(_drainNativeGpsBuffer\._busy/.test(H) && H.includes('_bgPredaj(pts);') && H.includes('_bgPredaj(bufPts);'));
+  assert.ok(!/AndroidGps\.setPaused\(_tragPaused\)/.test(H), 'pauza traga ne pauzira servis dok vodič snima');
+  assert.ok(js.includes("bg.pocni(BG_ID, 'Sjekačka linija '") && js.includes('vodicPozadinaKraj()') && js.includes('await bg.dopuni()'));
+  assert.ok(js.includes("localStorage.getItem(KLJUC_VODIC)"), 'vodič se nastavlja kad Android ubije app');
+  assert.ok(js.includes('!vodic.nat && vodicDodaj('), 'u APK-u samo native tačke (bez duplih)');
+  assert.ok(!/sl-lbl[^`]*lin\.ha/.test(js) && !/gledano uzbrdo\$\{lin\.ha/.test(js), 'nema ha na karti');
+  assert.ok(js.includes("redovi.push(['Partija', fmt(lin.ha, 2) + ' ha'])"), 'ha ostaje u popup-u');
+});
+
 (async () => {
   for (const [ime, fn] of testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + ime); } catch (e) { console.error('  ✘ ' + ime + '\n      ' + e.message); process.exitCode = 1; }
