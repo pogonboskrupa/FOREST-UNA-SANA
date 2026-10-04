@@ -277,14 +277,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
     }));
     return out;
   }
-  function odjelPodCentrom() {
-    if (typeof _odjelNaTacki !== 'function') return null;
-    const c = map.getCenter(), o = _odjelNaTacki(c.lat, c.lng); if (!o) return null;
-    const g = o.gj.geometry || o.gj, polys = g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates];
-    const t = [c.lng, c.lat];
-    const p = polys.find(pp => typeof turf === 'undefined' || turf.booleanPointInPolygon(t, { type: 'Polygon', coordinates: pp })) || polys[0];
-    return { naziv: o.ime || 'Odjel', ring: p[0].slice(0, -1).map(([lo, la]) => [la, lo]) };
-  }
+
 
   // ── DEM: dominantan pad poligona ─────────────────────────────────────
   async function padPoligona(ring) {
@@ -655,55 +648,41 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slAzimut
   }
 
   // ── Dijeljenje među radnicima: KML (linije + projekat u ExtendedData) ──
+  // KML za radnike: linije (boja po statusu) + natpis na dnu i vrhu svake linije kao
+  // tačka s nazivom — Google Earth, Locus, QGIS i naš "Učitaj KML" ga prikazuju stalno.
   function izvozKml(p) {
     const x = s => typeof _xmlEsc === 'function' ? _xmlEsc(s) : esc(s);
     const k = q => q[1].toFixed(7) + ',' + q[0].toFixed(7);
-    const lin = p.linije.map(l => `<Placemark><name>${x(oznaka(l))}</name><description>${x(fmt(l.duz) + ' m · ' + (STATUS[l.status] || STATUS.ne).t + (l.radnik ? ' · ' + l.radnik : ''))}</description><styleUrl>#lin</styleUrl><LineString><coordinates>${slGeo(l).map(k).join(' ')}</coordinates></LineString></Placemark>`).join('');
-    const proj = JSON.stringify({ v: 1, naziv: p.naziv, ring: p.ring, razmak: p.razmak, az: p.az, nagibSt: p.nagibSt, opt: p.opt !== false, izbrisane: p.izbrisane || [], brojanje: p.brojanje || 'L', plan: p.plan || 'paralelno', linije: p.linije.map(l => ({ id: l.id, status: l.status, radnik: l.radnik, geo: l.geo })) });
+    const KML_BOJA = { ne: 'ff0b9ef5', rad: 'fff8bd38', gotovo: 'ff5ec522' }; // aabbggrr
+    const stilovi = Object.entries(KML_BOJA).map(([st, c]) => `<Style id="lin-${st}"><LineStyle><color>${c}</color><width>4</width></LineStyle></Style>
+<Style id="oz-${st}"><IconStyle><scale>0.6</scale><color>${c}</color><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle><LabelStyle><color>${c}</color><scale>1.1</scale></LabelStyle></Style>`).join('\n');
+    const oz = (l, q, ime, st) => `<Placemark><name>${x(ime)}</name><styleUrl>#oz-${st}</styleUrl><ExtendedData><Data name="usf_oznaka"><value>1</value></Data></ExtendedData><Point><coordinates>${k(q)}</coordinates></Point></Placemark>`;
+    const lin = p.linije.map(l => {
+      const st = STATUS[l.status] ? l.status : 'ne', ime = oznaka(l);
+      const opis = fmt(l.duz) + ' m · ' + STATUS[st].t + (l.radnik ? ' · ' + l.radnik : '') + (l.hDno != null && l.hVrh != null ? ' · ' + l.hDno + '→' + l.hVrh + ' m' : '');
+      return `<Placemark><name>${x(ime)}</name><description>${x(opis)}</description><styleUrl>#lin-${st}</styleUrl><LineString><tessellate>1</tessellate><coordinates>${slGeo(l).map(k).join(' ')}</coordinates></LineString></Placemark>
+${oz(l, l.dno, ime, st)}
+${oz(l, l.vrh, ime + ' ▲', st)}`;
+    }).join('\n');
     const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x('Sjekačke linije · ' + p.naziv)}</name>
-<ExtendedData><Data name="usf_sjekacke"><value>${x(proj)}</value></Data></ExtendedData>
-<Style id="lin"><LineStyle><color>ff0b9ef5</color><width>3</width></LineStyle></Style>
+<description>${x('Širina partije ' + p.razmak + ' m · ' + p.linije.length + ' linija · ' + fmt(p.ha || 0, 2) + ' ha')}</description>
+${stilovi}
 <Style id="pol"><LineStyle><color>ff8ae6fd</color><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
 <Placemark><name>${x(p.naziv)}</name><styleUrl>#pol</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>${p.ring.concat([p.ring[0]]).map(k).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
-${lin}</Document></kml>`;
+<Folder><name>Linije</name>
+${lin}
+</Folder></Document></kml>`;
     _izvozFajl('sjekacke_' + p.naziv.normalize('NFKD').replace(/[^\w-]+/g, '_') + '.kml', kml, 'application/vnd.google-earth.kml+xml', 'Sjekačke linije');
   }
-  async function uvoz(file) {
-    if (!file) return;
-    try {
-      const txt = file.name.toLowerCase().endsWith('.kmz') && typeof _kmzExtractKml === 'function' ? await _kmzExtractKml(await file.arrayBuffer()) : await file.text();
-      const doc = new DOMParser().parseFromString(txt, 'text/xml');
-      const d = [...doc.getElementsByTagName('Data')].find(n => n.getAttribute('name') === 'usf_sjekacke');
-      if (d) {
-        const j = JSON.parse(d.getElementsByTagName('value')[0].textContent);
-        if (!Array.isArray(j.ring) || j.ring.length < 3 || !j.ring.every(q => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite))) throw new Error('neispravan poligon');
-        const p = { id: 'sl_' + Date.now().toString(36), naziv: String(j.naziv || 'Sječa').slice(0, 60), datum: new Date().toISOString(), ring: j.ring,
-          razmak: Math.max(10, Math.min(200, Number(j.razmak) || 60)), az: ((Number(j.az) || 0) % 360 + 360) % 360, azDem: null, nagibSt: Number(j.nagibSt) || 0, opt: j.opt !== false, izbrisane: (Array.isArray(j.izbrisane) ? j.izbrisane : []).map(Number).filter(Number.isFinite),
-          brojanje: j.brojanje === 'D' ? 'D' : 'L', plan: j.plan === 'teren' ? 'teren' : 'paralelno',
-          linije: (j.linije || []).map(l => {
-            const o = { id: String(l.id), status: STATUS[l.status] ? l.status : 'ne', radnik: String(l.radnik || '').slice(0, 24) };
-            if (Array.isArray(l.geo) && l.geo.length >= 2 && l.geo.length <= 200 && l.geo.every(q => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite))) o.geo = l.geo;
-            return o;
-          }) };
-        await generisi(p); // iste postavke ⇒ iste linije na svakom telefonu
-        const l = citaj(); l.unshift(p); pisi(l); aktivni = p.id; crtaj(); render(); zoom(p.id);
-        showToast('🪓 Uvezen projekat: ' + p.naziv); return;
-      }
-      const pm = doc.getElementsByTagName('Polygon')[0];
-      if (!pm) throw new Error('KML nema poligon');
-      const ring = pm.getElementsByTagName('coordinates')[0].textContent.trim().split(/\s+/).map(c => c.split(',').map(Number)).filter(c => c.length >= 2 && c.every(Number.isFinite)).map(([lo, la]) => [la, lo]);
-      if (ring.length > 3 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]) ring.pop();
-      await napravi(ring, file.name.replace(/\.km[lz]$/i, ''));
-    } catch (e) { showToast('⚠ Uvoz nije uspio: ' + e.message); }
-  }
+
+
 
   window.USFSjek = {
     otvori() { _openStubPanel('sjekacke-panel', 'meni'); aktivni = aktivni || (citaj()[0] || {}).id || null; crtaj(); render(); },
     izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
-    izOdjela() { const o = odjelPodCentrom(); if (!o) { showToast('⚠ Pod centrom karte nema odjela (geo/odjeli.kml)'); return; } napravi(o.ring, o.naziv); },
     izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { showToast('⚠ Poligon nije pronađen'); return; } _openStubPanel('sjekacke-panel', 'meni'); napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
-    uvoz, vodi, vodicKraj, crtPocni, crtGps, crtZavrsi, uredi, urediKraj,
+    vodi, vodicKraj, crtPocni, crtGps, crtZavrsi, uredi, urediKraj,
     urediSacuvaj: () => urediSacuvaj(false), urediRavno: () => urediSacuvaj(true),
     async obrisiLiniju(pid, lid) {
       const p = nadji(pid), lin = p && p.linije.find(x => x.id === lid); if (!lin) return;

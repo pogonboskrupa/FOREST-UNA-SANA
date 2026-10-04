@@ -1145,6 +1145,7 @@ body.sl-uredi #sl-ured { display: block; }
 #sl-crt .sl-v-dug button:nth-child(2), #sl-crt .sl-v-dug button:nth-child(4) { flex: 0 0 48px; }
 #sl-crt .sl-v-dug button:first-child { background: #0f172a; border-color: #334155; }
 #sl-crt .sl-v-dug button:nth-child(3) { background: #166534; border-color: #22c55e; }
+.kml-oznaka { display: inline-block; transform: translate(-50%, -50%); background: var(--c); color: #0b1220; font: 800 11px/15px system-ui, sans-serif; padding: 0 5px; border-radius: 7px; border: 1.5px solid #0b1220; white-space: nowrap; }
 .sl-lbl.vrh { transform: translate(-50%, -22px); opacity: .9; }
 .sl-cipovi { display: flex; gap: 6px; flex-wrap: wrap; margin-left: 90px; }
 .sl-cipovi button { min-height: 34px; padding: 0 10px; border-radius: 17px; border: 1px solid var(--pn-line); background: rgba(255,255,255,.04); color: var(--pn-txt); font-weight: 700; font-size: 12.5px; }
@@ -1872,18 +1873,13 @@ body.sl-uredi #sl-ured { display: block; }
 <div id="sjekacke-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪓 Sjekačke linije</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body">
-    <section class="ng-card ul-hero">
-      <div class="ul-hero-top"><span class="ul-ico">🪓</span><div><h3>Sjekačke partije uzbrdo</h3><p>Linije su granice partija: idu uz padinu (smjer najvećeg pada iz DEM-a) zbog obaranja, širina partije ~2 visine stabla. Svaka partija radi uzbrdo u svom pojasu, susjedna je bočno. Na terenu 🧭 vodi radnika duž linije dok farba.</p></div></div>
-    </section>
     <section class="ng-card">
       <h3>Novi projekat</h3>
       <div class="sl-dug"><button class="zp-glavno" onclick="USFSjek.crtPocni()">✏ Nacrtaj granicu sječe</button></div>
       <p class="uk-izvor">Dodirom na kartu ili obilaskom granice: na svakom lomu granice dodaj 📍 Moja pozicija. Prva linija je jednu širinu partije od granice (dublje ako je rub uzak, da partija ne bude mala).</p>
       <select id="sl-izvor" class="sl-izvor"></select>
       <div class="sl-dug"><button onclick="USFSjek.izIzvora()">Napravi linije iz izabranog</button></div>
-      <div class="sl-dug"><button onclick="USFSjek.izOdjela()">🌲 Odjel pod centrom karte</button><button onclick="document.getElementById('sl-uvoz').click()">📂 Uvezi KML</button></div>
-      <input type="file" id="sl-uvoz" accept=".kml,.kmz" style="display:none" onchange="USFSjek.uvoz(this.files[0]); this.value=''">
-      <p class="uk-izvor">Poligon: sačuvana površina iz 📏 Mjerenja, učitani KML poligon, odjel ili KML koji je poslao kolega (tada dobiješ iste linije i statuse).</p>
+      <p class="uk-izvor">Ili iz sačuvane površine (📏 Mjerenja) ili učitanog KML poligona.</p>
       <div id="sl-status" class="uk-status"></div>
     </section>
     <div id="sl-lista"></div>
@@ -4297,6 +4293,12 @@ function pkml(doc, col, op) {
     });
     pm.querySelectorAll('Point').forEach(pt => {
       const cs = pcsKml(pt.querySelector('coordinates')?.textContent);
+      if (cs.length > 0 && extData.usf_oznaka && name) {
+        // natpis linije iz izvoza Sjekačkih linija: stalno vidljiv tekst, bez tačke
+        L.marker(cs[0], { pane: 'tragMsrLines', interactive: false, keyboard: false,
+          icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="kml-oznaka" style="--c:${col}">${_escHtml(name)}</span>` }) }).addTo(g);
+        return;
+      }
       if (cs.length > 0) {
         const m = L.circleMarker(cs[0], { radius: 5, color: col, fillColor: col, opacity: op, fillOpacity: op, pane: 'tragMsrLines' });
         m._kmlIsPoint = true; m._kmlName = name; m._kmlDesc = desc; m._kmlExtData = extData;

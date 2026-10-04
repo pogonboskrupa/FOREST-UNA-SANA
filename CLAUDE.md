@@ -59,8 +59,9 @@
   se ne broji; > 25 % dužine s odstupanjem > 45° ⇒ `lin.izo`. Plan 'teren' = lepeza
   pravih linija (`slLepeza`: svaka svoj pad, skretanje susjeda ograničeno, provjera
   stvarnog razmaka ≥ 60 % `slMinRazmak`) → `lin.teren`. Linije pada (flow lines)
-  NE koristiti: slijevaju se u jarke i sabijaju partije. localStorage `usf_sjekacke`; dijeljenje
-  KML-om s projektom u `ExtendedData usf_sjekacke` (isti parametri ⇒ iste linije).
+  NE koristiti: slijevaju se u jarke i sabijaju partije. localStorage `usf_sjekacke`; izvoz KML:
+  linije po statusu + tačke-natpisi (`ExtendedData usf_oznaka`) koje "Učitaj KML"
+  crta kao stalnu etiketu. Uvoz projekta i "odjel pod centrom" su uklonjeni.
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

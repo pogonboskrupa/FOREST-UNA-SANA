@@ -191,7 +191,9 @@ t('UI: Planiranje ispod Tematske karte, panel, vodič, dijeljenje KML-om', () =>
   ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', "'sjekacke-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
   assert.ok(H.indexOf('<script src="static/js/nagib-poligon.js">') < H.indexOf('<script src="static/js/sjekacke.js">'), 'DEM pomoćne funkcije prije');
   const js = R('static/js/sjekacke.js');
-  assert.ok(js.includes("style.pointerEvents = 'none'") && js.includes('_kartaKlikIzvor') && js.includes('name="usf_sjekacke"'));
+  assert.ok(js.includes("style.pointerEvents = 'none'") && js.includes('_kartaKlikIzvor') && js.includes('name="usf_oznaka"'), 'KML s natpisima linija');
+  assert.ok(!H.includes('sl-uvoz') && !H.includes('izOdjela') && !H.includes('Sjekačke partije uzbrdo'), 'bez uvoza, odjela pod centrom i uvodnog opisa');
+  assert.ok(H.includes('extData.usf_oznaka') && H.includes('class="kml-oznaka"'), 'Učitaj KML prikazuje natpise stalno');
   assert.ok(R('static/js/nagib-poligon.js').includes('window.npVisinaNa = visinaNa'));
   assert.ok(R('sw.js').includes("'./static/js/sjekacke.js'") && R('android/copy-assets.sh').includes('static/js/sjekacke.js'));
 });
