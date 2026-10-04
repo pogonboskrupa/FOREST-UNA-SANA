@@ -72,6 +72,13 @@
   bafer kao "Snimi trag" — `_drainNativeGpsBuffer` predaje tačke svim slušaocima
   `_bgSnimanja`): radi pod zaključanim ekranom; `usf_sjek_vodic` nastavlja vodič poslije
   ubijanja app-a. Površina (ha) samo u popup-u linije, ne na karti.
+  Alternativni prikaz (`p.prikaz='padine'`, `p.padine` {dijelovi, granice}): `citajPadine` čita
+  DEM mrežu 12–25 m → `slPadineMreza` (zaglađivanje, vrhovi histograma ekspozicije ≥ 60°
+  razmaka + k-means, modus, komponente, spajanje malih/sličnih < 35°) → granice greben/jarak
+  (`slGranicaLinija`) → `slRazdijeli` (slPodijeli redom; granica s krajem dalje od ruba čeka).
+  Svaka padina svoj pad, linije id `pN:`, `izbrisane` po padini; padina s izo linijama
+  dobija lepezu; partije se NE spajaju preko grebena (ostatak po padini). Računa se pri
+  pravljenju projekta, prekidač Osnovni/Alternativni u panelu.
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

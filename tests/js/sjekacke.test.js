@@ -237,6 +237,72 @@ t('vodič snima pod zaključanim ekranom (native servis), površina samo u info 
   assert.ok(js.includes("redovi.push(['Partija', fmt(lin.ha, 2) + ' ha'])"), 'ha ostaje u popup-u');
 });
 
+// Sintetički DEM za čitanje padina: mreža 40 × 30 ćelija po 20 m, šum ±1,5 m (krošnje)
+function teren(f, s = 20, nx = 40, ny = 30) {
+  const z = new Float64Array(nx * ny), u = new Uint8Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const x = (i - nx / 2) * s, y = (j - ny / 2) * s; z[j * nx + i] = f(x, y) + Math.sin(i * 7.3 + j * 3.1) * 1.5; u[j * nx + i] = i >= 3 && i < nx - 3 && j >= 3 && j < ny - 3 ? 1 : 0; }
+  return S.slPadineMreza(z, nx, ny, s, u, 60);
+}
+const azBlizu = (a, b, tol = 12) => S.slUgaoRazlika(a, b) <= tol;
+
+t('padine: jednolična padina = jedna, greben = dvije (Z | I), granica tipa greben', () => {
+  let r = teren(x => -0.3 * x);
+  assert.strictEqual(r.regije.length, 1); assert.ok(azBlizu(r.regije[0].azimut, 90) && Math.abs(r.regije[0].nagibPct - 30) < 3);
+  r = teren(x => -0.3 * Math.abs(x));
+  assert.strictEqual(r.regije.length, 2);
+  assert.deepStrictEqual(r.regije.map(q => Math.round(q.azimut / 90) * 90 % 360).sort((a, b) => a - b), [90, 270]);
+  assert.strictEqual(r.granice.length, 1); const g = r.granice[0];
+  assert.ok(g.greben > 3 * (g.jarak + 1), 'pad s obje strane od granice → greben');
+  assert.ok(g.tacke.every(([i]) => Math.abs(i - 20) <= 1.5), 'granica na hrptu (x = 0)');
+});
+
+t('padine: jarak, kupa (3 strane) i dva brda (sjever/jug + greben)', () => {
+  let r = teren((x, y) => 0.3 * Math.abs(x) + 0.1 * y);
+  assert.strictEqual(r.regije.length, 2); assert.ok(r.granice[0].jarak > 3 * (r.granice[0].greben + 1), 'voda se slijeva → jarak');
+  r = teren((x, y) => -0.3 * Math.hypot(x, y));
+  assert.ok(r.regije.length >= 3 && r.regije.length <= 4, 'kupa se dijeli na 3–4 ekspozicije');
+  r.regije.forEach(q => assert.ok(q.dosljednost > 0.75, 'svaka padina jednolična'));
+  r = teren((x, y) => 80 * Math.exp(-((x - 180) ** 2 + y ** 2) / 3e4) + 80 * Math.exp(-((x + 180) ** 2 + y ** 2) / 3e4));
+  assert.ok(r.regije.length >= 2 && r.granice.some(g => g.greben > g.jarak));
+});
+
+t('padine: male padine (< min ćelija) se spajaju sa susjedom', () => {
+  // mala izbočina 3 × 3 ćelije na jednoličnoj padini nije svoja padina
+  const r = teren((x, y) => -0.3 * x + (Math.abs(x) < 30 && Math.abs(y) < 30 ? 0.6 * x : 0));
+  assert.strictEqual(r.regije.length, 1);
+});
+
+t('podjela poligona po granici padina: dva dijela, granica do ruba', () => {
+  const geo = [pr(2, -90), pr(-3, -30), pr(1, 30), pr(-2, 92)];
+  const reg = [{ id: 0, tacke: [pr(-100, 0), pr(-60, 50), pr(-120, -60)] }, { id: 1, tacke: [pr(100, 0), pr(60, -50), pr(120, 60)] }];
+  const r = S.slRazdijeli(kvadrat, reg, [{ a: 0, b: 1, geo, tip: 'greben' }], 30, 0.5);
+  assert.strictEqual(r.dijelovi.length, 2);
+  const ha = r.dijelovi.map(d => S.slPoljaTeren(d.ring, [])[0]);
+  assert.ok(Math.abs(ha[0] + ha[1] - 6) < 0.05 && Math.abs(ha[0] - 3) < 0.15, ha.join('/'));
+  const g = r.granice[0].geo;
+  assert.ok(S.slDoRuba(g[0], kvadrat) < 0.01 && S.slDoRuba(g[g.length - 1], kvadrat) < 0.01, 'granica produžena do ruba');
+  // kraj daleko od ruba (Y-spoj): bez podjele, padine ostaju zajedno
+  const r2 = S.slRazdijeli(kvadrat, reg, [{ a: 0, b: 1, geo: geo.slice(0, 2) }], 30, 0.5);
+  assert.strictEqual(r2.dijelovi.length, 1);
+});
+
+t('granica padina: tačke ćelija → uređena linija od kraja do kraja', () => {
+  const tacke = []; for (let k = 0; k < 20; k++) tacke.push([k % 2 ? 1 : -1, k * 10]);
+  tacke.sort(() => 0.5 - Math.random());
+  const l = S.slGranicaLinija(tacke, 10);
+  assert.strictEqual(l.length, 20); assert.ok(Math.abs(l[0][1]) < 1e-9 && Math.abs(l[19][1] - 190) < 1e-9, 'krajevi su krajevi');
+  for (let i = 1; i < l.length; i++) assert.ok(l[i][1] > l[i - 1][1], 'redom');
+  assert.ok(l.slice(1, -1).every(q => Math.abs(q[0]) < 0.5), 'cik-cak ćelija zaglađen');
+});
+
+t('UI: alternativni prikaz (padine) — prekidač, padine bez spajanja partija preko grebena', () => {
+  const js = R('static/js/sjekacke.js');
+  assert.ok(js.includes('data-a="prikaz" data-v="padine"') && js.includes("p.padine = await citajPadine(p)") && js.includes("'p' + di + ':'"));
+  assert.ok(js.includes('partije se ne spajaju preko njega'), 'svaka padina svoje partije');
+  assert.ok(js.includes('<name>Granice padina</name>'), 'KML s granicama padina');
+  assert.ok(R('index.html').includes('.sl-prikaz button.on'));
+});
+
 (async () => {
   for (const [ime, fn] of testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + ime); } catch (e) { console.error('  ✘ ' + ime + '\n      ' + e.message); process.exitCode = 1; }
