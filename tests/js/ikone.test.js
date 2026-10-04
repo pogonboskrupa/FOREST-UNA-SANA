@@ -22,6 +22,9 @@ t('Android: mipmap po gustini, adaptivna pozadina u boji ikone, splash s ikonom'
     const p = 'android/app/src/main/res/mipmap-' + d + '/';
     assert.deepStrictEqual(dim(p + 'ic_launcher.png'), [s, s]); assert.deepStrictEqual(dim(p + 'ic_launcher_round.png'), [s, s]); assert.deepStrictEqual(dim(p + 'ic_launcher_foreground.png'), [fg, fg]);
   }
+  // bez providnih piksela u uglovima (launcher ih puni bijelim okvirom) — PNG RGB bez alfe
+  for (const f of ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', 'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png'])
+    assert.strictEqual(fs.readFileSync(R(f))[25], 2, f + ' mora biti RGB (bez alfa kanala)');
   const boje = fs.readFileSync(R('android/app/src/main/res/values/colors.xml'), 'utf8');
   assert.ok(boje.includes('<color name="ic_launcher_background">#02341C</color>') && boje.includes('<color name="colorSplash">#02341C</color>'));
   // <bitmap> na adaptivnu ikonu (mipmap-anydpi-v26 XML) ruši app pri pokretanju — samo PNG

@@ -28,6 +28,6 @@ assert.match(activity, /postUpdate\("downloading"/);
 assert.match(activity, /getPackageArchiveInfo/);
 assert.match(adaptiveIcon, /@drawable\/ic_launcher_foreground_inset/);
 assert.match(roundAdaptiveIcon, /@drawable\/ic_launcher_foreground_inset/);
-assert.match(insetIcon, /android:insetLeft="17dp"/);
+assert.match(insetIcon, /android:insetLeft="0dp"/);
 
 console.log('Release/build provjere: 14 prošlo, 0 palo');
