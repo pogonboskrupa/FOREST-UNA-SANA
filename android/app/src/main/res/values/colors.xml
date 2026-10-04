@@ -2,6 +2,6 @@
 <resources>
     <color name="colorPrimary">#16213e</color>
     <color name="colorBackground">#0f172a</color>
-    <color name="colorSplash">#42523C</color>
-    <color name="ic_launcher_background">#42523C</color>
+    <color name="colorSplash">#02341C</color>
+    <color name="ic_launcher_background">#02341C</color>
 </resources>

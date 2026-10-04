@@ -19,6 +19,7 @@ cp sw.js "$ASSETS_DIR/"
 # Ikone
 cp icon-192.png "$ASSETS_DIR/"
 cp icon-512.png "$ASSETS_DIR/"
+cp icon-maskable-512.png "$ASSETS_DIR/"
 cp apple-touch-icon.png "$ASSETS_DIR/"
 
 # GeoJSON / KML podaci (opciono, ne ruši build ako fajl ne postoji)

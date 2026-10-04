@@ -478,8 +478,56 @@ function slRazdijeli(ring, regije, granice, tol, minHa) {
   }
   return { dijelovi, granice: koristene };
 }
+// Poligon partije uz liniju j dijela di — ISTA podjela kao lin.ha (slPoljaTeren: tačka je u
+// traci = broj linija desno od kojih je), pa obris ćelija trake. L — od prethodne linije (ili
+// granice) do linije j, D — od linije j do sljedeće. dijelovi: [{ ring, geos }] s lijeva nadesno
+// (gledano uzbrdo); spajaj: rubne trake susjednih dijelova su jedna partija (drugi pad iza
+// sjekačke linije), za padine ne (greben dijeli partije). Vraća prstenove [lat, lon].
+function slTrakaObris(ring, geos, traka) {
+  const lat0 = ring.reduce((a, q) => a + q[0], 0) / ring.length, lon0 = ring.reduce((a, q) => a + q[1], 0) / ring.length;
+  const L = slLokalno(lat0, lon0), poly = ring.map(q => L.u(q[0], q[1])), ha = slPovrsinaXY(poly) / 1e4;
+  const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]), k = Math.max(2.5, Math.sqrt(ha * 1e4 / 12000));
+  const x0 = Math.min(...xs), y0 = Math.min(...ys), nx = Math.ceil((Math.max(...xs) - x0) / k), ny = Math.ceil((Math.max(...ys) - y0) / k);
+  const u = new Uint8Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const ll = L.n(x0 + (i + 0.5) * k, y0 + (j + 0.5) * k); if (!slUnutra(ll, ring)) continue;
+    let c = 0; for (const g of geos) if (slVodic({ geo: g }, ll[0], ll[1]).bocno > 0) c++;
+    if (c === traka) u[j * nx + i] = 1;
+  }
+  const U = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && u[j * nx + i] === 1;
+  // rubne stranice ćelija, usmjerene tako da je traka lijevo → zatvorene petlje
+  const iz = new Map(), kljuc = (i, j) => i + ',' + j, dodaj = (a, b) => { const kk = kljuc(...a); (iz.get(kk) || iz.set(kk, []).get(kk)).push(b); };
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    if (!U(i, j)) continue;
+    if (!U(i, j - 1)) dodaj([i, j], [i + 1, j]);
+    if (!U(i + 1, j)) dodaj([i + 1, j], [i + 1, j + 1]);
+    if (!U(i, j + 1)) dodaj([i + 1, j + 1], [i, j + 1]);
+    if (!U(i - 1, j)) dodaj([i, j + 1], [i, j]);
+  }
+  const petlje = [];
+  for (const [start, lista] of iz) {
+    while (lista.length) {
+      const p0 = start.split(',').map(Number), pet = [p0]; let v = lista.pop();
+      for (let n = 0; n < 1e6 && kljuc(...v) !== start; n++) { pet.push(v); const l = iz.get(kljuc(...v)); if (!l || !l.length) break; v = l.pop(); }
+      if (pet.length < 4) continue;
+      const geo = pet.map(([i, j]) => L.n(x0 + i * k, y0 + j * k));
+      // stepenice ćelija → glatka ivica; zatvorena petlja se dijeli na najdaljoj tački (DP treba dva kraja)
+      let m = 0, md = -1; geo.forEach((q, i) => { const d = (q[0] - geo[0][0]) ** 2 + (q[1] - geo[0][1]) ** 2; if (d > md) { md = d; m = i; } });
+      const g = slUprosti(geo.slice(0, m + 1), k * 0.75).concat(slUprosti(geo.slice(m).concat([geo[0]]), k * 0.75).slice(1, -1));
+      if (g.length >= 3) petlje.push(g);
+    }
+  }
+  return petlje;
+}
+function slPartija(dijelovi, di, j, sDesna, spajaj) {
+  const d = dijelovi[di]; if (!d || j < 0 || j >= d.geos.length) return [];
+  const out = slTrakaObris(d.ring, d.geos, sDesna ? j + 1 : j);
+  if (spajaj && !sDesna && j === 0) for (let k = di - 1; k >= 0; k--) { const p = dijelovi[k]; out.push(...slTrakaObris(p.ring, p.geos, p.geos.length)); if (p.geos.length) break; }
+  if (spajaj && sDesna && j === d.geos.length - 1) for (let k = di + 1; k < dijelovi.length; k++) { const p = dijelovi[k]; out.push(...slTrakaObris(p.ring, p.geos, 0)); if (p.geos.length) break; }
+  return out;
+}
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
+if (typeof module !== 'undefined' && module.exports) module.exports = { slPartija, slTrakaObris, slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
 
 (function () {
   if (typeof window === 'undefined' || typeof L === 'undefined' || typeof map === 'undefined') return;
@@ -491,7 +539,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slPadine
   const pisi = l => { try { localStorage.setItem(KLJUC, JSON.stringify(l)); return true; } catch (e) { showToast('⚠ Nema mjesta za čuvanje'); return false; } };
 
   map.createPane('sjekackePane'); map.getPane('sjekackePane').style.zIndex = '415'; map.getPane('sjekackePane').style.pointerEvents = 'none';
-  const grp = L.layerGroup().addTo(map);
+  const grp = L.layerGroup().addTo(map), lblGrp = L.layerGroup().addTo(map);
+  let natpisi = [];
   let aktivni = null, vodic = null; // vodic: { pid, lid, t }
 
   // ── Izvori poligona ───────────────────────────────────────────────────
@@ -744,7 +793,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slPadine
   // ── Karta ────────────────────────────────────────────────────────────
   function oznaka(lin) { return 'L' + lin.br + (lin.dio ? String.fromCharCode(97 + lin.dio) : ''); }
   function crtaj() {
-    grp.clearLayers();
+    grp.clearLayers(); natpisi = [];
     citaj().filter(p => p.vidljiv !== false).forEach(p => {
       const akt = p.id === aktivni;
       L.polygon(p.ring, { pane: 'sjekackePane', color: '#fde68a', weight: akt ? 2.5 : 1.5, dashArray: '6 4', fill: false, interactive: false }).addTo(grp);
@@ -754,9 +803,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slPadine
           if (!slIma(g.geo)) return;
           L.polyline(g.geo, { pane: 'sjekackePane', color: '#0b1220', weight: 6, opacity: 0.45, interactive: false }).addTo(grp);
           L.polyline(g.geo, { pane: 'sjekackePane', color: g.tip === 'jarak' ? '#7dd3fc' : '#f5f5f4', weight: 2.5, dashArray: '2 7', lineCap: 'round', interactive: false }).addTo(grp);
-          if (akt && !vodiOvdje) L.marker(g.geo[Math.floor(g.geo.length * 0.4)], { pane: 'sjekackePane', interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl sl-gran">${g.tip === 'greben' ? '⛰ greben' : g.tip === 'jarak' ? '〰 jarak' : 'prelom'}</span>` }) }).addTo(grp);
+          if (akt && !vodiOvdje) natpisi.push({ ll: g.geo[Math.floor(g.geo.length * 0.4)], t: g.tip === 'greben' ? '⛰ greben' : g.tip === 'jarak' ? '〰 jarak' : 'prelom', cls: 'sl-gran', prio: 20 });
         });
-        if (akt && !vodiOvdje) p.padine.dijelovi.forEach((d, i) => L.marker(d.c, { pane: 'sjekackePane', interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl sl-pad">${imeP(d, i)} ↘ ${d.nagibPct} %</span>` }) }).addTo(grp));
+        if (akt && !vodiOvdje) p.padine.dijelovi.forEach((d, i) => natpisi.push({ ll: d.c, t: imeP(d, i) + ' ↘ ' + d.nagibPct + ' %', cls: 'sl-pad', prio: 60 }));
       }
       p.linije.forEach(lin => {
         const s = STATUS[lin.status] || STATUS.ne, vodi = vodiOvdje && vodic.lid === lin.id;
@@ -770,11 +819,37 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slPadine
         if (akt || vodi || map.getZoom() >= 15) {
           // broj na oba kraja: radnik koji kreće odozdo i onaj koji provjerava s vrha vide istu oznaku
           L.circleMarker(lin.dno, { pane: 'sjekackePane', radius: 4, color: '#fff', weight: 1.5, fillColor: s.c, fillOpacity: 1, interactive: false }).addTo(grp);
-          L.marker(lin.dno, { pane: 'sjekackePane', interactive: false, opacity: prig, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl" style="--c:${s.c}">${oznaka(lin)}</span>` }) }).addTo(grp);
-          L.marker(lin.vrh, { pane: 'sjekackePane', interactive: false, opacity: prig, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl vrh" style="--c:${s.c}">${oznaka(lin)} ▲</span>` }) }).addTo(grp);
+          const g = slGeo(lin);
+          natpisi.push({ ll: lin.dno, od: g[1], t: oznaka(lin), c: s.c, op: prig, prio: vodi ? 100 : 50 - lin.br / 1000, tacka: 1 });
+          natpisi.push({ ll: lin.vrh, od: g[g.length - 2], t: oznaka(lin) + ' ▲', c: s.c, op: prig * 0.9, prio: vodi ? 90 : 30 - lin.br / 1000, tacka: 1 });
         }
       });
       if (vodiOvdje && slIma(vodic.trag)) L.polyline(vodic.trag, { pane: 'sjekackePane', color: '#22d3ee', weight: 4, opacity: 1, interactive: false }).addTo(grp);
+    });
+    postaviNatpise();
+  }
+  // Natpisi bez preklapanja: po prioritetu (vođena linija, padine, dno, granice, vrh) svaki
+  // dobija prvi slobodan položaj — produžetak linije van kraja (bliže pa dalje), pa bočno;
+  // ako nijedan nije slobodan, ne crta se (vidi se na većem zumu). Tačke krajeva su prepreke.
+  let mjera = null;
+  const sirina = t => { try { mjera = mjera || document.createElement('canvas').getContext('2d'); mjera.font = '800 11px system-ui, sans-serif'; return mjera.measureText(t).width + 14; } catch (e) { return t.length * 7 + 14; } };
+  function postaviNatpise() {
+    lblGrp.clearLayers();
+    const zauzeto = [], H = 18, sijece = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+    for (const n of natpisi) if (n.tacka) { const q = map.latLngToLayerPoint(n.ll); zauzeto.push([q.x - 5, q.y - 5, q.x + 5, q.y + 5]); }
+    natpisi.slice().sort((a, b) => b.prio - a.prio).forEach(n => {
+      const q = map.latLngToLayerPoint(n.ll), w = sirina(n.t);
+      let ux = 0, uy = 1; // smjer van kraja linije (od susjedne tačke prema kraju)
+      if (n.od) { const o = map.latLngToLayerPoint(n.od), d = Math.hypot(q.x - o.x, q.y - o.y); if (d > 0.5) { ux = (q.x - o.x) / d; uy = (q.y - o.y) / d; } }
+      const centri = n.od ? [9, 9 + H, 9 + 2 * H].map(r => [ux * (r + Math.abs(ux) * w / 2), uy * (r + Math.abs(uy) * H / 2)])
+        .concat([[-uy * (w / 2 + 8), ux * (H / 2 + 8)], [uy * (w / 2 + 8), -ux * (H / 2 + 8)]]) : [[0, 0], [0, H + 2], [0, -H - 2]];
+      for (const [cx, cy] of centri) {
+        const box = [q.x + cx - w / 2, q.y + cy - H / 2, q.x + cx + w / 2, q.y + cy + H / 2];
+        if (zauzeto.some(z => z !== null && sijece(z, box) && !(n.tacka && Math.abs(z[0] + 5 - q.x) < 0.5 && Math.abs(z[1] + 5 - q.y) < 0.5))) continue;
+        zauzeto.push(box);
+        L.marker(n.ll, { pane: 'sjekackePane', interactive: false, opacity: n.op == null ? 1 : n.op, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="sl-lbl${n.cls ? ' ' + n.cls : ''}" style="${n.c ? '--c:' + n.c + ';' : ''}transform:translate(${(cx - w / 2).toFixed(1)}px,${(cy - H / 2).toFixed(1)}px)">${esc(n.t)}</span>` }) }).addTo(lblGrp);
+        break;
+      }
     });
   }
   // strelice uzbrdo svakih ~60 m duž linije koju radnik prati
@@ -791,7 +866,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slPadine
     }
   }
   let zZadnji = map.getZoom();
-  map.on('zoomend', () => { const z = map.getZoom(); if ((z >= 15) !== (zZadnji >= 15)) crtaj(); zZadnji = z; });
+  map.on('zoomend', () => { const z = map.getZoom(); if ((z >= 15) !== (zZadnji >= 15)) crtaj(); else postaviNatpise(); zZadnji = z; });
   if (typeof _kartaKlikIzvor === 'function') _kartaKlikIzvor((ll, kp) => {
     const out = [];
     citaj().filter(p => p.vidljiv !== false).forEach(p => p.linije.forEach(lin => {
@@ -799,6 +874,34 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slPadine
     }));
     return out;
   });
+  // Dijelovi projekta kao u generisi (iz sačuvanih linija): poligon partije na klik linije.
+  function dijeloviProjekta(p) {
+    const sortiraj = l => l.filter(x => !x.dio).sort((a, b) => a.k - b.k);
+    if (altAktivan(p)) return { spajaj: false, d: p.padine.dijelovi.map((d, i) => ({ ring: d.ring, linije: sortiraj(p.linije.filter(x => x.padina === i)) })) };
+    if (p.zona) {
+      const raz = p.linije.find(x => x.id === p.zona.lid), pod = raz && slPodijeli(p.ring, slGeo(raz));
+      if (pod) {
+        const zR = p.zona.strana === 'L' ? pod.lijevo : pod.desno, aR = p.zona.strana === 'L' ? pod.desno : pod.lijevo;
+        const A = { ring: aR, linije: sortiraj(p.linije.filter(x => !x.zona)) }, Z = { ring: zR, linije: sortiraj(p.linije.filter(x => x.zona)) };
+        return { spajaj: true, d: p.zona.strana === 'L' ? [Z, A] : [A, Z] };
+      }
+    }
+    return { spajaj: true, d: [{ ring: p.ring, linije: sortiraj(p.linije) }] };
+  }
+  const partijaGrp = L.layerGroup().addTo(map);
+  function prikaziPartiju(p, lin) {
+    partijaGrp.clearLayers(); partijaT = Date.now();
+    if (lin.dio) return;
+    try {
+      const D = dijeloviProjekta(p), di = D.d.findIndex(d => d.linije.some(x => x.id === lin.id)); if (di < 0) return;
+      const j = D.d[di].linije.findIndex(x => x.id === lin.id), c = (STATUS[lin.status] || STATUS.ne).c;
+      const prst = slPartija(D.d.map(d => ({ ring: d.ring, geos: d.linije.map(slGeo) })), di, j, p.brojanje === 'D', D.spajaj);
+      if (prst.length) L.polygon(prst, { pane: 'sjekackePane', color: c, weight: 2, fillColor: c, fillOpacity: 0.28, fillRule: 'evenodd', interactive: false }).addTo(partijaGrp);
+    } catch (e) {}
+  }
+  // partija ostaje vidljiva i kad se popup zatvori (popup je prekriva); briše je dodir drugdje
+  let partijaT = 0;
+  map.on('click', () => setTimeout(() => { if (Date.now() - partijaT > 400) partijaGrp.clearLayers(); }, 60));
   function popup(p, lin, at) {
     const s = STATUS[lin.status] || STATUS.ne;
     const redovi = [['Dužina', fmt(lin.duz) + ' m'], ['Dno → vrh', (lin.hDno != null ? lin.hDno + ' m' : '—') + ' → ' + (lin.hVrh != null ? lin.hVrh + ' m' : '—')], ['Status', s.t]];
@@ -816,6 +919,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slPadine
         ...(!lin.zona && lin.padina == null ? [{ t: '✂ Drugi pad iza ove linije', on: `USFSjek.zona('${p.id}','${lin.id}')` }] : []),
         { t: '🗑 Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
     })).openOn(map);
+    prikaziPartiju(p, lin);
   }
 
   // ── GPS vodič ────────────────────────────────────────────────────────

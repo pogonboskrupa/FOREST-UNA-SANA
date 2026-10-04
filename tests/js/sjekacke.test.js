@@ -303,6 +303,28 @@ t('UI: alternativni prikaz (padine) — prekidač, padine bez spajanja partija p
   assert.ok(R('index.html').includes('.sl-prikaz button.on'));
 });
 
+t('poligon partije uz liniju: L od prethodne (granice) do linije, D do sljedeće; drugi pad spaja rub', () => {
+  const geos = [-90, -30, 30, 90].map(x => [pr(x, -100), pr(x, 100)]), D = [{ ring: kvadrat, geos }];
+  const ha = r => S.slPoljaTeren(r, [])[0];
+  let r = S.slPartija(D, 0, 0, false, true); assert.strictEqual(r.length, 1); assert.ok(Math.abs(ha(r[0]) - 1.2) < 0.03, 'L1: granica → L1');
+  r = S.slPartija(D, 0, 2, false, true); assert.ok(Math.abs(ha(r[0]) - 1.2) < 0.03);
+  assert.ok(r[0].every(q => { const x = L.u(q[0], q[1])[0]; return x >= -30.5 && x <= 30.5; }), 'L3: od L2 do L3');
+  r = S.slPartija(D, 0, 3, true, true); assert.ok(r[0].every(q => L.u(q[0], q[1])[0] >= 89.5), 'D: od linije do granice desno');
+  // dva dijela (drugi pad iza x = 0): prva partija desnog dijela se spaja sa zadnjom lijevog
+  const lijevo = [pr(-150, -100), pr(0, -100), pr(0, 100), pr(-150, 100)], desno = [pr(0, -100), pr(150, -100), pr(150, 100), pr(0, 100)];
+  const D2 = [{ ring: lijevo, geos: [geos[0]] }, { ring: desno, geos: [geos[3]] }];
+  r = S.slPartija(D2, 1, 0, false, true); assert.strictEqual(r.length, 2);
+  assert.ok(Math.abs(r.reduce((a, q) => a + ha(q), 0) - 3.6) < 0.05, 'od L1 lijevog dijela do L1 desnog = 180 m × 200 m');
+  assert.strictEqual(S.slPartija(D2, 1, 0, false, false).length, 1, 'padine: bez spajanja preko grebena');
+});
+
+t('natpisi bez preklapanja i poligon partije na klik linije', () => {
+  const js = R('static/js/sjekacke.js');
+  assert.ok(js.includes('function postaviNatpise()') && js.includes("else postaviNatpise();"), 'raspored natpisa na svaki zoom');
+  assert.ok(!/L\.marker\(lin\.(dno|vrh)/.test(js), 'krajevi linija idu kroz raspored, ne direktno');
+  assert.ok(js.includes('prikaziPartiju(p, lin);') && js.includes('slPartija(D.d.map'), 'klik na liniju crta partiju');
+});
+
 (async () => {
   for (const [ime, fn] of testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + ime); } catch (e) { console.error('  ✘ ' + ime + '\n      ' + e.message); process.exitCode = 1; }

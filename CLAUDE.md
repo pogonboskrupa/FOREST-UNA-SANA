@@ -79,6 +79,12 @@
   Svaka padina svoj pad, linije id `pN:`, `izbrisane` po padini; padina s izo linijama
   dobija lepezu; partije se NE spajaju preko grebena (ostatak po padini). Računa se pri
   pravljenju projekta, prekidač Osnovni/Alternativni u panelu.
+  Natpisi (`postaviNatpise`): prioritet + 4 položaja (van kraja linije, dalje, bočno), sakrij
+  ako nema mjesta; preračun na zoomend. Klik na liniju crta poligon partije (`slPartija` →
+  `slTrakaObris`: ista mreža/klasifikacija kao `slPoljaTeren`, pa površina = `lin.ha`).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
+- **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
+  `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`
+  (adaptivna pozadina `#02341C`, umetak 17dp za kružnu masku), splash s ikonom.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.
