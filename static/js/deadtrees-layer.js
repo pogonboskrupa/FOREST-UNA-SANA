@@ -171,6 +171,55 @@
     return { status: r.status, contentRange: r.headers.get('content-range'), buf: await r.arrayBuffer() };
   }
 
+  // ── Offline keš COG-a po blokovima od 64 KB (isto poravnanje kao geotiff.js BlockedSource):
+  // sve što se vidjelo (pločice svih zumova, projekcija površine, druga boja) radi i bez
+  // interneta. Pamti se samo dok je karta unutar USK (zaglavlje fajla uvijek — bez njega
+  // ništa ne radi offline). Godišnje karte se ne mijenjaju, pa keš nema rok trajanja.
+  const KES = 'usf-susenje', BLOK = 65536, KES_MAX = 4000, KES_BROJ = 'usf_susenje_kes_n';
+  const USK = { s: 44.20, w: 15.65, n: 45.30, e: 16.98 };
+  const imaKes = () => typeof caches !== 'undefined';
+  const kKljuc = (url, b) => 'https://usf.kes/dt/' + url.split('/').pop() + '/' + b;
+  const kMeta = url => 'https://usf.kes/dt/' + url.split('/').pop() + '/meta';
+  function kesBroj(d) { let n = 0; try { n = Number(localStorage.getItem(KES_BROJ)) || 0; if (d) localStorage.setItem(KES_BROJ, String(Math.max(0, n + d))); } catch (e) {} return n + (d || 0); }
+  function uUsk() {
+    try { if (typeof map === 'undefined' || !map.getCenter) return false; const c = map.getCenter(); return c.lat >= USK.s && c.lat <= USK.n && c.lng >= USK.w && c.lng <= USK.e; } catch (e) { return false; }
+  }
+  async function kesCitaj(url, t) {
+    if (!imaKes()) return null;
+    try {
+      const m = await caches.match(kMeta(url)); if (!m) return null;
+      const total = (await m.json()).total; if (!(total > 0)) return null;
+      const end = Math.min(t.end, total - 1); if (end < t.start) return null;
+      const b0 = Math.floor(t.start / BLOK), b1 = Math.floor(end / BLOK), out = new Uint8Array(end - t.start + 1);
+      for (let b = b0; b <= b1; b++) {
+        const r = await caches.match(kKljuc(url, b)); if (!r) return null;
+        const blok = new Uint8Array(await r.arrayBuffer()), bs = b * BLOK;
+        const od = Math.max(t.start, bs), doo = Math.min(end, bs + blok.length - 1);
+        if (doo < od) return null;
+        out.set(blok.subarray(od - bs, doo - bs + 1), od - t.start);
+      }
+      return { status: 206, contentRange: 'bytes ' + t.start + '-' + end + '/' + total, buf: out.buffer };
+    } catch (e) { return null; }
+  }
+  async function kesPisi(url, t, r) {
+    if (!imaKes()) return;
+    const cr = parsirajOpseg(r.contentRange); if (!cr || !(cr.total > 0)) return; // bez ukupne dužine nema sigurnog keša
+    if (t.start !== 0 && !uUsk()) return;
+    if (kesBroj() >= KES_MAX) return;
+    try {
+      const c = await caches.open(KES), buf = new Uint8Array(r.buf), kraj = cr.start + buf.length - 1;
+      await c.put(kMeta(url), new Response(JSON.stringify({ total: cr.total })));
+      for (let b = Math.ceil(cr.start / BLOK); b * BLOK <= kraj; b++) {
+        const bs = b * BLOK, be = Math.min(bs + BLOK, cr.total) - 1;
+        if (be > kraj) break; // blok nije cijeli u odgovoru
+        await c.put(kKljuc(url, b), new Response(buf.slice(bs - cr.start, be - cr.start + 1)));
+        kesBroj(1);
+      }
+    } catch (e) {}
+  }
+  async function kesInfo() { return { blokova: kesBroj(), mb: Math.round(kesBroj() * BLOK / 1048576), max: KES_MAX, puno: kesBroj() >= KES_MAX }; }
+  async function kesObrisi() { if (imaKes()) await caches.delete(KES); try { localStorage.removeItem(KES_BROJ); } catch (e) {} }
+
   let _zadnjaGreska = null;
   function rangeKlijent(url) {
     return {
@@ -179,13 +228,16 @@
         const h = (opts && opts.headers) || {};
         const t = parsirajOpseg(h.Range || h.range);
         if (!t) throw new Error('geotiff zahtjev bez Range zaglavlja');
-        let r;
-        try {
-          r = root.AndroidRange && root.AndroidRange.get
-            ? await nativniRange(url, t)
-            : await webRange(url, t, opts && opts.signal);
-          provjeriOdgovor(t, r.status, r.contentRange, r.buf.byteLength);
-        } catch (e) { _zadnjaGreska = e; throw e; }
+        let r = await kesCitaj(url, t);
+        if (!r) {
+          try {
+            r = root.AndroidRange && root.AndroidRange.get
+              ? await nativniRange(url, t)
+              : await webRange(url, t, opts && opts.signal);
+            provjeriOdgovor(t, r.status, r.contentRange, r.buf.byteLength);
+          } catch (e) { _zadnjaGreska = e; throw e; }
+          kesPisi(url, t, r);
+        }
         const cr = /^bytes \d+-\d+\/\d+$/.test(String(r.contentRange || '').trim()) ? String(r.contentRange).trim() : null;
         const hdr = { 'content-range': cr, 'content-type': 'image/tiff' };
         return { ok: true, status: 206, getHeader: n => hdr[String(n).toLowerCase()], getData: async () => r.buf };
@@ -413,5 +465,5 @@
     return { data: r[0], ww: x1 - x0, wh: y1 - y0, f, nodata: c.nodata, uLatLng };
   }
 
-  root.USFDeadtrees = { GODINE, PALETE, DETALJ_Z, cogUrl, alfa, boja, obrubi, maxBlok, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib, oznaciParcele, obrisi, procitajPodrucje };
+  root.USFDeadtrees = { kesInfo, kesObrisi, kesCitaj, kesPisi, BLOK, GODINE, PALETE, DETALJ_Z, cogUrl, alfa, boja, obrubi, maxBlok, projDef, izaberiNivo, parsirajOpseg, provjeriOdgovor, rangeKlijent, napraviSloj, ucitajLib, oznaciParcele, obrisi, procitajPodrucje };
 })(typeof window !== 'undefined' ? window : globalThis);

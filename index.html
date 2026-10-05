@@ -1242,6 +1242,10 @@ body.sl-uredi #sl-ured { display: block; }
 .tp-nap { font-size: 10.5px; color: var(--pn-dim); line-height: 1.4; margin: 2px 0 4px; }
 .veg-skala { display: flex; height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid #141414; margin-top: 6px; }
 .veg-skala i { flex: 1; }
+.sus-kes { margin: 0 0 12px; padding: 9px 11px; border-radius: 10px; border: 1px solid rgba(74,222,128,.35); background: rgba(74,222,128,.07); font-size: 12px; color: var(--pn-txt); }
+.sus-kes small { display: block; color: var(--pn-dim); margin-top: 2px; line-height: 1.4; }
+#sus-kes-stat { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; align-items: center; font-size: 11.5px; }
+#sus-kes-stat button { margin-left: auto; min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--pn-line); background: rgba(255,255,255,.04); color: var(--pn-txt); font-size: 11.5px; }
 .veg-skala-br { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--pn-dim); }
 /* Pokretna legenda NDVI/EVI/NDMI na karti (vegetacija.js legendaNaKarti) */
 #veg-map-leg { position: fixed; left: 8px; top: calc(112px + env(safe-area-inset-top)); z-index: 489; width: 236px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 210px); overflow: auto; background: rgba(15,23,42,.94); border: 1px solid #475569; border-radius: 12px; color: #e2e8f0; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
@@ -1820,6 +1824,7 @@ body.sl-uredi #sl-ured { display: block; }
 <div id="susenje-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪲 Sušenje-potkornjak</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
+    <div class="sus-kes"><b>💾 Sve što učitaš u USK ostaje na telefonu</b><small>Očitanja tla i potkornjaka, NDVI pločice i karte sušenja koje si vidio rade i bez interneta (samo unutar Unsko-sanskog kantona).</small><div id="sus-kes-stat"></div></div>
     <section class="uk-grupa">
       <h3>Tlo i potkornjak <small>vlažnost i temperatura tla, razvoj potkornjaka · zadnji rezultat radi bez interneta</small></h3>
       <div class="tp-kartica">
@@ -6049,7 +6054,24 @@ function _sumProjPanel() {
 }
 if (_sumProjOn() && _SUM_LAYERS.susenje) { map.on('moveend', _sumProjZakazi); map.whenReady(() => setTimeout(_sumProjRacunaj, 1500)); }
 function openSumarstvoSection() { _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
-function openSusenjeSection() { _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); }
+function openSusenjeSection() { _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
+// Pregled offline keša sekcije (tlo: usf_tlo_mjesta, NDVI: Cache 'usf-veg', sušenje: Cache 'usf-susenje').
+async function _susKesStat() {
+  const el = document.getElementById('sus-kes-stat'); if (!el) return;
+  let mjesta = 0, ndvi = 0, sus = { mb: 0, puno: false };
+  try { mjesta = Object.keys(JSON.parse(localStorage.getItem('usf_tlo_mjesta') || '{}')).length; } catch(e) {}
+  try { if (typeof caches !== 'undefined') ndvi = (await (await caches.open('usf-veg')).keys()).length; } catch(e) {}
+  try { if (window.USFDeadtrees) sus = await USFDeadtrees.kesInfo(); } catch(e) {}
+  el.innerHTML = `<span>🪲 ${mjesta} ${mjesta % 10 === 1 && mjesta % 100 !== 11 ? 'mjesto' : 'mjesta'}</span><span>🛰 ${ndvi} NDVI pločica</span><span>🟨 sušenje ${sus.mb} MB${sus.puno ? ' (puno)' : ''}</span>` +
+    (mjesta || ndvi || sus.mb ? `<button onclick="_susKesObrisi()">🗑 Obriši zapamćeno</button>` : '');
+}
+async function _susKesObrisi() {
+  if (!confirm('Obrisati sve zapamćeno za rad bez interneta (tlo i potkornjak, NDVI, sušenje)?')) return;
+  try { localStorage.removeItem('usf_tlo_mjesta'); } catch(e) {}
+  try { if (typeof caches !== 'undefined') await caches.delete('usf-veg'); } catch(e) {}
+  try { if (window.USFDeadtrees) await USFDeadtrees.kesObrisi(); } catch(e) {}
+  _susKesStat(); showToast('🗑 Zapamćeni podaci obrisani');
+}
 // Stanje prekidača i izbornika Šumarstva i Sušenja (isti _SUM_LAYERS, ID-ovi u oba panela).
 function _sumPanelOsvjezi() {
   Object.keys(_SUM_LAYERS).forEach(key => {

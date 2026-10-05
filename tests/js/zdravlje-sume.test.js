@@ -97,6 +97,21 @@ t('WMS: okvir pločice 512 px u EPSG:3857, TIME, ID provjeren', () => {
   assert.ok(u.startsWith('https://sh.dataspace.copernicus.eu/ogc/wms/0b1c2d3e-') && /WIDTH=512&HEIGHT=512/.test(u) && /EVALSCRIPT=/.test(u) && /PRIORITY=leastCC/.test(u));
 });
 
+t('tlo i potkornjak: pamćenje po ćeliji 0,1° samo u USK, najbliže očitanje offline', () => {
+  const r = (lat, lon, ts) => ({ lat, lon, ts });
+  let m = T.zapamtiMjesto({}, r(44.751, 16.297, 1));
+  m = T.zapamtiMjesto(m, r(44.95, 16.31, 2));           // druga ćelija
+  assert.strictEqual(T.zapamtiMjesto(m, r(44.79, 16.31, 9))[T.celija(44.751, 16.297)].ts, 9, 'novije očitanje u istoj ćeliji zamjenjuje staro');
+  m = T.zapamtiMjesto(m, r(44.77, 17.19, 3));           // Banja Luka — van USK
+  assert.ok(!Object.values(m).some(x => x.lon > 17), 'van USK se ne pamti');
+  assert.ok(m[T.celija(44.751, 16.297)], 'ključ = ćelija 0,1°');
+  const n = T.najblizeMjesto(m, 44.752, 16.299);
+  assert.ok(n && n.km < 1 && n.r.ts === 1, 'ista lokacija → to očitanje');
+  assert.strictEqual(T.najblizeMjesto(m, 45.2, 15.8), null, 'dalje od 15 km → nema');
+  let veliki = {}; for (let i = 0; i < 200; i++) veliki = T.zapamtiMjesto(veliki, r(44.2 + (i % 11) * 0.1, 15.7 + Math.floor(i / 11) * 0.07, i));
+  assert.ok(Object.keys(veliki).length <= 160, 'ograničen broj mjesta');
+});
+
 t('pokretna legenda na karti: opis za svaku klasu svakog indeksa', () => {
   for (const k of Object.keys(V.INDEKSI)) {
     const I = V.INDEKSI[k];

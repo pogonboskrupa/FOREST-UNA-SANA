@@ -171,6 +171,49 @@ t('projekcija površine: checkbox, vlastiti pane iznad sušenja, prag i površin
   assert.strictEqual(typeof D.procitajPodrucje, 'function');
 });
 
+t('offline keš COG-a: blokovi 64 KB, tačni bajtovi iz keša, samo unutar USK (zaglavlje uvijek)', async () => {
+  const store = new Map(), kesevi = new Map();
+  globalThis.caches = {
+    open: async n => { if (!kesevi.has(n)) kesevi.set(n, new Map()); const m = kesevi.get(n); return { put: async (k, r) => { const b = await r.arrayBuffer(); m.set(k, b); store.set(k, b); }, keys: async () => [...m.keys()] }; },
+    match: async k => store.has(k) ? new Response(store.get(k).slice(0)) : undefined,
+    delete: async n => { const m = kesevi.get(n); if (m) for (const k of m.keys()) store.delete(k); return kesevi.delete(n); }
+  };
+  const ls = new Map(); globalThis.localStorage = { getItem: k => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => ls.set(k, String(v)), removeItem: k => ls.delete(k) };
+  const url = D.cogUrl('deadwood', '2025'), B = D.BLOK, total = 5 * B + 1000;
+  const fajl = new Uint8Array(total); for (let i = 0; i < total; i++) fajl[i] = (i * 31 + 7) & 255;
+  const odg = (a, b) => ({ status: 206, contentRange: 'bytes ' + a + '-' + b + '/' + total, buf: fajl.slice(a, b + 1).buffer });
+  globalThis.map = { getCenter: () => ({ lat: 44.75, lng: 16.30 }) };          // Bosanska Krupa
+  await D.kesPisi(url, { start: B, end: 3 * B - 1 }, odg(B, 3 * B - 1));          // blokovi 1 i 2
+  let r = await D.kesCitaj(url, { start: B + 100, end: 2 * B + 50 });
+  assert.ok(r, 'dio unutar zapamćenih blokova se čita iz keša');
+  assert.deepStrictEqual(new Uint8Array(r.buf), fajl.slice(B + 100, 2 * B + 51));
+  assert.strictEqual(r.contentRange, 'bytes ' + (B + 100) + '-' + (2 * B + 50) + '/' + total, 'geotiff.js dobija ukupnu dužinu');
+  assert.strictEqual(await D.kesCitaj(url, { start: 2 * B, end: 4 * B - 1 }), null, 'nedostaje blok 3 → mreža');
+  // zadnji (kraći) blok fajla
+  await D.kesPisi(url, { start: 5 * B, end: 6 * B - 1 }, odg(5 * B, total - 1));
+  r = await D.kesCitaj(url, { start: 5 * B, end: 6 * B - 1 });
+  assert.ok(r && r.buf.byteLength === 1000, 'kraj fajla');
+  // van USK (Banja Luka): ne pamti, osim zaglavlja (od bajta 0)
+  globalThis.map = { getCenter: () => ({ lat: 44.77, lng: 17.19 }) };
+  await D.kesPisi(url, { start: 3 * B, end: 4 * B - 1 }, odg(3 * B, 4 * B - 1));
+  assert.strictEqual(await D.kesCitaj(url, { start: 3 * B, end: 4 * B - 1 }), null, 'van USK se ne pamti');
+  await D.kesPisi(url, { start: 0, end: B - 1 }, odg(0, B - 1));
+  assert.ok(await D.kesCitaj(url, { start: 0, end: 1023 }), 'zaglavlje COG-a uvijek (bez njega ništa offline)');
+  assert.strictEqual((await D.kesInfo()).blokova, 4);
+  await D.kesObrisi();
+  assert.strictEqual(await D.kesCitaj(url, { start: 0, end: 1023 }), null);
+  assert.strictEqual((await D.kesInfo()).blokova, 0);
+  // bez ukupne dužine (CORS ne izloži Content-Range) — ne pamti, nema rizika krivih bajtova
+  await D.kesPisi(url, { start: 0, end: B - 1 }, { status: 206, contentRange: null, buf: fajl.slice(0, B).buffer });
+  assert.strictEqual(await D.kesCitaj(url, { start: 0, end: 10 }), null);
+  delete globalThis.map; delete globalThis.caches;
+});
+
+t('range klijent prvo čita iz keša (radi bez mreže)', () => {
+  assert.ok(SRC.includes('let r = await kesCitaj(url, t);') && SRC.includes('kesPisi(url, t, r);'));
+  assert.ok(HTML.includes('id="sus-kes-stat"') && HTML.includes('async function _susKesStat()'));
+});
+
 (async () => {
   for (const [name, fn] of _testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + name); }

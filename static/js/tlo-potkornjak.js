@@ -11,7 +11,27 @@
   const API = 'https://api.open-meteo.com/v1/forecast', ARH = 'https://archive-api.open-meteo.com/v1/archive';
   const SLOJEVI = [['0_to_7cm', '0–7 cm'], ['7_to_28cm', '7–28 cm'], ['28_to_100cm', '28–100 cm']];
   const PRAG = 8.3, PRAG_GORNJI = 38.9, SUMA_ROJENJE = 140, TMAX_LET = 16.5, SUMA_GEN = 557, DAN_DIJAPAUZA = 14.5;
-  const KLJUC_ZADNJE = 'usf_tlo_zadnje', KLJUC_KLIMA = 'usf_tlo_klima_';
+  const KLJUC_ZADNJE = 'usf_tlo_zadnje', KLJUC_KLIMA = 'usf_tlo_klima_', KLJUC_MJESTA = 'usf_tlo_mjesta';
+  // Svako očitanje unutar USK se pamti po ćeliji 0,1° (kao klimatologija); bez interneta se
+  // prikazuje očitanje najbliže lokaciji (≤ ~15 km), inače zadnje.
+  const USK = { s: 44.20, w: 15.65, n: 45.30, e: 16.98 }, MJESTA_MAX = 160;
+  const uUsk = (lat, lon) => lat >= USK.s && lat <= USK.n && lon >= USK.w && lon <= USK.e;
+  const celija = (lat, lon) => (Math.round(lat * 10) / 10).toFixed(1) + ',' + (Math.round(lon * 10) / 10).toFixed(1);
+  function zapamtiMjesto(mjesta, r) {
+    if (!uUsk(r.lat, r.lon)) return mjesta;
+    const m = { ...mjesta, [celija(r.lat, r.lon)]: r }, k = Object.keys(m);
+    if (k.length > MJESTA_MAX) k.sort((a, b) => m[a].ts - m[b].ts).slice(0, k.length - MJESTA_MAX).forEach(x => delete m[x]);
+    return m;
+  }
+  function najblizeMjesto(mjesta, lat, lon, maxKm = 15) {
+    let naj = null, nd = Infinity;
+    for (const r of Object.values(mjesta || {})) {
+      const d = Math.hypot((r.lat - lat) * 111.2, (r.lon - lon) * 111.2 * Math.cos(lat * Math.PI / 180));
+      if (d < nd) { nd = d; naj = r; }
+    }
+    return naj && nd <= maxKm ? { r: naj, km: nd } : null;
+  }
+  const citajMjesta = () => { try { return JSON.parse(localStorage.getItem(KLJUC_MJESTA) || '{}') || {}; } catch (e) { return {}; } };
   const Q = 21; // kvantili 0, 5, …, 100 %
 
   // ── Čiste funkcije (testovi) ─────────────────────────────────────────
@@ -225,28 +245,33 @@
     if (gps) return { lat: lastP.la, lon: lastP.lo, izvor: 'GPS' };
     const c = map.getCenter(); return { lat: c.lat, lon: c.lng, izvor: 'centar karte' };
   }
-  function prikaziZadnje(poruka) {
+  function prikaziZadnje(poruka, l) {
     const el = document.getElementById('tp-rez'); if (!el) return;
     let z = null; try { z = JSON.parse(localStorage.getItem(KLJUC_ZADNJE) || 'null'); } catch (e) {}
-    el.innerHTML = (poruka ? `<div class="uk-status">${poruka}</div>` : '') + (z ? html(z, true) : '');
+    const mjesta = citajMjesta(), n = Object.keys(mjesta).length, bl = l && najblizeMjesto(mjesta, l.lat, l.lon);
+    if (bl) { z = bl.r; poruka = (poruka || '') + ` Zapamćeno očitanje ${bl.km < 1 ? 'za ovu lokaciju' : 'udaljeno ' + fmt(bl.km, 1) + ' km'}.`; }
+    else if (l && z) poruka = (poruka || '') + ' Za ovu lokaciju nema zapamćenog — prikazano zadnje.';
+    el.innerHTML = (poruka ? `<div class="uk-status">${poruka.trim()}</div>` : '') + (z ? html(z, true) : '') +
+      (n ? `<div class="tp-nap">💾 Zapamćeno ${n} ${n % 10 === 1 && n % 100 !== 11 ? 'mjesto' : 'mjesta'} u USK za rad bez interneta.</div>` : '');
   }
   async function osvjezi() {
     if (radi) return;
     const el = document.getElementById('tp-rez'), dug = document.getElementById('tp-osvjezi');
     const l = lokacija();
-    if (navigator.onLine === false) { prikaziZadnje('📴 Bez interneta — prikazano zadnje očitanje.'); return; }
+    if (navigator.onLine === false) { prikaziZadnje('📴 Bez interneta.', l); return; }
     radi = true; if (dug) dug.disabled = true;
     if (el) el.insertAdjacentHTML('afterbegin', `<div class="uk-status" id="tp-cek">⏳ Očitavam za ${l.izvor}… (prvi put i klimatologija 1991–2020)</div>`);
     try {
       const r = await izracunaj(l.lat, l.lon); r.izvor = l.izvor;
       try { localStorage.setItem(KLJUC_ZADNJE, JSON.stringify(r)); } catch (e) {}
+      try { localStorage.setItem(KLJUC_MJESTA, JSON.stringify(zapamtiMjesto(citajMjesta(), r))); } catch (e) {}
       if (el) el.innerHTML = html(r, false);
     } catch (e) {
-      prikaziZadnje('⚠ ' + e.message + ' — prikazano zadnje očitanje.');
+      prikaziZadnje('⚠ ' + e.message + '.', l);
     } finally { radi = false; if (dug) dug.disabled = false; }
   }
 
-  root.USFTlo = { osvjezi, prikaziZadnje, izracunaj, phenips, duzinaDana, klimaKvantili, percentil, klasaSusnosti, dnevno, rizik };
+  root.USFTlo = { zapamtiMjesto, najblizeMjesto, celija, osvjezi, prikaziZadnje, izracunaj, phenips, duzinaDana, klimaKvantili, percentil, klasaSusnosti, dnevno, rizik };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.USFTlo;
   if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', () => prikaziZadnje(''));
 })(typeof window !== 'undefined' ? window : globalThis);
