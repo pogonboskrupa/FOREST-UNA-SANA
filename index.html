@@ -1639,6 +1639,7 @@ body.sl-uredi #sl-ured { display: block; }
       <div class="set-grid" id="set-podaci"></div>
       <div class="rd-akc"><button class="glavno" onclick="_setBackup()">⤓ Rezervna kopija</button><button onclick="document.getElementById('set-restore-input').click()">⤒ Vrati iz kopije</button></div>
       <input type="file" id="set-restore-input" accept=".json,application/json" style="display:none" onchange="_setRestore(event)">
+      <div class="rd-akc"><button id="set-pin-zakljucaj" hidden onclick="_pinZakljucaj()">🔒 Zaključaj zaštićene sekcije</button></div>
       <p class="set-nap">Kopija (.json) sadrži tragove, mjerenja, KML slojeve, trase, mjerenja nagiba, postavke i API ključeve — ne dijeli je. Offline karte (.mbtiles) nisu u kopiji; to su već fajlovi na telefonu. Korisno pri prelasku na novi telefon.</p>
     </section>
 
@@ -6053,8 +6054,49 @@ function _sumProjPanel() {
   </div>`;
 }
 if (_sumProjOn() && _SUM_LAYERS.susenje) { map.on('moveend', _sumProjZakazi); map.whenReady(() => setTimeout(_sumProjRacunaj, 1500)); }
-function openSumarstvoSection() { _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
-function openSusenjeSection() { _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
+// ── PIN za Šumarstvo, Sušenje-potkornjak, Požari i Projektovanje puta ─────────
+// Unosi se jednom po telefonu; otključanost (localStorage, preživi APK update) je vezana za
+// heš, pa promjena PIN-a u kodu ponovo zaključa sve telefone. U kodu je samo SHA-256 heš sa
+// solju — brava za radoznale, ne prava zaštita (app nema server, 4 cifre se mogu pogoditi).
+const _PIN_SOL = 'usf-sekcije-v1:', _PIN_HES = '6e1a9a8227c06218ae40ac4dac59063993983ac63013db0d813953a17e6d5b21', _PIN_KLJUC = 'usf_pin_ok', _PIN_GRESKE = 'usf_pin_greske';
+async function _pinHes(t) {
+  const b = new TextEncoder().encode(_PIN_SOL + t);
+  const d = await crypto.subtle.digest('SHA-256', b);
+  return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function _pinOtkljucano() { try { return localStorage.getItem(_PIN_KLJUC) === _PIN_HES.slice(0, 16); } catch(e) { return false; } }
+async function _pinTrazi(nastavi) {
+  let g = {}; try { g = JSON.parse(localStorage.getItem(_PIN_GRESKE) || '{}') || {}; } catch(e) {}
+  const ceka = Math.ceil(((g.do || 0) - Date.now()) / 1000);
+  if (ceka > 0) { showToast('🔒 Previše pogrešnih pokušaja — pokušaj za ' + ceka + ' s'); return; }
+  const upit = _dlgPrompt('Šumarstvo, Sušenje-potkornjak, Požari i Projektovanje puta su zaštićeni. Unesi PIN (unosi se jednom na ovom telefonu).', '', { title: '🔒 PIN', inputType: 'password', okLabel: 'Otključaj' });
+  const polje = document.getElementById('dlg-input');
+  if (polje) { polje.setAttribute('inputmode', 'numeric'); polje.maxLength = 4; } // numerička tastatura
+  const unos = await upit;
+  if (polje) { polje.removeAttribute('inputmode'); polje.removeAttribute('maxlength'); } // dijalog dijele i drugi unosi
+  if (unos == null) return;
+  let ok = false;
+  try { ok = /^\d{4}$/.test(String(unos).trim()) && await _pinHes(String(unos).trim()) === _PIN_HES; } catch(e) { showToast('⚠ PIN se ne može provjeriti: ' + e.message); return; }
+  if (!ok) {
+    const n = (g.n || 0) + 1;
+    try { localStorage.setItem(_PIN_GRESKE, JSON.stringify(n >= 5 ? { n: 0, do: Date.now() + 30000 } : { n })); } catch(e) {}
+    showToast(n >= 5 ? '🔒 Pogrešan PIN — pauza 30 s' : '⚠ Pogrešan PIN');
+    return;
+  }
+  try { localStorage.setItem(_PIN_KLJUC, _PIN_HES.slice(0, 16)); localStorage.removeItem(_PIN_GRESKE); } catch(e) {}
+  showToast('🔓 Sekcije otključane');
+  if (typeof _meniStatusRender === 'function') _meniStatusRender();
+  _pinPostavkeUi();
+  nastavi();
+}
+function _pinZakljucaj() {
+  try { localStorage.removeItem(_PIN_KLJUC); } catch(e) {}
+  if (typeof _meniStatusRender === 'function') _meniStatusRender();
+  _pinPostavkeUi(); showToast('🔒 Sekcije zaključane');
+}
+function _pinPostavkeUi() { const b = document.getElementById('set-pin-zakljucaj'); if (b) b.hidden = !_pinOtkljucano(); }
+function openSumarstvoSection() { if (!_pinOtkljucano()) { _pinTrazi(openSumarstvoSection); return; } _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
+function openSusenjeSection() { if (!_pinOtkljucano()) { _pinTrazi(openSusenjeSection); return; } _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
 // Pregled offline keša sekcije (tlo: usf_tlo_mjesta, NDVI: Cache 'usf-veg', sušenje: Cache 'usf-susenje').
 async function _susKesStat() {
   const el = document.getElementById('sus-kes-stat'); if (!el) return;
@@ -7810,6 +7852,7 @@ function _poziRenderPanel() {
   const simLista = document.getElementById('poz-sim-lista'); if (simLista) simLista.innerHTML = _poziSimListaHtml();
 }
 async function openPozariSection() {
+  if (!_pinOtkljucano()) { _pinTrazi(openPozariSection); return; }
   _openStubPanel('pozari-panel', 'meni');
   // Godišnji GFW prikaz ne smije krenuti prije dolaska zajedničkog API ključa;
   // bez ovoga otvaranje panela odmah poslije pokretanja daje lažno praznu godinu.
@@ -8187,6 +8230,7 @@ const _RD_PT_CFG = {
 };
 
 function openPutSection() {
+  if (!_pinOtkljucano()) { _pinTrazi(openPutSection); return; }
   _openStubPanel('put-panel', 'meni');
   Object.keys(RD_DEFAULT_PARAMS).forEach(k => {
     const el = document.getElementById('rd-p-' + k);
@@ -9438,7 +9482,7 @@ function switchMainTab(tab) {
   _ALL_PANELS.forEach(id => document.getElementById(id)?.classList.remove('show'));
   if (tab === 'karte') { document.getElementById('karte-panel').classList.add('show'); _renderKartaBaseList(); }
   else if (tab === 'meni') { document.getElementById('meni-panel').classList.add('show'); _meniStatusRender(); }
-  else if (tab === 'postavke') { document.getElementById('postavke-panel').classList.add('show'); _renderPostavke(); }
+  else if (tab === 'postavke') { document.getElementById('postavke-panel').classList.add('show'); _renderPostavke(); _pinPostavkeUi(); }
   // 'karta' — svi paneli sakriveni, mapa i FAB-ovi ispod su već vidljivi
 }
 // Čista funkcija: stanje → tekst statusa po kartici ('' = bez oznake).
@@ -9472,6 +9516,7 @@ function _meniStatusRender() {
     };
   } catch (e) { return; }
   const s = _meniStatusi(st);
+  if (typeof _pinOtkljucano === 'function' && !_pinOtkljucano()) ['sumarstvo', 'susenje', 'pozari', 'put'].forEach(k => { s[k] = { t: '🔒', on: false }; });
   Object.keys(s).forEach(k => {
     const el = document.getElementById('mc-stat-' + k);
     if (!el) return;

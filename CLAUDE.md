@@ -106,6 +106,11 @@
   adaptivni foreground: sadržaj ~83 % vidljivih 72dp, umetak 0, pozadina `#02341C`;
   splash `drawable-nodpi/splash_logo.png`
   — `<bitmap>` NIKAD na `@mipmap/ic_launcher` (adaptive XML na API 26+ ⇒ pad pri pokretanju).
+- **PIN za Šumarstvo, Sušenje-potkornjak, Požari, Projektovanje puta**: kapija
+  `if (!_pinOtkljucano()) { _pinTrazi(<fn>); return; }` na vrhu `open*Section`. U kodu samo
+  `_PIN_HES` = sha256(`_PIN_SOL` + PIN) — PIN NIKAD u repo/commit/test. Otključano:
+  localStorage `usf_pin_ok` = `_PIN_HES.slice(0,16)` (preživi update; novi PIN ⇒ ponovo zaključa).
+  5 grešaka ⇒ pauza 30 s (`usf_pin_greske`); Postavke → „Zaključaj zaštićene sekcije”.
 - **Birač fajlova u APK-u** (`onShowFileChooser`): offline karta se prepoznaje u
   `IzborFajla.jeOfflineKarta` po CIJELIM tokenima accept-a (`.dbf` iz KML/SHP birača sadrži
   `.db` — podstring je slao svaki KML u uvoz offline karte). Test: `android/test-java/IzborFajlaTest.java`.
