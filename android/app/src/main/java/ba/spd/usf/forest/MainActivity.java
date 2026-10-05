@@ -138,6 +138,7 @@ public class MainActivity extends Activity {
         requestPermissions();
         setupWebView();
         registerRecActionReceiver();
+        primiFajl(getIntent());
 
         if (!reusedWebView) {
             if (savedInstanceState != null) {
@@ -1178,6 +1179,15 @@ public class MainActivity extends Activity {
     // false. Koristi se VEĆ postojeći FileProvider da se privremeni fajl u
     // cache-u podijeli preko pravog Intent.ACTION_SEND chooser-a.
     class ShareBridge {
+        // Fajl otvoren iz druge aplikacije (primiFajl) — JS ga uzima jednom.
+        @JavascriptInterface
+        public String uzmiDolazni() {
+            String ime = dolazniIme, b64 = dolazniB64;
+            dolazniIme = null; dolazniB64 = null;
+            if (b64 == null) return "";
+            try { return new JSONObject().put("ime", ime).put("b64", b64).toString(); } catch (Exception e) { return ""; }
+        }
+
         @JavascriptInterface
         public void shareFile(String filename, String dataUrl, String title, String text) {
             try {
@@ -1220,6 +1230,54 @@ public class MainActivity extends Activity {
             if (filename.endsWith(".json")) return "application/json";
             return "application/octet-stream";
         }
+    }
+
+    // ── KML/KMZ iz Vibera, WhatsAppa, maila, Quick Sharea ("Otvori u Grmeč Navigator") ──
+    // launchMode singleTask: novi fajl dok je app otvoren dolazi kroz onNewIntent u isti WebView.
+    private volatile String dolazniIme, dolazniB64;
+    private static final int MAX_DOLAZNI = 40 * 1024 * 1024;
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        primiFajl(intent);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void primiFajl(Intent intent) {
+        if (intent == null) return;
+        String akcija = intent.getAction();
+        Uri uri = null;
+        if (Intent.ACTION_VIEW.equals(akcija)) uri = intent.getData();
+        else if (Intent.ACTION_SEND.equals(akcija)) uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        if (uri == null) return;
+        final Uri u = uri;
+        intent.setAction(Intent.ACTION_MAIN); // rotacija/ponovno kreiranje ne učitava isti fajl dvaput
+        new Thread(() -> {
+            try (InputStream in = getContentResolver().openInputStream(u)) {
+                if (in == null) throw new IOException("prazan fajl");
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                byte[] buf = new byte[65536]; int n;
+                while ((n = in.read(buf)) > 0) {
+                    out.write(buf, 0, n);
+                    if (out.size() > MAX_DOLAZNI) throw new IOException("fajl je veći od 40 MB");
+                }
+                dolazniIme = imeFajla(u);
+                dolazniB64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP);
+                runOnUiThread(() -> { if (webView != null) webView.evaluateJavascript("window._dolazniFajl&&_dolazniFajl()", null); });
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Fajl nije otvoren: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    private String imeFajla(Uri u) {
+        try (Cursor c = getContentResolver().query(u, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (c != null && c.moveToFirst() && !c.isNull(0)) return c.getString(0);
+        } catch (Exception ignored) {}
+        String s = u.getLastPathSegment();
+        return s != null ? s : "dijeljeno.kml";
     }
 
     class GpsBridge {

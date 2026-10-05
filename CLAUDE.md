@@ -82,6 +82,12 @@
   Natpisi (`postaviNatpise`): prioritet + 4 položaja (van kraja linije, dalje, bočno), sakrij
   ako nema mjesta; preračun na zoomend. Klik na liniju crta poligon partije (`slPartija` →
   `slTrakaObris`: ista mreža/klasifikacija kao `slPoljaTeren`, pa površina = `lin.ha`).
+  Dijeljenje: KML nosi cijeli projekat (Document ExtendedData `usf_sjekacke` = base64 JSON,
+  `usf_fokus` = linija za "📤 Pošalji liniju"); "Učitaj KML"/primljeni fajl → `USFSjek.izKml`
+  (otvori ili spoji; Odustani = obični KML sloj). Spajanje `slSpojiProjekte`: plan iz novijeg
+  `p.tPlan` (`planIzmjena` pri promjeni rasporeda), stanje linije iz novijeg `lin.t` (`dodirni`
+  pri statusu/radniku/lomu/GPS-u). APK prima KML/KMZ iz drugih app-ova (intent VIEW/SEND,
+  `launchMode singleTask`, `primiFajl` → `AndroidShare.uzmiDolazni()` → JS `_dolazniFajl`).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
 - **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
   `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`. Sve

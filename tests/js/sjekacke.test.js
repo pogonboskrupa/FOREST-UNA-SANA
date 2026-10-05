@@ -325,6 +325,36 @@ t('natpisi bez preklapanja i poligon partije na klik linije', () => {
   assert.ok(js.includes('prikaziPartiju(p, lin);') && js.includes('slPartija(D.d.map'), 'klik na liniju crta partiju');
 });
 
+t('dijeljenje: spajanje projekata — plan iz novijeg tPlan, stanje linije iz novijeg lin.t', () => {
+  const L0 = (id, t, st, x = {}) => ({ id, k: 1, dio: 0, status: st, t, ...x });
+  const planer = { id: 'sl_1', naziv: 'O52', tPlan: 100, ring: [], razmak: 60, linije: [L0('a', 50, 'ne'), L0('b', 60, 'ne'), L0('c', 0, 'ne')] };
+  const radnik = { id: 'sl_1', naziv: 'O52', tPlan: 100, ring: [], razmak: 60, vidljiv: false, linije: [L0('a', 200, 'gotovo', { stvarna: [[1, 2], [3, 4]], radnik: 'Mujo' }), L0('b', 10, 'rad'), L0('c', 0, 'ne')] };
+  let r = S.slSpojiProjekte(planer, radnik);
+  assert.strictEqual(r.azurirano, 1); assert.strictEqual(r.planDolazni, false);
+  const a = r.p.linije.find(l => l.id === 'a'), b = r.p.linije.find(l => l.id === 'b');
+  assert.ok(a.status === 'gotovo' && a.radnik === 'Mujo' && a.stvarna.length === 2, 'ofarbana linija radnika stiže planeru');
+  assert.strictEqual(b.status, 'ne', 'starija promjena radnika ne pregazi planera');
+  assert.ok(planer.linije[0].status === 'ne', 'ulaz se ne mijenja');
+  // planer promijenio raspored (novi tPlan): radnik dobija novi plan, ali zadržava svoju GPS liniju gdje id postoji
+  const noviPlan = { ...planer, tPlan: 300, razmak: 50, linije: [L0('a', 50, 'ne'), L0('x', 0, 'ne')] };
+  r = S.slSpojiProjekte(radnik, noviPlan);
+  assert.ok(r.planDolazni && r.p.razmak === 50 && r.p.linije.length === 2);
+  assert.strictEqual(r.p.linije.find(l => l.id === 'a').status, 'gotovo');
+  assert.strictEqual(r.p.vidljiv, false, 'vidljivost je lična postavka primaoca');
+  // poništena GPS linija (noviji t bez stvarne) briše staru stvarnu
+  r = S.slSpojiProjekte(radnik, { ...radnik, linije: [L0('a', 400, 'rad')] });
+  assert.ok(!r.p.linije.find(l => l.id === 'a').stvarna);
+});
+
+t('dijeljenje: projekat u KML-u, prijem iz drugih aplikacija (Android)', () => {
+  const js = R('static/js/sjekacke.js'), H = R('index.html');
+  assert.ok(js.includes('<Data name="usf_sjekacke">') && js.includes('usf_fokus') && js.includes('posaljiLiniju'));
+  assert.ok(H.includes('await USFSjek.izKml(doc)') && H.includes('async function _dolazniFajl()'));
+  const man = R('android/app/src/main/AndroidManifest.xml'), act = R('android/app/src/main/java/ba/spd/usf/forest/MainActivity.java');
+  assert.ok(man.includes('android:launchMode="singleTask"') && man.includes('application/vnd.google-earth.kml+xml') && man.includes('android.intent.action.SEND'));
+  assert.ok(act.includes('public String uzmiDolazni()') && act.includes('protected void onNewIntent') && act.includes('primiFajl(getIntent())'));
+});
+
 (async () => {
   for (const [ime, fn] of testovi) {
     try { await fn(); pass++; console.log('  ✔ ' + ime); } catch (e) { console.error('  ✘ ' + ime + '\n      ' + e.message); process.exitCode = 1; }

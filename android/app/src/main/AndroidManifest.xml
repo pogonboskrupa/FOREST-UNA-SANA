@@ -32,11 +32,25 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize"
             android:screenOrientation="unspecified"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTask">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- KML/KMZ (npr. sjekačke linije) iz Vibera, WhatsAppa, maila, Quick Sharea:
+                 "Otvori u" i "Pošalji u" Grmeč Navigator. Viber/neki file manageri šalju
+                 KML kao octet-stream ili xml — JS prepoznaje sadržaj (<kml / PK zip). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/vnd.google-earth.kml+xml" />
+                <data android:mimeType="application/vnd.google-earth.kmz" />
+                <data android:mimeType="application/xml" />
+                <data android:mimeType="text/xml" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
 

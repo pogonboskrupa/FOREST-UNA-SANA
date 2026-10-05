@@ -4471,6 +4471,24 @@ async function _vectorFileChosen(e) {
   }
   if (!handled) showToast('⚠ Izaberi .kml, .kmz ili .shp fajl');
 }
+// Fajl otvoren IZ DRUGE APLIKACIJE (Viber, WhatsApp, mail, Quick Share → "Otvori u Grmeč
+// Navigator"): MainActivity ga pročita i čuva; JS ga uzima ovdje (velik sadržaj ne ide kroz
+// evaluateJavascript). Poziva se pri pokretanju i kad Android javi novi fajl.
+async function _dolazniFajl() {
+  if (typeof AndroidShare === 'undefined' || typeof AndroidShare.uzmiDolazni !== 'function') return;
+  let d = null; try { d = JSON.parse(AndroidShare.uzmiDolazni() || 'null'); } catch(e) {}
+  if (!d || !d.b64) return;
+  try {
+    const bin = Uint8Array.from(atob(d.b64), c => c.charCodeAt(0)), ime = (d.ime || 'dijeljeno').replace(/\.(kml|kmz)$/i, '');
+    if (bin[0] === 0x50 && bin[1] === 0x4B) { // "PK" — KMZ (ZIP)
+      const kml = await _kmzExtractKml(bin.buffer);
+      if (!kml) { showToast('⚠ KMZ ne sadrži .kml'); return; }
+      _kmlLoadFile(new File([kml], ime + '.kml'));
+    } else _kmlLoadFile(new File([bin], ime + '.kml'));
+    if (typeof switchMainTab === 'function') switchMainTab('karta');
+  } catch(e) { showToast('⚠ Primljeni fajl nije učitan: ' + e.message); }
+}
+setTimeout(_dolazniFajl, 2500);
 // Minimalni ZIP parser za .kmz — vraća sadržaj prve .kml datoteke
 // ZIP preko centralnog direktorija: veličine su tačne i kad lokalno zaglavlje
 // nosi 0 (bit 3 — Android/Java/MOBAC upisuju veličinu iza podataka).
@@ -4707,6 +4725,8 @@ function _kmlLoadFile(file) {
         return;
       }
     }
+    // KML s ugrađenim projektom sjekačkih linija (dijeljen s drugog telefona) → živi projekat
+    try { if (window.USFSjek && USFSjek.izKml && await USFSjek.izKml(doc)) return; } catch(e) { showToast('⚠ Projekat iz KML-a: ' + e.message); }
     try {
       const col = KCOLS[kmlCI % KCOLS.length]; kmlCI++;
       const grp = pkml(doc, col);
