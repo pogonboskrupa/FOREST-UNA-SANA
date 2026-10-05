@@ -1641,6 +1641,7 @@ body.sl-uredi #sl-ured { display: block; }
     <section class="ng-card">
       <h3>📍 GPS i baterija</h3>
       <div class="set-red"><div><b>Rad bez ograničenja baterije</b><small id="set-bat-txt">Da poziv ili druga aplikacija ne prekine GPS snimanje u pozadini.</small></div><button id="set-bat-btn" onclick="_setBaterija()">Podesi</button></div>
+      <div class="set-red" id="set-autostart" hidden><div><b>Autostart (Xiaomi/Redmi)</b><small>Uključi Autostart za Grmeč Navigator — inače HyperOS može ugasiti snimanje traga dok je ekran zaključan.</small></div><button onclick="AndroidGps.otvoriAutostart()">Otvori</button></div>
     </section>
 
     <section class="ng-card">
@@ -3038,6 +3039,18 @@ function dst(la1,lo1,la2,lo2){const R=6371000,a=Math.sin((la2-la1)*Math.PI/360)*
 // =====================================================================
 let _recFreeView = false;
 let _tragOn = false, _tragPaused = false, _tragLine = null, _tragPts = [];
+// Serija iz native bafera (npr. sat pod zaključanim ekranom = ~1800 tačaka): linija i
+// statistika se osvježe jednom na kraju, ne po tački (inače O(n²) i zamrzne app).
+let _tragSerija = false;
+// Dužina traga raste inkrementalno; novi niz _tragPts (start/oporavak) resetuje keš.
+const _tragDuzKes = { pts: null, n: 0, d: 0 };
+function _tragDuzina() {
+  const k = _tragDuzKes, pts = _tragPts;
+  if (k.pts !== pts || k.n > pts.length) { k.pts = pts; k.n = 0; k.d = 0; }
+  for (let i = Math.max(1, k.n); i < pts.length; i++) k.d += dst(pts[i-1][0], pts[i-1][1], pts[i][0], pts[i][1]);
+  k.n = pts.length;
+  return k.d;
+}
 let _tragBuf = [], _tragLastT = 0, _tragLiveSeg = null, _tragLastMoveT = 0;
 const _TRAG_AUTOPAUSE_MS = 120000; // 2 min mirovanja → auto-pauza
 
@@ -3081,9 +3094,11 @@ function _addTragPoint(la, lo, ac, al, sp, nowOverride) {
   if (commit) {
     _tragPts.push([mla, mlo, al, now, Math.round(ac)]); // [la, lo, alt, timestamp, tačnost_m]
     _tragLastT = now; _tragLastMoveT = now;
+    if (_tragSerija) return;
     if (_tragLine) _tragLine.addLatLng([mla, mlo]);
     _updTragStats();
   }
+  if (_tragSerija) return;
 
   // Živi vrh — linija UVIJEK ide do trenutne pozicije, bez zaostajanja
   if (_tragPts.length > 0) {
@@ -3182,7 +3197,7 @@ function _updRecBarUI() {
   const txt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   txt('rb-lbl', _tragPaused ? 'Pauzirano' : 'Snimanje traga');
   txt('rb-info', String(_tragPts.length));
-  txt('rb-duz', _tragFmtLen(_tragCalcLen(_tragPts)));
+  txt('rb-duz', _tragFmtLen(_tragDuzina()));
   txt('rb-pauza-txt', _tragPaused ? '▶ Nastavi' : '⏸ Pauza');
   const acc = document.getElementById('rb-acc'), ac = lastP && Number.isFinite(lastP.ac) ? Math.round(lastP.ac) : null;
   if (acc) { acc.textContent = ac === null ? '—' : '±' + ac + ' m'; acc.className = ac === null ? '' : ac <= 8 ? 'dobro' : ac <= 20 ? 'srednje' : 'lose'; }
@@ -3649,12 +3664,18 @@ async function _drainNativeGpsBuffer() {
     const pts = _nativeBufUzmi();
     if (!pts.length) return true;
     if (_tragOn) {
-      for (const p of pts) {
-        if (p.t > Math.max(_tragLastT, _nativeReplayLast.trag)) {
-          _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t);
-          _nativeReplayLast.trag = p.t;
-        }
-      }
+      const n0 = _tragPts.length, zadnja = pts.length - 1;
+      _tragSerija = pts.length > 3;
+      try {
+        pts.forEach((p, i) => {
+          if (i === zadnja) _tragSerija = false; // zadnja tačka crta živi vrh
+          if (p.t > Math.max(_tragLastT, _nativeReplayLast.trag)) {
+            _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t);
+            _nativeReplayLast.trag = p.t;
+          }
+        });
+      } finally { _tragSerija = false; }
+      if (pts.length > 3 && _tragLine && _tragPts.length !== n0) { _tragLine.setLatLngs(_tragPts.map(q => [q[0], q[1]])); _updTragStats(); }
       localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused }));
     }
     _bgPredaj(pts);
@@ -3698,13 +3719,22 @@ function _iosBgRecWarn() {
 const _BATT_HINT_KEY = 'usf_batt_hint_shown';
 async function _checkBatteryOptHint() {
   if (typeof AndroidGps === 'undefined' || typeof AndroidGps.hasBatteryOptExemption !== 'function') return;
-  if (localStorage.getItem(_BATT_HINT_KEY)) return;
+  if (localStorage.getItem(_BATT_HINT_KEY)) { _autostartHint(); return; }
   let exempt = true;
   try { exempt = AndroidGps.hasBatteryOptExemption(); } catch(e) { return; }
   localStorage.setItem(_BATT_HINT_KEY, '1');
-  if (exempt) return;
+  if (exempt) { _autostartHint(); return; }
   const ok = await _dlgConfirm('Da GPS snimanje ne prekine telefonski poziv ili druga aplikacija, dozvoli ovoj aplikaciji rad bez ograničenja baterije.', { title:'🔋 Pouzdano snimanje u pozadini', okLabel:'Otvori postavke' });
   if (ok) { try { AndroidGps.requestBatteryOptExemption(); } catch(e) {} }
+  _autostartHint();
+}
+// Jednom na Xiaomi/Redmi/POCO: Autostart se ne može provjeriti iz app-a, samo otvoriti.
+async function _autostartHint() {
+  let x = false; try { x = typeof AndroidGps !== 'undefined' && typeof AndroidGps.jeXiaomi === 'function' && AndroidGps.jeXiaomi(); } catch(e) {}
+  if (!x || localStorage.getItem('usf_autostart_hint')) return;
+  try { localStorage.setItem('usf_autostart_hint', '1'); } catch(e) {}
+  const ok = await _dlgConfirm('Na Xiaomi/Redmi telefonima uključi i Autostart za Grmeč Navigator, inače sistem može ugasiti snimanje traga pod zaključanim ekranom. (Kasnije: Postavke → GPS i baterija.)', { title:'🔋 Xiaomi Autostart', okLabel:'Otvori' });
+  if (ok) { try { AndroidGps.otvoriAutostart(); } catch(e) {} }
 }
 // Drugi moduli (vodič sjekačkih linija) snimaju preko istog foreground servisa.
 // Bafer je zajednički i destruktivan, pa svaki drain predaje tačke svim
@@ -3748,7 +3778,7 @@ function _bgRecStart(label) {
   if (typeof AndroidGps !== 'undefined') { try { AndroidGps.startRecording(label || 'GPS Snimanje'); } catch(e) {} }
   if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
   if (!('Notification' in window) || Notification.permission === 'denied') { _checkBatteryOptHint(); return; }
-  const send = () => navigator.serviceWorker.controller?.postMessage({ type:'show-rec-notification', nm: label, dist: _tragFmtLen(_tragCalcLen(_tragPts)) });
+  const send = () => navigator.serviceWorker.controller?.postMessage({ type:'show-rec-notification', nm: label, dist: _tragFmtLen(_tragDuzina()) });
   if (Notification.permission === 'granted') send();
   else Notification.requestPermission().then(perm => { if (perm === 'granted') send(); });
   _checkBatteryOptHint();
@@ -6126,7 +6156,9 @@ const _DK_URL = 'https://raw.githubusercontent.com/pogonboskrupa/FOREST-UNA-SANA
 let _dkLista = null, _dkNapredak = {};
 async function _dkUcitaj() {
   for (const u of [_DK_URL + '?t=' + Math.floor(Date.now() / 36e5), 'static/data/karte_drive.json']) {
-    try { const r = await fetch(u, { cache: 'no-store' }); if (r.ok) { const l = await r.json(); if (Array.isArray(l)) { _dkLista = l; try { localStorage.setItem('usf_karte_lista', JSON.stringify(l)); } catch(e) {} return l; } } } catch(e) {}
+    // slab signal: GitHub ne smije držati listu u nedogled — poslije 8 s ugrađena/zapamćena
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(u, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(tm)); if (r.ok) { const l = await r.json(); if (Array.isArray(l)) { _dkLista = l; try { localStorage.setItem('usf_karte_lista', JSON.stringify(l)); } catch(e) {} return l; } } } catch(e) {}
   }
   try { _dkLista = JSON.parse(localStorage.getItem('usf_karte_lista') || '[]'); } catch(e) { _dkLista = []; }
   return _dkLista;
@@ -9654,6 +9686,8 @@ function _setBaterijaStatus() {
     if (txt) txt.textContent = 'Podešava se samo u Android aplikaciji.';
     return;
   }
+  const as = document.getElementById('set-autostart');
+  if (as) { let x = false; try { x = typeof AndroidGps.jeXiaomi === 'function' && AndroidGps.jeXiaomi(); } catch(e) {} as.hidden = !x; }
   let ok = false; try { ok = AndroidGps.hasBatteryOptExemption(); } catch(e) {}
   btn.textContent = ok ? '✓ Dozvoljeno' : 'Podesi'; btn.classList.toggle('ok', ok);
   if (txt) txt.textContent = ok ? 'GPS snimanje radi i kad je ekran ugašen ili je otvorena druga aplikacija.' : 'Nije dozvoljeno — Android može prekinuti GPS snimanje u pozadini.';

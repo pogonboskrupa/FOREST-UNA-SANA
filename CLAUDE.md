@@ -37,6 +37,12 @@
   treba popup registruje izvor i ima `pointerEvents='none'` na svom pane-u.
 - `map` je `const`, `lastP` je `let` — leksički globalni; `window.map` je
   `<div id="map">`. U modulima koristiti gola imena (`typeof map !== 'undefined'`).
+- **Snimanje traga na slabijem telefonu**: paket iz native bafera (npr. sat pod zaključanim
+  ekranom ≈ 1800 tačaka) ide uz `_tragSerija` — bez crtanja/statistike po tački, linija
+  `setLatLngs` jednom (prije ~26 s zamrzavanja na 4× sporijem CPU-u). Dužina u traci je
+  inkrementalna (`_tragDuzina`), NE `_tragCalcLen(_tragPts)` po tački. Xiaomi/HyperOS: osim
+  baterije treba Autostart (`AndroidGps.jeXiaomi/otvoriAutostart`, jednokratni savjet + Postavke).
+  Mrežni zahtjevi bez `reliableFetch` moraju imati istek (AbortController), inače slab signal visi.
 - Terenske tačke (`static/js/tacke.js`): localStorage `usf_tacke`, fotografije u
   IndexedDB `usf_foto`; APK kamera ide kroz `imageIntent()` u MainActivity.
 - **Meni → Praćenje šume**: Šumarstvo, Sušenje-potkornjak (`susenje-panel`: Tlo i potkornjak,

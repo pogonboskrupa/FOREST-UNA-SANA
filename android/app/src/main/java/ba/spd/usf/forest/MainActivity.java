@@ -1461,6 +1461,29 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Xiaomi/Redmi/POCO (MIUI/HyperOS): osim baterije postoji i "Autostart" — bez njega
+        // sistem ne vraća ubijen GpsService (START_STICKY) i snimanje tiho stane.
+        @JavascriptInterface
+        public boolean jeXiaomi() {
+            String m = (Build.MANUFACTURER + " " + Build.BRAND).toLowerCase(java.util.Locale.ROOT);
+            return m.contains("xiaomi") || m.contains("redmi") || m.contains("poco");
+        }
+
+        @JavascriptInterface
+        public void otvoriAutostart() {
+            try {
+                Intent i = new Intent();
+                i.setComponent(new android.content.ComponentName("com.miui.securitycenter",
+                        "com.miui.permcenter.autostart.AutoStartManagementActivity"));
+                startActivity(i);
+            } catch (Exception e) {
+                try {
+                    startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + getPackageName())));
+                } catch (Exception ignored) {}
+            }
+        }
+
         // Poziva se sinhrono iz JS-a (visibilitychange, app opet vidljiv) — vraća
         // sve tačke koje je GpsService prikupio preko native LocationManager-a dok
         // je WebView bio "osiroćen"/bez prozora. Čitanje rotira fajl u pending;
