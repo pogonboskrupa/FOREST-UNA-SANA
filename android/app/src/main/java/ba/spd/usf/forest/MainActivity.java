@@ -193,6 +193,7 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new AppNotifBridge(), "AndroidNotif");
         webView.addJavascriptInterface(new UpdateBridge(), "AndroidUpdate");
         webView.addJavascriptInterface(new MbtilesBridge(), "AndroidMbtiles");
+        webView.addJavascriptInterface(new KartaBridge(), "AndroidKarta");
         webView.addJavascriptInterface(new RangeBridge(), "AndroidRange");
 
         webView.setWebViewClient(new WebViewClient() {
@@ -722,6 +723,98 @@ public class MainActivity extends Activity {
                         "_nativeSqlmapImported(false,'" + msg + "')", null));
             }
         }, "mbtiles-import").start();
+    }
+
+    // ── Preuzimanje offline karte s Drive-a (JS: _dkPreuzmi). URL dolazi dešifrovan iz JS-a
+    // (PIN), ovdje se samo skida: <id>.part u offline_maps (nastavak preko Range), provjera
+    // SQLite zaglavlja (Drive vraća HTML za kvotu/nejavno dijeljenje), pa uvoz kao
+    // importOfflineMap → _nativeSqlmapImported. Napredak: _driveNapredak / _driveKraj. ──
+    private final Map<String, Thread> karteUToku = new ConcurrentHashMap<>();
+
+    class KartaBridge {
+        @JavascriptInterface
+        public void preuzmi(String kid, String url, String naziv) {
+            if (kid == null || url == null || !url.startsWith("https://drive.usercontent.google.com/") || karteUToku.containsKey(kid)) return;
+            Thread t = new Thread(() -> preuzmiKartu(kid, url, naziv), "karta-" + kid);
+            karteUToku.put(kid, t);
+            t.start();
+        }
+
+        @JavascriptInterface
+        public void prekini(String kid) {
+            Thread t = karteUToku.get(kid);
+            if (t != null) t.interrupt();
+        }
+    }
+
+    private void javiKarti(String js) { runOnUiThread(() -> { if (webView != null) webView.evaluateJavascript(js, null); }); }
+
+    private void preuzmiKartu(String kid, String url, String naziv) {
+        String ime = (naziv == null || naziv.trim().isEmpty()) ? "Karta" : naziv.trim();
+        File part = new File(mbtilesDir(), "drive_" + kid.replaceAll("[^A-Za-z0-9_-]", "") + ".part");
+        HttpURLConnection con = null;
+        try {
+            long imam = part.exists() ? part.length() : 0;
+            String adresa = url;
+            int status = 0;
+            for (int skok = 0; skok < 6; skok++) { // redirekti (drive → usercontent), i https→https
+                con = (HttpURLConnection) new URL(adresa).openConnection();
+                con.setInstanceFollowRedirects(false);
+                con.setConnectTimeout(20000);
+                con.setReadTimeout(60000);
+                if (imam > 0) con.setRequestProperty("Range", "bytes=" + imam + "-");
+                status = con.getResponseCode();
+                if (status >= 300 && status < 400 && con.getHeaderField("Location") != null) {
+                    adresa = new URL(new URL(adresa), con.getHeaderField("Location")).toString();
+                    con.disconnect(); continue;
+                }
+                break;
+            }
+            if (status != 200 && status != 206) throw new IOException("Drive HTTP " + status);
+            String tip = con.getContentType();
+            if (tip != null && tip.toLowerCase().startsWith("text/html"))
+                throw new IOException("Drive ne daje fajl (provjeri dijeljenje \"Svako s linkom\" ili dnevnu kvotu preuzimanja)");
+            boolean nastavak = status == 206 && imam > 0;
+            if (!nastavak) imam = 0;
+            long duzina = con.getContentLengthLong(), ukupno = duzina > 0 ? duzina + imam : -1;
+            byte[] buf = new byte[256 * 1024];
+            long zadnjeJavljanje = 0;
+            try (InputStream in = con.getInputStream(); OutputStream out = new FileOutputStream(part, nastavak)) {
+                int n;
+                while ((n = in.read(buf)) >= 0) {
+                    if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+                    out.write(buf, 0, n);
+                    imam += n;
+                    long sad = System.currentTimeMillis();
+                    if (sad - zadnjeJavljanje > 500) {
+                        zadnjeJavljanje = sad;
+                        int p = ukupno > 0 ? (int) (imam * 100 / ukupno) : -1;
+                        javiKarti("window._driveNapredak&&_driveNapredak(" + JSONObject.quote(kid) + "," + p + "," + (imam / 1048576) + ")");
+                    }
+                }
+            }
+            byte[] zag = new byte[16];
+            try (InputStream in = new java.io.FileInputStream(part)) { if (in.read(zag) != 16) throw new IOException("Prazan fajl"); }
+            if (!new String(zag, 0, 15, StandardCharsets.US_ASCII).equals("SQLite format 3")) {
+                part.delete();
+                throw new IOException("Preuzeti fajl nije offline karta (Drive je vratio stranicu umjesto fajla)");
+            }
+            String id = UUID.randomUUID().toString();
+            File cilj = mbtilesFile(id);
+            if (!part.renameTo(cilj)) throw new IOException("Fajl se ne može premjestiti");
+            JSONObject info = readMbtilesInfo(id, ime);
+            getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().putString(id, ime).apply();
+            String encoded = Base64.encodeToString(info.toString().getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+            javiKarti("window._driveKraj&&_driveKraj(" + JSONObject.quote(kid) + ",true,'');_nativeSqlmapImported(true,'" + encoded + "')");
+        } catch (InterruptedException e) {
+            javiKarti("window._driveKraj&&_driveKraj(" + JSONObject.quote(kid) + ",false,'prekinuto — nastavlja se od istog mjesta')");
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+            javiKarti("window._driveKraj&&_driveKraj(" + JSONObject.quote(kid) + ",false," + JSONObject.quote(msg) + ")");
+        } finally {
+            if (con != null) con.disconnect();
+            karteUToku.remove(kid);
+        }
     }
 
     class DownloadBridge {

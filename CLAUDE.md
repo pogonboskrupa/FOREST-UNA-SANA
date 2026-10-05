@@ -111,6 +111,14 @@
   `_PIN_HES` = sha256(`_PIN_SOL` + PIN) — PIN NIKAD u repo/commit/test. Otključano:
   localStorage `usf_pin_ok` = `_PIN_HES.slice(0,16)` (preživi update; novi PIN ⇒ ponovo zaključa).
   5 grešaka ⇒ pauza 30 s (`usf_pin_greske`); Postavke → „Zaključaj zaštićene sekcije”.
+- **Drive karte za preuzimanje** (Učitaj kartu → „☁ Karte za preuzimanje”): lista
+  `static/data/karte_drive.json` (app je čita s raw.githubusercontent codex-forest → nove karte
+  bez APK-a). Drive fajl ID šifrovan: PBKDF2-SHA256(PIN, `usf-karte-v1`, 250k) → AES-GCM
+  (`static/js/drive-karte.js`, isti kod app/alat/test). Dodavanje: `USF_PIN=xxxx node
+  tools/karta_drive_dodaj.mjs "<link>" "Naziv" ["opis"] [MB]` — PIN i link NIKAD u repo/commit.
+  Ključ (ne PIN) se pri otključavanju PIN-om čuva u `usf_karte_kljuc`. APK: `AndroidKarta.preuzmi`
+  → `drive.usercontent.google.com/download?…&confirm=t`, `.part` + Range nastavak, provjera
+  „SQLite format 3”, pa uvoz kao `importOfflineMap`. Drive fajl mora biti „Svako s linkom”.
 - **Birač fajlova u APK-u** (`onShowFileChooser`): offline karta se prepoznaje u
   `IzborFajla.jeOfflineKarta` po CIJELIM tokenima accept-a (`.dbf` iz KML/SHP birača sadrži
   `.db` — podstring je slao svaki KML u uvoz offline karte). Test: `android/test-java/IzborFajlaTest.java`.

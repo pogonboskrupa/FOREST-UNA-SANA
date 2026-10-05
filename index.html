@@ -1242,6 +1242,15 @@ body.sl-uredi #sl-ured { display: block; }
 .tp-nap { font-size: 10.5px; color: var(--pn-dim); line-height: 1.4; margin: 2px 0 4px; }
 .veg-skala { display: flex; height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid #141414; margin-top: 6px; }
 .veg-skala i { flex: 1; }
+.dk-red { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--pn-line); }
+.dk-red > div:first-child { flex: 1; min-width: 0; }
+.dk-red small { display: block; color: var(--pn-dim); font-size: 11.5px; }
+.dk-akc { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
+.dk-akc button { min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--pn-line); background: rgba(255,255,255,.04); color: var(--pn-txt); font-weight: 700; }
+.dk-akc button.glavno { background: #16a34a; border-color: #16a34a; color: #fff; }
+.dk-traka { width: 90px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+.dk-traka u { display: block; height: 100%; background: #4ade80; }
+.dk-ok { color: #4ade80; font-size: 12px; }
 .sus-kes { margin: 0 0 12px; padding: 9px 11px; border-radius: 10px; border: 1px solid rgba(74,222,128,.35); background: rgba(74,222,128,.07); font-size: 12px; color: var(--pn-txt); }
 .sus-kes small { display: block; color: var(--pn-dim); margin-top: 2px; line-height: 1.4; }
 #sus-kes-stat { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; align-items: center; font-size: 11.5px; }
@@ -1961,6 +1970,10 @@ body.sl-uredi #sl-ured { display: block; }
       <input type="file" id="sqlmap-file-input" accept=".mbtiles,.sqlitedb,.sqlite,.sqlmap,.db" style="display:none;" onchange="_sqlmapFileChosen(event)">
       <button class="ng-glavno" onclick="document.getElementById('sqlmap-file-input').click()">📂 Izaberi kartu</button>
       <div id="sqlmap-status" class="ul-status" role="status"></div>
+    </section>
+    <section class="ng-card dk-sekcija">
+      <h3>☁ Karte za preuzimanje <small>s Drive-a, uz PIN</small></h3>
+      <div id="drive-karte"><div class="ul-status">Učitavam listu…</div></div>
     </section>
     <div id="sqlmap-list"></div>
   </div>
@@ -6058,18 +6071,18 @@ if (_sumProjOn() && _SUM_LAYERS.susenje) { map.on('moveend', _sumProjZakazi); ma
 // Unosi se jednom po telefonu; otključanost (localStorage, preživi APK update) je vezana za
 // heš, pa promjena PIN-a u kodu ponovo zaključa sve telefone. U kodu je samo SHA-256 heš sa
 // solju — brava za radoznale, ne prava zaštita (app nema server, 4 cifre se mogu pogoditi).
-const _PIN_SOL = 'usf-sekcije-v1:', _PIN_HES = '6e1a9a8227c06218ae40ac4dac59063993983ac63013db0d813953a17e6d5b21', _PIN_KLJUC = 'usf_pin_ok', _PIN_GRESKE = 'usf_pin_greske';
+const _PIN_SOL = 'usf-sekcije-v1:', _PIN_HES = '8b3eecbf7c4d703c2eb632d35274a60e9e373adb36dea8b6a62399f4042d310b', _PIN_KLJUC = 'usf_pin_ok', _PIN_GRESKE = 'usf_pin_greske';
 async function _pinHes(t) {
   const b = new TextEncoder().encode(_PIN_SOL + t);
   const d = await crypto.subtle.digest('SHA-256', b);
   return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 function _pinOtkljucano() { try { return localStorage.getItem(_PIN_KLJUC) === _PIN_HES.slice(0, 16); } catch(e) { return false; } }
-async function _pinTrazi(nastavi) {
+async function _pinTrazi(nastavi, poruka) {
   let g = {}; try { g = JSON.parse(localStorage.getItem(_PIN_GRESKE) || '{}') || {}; } catch(e) {}
   const ceka = Math.ceil(((g.do || 0) - Date.now()) / 1000);
   if (ceka > 0) { showToast('🔒 Previše pogrešnih pokušaja — pokušaj za ' + ceka + ' s'); return; }
-  const upit = _dlgPrompt('Šumarstvo, Sušenje-potkornjak, Požari i Projektovanje puta su zaštićeni. Unesi PIN (unosi se jednom na ovom telefonu).', '', { title: '🔒 PIN', inputType: 'password', okLabel: 'Otključaj' });
+  const upit = _dlgPrompt(poruka || 'Šumarstvo, Sušenje-potkornjak, Požari, Projektovanje puta i karte za preuzimanje su zaštićeni. Unesi PIN (unosi se jednom na ovom telefonu).', '', { title: '🔒 PIN', inputType: 'password', okLabel: 'Otključaj' });
   const polje = document.getElementById('dlg-input');
   if (polje) { polje.setAttribute('inputmode', 'numeric'); polje.maxLength = 4; } // numerička tastatura
   const unos = await upit;
@@ -6084,17 +6097,66 @@ async function _pinTrazi(nastavi) {
     return;
   }
   try { localStorage.setItem(_PIN_KLJUC, _PIN_HES.slice(0, 16)); localStorage.removeItem(_PIN_GRESKE); } catch(e) {}
+  // ključ za Drive karte (PBKDF2 iz PIN-a) — sam PIN se ne čuva
+  try { if (window.USFDriveKarte) localStorage.setItem(USFDriveKarte.KLJUC_LS, USFDriveKarte.uB64(await USFDriveKarte.kljucIzPina(String(unos).trim()))); } catch(e) {}
   showToast('🔓 Sekcije otključane');
   if (typeof _meniStatusRender === 'function') _meniStatusRender();
   _pinPostavkeUi();
   nastavi();
 }
 function _pinZakljucaj() {
-  try { localStorage.removeItem(_PIN_KLJUC); } catch(e) {}
+  try { localStorage.removeItem(_PIN_KLJUC); localStorage.removeItem('usf_karte_kljuc'); } catch(e) {}
   if (typeof _meniStatusRender === 'function') _meniStatusRender();
   _pinPostavkeUi(); showToast('🔒 Sekcije zaključane');
 }
 function _pinPostavkeUi() { const b = document.getElementById('set-pin-zakljucaj'); if (b) b.hidden = !_pinOtkljucano(); }
+
+// ── Karte za preuzimanje s Drive-a (static/js/drive-karte.js) ─────────────────────
+// Lista sa GitHub-a (nove karte bez novog APK-a), rezerva ugrađena kopija. Drive ID je
+// šifrovan PIN-om; preuzima nativno MainActivity (AndroidKarta) u offline_maps i uvozi isto
+// kao "Izaberi kartu" (_nativeSqlmapImported). Link se nigdje ne prikazuje.
+const _DK_URL = 'https://raw.githubusercontent.com/pogonboskrupa/FOREST-UNA-SANA/codex-forest/static/data/karte_drive.json';
+let _dkLista = null, _dkNapredak = {};
+async function _dkUcitaj() {
+  for (const u of [_DK_URL + '?t=' + Math.floor(Date.now() / 36e5), 'static/data/karte_drive.json']) {
+    try { const r = await fetch(u, { cache: 'no-store' }); if (r.ok) { const l = await r.json(); if (Array.isArray(l)) { _dkLista = l; try { localStorage.setItem('usf_karte_lista', JSON.stringify(l)); } catch(e) {} return l; } } } catch(e) {}
+  }
+  try { _dkLista = JSON.parse(localStorage.getItem('usf_karte_lista') || '[]'); } catch(e) { _dkLista = []; }
+  return _dkLista;
+}
+const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc'); return k ? USFDriveKarte.izB64(k) : null; } catch(e) { return null; } };
+const _dkNaTelefonu = k => (typeof _sqlLayers !== 'undefined') && _sqlLayers.some(x => x.name === k.naziv + '.sqlitedb' || x.name === k.naziv);
+async function _driveKarteRender() {
+  const el = document.getElementById('drive-karte'); if (!el || !window.USFDriveKarte) return;
+  const l = _dkLista || await _dkUcitaj();
+  if (!l.length) { el.innerHTML = '<div class="ul-status">Trenutno nema karata za preuzimanje.</div>'; return; }
+  const kljuc = _pinOtkljucano() && _dkKljuc();
+  el.innerHTML = l.map(k => {
+    const n = _dkNapredak[k.id];
+    const desno = _dkNaTelefonu(k) ? '<b class="dk-ok">✓ Na telefonu</b>'
+      : n ? `<div class="dk-traka"><u style="width:${n.p || 0}%"></u></div><small>${n.p != null ? n.p + ' %' : '…'}${n.mb ? ' · ' + n.mb + ' MB' : ''}</small><button onclick="_dkPrekini('${k.id}')">Prekini</button>`
+      : kljuc ? `<button class="glavno" onclick="_dkPreuzmi('${k.id}')">⬇ Preuzmi</button>` : `<button onclick="_dkOtkljucaj()">🔒 Otključaj PIN-om</button>`;
+    return `<div class="dk-red"><div><b>${_escHtml(k.naziv)}</b><small>${_escHtml(k.opis || '')}${k.mb ? ' · ' + k.mb + ' MB' : ''}</small></div><div class="dk-akc">${desno}</div></div>`;
+  }).join('') + '<p class="set-nap">Karta se skida jednom i ostaje na telefonu za rad bez interneta. Za velike karte koristi WiFi.</p>';
+}
+function _dkOtkljucaj() { _pinTrazi(() => _driveKarteRender(), 'Karte za preuzimanje su zaštićene. Unesi PIN (jednom na ovom telefonu).'); }
+async function _dkPreuzmi(id) {
+  const k = (_dkLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
+  if (!kljuc) { _dkOtkljucaj(); return; }
+  const o = await USFDriveKarte.desifruj(kljuc, k.enc);
+  if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
+  if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmi) { showToast('⬇ Preuzimanje karata radi u aplikaciji (APK)'); return; }
+  _dkNapredak[id] = { p: 0 }; _driveKarteRender();
+  try { AndroidKarta.preuzmi(id, USFDriveKarte.urlPreuzimanja(o.fileId), k.naziv); }
+  catch(e) { delete _dkNapredak[id]; _driveKarteRender(); showToast('⚠ Preuzimanje nije pokrenuto: ' + e.message); }
+}
+function _dkPrekini(id) { try { AndroidKarta.prekini(id); } catch(e) {} }
+// pozivi iz MainActivity (AndroidKarta)
+function _driveNapredak(id, p, mb) { _dkNapredak[id] = { p: p >= 0 ? p : null, mb }; _driveKarteRender(); }
+function _driveKraj(id, ok, poruka) {
+  delete _dkNapredak[id]; _driveKarteRender();
+  if (!ok) showToast('⚠ Karta nije preuzeta: ' + (poruka || 'greška'));
+}
 function openSumarstvoSection() { if (!_pinOtkljucano()) { _pinTrazi(openSumarstvoSection); return; } _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
 function openSusenjeSection() { if (!_pinOtkljucano()) { _pinTrazi(openSusenjeSection); return; } _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
 // Pregled offline keša sekcije (tlo: usf_tlo_mjesta, NDVI: Cache 'usf-veg', sušenje: Cache 'usf-susenje').
@@ -9531,7 +9593,7 @@ function _openStubPanel(panelId, tabForBack) {
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabForBack));
 }
 function openTematskaSection()    { _openStubPanel('tematska-panel', 'karte'); _temRegRender(); }
-function openUcitajKartuSection() { _openStubPanel('ucitajkartu-panel', 'karte'); }
+function openUcitajKartuSection() { _openStubPanel('ucitajkartu-panel', 'karte'); _driveKarteRender(); }
 function openUcitajKmlSection()   { _openStubPanel('ucitajkml-panel', 'karte'); }
 function openNagibSection()       { _openStubPanel('nagib-panel', 'karte'); if (typeof npRenderLista === 'function') npRenderLista(); }
 
@@ -9694,6 +9756,7 @@ window.addEventListener('load', () => {
 </script>
 <script src="static/js/terrain-layers.js"></script>
 <script src="static/js/odjeli.js"></script>
+<script src="static/js/drive-karte.js"></script>
 <script src="static/js/nagib-poligon.js"></script>
 <script src="static/js/tacke.js"></script>
 <script src="static/js/zima.js"></script>
