@@ -48,7 +48,8 @@
   `usf_tlo_zadnje` za offline. `static/js/vegetacija.js` — NDVI/EVI/NDMI preko CDSE
   Sentinel Hub WMS s našim EVALSCRIPT-om (diskretna paleta → dodir dekodira raspon);
   ID konfiguracije unosi korisnik (localStorage `usf_veg`), NIKAD u repozitorij;
-  pločice 512 px u Cache Storage `usf-veg` (svježe 5 dana). Kvota CDSE: 10 000
+  pločice 512 px u Cache Storage `usf-veg` (svježe 5 dana). Pokretna legenda na karti `#veg-map-leg`
+  (opis po klasi `INDEKSI[k].klase`, stanje/položaj `usf_veg_leg`), vidljiva dok je sloj uključen. Kvota CDSE: 10 000
   zahtjeva/mj po računu. GEE nije ugrađen (tile URL ističe, traži server/ključ).
 - **Sjekačke linije** (Planiranje, `static/js/sjekacke.js`): poligon (crtanje dodirom/
   GPS-om, mjerenje, KML, odjel) → paralelne linije u smjeru dominantnog pada (DEM preko

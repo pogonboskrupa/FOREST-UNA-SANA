@@ -97,6 +97,17 @@ t('WMS: okvir pločice 512 px u EPSG:3857, TIME, ID provjeren', () => {
   assert.ok(u.startsWith('https://sh.dataspace.copernicus.eu/ogc/wms/0b1c2d3e-') && /WIDTH=512&HEIGHT=512/.test(u) && /EVALSCRIPT=/.test(u) && /PRIORITY=leastCC/.test(u));
 });
 
+t('pokretna legenda na karti: opis za svaku klasu svakog indeksa', () => {
+  for (const k of Object.keys(V.INDEKSI)) {
+    const I = V.INDEKSI[k];
+    assert.strictEqual((I.klase || []).length, I.boje.length, k + ': opis za svaku boju');
+    assert.ok(I.klase.every(t => typeof t === 'string' && t.length > 3));
+  }
+  const vj = R('static/js/vegetacija.js');
+  assert.ok(vj.includes("box.id = 'veg-map-leg'") && vj.includes("'usf_veg_leg'") && vj.includes('setPointerCapture'), 'prevlačenje i pamćenje položaja');
+  assert.ok(HTML.includes('#veg-map-leg {') && HTML.includes('id="veg-leg-karta"'));
+});
+
 t('UI, APK i SW: moduli uključeni, pane iznad offline podloge, ključ nije u kodu', () => {
   ['id="tp-osvjezi"', 'id="tp-rez"', 'id="uk-veg-switch"', 'id="veg-id"', '<script src="static/js/tlo-potkornjak.js">', '<script src="static/js/vegetacija.js">'].forEach(x => assert.ok(HTML.includes(x), x));
   const sw = R('sw.js'), kop = R('android/copy-assets.sh');

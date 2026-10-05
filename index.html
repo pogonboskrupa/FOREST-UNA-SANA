@@ -1240,6 +1240,18 @@ body.sl-uredi #sl-ured { display: block; }
 .veg-skala { display: flex; height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid #141414; margin-top: 6px; }
 .veg-skala i { flex: 1; }
 .veg-skala-br { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--pn-dim); }
+/* Pokretna legenda NDVI/EVI/NDMI na karti (vegetacija.js legendaNaKarti) */
+#veg-map-leg { position: fixed; left: 8px; top: calc(112px + env(safe-area-inset-top)); z-index: 489; width: 236px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 210px); overflow: auto; background: rgba(15,23,42,.94); border: 1px solid #475569; border-radius: 12px; color: #e2e8f0; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+#veg-map-leg[hidden] { display: none; }
+#veg-map-leg .vml-ruc { display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; cursor: move; touch-action: none; font-size: 12px; font-weight: 700; position: sticky; top: 0; background: rgba(15,23,42,.98); }
+#veg-map-leg .vml-nasl { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#veg-map-leg .vml-ruc button { min-width: 34px; min-height: 34px; border: 0; border-radius: 8px; background: #334155; color: #fff; cursor: pointer; font-size: 13px; }
+#veg-map-leg .vml-tijelo { padding: 2px 10px 9px; }
+#veg-map-leg .vml-red { display: grid; grid-template-columns: 14px 56px 1fr; gap: 6px; align-items: center; padding: 2px 0; font-size: 10.5px; line-height: 1.25; }
+#veg-map-leg .vml-red i { width: 14px; height: 11px; border-radius: 2px; border: 1px solid rgba(0,0,0,.4); }
+#veg-map-leg .vml-red b { font-weight: 700; color: #f1f5f9; font-variant-numeric: tabular-nums; }
+#veg-map-leg .vml-red span { color: #cbd5e1; }
+#veg-map-leg .vml-opis { margin: 6px 0 0; padding-top: 6px; border-top: 1px solid #334155; font-size: 10px; line-height: 1.4; color: #94a3b8; }
 .veg-sporedno { width: 100%; margin-top: 6px; padding: 8px; border-radius: 10px; border: 1px solid var(--pn-line); background: transparent; color: var(--pn-dim); font-size: 12px; }
 .veg-cdse { margin: 6px 0 10px; font-size: 12px; color: var(--pn-dim); }
 .veg-cdse summary { cursor: pointer; color: var(--pn-txt); font-weight: 700; padding: 6px 0; }
@@ -1819,6 +1831,7 @@ body.sl-uredi #sl-ured { display: block; }
           <label>Period<select id="veg-per" onchange="USFVeg.postavi('per',this.value)"><option value="15">zadnjih 15 dana</option><option value="30">zadnjih 30 dana</option><option value="60">zadnjih 60 dana</option><option value="pg">isti mjesec lani</option></select></label></div>
         <label class="uk-kl">Prozirnost <input type="range" min="20" max="100" id="veg-op" oninput="USFVeg.postavi('op',this.value)"></label>
         <div id="veg-leg"></div>
+        <button id="veg-leg-karta" class="veg-sporedno" hidden onclick="USFVeg.legendaPokazi()">🗺 Prikaži legendu na karti</button>
         <div id="veg-status" class="uk-status"></div>
         <div class="zp-box">
           <div class="zp-nasl">Rad bez interneta</div>
