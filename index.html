@@ -1445,16 +1445,22 @@ body.sl-uredi #sl-ured { display: block; }
   <div class="up-body">
     <section class="meni-grp">
       <h3>Praćenje šume</h3>
+      <button type="button" class="meni-card" id="mc-sumarstvo" onclick="openSumarstvoSection()" style="--mc:#4ade80">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 6.5 9.5h3L5 15.5h14l-4.5-6h3z"/><path d="M12 15.5V22"/></svg></span>
+        <span class="mc-txt"><b>Šumarstvo</b><span>Podloge USK, vitalnost, pokrivač, gubitak, poremećaji</span></span>
+        <span class="mc-stat" id="mc-stat-sumarstvo"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" class="meni-card" id="mc-susenje" onclick="openSusenjeSection()" style="--mc:#facc15">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="13.5" rx="4.5" ry="6"/><path d="M12 7.5v12M9 4.5l1.5 2.5M15 4.5 13.5 7M7.5 11H4M7.5 15.5H4.5M16.5 11H20M16.5 15.5h3"/></svg></span>
+        <span class="mc-txt"><b>Sušenje-potkornjak</b><span>Tlo i potkornjak, sušenje šume (deadtrees)</span></span>
+        <span class="mc-stat" id="mc-stat-susenje"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
       <button type="button" class="meni-card" id="mc-pozari" onclick="openPozariSection()" style="--mc:#fb923c">
         <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>
         <span class="mc-txt"><b>Požari</b><span>FIRMS detekcije, grupisanje, heatmap, vjetar</span></span>
         <span class="mc-stat" id="mc-stat-pozari"></span>
-        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-      </button>
-      <button type="button" class="meni-card" id="mc-sumarstvo" onclick="openSumarstvoSection()" style="--mc:#4ade80">
-        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 6.5 9.5h3L5 15.5h14l-4.5-6h3z"/><path d="M12 15.5V22"/></svg></span>
-        <span class="mc-txt"><b>Šumarstvo</b><span>Pokrivač, gubitak, rast, sušenje</span></span>
-        <span class="mc-stat" id="mc-stat-sumarstvo"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
     </section>
@@ -1758,12 +1764,7 @@ body.sl-uredi #sl-ured { display: block; }
       </div>
     </section>
     <section class="uk-grupa">
-      <h3>Zdravlje šume <small>tlo, potkornjak i vitalnost krošnje · zadnji podaci rade bez interneta</small></h3>
-      <div class="tp-kartica">
-        <div class="tp-zag"><span>🪲 Tlo i potkornjak</span><button id="tp-osvjezi" class="zp-glavno" onclick="USFTlo.osvjezi()">↻ Očitaj</button></div>
-        <p class="uk-izvor">Za GPS poziciju (ako je Moja lokacija uključena), inače za centar karte. Vlažnost tla 0–7 / 7–28 / 28–100 cm prema višegodišnjem prosjeku, temperatura tla i razvoj smrekovog potkornjaka (<i>Ips typographus</i>).</p>
-        <div id="tp-rez"></div>
-      </div>
+      <h3>Vitalnost krošnje <small>satelitski vegetacijski indeksi · zapamćene pločice rade bez interneta</small></h3>
       <div class="loc-row"><span>🛰 Vegetacijski indeksi (NDVI / EVI / NDMI)</span><div class="loc-switch" id="uk-veg-switch" onclick="USFVeg.prekidac()"></div></div>
       <div id="uk-veg-opts" class="uk-opts" style="display:none">
         <div class="zp-izbor"><label>Indeks<select id="veg-ind" onchange="USFVeg.postavi('ind',this.value)"><option value="ndvi">NDVI — vitalnost</option><option value="evi">EVI — gusta šuma</option><option value="ndmi">NDMI — voda u krošnji</option></select></label>
@@ -1815,8 +1816,26 @@ body.sl-uredi #sl-ured { display: block; }
       <div id="sum-por-stat"></div>
       <div class="izvoz-red"><span>⤓ Izvoz (vidljivi dio karte)</span><button onclick="_izvoz('poremecaji','kml')">KML</button><button onclick="_izvoz('poremecaji','geojson')">GeoJSON</button><button onclick="_izvoz('poremecaji','csv')">CSV</button></div>
     </div>
-    <div class="loc-row" style="margin-top:10px;">
-      <span>🟨 Sušenje šume (deadtrees.earth)</span>
+  </div>
+</div>
+
+<!-- Sušenje i potkornjak: tlo/PHENIPS (tlo-potkornjak.js) i sušenje (deadtrees.earth);
+     ID-ovi su isti kao u Šumarstvu, logika (_sum*, USFTlo) se nije mijenjala. -->
+<div id="susenje-panel" class="usf-panel">
+  <div class="up-hdr"><h2>🪲 Sušenje-potkornjak</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-body">
+    <section class="uk-grupa">
+      <h3>Tlo i potkornjak <small>vlažnost i temperatura tla, razvoj potkornjaka · zadnji rezultat radi bez interneta</small></h3>
+      <div class="tp-kartica">
+        <div class="tp-zag"><span>🪲 Očitanje za lokaciju</span><button id="tp-osvjezi" class="zp-glavno" onclick="USFTlo.osvjezi()">↻ Očitaj</button></div>
+        <p class="uk-izvor">Za GPS poziciju (ako je Moja lokacija uključena), inače za centar karte. Vlažnost tla 0–7 / 7–28 / 28–100 cm prema višegodišnjem prosjeku, temperatura tla i razvoj smrekovog potkornjaka (<i>Ips typographus</i>).</p>
+        <div id="tp-rez"></div>
+      </div>
+    </section>
+    <section class="uk-grupa">
+      <h3>Sušenje šume <small>udio stojećeg suhog drveta, Sentinel-2 (deadtrees.earth)</small></h3>
+    <div class="loc-row">
+      <span>🟨 Prikaži na karti</span>
       <div class="loc-switch" id="sum-susenje-switch" onclick="_sumToggle('susenje',!_sumOn('susenje'))"></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin:4px 0 2px;">
@@ -1836,6 +1855,7 @@ body.sl-uredi #sl-ured { display: block; }
       <button onclick="_sumProjRacunaj()" style="margin-left:auto;border:1px solid #334155;border-radius:7px;padding:5px 9px;background:#0f172a;color:#cbd5e1;font-size:11px;">↻ Preračunaj</button>
     </div>
     <div id="sum-sus-proj-rez"></div>
+    </section>
   </div>
 </div>
 
@@ -5981,8 +6001,10 @@ function _sumProjPanel() {
   </div>`;
 }
 if (_sumProjOn() && _SUM_LAYERS.susenje) { map.on('moveend', _sumProjZakazi); map.whenReady(() => setTimeout(_sumProjRacunaj, 1500)); }
-function openSumarstvoSection() {
-  _openStubPanel('sumarstvo-panel', 'meni');
+function openSumarstvoSection() { _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
+function openSusenjeSection() { _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); }
+// Stanje prekidača i izbornika Šumarstva i Sušenja (isti _SUM_LAYERS, ID-ovi u oba panela).
+function _sumPanelOsvjezi() {
   Object.keys(_SUM_LAYERS).forEach(key => {
     const sw = document.getElementById(_SUM_SWITCH_ID[key]); if (sw) sw.classList.toggle('on', _sumOn(key));
   });  const sel = document.getElementById('sum-susenje-god');
@@ -9340,7 +9362,7 @@ _temRestore();
 // GLAVNA NAVIGACIJA — Mapa / Karte / Meni / Postavke
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel'];
+const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -9363,6 +9385,7 @@ function _meniStatusi(st) {
   const n = (k, jed, par, mn) => k > 0 ? { t: k + ' ' + oblik(k, jed, par, mn), on: false } : { t: '', on: false };
   return {
     pozari:    st.poziOn ? { t: 'Uključeno', on: true } : { t: '', on: false },
+    susenje:   st.susenjeOn ? { t: 'Uključeno', on: true } : { t: '', on: false },
     sumarstvo: st.sumSlojeva > 0 ? { t: st.sumSlojeva + ' ' + oblik(st.sumSlojeva, 'sloj', 'sloja', 'slojeva'), on: true } : { t: '', on: false },
     tragovi:   n(st.tragova, 'trag', 'traga', 'tragova'),
     mjerenja:  n(st.mjerenja, 'mjerenje', 'mjerenja', 'mjerenja')
@@ -9373,7 +9396,8 @@ function _meniStatusRender() {
   try {
     st = {
       poziOn: typeof _poziOn !== 'undefined' && !!_poziOn,
-      sumSlojeva: typeof _sumState !== 'undefined' ? Object.values(_sumState).filter(Boolean).length : 0,
+      sumSlojeva: typeof _sumState !== 'undefined' ? Object.entries(_sumState).filter(([k, v]) => v && k !== 'susenje').length : 0,
+      susenjeOn: typeof _sumState !== 'undefined' && !!_sumState.susenje,
       tragova: typeof _tragRegistry !== 'undefined' ? _tragRegistry.length : 0,
       mjerenja: typeof _msrRegistry !== 'undefined' ? _msrRegistry.length : 0
     };
