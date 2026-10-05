@@ -36,9 +36,12 @@ t('lista karata: samo šifrovani zapisi, bez linka i PIN-a u čistom tekstu', ()
     assert.ok(!/drive\.google\.com\/file\/d\/[\w-]{20,}|[?&]id=[\w-]{25,}/.test(R(f)), f + ' bez Drive linka');
 });
 
-t('app: ključ iz PIN-a pri otključavanju, nativno preuzimanje, provjera SQLite zaglavlja', () => {
+t('app: zaseban PIN karata (provjera dešifrovanjem), nativno preuzimanje, provjera SQLite zaglavlja', () => {
   const H = R('index.html'), J = R('android/app/src/main/java/ba/spd/usf/forest/MainActivity.java');
-  assert.ok(H.includes('USFDriveKarte.kljucIzPina(String(unos).trim())') && H.includes("localStorage.removeItem('usf_karte_kljuc')"));
+  const fn = ime => { const i = H.indexOf('async function ' + ime + '('); return H.slice(i, H.indexOf('\n}', i)); };
+  assert.ok(fn('_dkOtkljucaj').includes("'usf_karte_greske'") && fn('_dkOtkljucaj').includes('USFDriveKarte.desifruj(k, l[0].enc)'), 'PIN karata se provjerava dešifrovanjem');
+  assert.ok(!fn('_pinTrazi').includes('usf_karte') && !fn('_pinTrazi').includes('USFDriveKarte'), 'PIN sekcija ne otključava karte');
+  assert.ok(H.includes('const kljuc = _dkKljuc();') && H.includes("localStorage.removeItem('usf_karte_kljuc')"));
   assert.ok(H.includes('AndroidKarta.preuzmi(id, USFDriveKarte.urlPreuzimanja(o.fileId), k.naziv)') && H.includes('id="drive-karte"'));
   assert.ok(J.includes('new KartaBridge(), "AndroidKarta"') && J.includes('equals("SQLite format 3")') && J.includes('"Range", "bytes=" + imam + "-"'));
   assert.ok(J.includes('url.startsWith("https://drive.usercontent.google.com/")'), 'most skida samo s Drive-a');
