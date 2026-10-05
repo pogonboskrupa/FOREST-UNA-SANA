@@ -42,6 +42,9 @@
 - **Meni → Praćenje šume**: Šumarstvo, Sušenje-potkornjak (`susenje-panel`: Tlo i potkornjak,
   Vitalnost krošnje NDVI/EVI/NDMI, sušenje deadtrees.earth s projekcijom), Požari. Elementi su
   zadržali ID-ove (`tp-*`, `uk-veg-*`/`veg-*`, `sum-*`); oba panela osvježava `_sumPanelOsvjezi()`.
+  Dugme ✕ `#tem-x` ispod 🗂 (`#layer-btn`): vidljivo dok je uključen bilo koji sloj tih sekcija
+  (`_tematskiUkljuceni`: `_SUM_LAYERS`, `USKSlojevi`, `USFVeg`); `_tematskiIskljuci` ih gasi i
+  vraća zadnju offline kartu (`_SQL_ACTIVE_KEY` → `_sqlmapSelect`). Legenda požara je zadano niže (112px).
 - **Zdravlje šume** (panel Sušenje-potkornjak): `static/js/tlo-potkornjak.js` — Open-Meteo (CORS *,
   bez ključa): ERA5-Land tlo + klimatologija 1991–2020 (kvantili po ćeliji 0,1° u
   localStorage `usf_tlo_klima_*`), IFS prognoza, PHENIPS; zadnji rezultat

@@ -102,6 +102,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   -webkit-tap-highlight-color:transparent; transition:transform .12s;
 }
 #layer-btn:active { transform:scale(.92); }
+#tem-x { position:fixed; top:calc(60px + env(safe-area-inset-top)); right:12px; z-index:495; width:44px; height:44px; border-radius:14px; display:grid; place-items:center; padding:0; cursor:pointer; color:#fca5a5 !important; -webkit-tap-highlight-color:transparent; }
+#tem-x[hidden] { display:none; }
+#tem-x:active { transform:scale(.92); }
 #layer-switch {
   display:none; position:fixed; top:calc(60px + env(safe-area-inset-top)); right:12px; z-index:501;
   background:rgba(10,24,18,.96); border:1px solid rgba(134,239,172,.22); border-radius:16px; padding:6px;
@@ -885,7 +888,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 </style>
 <style>
-#poz-legends { position:fixed; top:calc(58px + env(safe-area-inset-top)); right:8px; z-index:490; width:210px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 150px); overflow:auto; background:#0f172a; border:1px solid #475569; border-radius:12px; }
+#poz-legends { position:fixed; top:calc(112px + env(safe-area-inset-top)); right:8px; z-index:490; width:210px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 150px); overflow:auto; background:#0f172a; border:1px solid #475569; border-radius:12px; }
 #poz-legends[hidden] { display:none; }
 #poz-legends #poz-opoz-legend, #poz-legends #poz-god-legend { position:static !important; max-width:none !important; border:0 !important; pointer-events:auto !important; }
 #poz-legend-handle { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; cursor:move; touch-action:none; color:#e2e8f0; font-size:12px; }
@@ -1349,6 +1352,8 @@ body.sl-uredi #sl-ured { display: block; }
 </div>
 
 <div id="layer-switch"></div>
+<!-- ✕ ispod 🗂: gasi slojeve Šumarstva i Sušenja-potkornjaka → vidi se učitana offline karta -->
+<button id="tem-x" class="map-ctl" hidden onclick="_tematskiIskljuci()" title="Isključi slojeve Šumarstva i Sušenja" aria-label="Isključi slojeve Šumarstva i Sušenja"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
 
 <!-- Zoom — donji lijevi ugao -->
 <div id="zoom-grp" class="map-ctl">
@@ -5853,6 +5858,35 @@ try { _sumState = JSON.parse(localStorage.getItem(_SUM_KEY) || '{}'); } catch(e)
 Object.keys(_SUM_LAYERS).forEach(k => { if (_sumState[k]) _SUM_LAYERS[k].addTo(map); });
 function _sumOn(key) { return !!_sumState[key]; }
 const _SUM_SWITCH_ID = { pokrivac: 'sum-pokrivac-switch', gubitak: 'sum-gubitak-switch', rast: 'sum-rast-switch', susenje: 'sum-susenje-switch', poremecaji: 'sum-poremecaji-switch' };
+// ✕ na karti: koji su slojevi Šumarstva i Sušenja-potkornjaka uključeni (Hansen/EFDA/deadtrees,
+// USK granice/tlo/zima, NDVI). Gašenje otkriva podlogu; ako nije aktivna offline karta, vraća
+// zadnju izabranu (MBTiles/sqlitedb) — teren je onda opet na offline karti.
+function _tematskiUkljuceni() {
+  const out = [];
+  try { Object.keys(_SUM_LAYERS).forEach(k => { if (_sumOn(k)) out.push('sum:' + k); }); } catch(e) {}
+  try { const s = window.USKSlojevi && USKSlojevi.stanje(); if (s) ['granice', 'tlo', 'zima'].forEach(k => { if (s[k] && s[k].on) out.push('usk:' + k); }); } catch(e) {}
+  try { if (window.USFVeg && USFVeg.stanje().on) out.push('veg'); } catch(e) {}
+  return out;
+}
+function _tematskiXOsvjezi() { const b = document.getElementById('tem-x'); if (b) b.hidden = !_tematskiUkljuceni().length; }
+function _tematskiIskljuci() {
+  const lista = _tematskiUkljuceni();
+  lista.forEach(k => {
+    const [a, b] = k.split(':');
+    try { if (a === 'sum') _sumToggle(b, false); else if (a === 'usk') USKSlojevi.prekidac(b, false); else if (a === 'veg') USFVeg.prekidac(false); } catch(e) {}
+  });
+  let karta = '';
+  if (_sqlLayers.length && !_sqlLayers.some(x => x.active && map.hasLayer(x.layer))) {
+    let ime = ''; try { ime = localStorage.getItem(_SQL_ACTIVE_KEY) || ''; } catch(e) {}
+    const r = _sqlLayers.find(x => x.name === ime) || _sqlLayers[0];
+    if (r) { _sqlmapSelect(r.id, 'tiho'); karta = r.name; }
+  } else { const r = _sqlLayers.find(x => x.active); if (r) karta = r.name; }
+  _tematskiXOsvjezi();
+  if (typeof _meniStatusRender === 'function') _meniStatusRender();
+  showToast('✕ Isključeno slojeva: ' + lista.length + (karta ? ' · karta: ' + karta : ''));
+}
+map.on('layeradd layerremove', () => { clearTimeout(_tematskiXOsvjezi._t); _tematskiXOsvjezi._t = setTimeout(_tematskiXOsvjezi, 60); });
+setTimeout(_tematskiXOsvjezi, 1500);
 function _sumToggle(key, on) {
   if (!_SUM_LAYERS[key]) return;
   _sumState[key] = !!on;

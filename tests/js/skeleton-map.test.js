@@ -177,6 +177,14 @@ t('meni kartice nemaju oznake "Osnovno spremno"/"Spremno"', () => {
   assert.ok(!/mc-badge/.test(HTML), 'oznake statusa su uklonjene iz menija');
 });
 
+t('✕ ispod 🗂 gasi slojeve Šumarstva i Sušenja-potkornjaka i vraća offline kartu', () => {
+  const i = HTML.indexOf('id="layer-btn"'), j = HTML.indexOf('id="tem-x"');
+  assert.ok(i > 0 && j > i && /<button id="tem-x" class="map-ctl" hidden onclick="_tematskiIskljuci\(\)"/.test(HTML));
+  assert.ok(/#tem-x \{ position:fixed; top:calc\(60px/.test(HTML), 'odmah ispod dugmeta za kartu');
+  const f = HTML.slice(HTML.indexOf('function _tematskiUkljuceni'), HTML.indexOf('function _sumToggle'));
+  ["_sumOn(k)", "USKSlojevi.stanje()", "USFVeg.stanje().on", "_sqlmapSelect(r.id, 'tiho')", "map.on('layeradd layerremove'"].forEach(x => assert.ok(f.includes(x), x));
+});
+
 t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
   const a = HTML.indexOf('<div id="meni-panel"'), b = HTML.indexOf('id="meni-ver-badge"', a);
   const meni = HTML.slice(a, b);
