@@ -43,6 +43,12 @@
   inkrementalna (`_tragDuzina`), NE `_tragCalcLen(_tragPts)` po tački. Xiaomi/HyperOS: osim
   baterije treba Autostart (`AndroidGps.jeXiaomi/otvoriAutostart`, jednokratni savjet + Postavke).
   Mrežni zahtjevi bez `reliableFetch` moraju imati istek (AbortController), inače slab signal visi.
+  Serija ide kroz `_tragDodajSeriju` (drain I oporavak `_crashCheck`); snimak samo `_tragSnimak()`.
+  Prekidi GPS-a (> 60 s bez fiksa ≤ 50 m, pauza ne broji): `_tragPrekidi` u snimku → `t.prekidi`
+  {n, maxS} u popup-u traga i toastu „Trag sačuvan“ — dokaz s terena. Prije starta probni upis
+  0,9 M znakova (`_tragProvjeriProstor`, nudi brisanje `usf_tlo_klima_*`). GpsService: odbijen
+  `startForeground` (Android 12+ restart iz pozadine) ⇒ uredno `stopSelf`, ne pad; `onTaskRemoved`
+  samo osvježi obavijest. Test bafera: `android/test-java/NativeGpsBufferTest.java`.
 - Terenske tačke (`static/js/tacke.js`): localStorage `usf_tacke`, fotografije u
   IndexedDB `usf_foto`; APK kamera ide kroz `imageIntent()` u MainActivity.
 - **Meni → Praćenje šume**: Šumarstvo, Sušenje-potkornjak (`susenje-panel`: Tlo i potkornjak,

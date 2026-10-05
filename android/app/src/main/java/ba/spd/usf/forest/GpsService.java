@@ -66,7 +66,7 @@ public class GpsService extends Service {
             // vratio "gol" (na O+ i rizik 'did not call startForeground' kill-a),
             // a snimanje u WebView-u bi tiho umrlo. Podigni oboje odmah.
             acquireWakeLock();
-            showForegroundNotification("GPS Snimanje", "Snimanje traga aktivno");
+            if (!showForegroundNotification("GPS Snimanje", "Snimanje traga aktivno")) return START_NOT_STICKY;
             startNativeLocationUpdates();
             return START_STICKY;
         }
@@ -104,7 +104,7 @@ public class GpsService extends Service {
 
         state().edit().putBoolean("active", true).commit();
         acquireWakeLock();
-        showForegroundNotification(title, "Snimanje traga aktivno");
+        if (!showForegroundNotification(title, "Snimanje traga aktivno")) return START_NOT_STICKY;
         // Ovo je stvarni početak NOVE sesije snimanja (poziv iz MainActivity) —
         // Retain unacknowledged fixes across start/restart. JS filters session time.
         startNativeLocationUpdates();
@@ -183,13 +183,26 @@ public class GpsService extends Service {
         wakeLock = null;
     }
 
-    private void showForegroundNotification(String title, String body) {
+    // Android 12+ odbija startForeground iz pozadine (sistemski START_STICKY restart),
+    // Android 14 i bez dozvole lokacije — bez catch-a to je pad app-a ("stalno se
+    // zaustavlja"). Tada servis staje uredno; fiksovi do tada su u baferu i JS ih
+    // povuče pri otvaranju app-a (_crashCheck), a rupa se vidi kao prekid u tragu.
+    private boolean showForegroundNotification(String title, String body) {
         Notification notification = buildNotification(title, body);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-        } else {
-            startForeground(NOTIF_ID, notification);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIF_ID, notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+            } else {
+                startForeground(NOTIF_ID, notification);
+            }
+            return true;
+        } catch (RuntimeException e) {
+            android.util.Log.e("UNA-SANA-FOREST", "startForeground odbijen: " + e);
+            releaseWakeLock();
+            stopNativeLocationUpdates();
+            stopSelf();
+            return false;
         }
     }
 
@@ -242,7 +255,9 @@ public class GpsService extends Service {
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         acquireWakeLock();
-        showForegroundNotification("GPS Snimanje", "Snimanje se nastavlja — app je zatvorena");
+        // servis je već u prvom planu — samo osvježi obavijest (ponovni startForeground
+        // iz pozadine bi na Android 12+ bio odbijen i zaustavio snimanje)
+        updateNotification("GPS Snimanje", "Snimanje se nastavlja — app je zatvorena");
         startNativeLocationUpdates();
         // super se NAMJERNO ne zove: podrazumijevana implementacija u nekim
         // slučajevima zaustavi servis zajedno sa taskom.

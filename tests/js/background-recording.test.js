@@ -20,13 +20,14 @@ function fn(name) {
   const data = new Map();
   const context = vm.createContext({
     _tragOn:true, _tragPaused:false, _tragPts:[], _tragLastT:100,
+    _tragPrekidi:{n:0,maxS:0,zadFix:0}, _tragSerija:false, _tragLine:null, _updTragStats:()=>{},
     _onPLastFixTs:99999, _nativeReplayLast:{trag:100}, _CRASH_TRAG_KEY:'snapshot',
     AndroidGps:{readNativeBuffer() {}}, _crashCheck:{_busy:false},
     _nativeBufUzmi:()=>[{la:44,lo:16,ac:5,t:101},{la:44.001,lo:16,ac:5,t:102}],
     _nativeBufPotvrdi:()=>data.set('ack',true),
     showToast:()=>{}, localStorage:{setItem:(k,v)=>data.set(k,v)}
   });
-  vm.runInContext('const _bgSnimanja = new Map();\n' + fn('_bgPredaj') + '\n' + fn('_anyRecOn') + '\n' + fn('_crashSaveTrag') + '\n' + fn('_drainNativeGpsBuffer') + `
+  vm.runInContext('const _bgSnimanja = new Map();\n' + /const _tragSnimak = [^\n]+/.exec(html)[0] + '\n' + fn('_tragDodajSeriju') + '\n' + fn('_bgPredaj') + '\n' + fn('_anyRecOn') + '\n' + fn('_crashSaveTrag') + '\n' + fn('_drainNativeGpsBuffer') + `
     function _addTragPoint(la,lo,ac,al,sp,t) { _tragPts.push([la,lo,al,t]); _tragLastT=t; }
   `, context);
   assert.equal(vm.runInContext('_crashSaveTrag()', context), true);

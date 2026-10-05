@@ -3052,6 +3052,31 @@ function _tragDuzina() {
   return k.d;
 }
 let _tragBuf = [], _tragLastT = 0, _tragLiveSeg = null, _tragLastMoveT = 0;
+// Prekidi: > 60 s bez upotrebljivog fiksa (pauza se ne broji). Dokaz s terena da je
+// snimanje teklo bez rupa — ide uz snimak (preživi pad) i uz sačuvan trag.
+const _TRAG_PREKID_S = 60;
+let _tragPrekidi = { n: 0, maxS: 0, zadFix: 0 };
+function _tragPrekidBiljezi(t) {
+  const pr = _tragPrekidi;
+  if (pr.zadFix && t - pr.zadFix > _TRAG_PREKID_S * 1000) { pr.n++; pr.maxS = Math.max(pr.maxS, Math.round((t - pr.zadFix) / 1000)); }
+  if (t > pr.zadFix) pr.zadFix = t;
+}
+const _tragPrekidTxt = pr => !pr ? '' : pr.n ? pr.n + ' (najduži ' + (pr.maxS >= 120 ? Math.round(pr.maxS / 60) + ' min' : pr.maxS + ' s') + ')' : '0';
+const _tragSnimak = () => JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused, pr:_tragPrekidi });
+// Paket tačaka (native bafer / oporavak): crtanje i statistika jednom na kraju.
+function _tragDodajSeriju(pts, odT) {
+  const n0 = _tragPts.length, zadnja = pts.length - 1;
+  let zad = odT;
+  _tragSerija = pts.length > 3;
+  try {
+    pts.forEach((p, i) => {
+      if (i === zadnja) _tragSerija = false; // zadnja tačka crta živi vrh
+      if (p.t > zad) { _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t); zad = p.t; }
+    });
+  } finally { _tragSerija = false; }
+  if (pts.length > 3 && _tragLine && _tragPts.length !== n0) { _tragLine.setLatLngs(_tragPts.map(q => [q[0], q[1]])); _updTragStats(); }
+  return zad;
+}
 const _TRAG_AUTOPAUSE_MS = 120000; // 2 min mirovanja → auto-pauza
 
 let _lineStyle = { tragW: 4, tragOp: 85, tragDash: 'solid', tragCol: '', tragLen: false };
@@ -3060,6 +3085,7 @@ function _addTragPoint(la, lo, ac, al, sp, nowOverride) {
   if (!_tragOn || _tragPaused) return;
   if (ac > 50) return; // odbaci samo katastrofalno loše fiksove
   const now = nowOverride || Date.now();
+  _tragPrekidBiljezi(now);
 
   // Median filtar od 3 fiksa — biramo STVARNI fix najbliži centroidu (median
   // po odvojenim osama bi mogao stvoriti tačku koja ne postoji → artefakt).
@@ -3126,9 +3152,10 @@ async function fabSnimTrag() {
       let simp;
       try { simp = _dpSimplifyGeo(pts3d, 0.8); } catch(e) { simp = pts3d; }
       const final = (simp.length >= 2 ? simp : pts3d).map(p => [p.la, p.lo, p.al, p.t, p.ac]);
-      const saved = _tragRegAdd(final);
+      const prekidi = { n: _tragPrekidi.n, maxS: _tragPrekidi.maxS };
+      const saved = _tragRegAdd(final, prekidi);
       if (!saved) { _tragOn = true; _tragPaused = true; _crashSaveTrag(); _updRecBarUI(); return; }
-      showToast('✅ Trag sačuvan (' + _tragFmtLen(_tragCalcLen(final)) + ')');
+      showToast('✅ Trag sačuvan (' + _tragFmtLen(_tragCalcLen(final)) + ') · prekidi GPS-a: ' + _tragPrekidTxt(prekidi));
     } else {
       showToast('⚠ Trag nije snimljen — premalo GPS tačaka (GPS signal slab?)');
     }
@@ -3136,13 +3163,28 @@ async function fabSnimTrag() {
     _crashStopTimer(); _crashClearTrag();
     _bgRecStopIfIdle();
   } else {
-    _gpsStabilizeGate(_fabSnimTragBegin);
+    _gpsStabilizeGate(async () => { await _tragProvjeriProstor(); _fabSnimTragBegin(); });
   }
+}
+// 3 h traga ≈ 0,45 M znakova snimka (+ journal). localStorage nema upit slobodnog mjesta,
+// pa probni upis; bez mjesta tačke ostaju u native baferu, ali trag na ekranu stane.
+const _TRAG_PROBA_ZN = 900000;
+function _lsImaMjesta() {
+  try { localStorage.setItem('usf_proba_mjesta', 'x'.repeat(_TRAG_PROBA_ZN)); return true; }
+  catch(e) { return false; }
+  finally { try { localStorage.removeItem('usf_proba_mjesta'); } catch(e) {} }
+}
+async function _tragProvjeriProstor() {
+  if (_lsImaMjesta()) return;
+  const ok = await _dlgConfirm('Lokalna memorija aplikacije je skoro puna — dugo snimanje (2–3 h) moglo bi stati. Osloboditi keš klime tla (ponovo se preuzme po potrebi)?', { title:'💾 Malo prostora', okLabel:'Oslobodi' });
+  if (ok) { try { Object.keys(localStorage).filter(k => k.startsWith('usf_tlo_klima_')).forEach(k => localStorage.removeItem(k)); } catch(e) {} }
+  if (!_lsImaMjesta()) showToast('⚠ I dalje malo prostora — izvezi i obriši stare tragove (Tragovi)');
 }
 function _fabSnimTragBegin() {
   if (!gpsOn) startGPS();
   _recFreeView = false;
   _tragOn = true; _tragPaused = false; _tragPts = []; _tragBuf = []; _tragLastT = Date.now(); _recT0 = Date.now();
+  _tragPrekidi = { n: 0, maxS: 0, zadFix: Date.now() };
   _nativeReplayLast.trag = _tragLastT;
   if (!_crashSaveTrag()) { _tragOn = false; showToast('⚠ Nema prostora za sigurno snimanje'); return; }
   if (_tragLine) { map.removeLayer(_tragLine); _tragLine = null; }
@@ -3166,7 +3208,7 @@ async function togTragPause() {
   } else {
     // Baza za speed-gate mora biti "sada" — inače prva tačka poslije pauze
     // računa dtS kao lažnih 1s i biva odbijena kao "nemoguć skok".
-    _tragLastT = Date.now(); _tragLastMoveT = Date.now();
+    _tragLastT = Date.now(); _tragLastMoveT = Date.now(); _tragPrekidi.zadFix = Date.now();
     showToast('🔴 Snimanje traga nastavljeno');
   }
   _updRecBarUI();
@@ -3266,6 +3308,7 @@ function _tragPopupHtml(t, lenM) {
   const al = p.map(x => x[2]).filter(Number.isFinite), uspon = al.slice(1).reduce((s, a, i) => s + Math.max(0, a - al[i]), 0);
   const redovi = [['Dužina', _tragFmtLen(lenM)], ['Tačaka', String(p.length)]];
   if (trajanje !== null) redovi.push(['Trajanje', trajanje >= 60 ? Math.floor(trajanje / 60) + ' h ' + (trajanje % 60) + ' min' : trajanje + ' min']);
+  if (t.prekidi) redovi.push(['Prekidi GPS-a', _tragPrekidTxt(t.prekidi)]);
   if (al.length > 1) redovi.push(['Visina', Math.round(Math.min(...al)) + '–' + Math.round(Math.max(...al)) + ' m'], ['Uspon', Math.round(uspon) + ' m']);
   return _popKartica({ ikona: '🥾', boja: t.color || '#f97316', naslov: t.name, tip: 'GPS trag', meta: fmtDateShort(t.date), redovi, dugmad: [
     { t: '✏ Preimenuj', on: `_tragRegRename('${t.id}')` },
@@ -3278,10 +3321,10 @@ function _tragPopupRefresh(id) {
   const t = _tragRegistry.find(x => x.id === id), line = _tragLayers[id];
   if (t && line) line.setPopupContent(_tragPopupHtml(t, _tragCalcLen(t.pts)));
 }
-function _tragRegAdd(pts) {
+function _tragRegAdd(pts, prekidi) {
   const id = 'trag_' + Date.now();
   const color = _TRAG_COLORS[_tragRegistry.length % _TRAG_COLORS.length];
-  const t = { id, color, pts, visible: true, date: new Date().toISOString(), name: 'Trag ' + fmtDateShort(new Date().toISOString()), uuid: _genUUID() };
+  const t = { id, color, pts, ...(prekidi ? { prekidi } : {}), visible: true, date: new Date().toISOString(), name: 'Trag ' + fmtDateShort(new Date().toISOString()), uuid: _genUUID() };
   _tragRegistry.unshift(t);
   if (!_tragRegSave()) { _tragRegistry.shift(); return null; }
   _tragRegAddLayer(t);
@@ -3568,7 +3611,7 @@ const _CRASH_TRAG_KEY = 'usf_crash_trag_v1';
 let _crashSaveTimer = null;
 function _crashSaveTrag() {
   if (!_tragOn) return;
-  try { localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused })); return true; } catch(e) { return false; }
+  try { localStorage.setItem(_CRASH_TRAG_KEY, _tragSnimak()); return true; } catch(e) { return false; }
 }
 function _crashStartTimer() { _crashStopTimer(); _crashSaveTimer = setInterval(_crashSaveTrag, 30000); }
 function _crashStopTimer() { if (_crashSaveTimer) { clearInterval(_crashSaveTimer); _crashSaveTimer = null; } }
@@ -3608,11 +3651,12 @@ async function _crashCheck() {
       document.getElementById('ab-loc-trag')?.classList.add('recording');
       _updTragStats();
       const prijeDopune = _tragPts.length;
-      for (const p of bufPts) if (p.t > _tragLastT) _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t);
+      if (snapT.pr) _tragPrekidi = snapT.pr;
+      _tragDodajSeriju(bufPts, _tragLastT);
       const dodatoT = _tragPts.length - prijeDopune;
       _updTragStats();
       showToast(`✅ Oporavljen trag: ${_tragPts.length} tačaka` + (dodatoT ? ` (${dodatoT} iz pozadinskog snimanja)` : '') + ' — snimanje nastavljeno');
-      localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused }));
+      localStorage.setItem(_CRASH_TRAG_KEY, _tragSnimak());
       _nativeReplayLast.trag = _tragLastT;
       _nativeBufPotvrdi();
       _tragPaused = !!snapT.paused;
@@ -3664,19 +3708,8 @@ async function _drainNativeGpsBuffer() {
     const pts = _nativeBufUzmi();
     if (!pts.length) return true;
     if (_tragOn) {
-      const n0 = _tragPts.length, zadnja = pts.length - 1;
-      _tragSerija = pts.length > 3;
-      try {
-        pts.forEach((p, i) => {
-          if (i === zadnja) _tragSerija = false; // zadnja tačka crta živi vrh
-          if (p.t > Math.max(_tragLastT, _nativeReplayLast.trag)) {
-            _addTragPoint(p.la, p.lo, p.ac, p.al, p.sp, p.t);
-            _nativeReplayLast.trag = p.t;
-          }
-        });
-      } finally { _tragSerija = false; }
-      if (pts.length > 3 && _tragLine && _tragPts.length !== n0) { _tragLine.setLatLngs(_tragPts.map(q => [q[0], q[1]])); _updTragStats(); }
-      localStorage.setItem(_CRASH_TRAG_KEY, JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused }));
+      _nativeReplayLast.trag = _tragDodajSeriju(pts, Math.max(_tragLastT, _nativeReplayLast.trag));
+      localStorage.setItem(_CRASH_TRAG_KEY, _tragSnimak());
     }
     _bgPredaj(pts);
     _nativeBufPotvrdi();

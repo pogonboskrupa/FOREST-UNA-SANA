@@ -24,12 +24,38 @@ t('inkrementalna dužina = puna dužina, reset na novi niz i skraćenje', () => 
   const b = pts.slice(20, 30); env.set(b); assert.ok(Math.abs(env.d() - puna(b)) < 1e-9, 'novi niz');
 });
 
-t('drain: serija preskače crtanje po tački, linija se postavi jednom', () => {
-  const add = izvadi('_addTragPoint'), drain = izvadi('_drainNativeGpsBuffer');
+t('serija (drain i oporavak poslije pada) preskače crtanje po tački, linija se postavi jednom', () => {
+  const add = izvadi('_addTragPoint'), ser = izvadi('_tragDodajSeriju');
   assert.ok(add.indexOf('if (_tragSerija) return;') < add.indexOf('_tragLine.addLatLng'));
-  assert.ok(drain.includes('_tragSerija = pts.length > 3') && drain.includes('finally { _tragSerija = false; }'));
-  assert.ok(drain.includes('_tragLine.setLatLngs(_tragPts.map('));
+  assert.ok(ser.includes('_tragSerija = pts.length > 3') && ser.includes('finally { _tragSerija = false; }'));
+  assert.ok(ser.includes('_tragLine.setLatLngs(_tragPts.map('));
+  assert.ok(izvadi('_drainNativeGpsBuffer').includes('_tragDodajSeriju(pts,'), 'drain');
+  const cc = H.slice(H.indexOf('async function _crashCheck('), H.indexOf('setTimeout(_crashCheck'));
+  assert.ok(cc.includes('_tragDodajSeriju(bufPts,') && !/for \(const p of bufPts\)[^\n]*_addTragPoint/.test(cc), 'oporavak');
   assert.ok(!H.includes('_tragCalcLen(_tragPts)'), 'traka i obavijest koriste _tragDuzina');
+  assert.ok(!H.includes('JSON.stringify({ pts:_tragPts, ts:Date.now(), lastT:_tragLastT, paused:_tragPaused })'), 'snimak samo kroz _tragSnimak (nosi prekide)');
+});
+
+t('prekidi GPS-a: rupa > 60 s se broji, kontinuirano snimanje = 0', () => {
+  const env = new Function('const _TRAG_PREKID_S = 60; let _tragPrekidi = { n: 0, maxS: 0, zadFix: 0 };\n' + izvadi('_tragPrekidBiljezi') +
+    '\nreturn { b: _tragPrekidBiljezi, pr: () => _tragPrekidi, reset: t => { _tragPrekidi = { n: 0, maxS: 0, zadFix: t }; } };')();
+  env.reset(0); for (let t = 2000; t <= 3 * 3600e3; t += 2000) env.b(t);
+  assert.deepStrictEqual([env.pr().n, env.pr().maxS], [0, 0], '3 h bez rupe');
+  env.reset(0); env.b(30e3); env.b(330e3); env.b(332e3); env.b(390e3);
+  assert.deepStrictEqual([env.pr().n, env.pr().maxS], [1, 300], 'rupa 5 min');
+  env.b(380e3); assert.strictEqual(env.pr().zadFix, 390e3, 'stariji fiks (serija) ne vraća vrijeme unazad');
+  const txt = new Function('return ' + /const _tragPrekidTxt = ([^\n]+);/.exec(H)[1])();
+  assert.strictEqual(txt({ n: 0 }), '0'); assert.strictEqual(txt({ n: 2, maxS: 300 }), '2 (najduži 5 min)');
+  assert.ok(izvadi('togTragPause').includes('_tragPrekidi.zadFix = Date.now()'), 'pauza se ne broji kao prekid');
+  assert.ok(H.includes("redovi.push(['Prekidi GPS-a', _tragPrekidTxt(t.prekidi)])"));
+});
+
+t('prije starta provjera prostora; GpsService ne pada na odbijen startForeground', () => {
+  assert.ok(H.includes('_gpsStabilizeGate(async () => { await _tragProvjeriProstor(); _fabSnimTragBegin(); })'));
+  const G = fs.readFileSync(path.join(__dirname, '../../android/app/src/main/java/ba/spd/usf/forest/GpsService.java'), 'utf8');
+  assert.ok(G.includes('private boolean showForegroundNotification') && G.includes('catch (RuntimeException e)'));
+  const tr = G.slice(G.indexOf('public void onTaskRemoved'));
+  assert.ok(!tr.slice(0, tr.indexOf('\n    }')).includes('showForegroundNotification'), 'onTaskRemoved ne zove startForeground iz pozadine');
 });
 
 t('Drive lista ima istek (slab signal), Xiaomi Autostart prečica', () => {
