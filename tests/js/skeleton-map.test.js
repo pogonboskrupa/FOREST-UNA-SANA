@@ -188,7 +188,8 @@ t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
   const sus = HTML.slice(HTML.indexOf('<div id="susenje-panel"'), HTML.indexOf('<!-- Projektovanje šumskog puta -->'));
   ['id="tp-osvjezi"', 'id="tp-rez"', 'id="sum-susenje-switch"', 'id="sum-susenje-god"', 'id="sum-sus-proj-chk"'].forEach(x => assert.ok(sus.includes(x), 'Sušenje-potkornjak sadrži ' + x));
   const sum = HTML.slice(HTML.indexOf('<div id="sumarstvo-panel"'), HTML.indexOf('<div id="susenje-panel"'));
-  assert.ok(!sum.includes('id="tp-rez"') && !sum.includes('id="sum-susenje-switch"') && sum.includes('id="uk-veg-switch"'), 'tlo/potkornjak i sušenje više nisu u Šumarstvu');
+  assert.ok(!sum.includes('id="tp-rez"') && !sum.includes('id="sum-susenje-switch"') && !sum.includes('id="uk-veg-switch"'), 'tlo/potkornjak, NDVI i sušenje više nisu u Šumarstvu');
+  assert.ok(sus.indexOf('id="tp-rez"') < sus.indexOf('id="uk-veg-switch"') && sus.indexOf('id="uk-veg-switch"') < sus.indexOf('id="sum-susenje-switch"'), 'redoslijed: tlo, vitalnost, sušenje');
   for (const k of kartice) {
     assert.ok(/<span class="mc-ico"><svg/.test(k), 'ikona mora biti SVG');
     assert.ok(!/\p{Extended_Pictographic}/u.test(k), 'bez emoji u kartici');

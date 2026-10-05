@@ -1447,13 +1447,13 @@ body.sl-uredi #sl-ured { display: block; }
       <h3>Praćenje šume</h3>
       <button type="button" class="meni-card" id="mc-sumarstvo" onclick="openSumarstvoSection()" style="--mc:#4ade80">
         <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 6.5 9.5h3L5 15.5h14l-4.5-6h3z"/><path d="M12 15.5V22"/></svg></span>
-        <span class="mc-txt"><b>Šumarstvo</b><span>Podloge USK, vitalnost, pokrivač, gubitak, poremećaji</span></span>
+        <span class="mc-txt"><b>Šumarstvo</b><span>Podloge USK, pokrivač, gubitak, poremećaji</span></span>
         <span class="mc-stat" id="mc-stat-sumarstvo"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <button type="button" class="meni-card" id="mc-susenje" onclick="openSusenjeSection()" style="--mc:#facc15">
         <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="13.5" rx="4.5" ry="6"/><path d="M12 7.5v12M9 4.5l1.5 2.5M15 4.5 13.5 7M7.5 11H4M7.5 15.5H4.5M16.5 11H20M16.5 15.5h3"/></svg></span>
-        <span class="mc-txt"><b>Sušenje-potkornjak</b><span>Tlo i potkornjak, sušenje šume (deadtrees)</span></span>
+        <span class="mc-txt"><b>Sušenje-potkornjak</b><span>Tlo i potkornjak, NDVI vitalnost, sušenje šume</span></span>
         <span class="mc-stat" id="mc-stat-susenje"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
@@ -1763,27 +1763,6 @@ body.sl-uredi #sl-ured { display: block; }
         <p class="uk-izvor">Sentinel-2 bez lišća (decembar–mart), bez oblaka i snijega: <b>četinarske kulture tamnozelene</b>, bukva i hrast sivo-smeđi, a vidljivi su <b>putevi, vlake i sječine</b> ispod krošanja. Najbolje do zooma 14 (10 m piksel).</p>
       </div>
     </section>
-    <section class="uk-grupa">
-      <h3>Vitalnost krošnje <small>satelitski vegetacijski indeksi · zapamćene pločice rade bez interneta</small></h3>
-      <div class="loc-row"><span>🛰 Vegetacijski indeksi (NDVI / EVI / NDMI)</span><div class="loc-switch" id="uk-veg-switch" onclick="USFVeg.prekidac()"></div></div>
-      <div id="uk-veg-opts" class="uk-opts" style="display:none">
-        <div class="zp-izbor"><label>Indeks<select id="veg-ind" onchange="USFVeg.postavi('ind',this.value)"><option value="ndvi">NDVI — vitalnost</option><option value="evi">EVI — gusta šuma</option><option value="ndmi">NDMI — voda u krošnji</option></select></label>
-          <label>Period<select id="veg-per" onchange="USFVeg.postavi('per',this.value)"><option value="15">zadnjih 15 dana</option><option value="30">zadnjih 30 dana</option><option value="60">zadnjih 60 dana</option><option value="pg">isti mjesec lani</option></select></label></div>
-        <label class="uk-kl">Prozirnost <input type="range" min="20" max="100" id="veg-op" oninput="USFVeg.postavi('op',this.value)"></label>
-        <div id="veg-leg"></div>
-        <div id="veg-status" class="uk-status"></div>
-        <div class="zp-box">
-          <div class="zp-nasl">Rad bez interneta</div>
-          <button id="veg-preuzmi" class="zp-glavno" onclick="USFVeg.preuzmi()">⬇ Preuzmi vidljivi dio</button>
-          <button class="veg-sporedno" onclick="USFVeg.obrisiKes()">🗑 Obriši zapamćene pločice</button>
-        </div>
-        <details class="veg-cdse"><summary>CDSE konfiguracija <span id="veg-povezano"></span></summary>
-          <ol><li>Besplatan račun na <b>dataspace.copernicus.eu</b>.</li><li>Sentinel Hub → <b>Configuration Utility</b> → nova konfiguracija (šablon sa Sentinel-2 L2A).</li><li>Kopiraj njen <b>ID</b> ovdje.</li></ol>
-          <div class="veg-id-red"><input id="veg-id" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><button class="zp-glavno" onclick="USFVeg.povezi()">Spremi</button></div>
-          <p class="uk-izvor">ID ostaje samo na ovom telefonu. Besplatno: 10 000 zahtjeva i 10 000 PU mjesečno po računu — jedna pločica = jedan zahtjev; zapamćene pločice se ne troše ponovo 5 dana.</p>
-        </details>
-      </div>
-    </section>
     <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Hansen/UMD Global Forest Change preko Global Forest Watch rasterskih tile servisa — besplatno, bez ključa. Rezolucija ~30m (Landsat), globalni skup podataka (nije specifičan za kanton).</div>
     <div class="loc-row">
       <span>🌳 Šumski pokrivač (2000)</span>
@@ -1820,7 +1799,7 @@ body.sl-uredi #sl-ured { display: block; }
 </div>
 
 <!-- Sušenje i potkornjak: tlo/PHENIPS (tlo-potkornjak.js) i sušenje (deadtrees.earth);
-     ID-ovi su isti kao u Šumarstvu, logika (_sum*, USFTlo) se nije mijenjala. -->
+     ID-ovi su isti kao u Šumarstvu, logika (_sum*, USFTlo, USFVeg) se nije mijenjala. -->
 <div id="susenje-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪲 Sušenje-potkornjak</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
@@ -1830,6 +1809,27 @@ body.sl-uredi #sl-ured { display: block; }
         <div class="tp-zag"><span>🪲 Očitanje za lokaciju</span><button id="tp-osvjezi" class="zp-glavno" onclick="USFTlo.osvjezi()">↻ Očitaj</button></div>
         <p class="uk-izvor">Za GPS poziciju (ako je Moja lokacija uključena), inače za centar karte. Vlažnost tla 0–7 / 7–28 / 28–100 cm prema višegodišnjem prosjeku, temperatura tla i razvoj smrekovog potkornjaka (<i>Ips typographus</i>).</p>
         <div id="tp-rez"></div>
+      </div>
+    </section>
+    <section class="uk-grupa">
+      <h3>Vitalnost krošnje <small>satelitski vegetacijski indeksi · zapamćene pločice rade bez interneta</small></h3>
+      <div class="loc-row"><span>🛰 Vegetacijski indeksi (NDVI / EVI / NDMI)</span><div class="loc-switch" id="uk-veg-switch" onclick="USFVeg.prekidac()"></div></div>
+      <div id="uk-veg-opts" class="uk-opts" style="display:none">
+        <div class="zp-izbor"><label>Indeks<select id="veg-ind" onchange="USFVeg.postavi('ind',this.value)"><option value="ndvi">NDVI — vitalnost</option><option value="evi">EVI — gusta šuma</option><option value="ndmi">NDMI — voda u krošnji</option></select></label>
+          <label>Period<select id="veg-per" onchange="USFVeg.postavi('per',this.value)"><option value="15">zadnjih 15 dana</option><option value="30">zadnjih 30 dana</option><option value="60">zadnjih 60 dana</option><option value="pg">isti mjesec lani</option></select></label></div>
+        <label class="uk-kl">Prozirnost <input type="range" min="20" max="100" id="veg-op" oninput="USFVeg.postavi('op',this.value)"></label>
+        <div id="veg-leg"></div>
+        <div id="veg-status" class="uk-status"></div>
+        <div class="zp-box">
+          <div class="zp-nasl">Rad bez interneta</div>
+          <button id="veg-preuzmi" class="zp-glavno" onclick="USFVeg.preuzmi()">⬇ Preuzmi vidljivi dio</button>
+          <button class="veg-sporedno" onclick="USFVeg.obrisiKes()">🗑 Obriši zapamćene pločice</button>
+        </div>
+        <details class="veg-cdse"><summary>CDSE konfiguracija <span id="veg-povezano"></span></summary>
+          <ol><li>Besplatan račun na <b>dataspace.copernicus.eu</b>.</li><li>Sentinel Hub → <b>Configuration Utility</b> → nova konfiguracija (šablon sa Sentinel-2 L2A).</li><li>Kopiraj njen <b>ID</b> ovdje.</li></ol>
+          <div class="veg-id-red"><input id="veg-id" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><button class="zp-glavno" onclick="USFVeg.povezi()">Spremi</button></div>
+          <p class="uk-izvor">ID ostaje samo na ovom telefonu. Besplatno: 10 000 zahtjeva i 10 000 PU mjesečno po računu — jedna pločica = jedan zahtjev; zapamćene pločice se ne troše ponovo 5 dana.</p>
+        </details>
       </div>
     </section>
     <section class="uk-grupa">

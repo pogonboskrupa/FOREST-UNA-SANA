@@ -39,10 +39,10 @@
   `<div id="map">`. U modulima koristiti gola imena (`typeof map !== 'undefined'`).
 - Terenske tačke (`static/js/tacke.js`): localStorage `usf_tacke`, fotografije u
   IndexedDB `usf_foto`; APK kamera ide kroz `imageIntent()` u MainActivity.
-- **Meni → Praćenje šume**: Šumarstvo, Sušenje-potkornjak (`susenje-panel`: Tlo i potkornjak +
-  sušenje deadtrees.earth s projekcijom), Požari. Elementi sušenja zadržali ID-ove `sum-*`;
-  oba panela osvježava `_sumPanelOsvjezi()`. NDVI/EVI/NDMI ostaje u Šumarstvu (Vitalnost krošnje).
-- **Zdravlje šume** (Sušenje-potkornjak + vitalnost u Šumarstvu): `static/js/tlo-potkornjak.js` — Open-Meteo (CORS *,
+- **Meni → Praćenje šume**: Šumarstvo, Sušenje-potkornjak (`susenje-panel`: Tlo i potkornjak,
+  Vitalnost krošnje NDVI/EVI/NDMI, sušenje deadtrees.earth s projekcijom), Požari. Elementi su
+  zadržali ID-ove (`tp-*`, `uk-veg-*`/`veg-*`, `sum-*`); oba panela osvježava `_sumPanelOsvjezi()`.
+- **Zdravlje šume** (panel Sušenje-potkornjak): `static/js/tlo-potkornjak.js` — Open-Meteo (CORS *,
   bez ključa): ERA5-Land tlo + klimatologija 1991–2020 (kvantili po ćeliji 0,1° u
   localStorage `usf_tlo_klima_*`), IFS prognoza, PHENIPS; zadnji rezultat
   `usf_tlo_zadnje` za offline. `static/js/vegetacija.js` — NDVI/EVI/NDMI preko CDSE
