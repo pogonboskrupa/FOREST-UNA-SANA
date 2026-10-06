@@ -99,12 +99,22 @@ public class MainActivity extends Activity {
 
     // Podržava standardni MBTiles i česte SQLiteDB varijante: z/x/y/image.
     private static final class TileSchema {
-        final String table, z, x, y, data; final boolean tms, inverted;
+        final String table, z, x, y, data, sql; final boolean tms, inverted;
+        // Koja orijentacija Y ose stvarno pogađa pločice (0 = još nepoznato, 1 = prva, 2 = druga):
+        // poslije prvog pogotka pločica koja ne postoji košta jedan upit, ne dva.
+        volatile int yRed;
         TileSchema(String table, String z, String x, String y, String data, boolean tms, boolean inverted) {
             this.table = table; this.z = z; this.x = x; this.y = y; this.data = data; this.tms = tms;
             this.inverted = inverted;
+            this.sql = "SELECT " + q(data) + " FROM " + q(table) + " WHERE " + q(z) + "=? AND " + q(x) + "=? AND " + q(y) + "=?";
         }
     }
+    // Android SQLite bez WAL-a ima jednu konekciju po bazi — paralelni zahtjevi za pločice
+    // (WebView ih šalje 4–6 odjednom) bi čekali u redu. Zato do 3 read-only konekcije na
+    // istu putanju, redom; set je vezan za trenutnu glavnu bazu (zamjena izvor → kopija).
+    private static final int CITACA = 3;
+    private final Map<String, SQLiteDatabase[]> mbtilesCitaci = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicInteger citacRed = new java.util.concurrent.atomic.AtomicInteger();
 
     private static final int REQ_FILE = 1;
     private static final int REQ_PERMS = 2;
@@ -189,6 +199,8 @@ public class MainActivity extends Activity {
                 new androidx.webkit.ServiceWorkerClientCompat() {
                     @Override
                     public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
+                        WebResourceResponse tile = interceptMbtilesTile(request.getUrl());
+                        if (tile != null) return tile;
                         return localAssets.shouldInterceptRequest(request.getUrl());
                     }
                 });
@@ -509,19 +521,50 @@ public class MainActivity extends Activity {
         return null;
     }
 
+    private SQLiteDatabase citac(String id) throws Exception {
+        SQLiteDatabase glavna = openMbtiles(id);
+        SQLiteDatabase[] set = mbtilesCitaci.get(id);
+        if (set == null || set[0] != glavna) set = noviCitaci(id, glavna);
+        SQLiteDatabase db = set[(citacRed.getAndIncrement() & 0x7fffffff) % set.length];
+        return db.isOpen() ? db : glavna;
+    }
+
+    private synchronized SQLiteDatabase[] noviCitaci(String id, SQLiteDatabase glavna) {
+        SQLiteDatabase[] set = mbtilesCitaci.get(id);
+        if (set != null && set[0] == glavna) return set;
+        java.util.ArrayList<SQLiteDatabase> l = new java.util.ArrayList<>();
+        l.add(glavna);
+        for (int i = 1; i < CITACA; i++) {
+            try {
+                l.add(SQLiteDatabase.openDatabase(glavna.getPath(), null,
+                        SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS));
+            } catch (Exception e) { break; }
+        }
+        SQLiteDatabase[] novi = l.toArray(new SQLiteDatabase[0]);
+        SQLiteDatabase[] stari = mbtilesCitaci.put(id, novi);
+        zatvoriCitace(stari, 5000);
+        return novi;
+    }
+
+    // set[0] je glavna baza — nju zatvara vlasnik (zamjena/brisanje), ovdje samo dodatni čitači.
+    private void zatvoriCitace(SQLiteDatabase[] set, long odgoda) {
+        if (set == null || set.length < 2) return;
+        Runnable r = () -> { for (int i = 1; i < set.length; i++) try { set[i].close(); } catch (Exception ignored) {} };
+        if (odgoda > 0) new Handler(Looper.getMainLooper()).postDelayed(r, odgoda); else r.run();
+    }
+
     private byte[] tileBytes(String id, int z, int x, int xyzY) throws Exception {
-        SQLiteDatabase db = openMbtiles(id);
         TileSchema s = tileSchema(id);
+        SQLiteDatabase db = citac(id);
         int tmsY = SqliteTileMath.tmsY(z, xyzY);
         int storedZ = SqliteTileMath.storedZoom(z, s.inverted);
         // Standardni MBTiles je TMS, a mnoge .sqlitedb karte čuvaju XYZ.
-        int firstY = s.tms ? tmsY : xyzY;
-        int secondY = s.tms ? xyzY : tmsY;
-        String sql = "SELECT " + q(s.data) + " FROM " + q(s.table) + " WHERE " + q(s.z) + "=? AND "
-                + q(s.x) + "=? AND " + q(s.y) + "=?";
-        for (int y : new int[]{firstY, secondY}) {
-            try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(storedZ), String.valueOf(x), String.valueOf(y)})) {
-                if (c.moveToFirst()) return c.getBlob(0);
+        int[] ys = s.tms ? new int[]{tmsY, xyzY} : new int[]{xyzY, tmsY};
+        int poznat = s.yRed;
+        for (int i = 0; i < 2; i++) {
+            if (poznat != 0 && poznat != i + 1) continue;
+            try (Cursor c = db.rawQuery(s.sql, new String[]{String.valueOf(storedZ), String.valueOf(x), String.valueOf(ys[i])})) {
+                if (c.moveToFirst()) { if (poznat == 0) s.yRed = i + 1; return c.getBlob(0); }
             }
         }
         return null;
@@ -644,6 +687,7 @@ public class MainActivity extends Activity {
             SQLiteDatabase nova = SQLiteDatabase.openDatabase(cilj.getAbsolutePath(), null,
                     SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
             SQLiteDatabase stara = mbtilesDatabases.put(id, nova);
+            zatvoriCitace(mbtilesCitaci.remove(id), 5000);
             ParcelFileDescriptor stariFd = mbtilesIzvori.remove(id);
             zaboraviIzvor(id);
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -664,18 +708,25 @@ public class MainActivity extends Activity {
             String path = uri.getPath();
             if (path == null || !path.startsWith("/mbtiles/")) return null;
             String[] p = path.substring("/mbtiles/".length()).split("/");
-            if (p.length != 4) return new WebResourceResponse("image/png", null,
-                    new java.io.ByteArrayInputStream(new byte[0]));
+            if (p.length != 4) return praznaPlocica();
             String id = URLDecoder.decode(p[0], StandardCharsets.UTF_8.name());
             int z = Integer.parseInt(p[1]), x = Integer.parseInt(p[2]), xyzY = Integer.parseInt(p[3]);
             byte[] bytes = tileBytes(id, z, x, xyzY);
-            if (bytes == null) bytes = new byte[0];
-            return new WebResourceResponse(tileMime(bytes), null,
+            if (bytes == null || bytes.length == 0) return praznaPlocica();
+            Map<String, String> h = new java.util.HashMap<>();
+            h.put("Cache-Control", "max-age=86400");
+            h.put("Access-Control-Allow-Origin", "*");
+            return new WebResourceResponse(tileMime(bytes), null, 200, "OK", h,
                     new java.io.ByteArrayInputStream(bytes));
         } catch (Exception e) {
-            return new WebResourceResponse("image/png", null,
-                    new java.io.ByteArrayInputStream(new byte[0]));
+            return praznaPlocica();
         }
+    }
+
+    // Pločica koje nema (van obuhvata/zoom-a): 204 — Leaflet je ostavi praznu bez dekodiranja.
+    private static WebResourceResponse praznaPlocica() {
+        return new WebResourceResponse("image/png", null, 204, "No Content",
+                new java.util.HashMap<>(), new java.io.ByteArrayInputStream(new byte[0]));
     }
 
     private static String tileMime(byte[] bytes) {
@@ -775,6 +826,7 @@ public class MainActivity extends Activity {
             try {
                 KopijaKarte k = mbtilesKopije.remove(id);
                 if (k != null) k.prekini();
+                zatvoriCitace(mbtilesCitaci.remove(id), 0);
                 SQLiteDatabase db = mbtilesDatabases.remove(id);
                 if (db != null) db.close();
                 ParcelFileDescriptor pfd = mbtilesIzvori.remove(id);

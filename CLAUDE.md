@@ -19,6 +19,13 @@
   bazu u `mbtilesDatabases`, stara se zatvara poslije 5 s. `native_mbtiles_izvor` (id → uri)
   ⇒ poslije ubijanja app-a `listMaps` otvori iz izvora i kopira ispočetka. Bez fd-a / greške
   ⇒ stari tok (kopija pa otvaranje). Test: `android/test-java/KopijaKarteTest.java`.
+- **Prikaz nativnih pločica (APK)**: `_NativeSqlTileLayer` (L.TileLayer, `<img>` sa
+  `https://appassets.androidplatform.net/mbtiles/<id>/{z}/{x}/{y}` → `interceptMbtilesTile`,
+  nema pločice = 204) — NE sinhroni `AndroidMbtiles.getTile` po pločici (blokirao zumiranje).
+  sw.js `/mbtiles/` NE presreće (inače prazne pločice + keš raste); i SW klijent zove interceptor.
+  Rezerva: dok nijedna pločica nije stigla URL-om, greška pita most `getTileDataUri`; ako most
+  ima pločicu ⇒ `_mostSamo` (204 ne prebacuje). Java: do 3 read-only čitača po karti
+  (`citac`/`noviCitaci`, ista putanja i za `/proc/self/fd`), `TileSchema.yRed` pamti orijentaciju Y.
 - Leaflet: svaki `pane: 'x'` mora imati `map.createPane('x')`; sloj koji treba
   biti iznad offline podloge (`offlineBasePane`, z 210) mora imati vlastiti pane.
 - **Ugrađeni podaci (static/data, 5 općina USK)**: `efda_opcine.*` (poremećaji

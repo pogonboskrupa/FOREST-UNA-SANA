@@ -5057,27 +5057,33 @@ function _nativeSqlmapRecords() {
     return Array.isArray(rows) ? rows : [];
   } catch(e) { return []; }
 }
-const _NativeSqlCanvasLayer = L.GridLayer.extend({
+// Nativne pločice kao obične <img> sa appassets.../mbtiles/ (MainActivity.interceptMbtilesTile):
+// WebView ih učitava paralelno i dekodira van glavne niti — bez sinhronog JS→Java poziva i
+// base64 po pločici (stari canvas put je pri zumiranju blokirao app). Rezerva: ako URL put ne
+// radi (npr. stari SW na telefonu), sloj prelazi na most AndroidMbtiles.getTileDataUri.
+const _NATIVE_TILE_URL = 'https://appassets.androidplatform.net/mbtiles/';
+const _NativeSqlTileLayer = L.TileLayer.extend({
   createTile(coords, done) {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 256;
-    const finish = () => { try { done(null, canvas); } catch(e) {} };
-    setTimeout(() => {
-      try {
-        if (!_nativeSqlmapAvailable() || typeof AndroidMbtiles.getTile !== 'function') { finish(); return; }
-        const b64 = AndroidMbtiles.getTile(this.options.nativeId, coords.z, coords.x, coords.y);
-        if (!b64) { finish(); return; }
-        const img = new Image();
-        img.onload = () => {
-          try { canvas.getContext('2d', { alpha:true }).drawImage(img, 0, 0, 256, 256); } catch(e) {}
-          finish();
-        };
-        img.onerror = finish;
-        const fmt = String(this.options.format || 'png').toLowerCase();
-        img.src = 'data:' + (fmt.includes('jpg') || fmt.includes('jpeg') ? 'image/jpeg' : 'image/png') + ';base64,' + b64;
-      } catch(e) { finish(); }
-    }, 0);
-    return canvas;
+    const img = document.createElement('img');
+    img.alt = ''; img.setAttribute('role', 'presentation'); img.decoding = 'async';
+    const most = () => {
+      let uri = '';
+      try { if (_nativeSqlmapAvailable() && typeof AndroidMbtiles.getTileDataUri === 'function') uri = AndroidMbtiles.getTileDataUri(this.options.nativeId, coords.z, coords.x, coords.y); } catch(e) {}
+      if (!uri) { done(null, img); return; } // pločica ne postoji
+      this._mostSamo = true; // most je dao pločicu koju URL nije — URL put ne radi na ovom telefonu
+      img.onload = () => done(null, img); img.onerror = () => done(null, img);
+      img.src = uri;
+    };
+    if (this._mostSamo) { setTimeout(most, 0); return img; }
+    img.onload = () => { this._urlRadi = true; done(null, img); };
+    img.onerror = () => {
+      // 204 (nema pločice) i kvar URL puta izgledaju isto: dok nijedna pločica nije stigla
+      // URL-om, pitaj most — ako on ima pločicu, sloj trajno prelazi na most.
+      if (this._urlRadi) { done(null, img); return; }
+      most();
+    };
+    img.src = this.getTileUrl(coords);
+    return img;
   }
 });
 function _nativeSqlmapAdd(info) {
@@ -5086,11 +5092,12 @@ function _nativeSqlmapAdd(info) {
   if (existing) return existing;
   const meta = { bounds: info.bounds || '' };
   const bounds = _sqlParseBounds(meta);
-  const layer = new _NativeSqlCanvasLayer({
+  const layer = new _NativeSqlTileLayer(_NATIVE_TILE_URL + encodeURIComponent(info.id) + '/{z}/{x}/{y}', {
     pane:'offlineBasePane', ..._sqlZoomOpts(info.minzoom, info.maxzoom),
-    tileSize:256, updateWhenIdle:false, keepBuffer:3,
+    tileSize:256, updateWhenIdle:false, updateWhenZooming:false, keepBuffer:3,
     nativeId:info.id, format:info.format || 'png'
   });
+  layer._urlRadi = false; layer._mostSamo = false;
   const active = _sqlmapActiveName() === info.name;
   const rec = { id:'native_' + info.id, nativeId:info.id, native:true, name:info.name,
     db:null, layer, bounds, thumb:_SQL_THUMB, active, vis:active, zmin:Number(info.minzoom), zmax:Number(info.maxzoom),

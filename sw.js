@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '1.8.9';
+const APP_VERSION = '1.9.0';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -113,6 +113,10 @@ function _tileRespond(event, cacheName) {
 
 self.addEventListener('fetch', event => {
   const url = event.request.url;
+
+  // Offline pločice (APK): servira ih MainActivity.interceptMbtilesTile direktno iz SQLite-a.
+  // SW ih ne smije uzeti (njegov klijent vidi samo assete, a keš bi rastao po pločici).
+  if (url.includes('/mbtiles/')) return;
 
   if (
     url.includes('tile.opentopomap.org') ||

@@ -100,3 +100,24 @@ pa tek onda prikazao kartu. Sada:
    Brisanje karte prekida kopiju i briše `.part`.
 6. Ako izvor ne može da se otvori direktno (provajder bez fd-a, WAL baza…), koristi se
    stari tok — kopija (s napretkom u statusu), pa otvaranje.
+
+## Brzi prikaz pločica pri zumiranju (v1.9.0)
+
+Do v1.8.9 je APK crtao pločice kroz canvas sloj: po pločici sinhroni `AndroidMbtiles.getTile`
+(blokira glavnu JS nit, pozivi serijski), base64 (+33 %), data-URI dekodiranje, pa canvas.
+Sada `_NativeSqlTileLayer` (`L.TileLayer`) učitava `<img>` sa
+`https://appassets.androidplatform.net/mbtiles/<id>/{z}/{x}/{y}`:
+
+- `MainActivity.interceptMbtilesTile` servira binarno, paralelno, van glavne niti; pločica koje
+  nema = 204; `Cache-Control: max-age=86400`.
+- **sw.js mora preskočiti `/mbtiles/`** (isti origin): SW klijent servira samo assete — to je
+  razlog zašto je v1.3.1 prešao na canvas. Za svaki slučaj i `ServiceWorkerClientCompat` zove
+  interceptor.
+- Android SQLite bez WAL-a = jedna konekcija ⇒ do 3 read-only čitača po karti (`citac`,
+  `noviCitaci`, vezani za trenutnu glavnu bazu; stari se zatvaraju odgođeno pri zamjeni
+  izvor → kopija i odmah pri brisanju).
+- `TileSchema.yRed`: poslije prvog pogotka zna se orijentacija Y (TMS/XYZ), pa pločica koje
+  nema košta jedan upit; SQL string se gradi jednom.
+- `updateWhenZooming:false`: tokom pinch animacije nema zahtjeva, sloj se puni na kraju.
+- Rezerva: dok nijedna pločica nije stigla URL-om, greška pita most `getTileDataUri`; ako most
+  vrati pločicu, sloj trajno prelazi na most (`_mostSamo`). 204 ne izaziva prelazak.
