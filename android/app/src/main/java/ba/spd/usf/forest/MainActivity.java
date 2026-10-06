@@ -12,6 +12,9 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
@@ -88,6 +91,11 @@ public class MainActivity extends Activity {
     private boolean pendingOfflineMapImport = false;
     private final Map<String, SQLiteDatabase> mbtilesDatabases = new ConcurrentHashMap<>();
     private final Map<String, TileSchema> tileSchemas = new ConcurrentHashMap<>();
+    // Prvi uvoz: karta se čita direktno iz izabranog fajla (fd) dok trajna kopija u
+    // offline_maps teče u pozadini — korisnik ne čeka kopiranje 1–2 GB da bi vidio kartu.
+    private static final String PREFS_IZVOR = "native_mbtiles_izvor";
+    private final Map<String, ParcelFileDescriptor> mbtilesIzvori = new ConcurrentHashMap<>();
+    private final Map<String, KopijaKarte> mbtilesKopije = new ConcurrentHashMap<>();
 
     // Podržava standardni MBTiles i česte SQLiteDB varijante: z/x/y/image.
     private static final class TileSchema {
@@ -561,11 +569,93 @@ public class MainActivity extends Activity {
         SQLiteDatabase cached = mbtilesDatabases.get(id);
         if (cached != null && cached.isOpen()) return cached;
         File file = mbtilesFile(id);
-        if (!file.isFile()) throw new IOException("Karta nije pronađena");
+        if (!file.isFile()) return otvoriIzIzvora(id);
         SQLiteDatabase opened = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null,
                 SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
         mbtilesDatabases.put(id, opened);
         return opened;
+    }
+
+    private Uri izvorKarte(String id) {
+        String u = getSharedPreferences(PREFS_IZVOR, MODE_PRIVATE).getString(id, null);
+        return u != null ? Uri.parse(u) : null;
+    }
+
+    // SQLite otvara izvorni fajl preko /proc/self/fd (SAF uri nema putanju); samo čitanje.
+    private synchronized SQLiteDatabase otvoriIzIzvora(String id) throws Exception {
+        SQLiteDatabase cached = mbtilesDatabases.get(id);
+        if (cached != null && cached.isOpen()) return cached;
+        Uri uri = izvorKarte(id);
+        if (uri == null) throw new IOException("Karta nije pronađena");
+        ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+        if (pfd == null) throw new IOException("Izvorni fajl nije dostupan");
+        SQLiteDatabase db = null;
+        try {
+            db = SQLiteDatabase.openDatabase("/proc/self/fd/" + pfd.getFd(), null,
+                    SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
+            try (Cursor c = db.rawQuery("SELECT count(*) FROM sqlite_master", null)) { c.moveToFirst(); }
+        } catch (Exception e) {
+            if (db != null) db.close();
+            pfd.close();
+            throw e;
+        }
+        ParcelFileDescriptor stari = mbtilesIzvori.put(id, pfd);
+        if (stari != null) try { stari.close(); } catch (IOException ignored) {}
+        mbtilesDatabases.put(id, db);
+        return db;
+    }
+
+    private void zaboraviIzvor(String id) {
+        Uri uri = izvorKarte(id);
+        getSharedPreferences(PREFS_IZVOR, MODE_PRIVATE).edit().remove(id).commit();
+        if (uri != null) try { getContentResolver().releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
+    }
+
+    private void javiKopiju(String id, int p, String stanje, String poruka) {
+        String js = "window._sqlKopija&&_sqlKopija(" + JSONObject.quote(id) + "," + p + ","
+                + JSONObject.quote(stanje) + "," + JSONObject.quote(poruka) + ")";
+        runOnUiThread(() -> webView.evaluateJavascript(js, null));
+    }
+
+    private void pokreniKopiju(String id) {
+        KopijaKarte k = new KopijaKarte();
+        if (mbtilesKopije.putIfAbsent(id, k) != null) return;
+        new Thread(() -> trajnaKopija(id, k), "mbtiles-kopija").start();
+    }
+
+    // Kopija iz izvora u offline_maps; na kraju čitanje prelazi na kopiju, a stara baza i
+    // fd se zatvaraju tek poslije 5 s (pločice koje se baš čitaju ne smiju dobiti prazno).
+    private void trajnaKopija(String id, KopijaKarte k) {
+        try {
+            Uri uri = izvorKarte(id);
+            if (uri == null) return;
+            ParcelFileDescriptor pfd = mbtilesIzvori.get(id);
+            long vel = pfd != null ? pfd.getStatSize() : -1;
+            if (vel > 0 && mbtilesDir().getUsableSpace() < vel + 200L * 1024 * 1024) {
+                javiKopiju(id, -1, "prostor", "Nema dovoljno prostora za trajnu kopiju (" + (vel / 1048576) + " MB) — karta radi dok je izvorni fajl na telefonu");
+                return;
+            }
+            File cilj = mbtilesFile(id);
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new IOException("Izvorni fajl nije dostupan");
+                k.kopiraj(in, vel, cilj, (imam, uk) -> javiKopiju(id, uk > 0 ? (int) (imam * 100 / uk) : -1, "kopija", String.valueOf(imam / 1048576)), 1000);
+            }
+            if (k.prekinuta()) { cilj.delete(); return; }
+            SQLiteDatabase nova = SQLiteDatabase.openDatabase(cilj.getAbsolutePath(), null,
+                    SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
+            SQLiteDatabase stara = mbtilesDatabases.put(id, nova);
+            ParcelFileDescriptor stariFd = mbtilesIzvori.remove(id);
+            zaboraviIzvor(id);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (stara != null && stara != nova) try { stara.close(); } catch (Exception ignored) {}
+                if (stariFd != null) try { stariFd.close(); } catch (IOException ignored) {}
+            }, 5000);
+            javiKopiju(id, 100, "gotovo", "");
+        } catch (Exception e) {
+            if (!k.prekinuta()) javiKopiju(id, -1, "greska", e.getMessage() != null ? e.getMessage() : e.toString());
+        } finally {
+            mbtilesKopije.remove(id, k);
+        }
     }
 
     private WebResourceResponse interceptMbtilesTile(Uri uri) {
@@ -662,6 +752,19 @@ public class MainActivity extends Activity {
                 for (Map.Entry<String, ?> e : prefs.getAll().entrySet()) {
                     String id = e.getKey(), name = String.valueOf(e.getValue());
                     if (mbtilesFile(id).isFile()) out.put(readMbtilesInfo(id, name));
+                    else if (izvorKarte(id) != null) {
+                        // app ubijen usred trajne kopije: karta opet iz izvora, kopija ispočetka
+                        try {
+                            JSONObject info = readMbtilesInfo(id, name);
+                            info.put("cuvanje", true);
+                            out.put(info);
+                            pokreniKopiju(id);
+                        } catch (Exception izv) {
+                            zaboraviIzvor(id);
+                            KopijaKarte.part(mbtilesFile(id)).delete();
+                            prefs.edit().remove(id).apply();
+                        }
+                    }
                 }
             } catch (Exception ignored) {}
             return out.toString();
@@ -670,9 +773,16 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean deleteMap(String id) {
             try {
+                KopijaKarte k = mbtilesKopije.remove(id);
+                if (k != null) k.prekini();
                 SQLiteDatabase db = mbtilesDatabases.remove(id);
                 if (db != null) db.close();
+                ParcelFileDescriptor pfd = mbtilesIzvori.remove(id);
+                if (pfd != null) try { pfd.close(); } catch (IOException ignored) {}
+                zaboraviIzvor(id);
+                tileSchemas.remove(id);
                 getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().remove(id).apply();
+                KopijaKarte.part(mbtilesFile(id)).delete();
                 return !mbtilesFile(id).exists() || mbtilesFile(id).delete();
             } catch (Exception e) { return false; }
         }
@@ -704,25 +814,51 @@ public class MainActivity extends Activity {
         final String name = displayName(uri);
         final String id = UUID.randomUUID().toString();
         new Thread(() -> {
+            // 1) odmah iz izvornog fajla, trajna kopija u pozadini
+            try {
+                try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
+                getSharedPreferences(PREFS_IZVOR, MODE_PRIVATE).edit().putString(id, uri.toString()).commit();
+                otvoriIzIzvora(id);
+                JSONObject info = readMbtilesInfo(id, name);
+                info.put("cuvanje", true);
+                getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().putString(id, name).commit();
+                javiUvoz(true, info.toString());
+                pokreniKopiju(id);
+                return;
+            } catch (Exception e) {
+                SQLiteDatabase db = mbtilesDatabases.remove(id);
+                if (db != null) try { db.close(); } catch (Exception ignored) {}
+                ParcelFileDescriptor pfd = mbtilesIzvori.remove(id);
+                if (pfd != null) try { pfd.close(); } catch (IOException ignored) {}
+                tileSchemas.remove(id);
+                zaboraviIzvor(id);
+            }
+            // 2) rezerva (provajder ne daje fd / SQLite odbije putanju): kopija pa otvaranje
             File target = mbtilesFile(id);
-            try (InputStream in = getContentResolver().openInputStream(uri);
-                 OutputStream out = new FileOutputStream(target)) {
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
                 if (in == null) throw new IOException("Fajl nije dostupan");
-                byte[] buf = new byte[1024 * 1024];
-                int n;
-                while ((n = in.read(buf)) >= 0) out.write(buf, 0, n);
+                long vel = -1;
+                try (Cursor c = getContentResolver().query(uri, new String[]{OpenableColumns.SIZE}, null, null, null)) {
+                    if (c != null && c.moveToFirst() && !c.isNull(0)) vel = c.getLong(0);
+                } catch (Exception ignored) {}
+                final long ukupno = vel;
+                new KopijaKarte().kopiraj(in, ukupno, target, (imam, uk) -> {
+                    String t = "⏳ Kopiram offline kartu… " + (uk > 0 ? (imam * 100 / uk) + " %" : (imam / 1048576) + " MB");
+                    runOnUiThread(() -> webView.evaluateJavascript("_baseLoadStatus(" + JSONObject.quote(t) + ")", null));
+                }, 1000);
                 JSONObject info = readMbtilesInfo(id, name);
                 getSharedPreferences("native_mbtiles", MODE_PRIVATE).edit().putString(id, name).apply();
-                String encoded = Base64.encodeToString(info.toString().getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
-                runOnUiThread(() -> webView.evaluateJavascript(
-                        "_nativeSqlmapImported(true,'" + encoded + "')", null));
+                javiUvoz(true, info.toString());
             } catch (Exception e) {
                 if (target.exists()) target.delete();
-                String msg = Base64.encodeToString(String.valueOf(e.getMessage()).getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
-                runOnUiThread(() -> webView.evaluateJavascript(
-                        "_nativeSqlmapImported(false,'" + msg + "')", null));
+                javiUvoz(false, String.valueOf(e.getMessage()));
             }
         }, "mbtiles-import").start();
+    }
+
+    private void javiUvoz(boolean ok, String payload) {
+        String b64 = Base64.encodeToString(payload.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+        runOnUiThread(() -> webView.evaluateJavascript("_nativeSqlmapImported(" + ok + ",'" + b64 + "')", null));
     }
 
     // ── Preuzimanje offline karte s Drive-a (JS: _dkPreuzmi). URL dolazi dešifrovan iz JS-a
@@ -1616,7 +1752,7 @@ public class MainActivity extends Activity {
             cameraUri = null;
             if (pendingOfflineMapImport && results != null && results.length > 0) {
                 fileCallback.onReceiveValue(null);
-                webView.evaluateJavascript("_baseLoadStatus('⏳ Kopiram offline kartu u brzo spremište…')", null);
+                webView.evaluateJavascript("_baseLoadStatus('⏳ Otvaram kartu…')", null);
                 importOfflineMap(results[0]);
             } else {
                 fileCallback.onReceiveValue(results);

@@ -12,6 +12,13 @@
 - **Offline karte (.sqlitedb / MBTiles)**: sve što treba da se `.sqlitedb`
   prikaže (obrnuti zoom 17 − z, šeme, pane-ovi, testovi) je u
   [`docs/offline-karte-sqlitedb.md`](docs/offline-karte-sqlitedb.md).
+- **Prvi uvoz offline karte (APK)**: karta se odmah otvara iz IZVORNOG fajla (SAF uri →
+  `openFileDescriptor` → SQLite na `/proc/self/fd/N`, samo čitanje, `otvoriIzIzvora`), a trajna
+  kopija u `offline_maps` ide u pozadini (`trajnaKopija` + `KopijaKarte`: `.part`, provjera
+  dužine i zaglavlja, rename; napredak `_sqlKopija` → status i lista). Gotova kopija zamijeni
+  bazu u `mbtilesDatabases`, stara se zatvara poslije 5 s. `native_mbtiles_izvor` (id → uri)
+  ⇒ poslije ubijanja app-a `listMaps` otvori iz izvora i kopira ispočetka. Bez fd-a / greške
+  ⇒ stari tok (kopija pa otvaranje). Test: `android/test-java/KopijaKarteTest.java`.
 - Leaflet: svaki `pane: 'x'` mora imati `map.createPane('x')`; sloj koji treba
   biti iznad offline podloge (`offlineBasePane`, z 210) mora imati vlastiti pane.
 - **Ugrađeni podaci (static/data, 5 općina USK)**: `efda_opcine.*` (poremećaji

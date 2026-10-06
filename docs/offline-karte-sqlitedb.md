@@ -81,3 +81,22 @@ sa najmanje pločica = `MAX(z)` kod obrnutog).
 - Kojim programom je fajl napravljen (MOBAC / Locus / OsmAnd / drugo)?
 - Tačnu poruku (toast) ili screenshot; da li se karta uveze a ostane prazna,
   ili uvoz padne ("SQLite nema raster pločice")?
+
+## Prvi uvoz bez čekanja kopiranja (v1.8.9)
+
+Ranije je `importOfflineMap` prvo kopirao cijeli fajl (1–2 GB) u `files/offline_maps`,
+pa tek onda prikazao kartu. Sada:
+
+1. `takePersistableUriPermission` + `openFileDescriptor(uri, "r")`; SQLite otvara
+   `/proc/self/fd/<fd>` (`OPEN_READONLY | NO_LOCALIZED_COLLATORS`) — `otvoriIzIzvora`.
+2. `readMbtilesInfo` → `_nativeSqlmapImported(true, info)` uz `info.cuvanje = true` — karta
+   se vidi odmah, pločice idu istim putem (`tileBytes` → `openMbtiles` iz keša).
+3. `trajnaKopija` (pozadinska nit): provjera prostora (veličina + 200 MB), `KopijaKarte`
+   piše `<id>.sqlite.part`, provjeri dužinu i „SQLite format 3”, preimenuje; zatim nova baza
+   ide u `mbtilesDatabases`, stara baza i fd se zatvaraju poslije 5 s.
+4. Napredak/ishod: JS `_sqlKopija(id, p, 'kopija'|'gotovo'|'prostor'|'greska', poruka)`.
+5. `native_mbtiles_izvor` (id → uri) čuva izvor dok kopija nije gotova: poslije ubijanja
+   app-a `listMaps` (i `openMbtiles` bez fajla) otvara iz izvora i kopiju pokreće ispočetka.
+   Brisanje karte prekida kopiju i briše `.part`.
+6. Ako izvor ne može da se otvori direktno (provajder bez fd-a, WAL baza…), koristi se
+   stari tok — kopija (s napretkom u statusu), pa otvaranje.

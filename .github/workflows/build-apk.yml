@@ -30,6 +30,8 @@ jobs:
           java -ea -cp /tmp/jt ba.spd.usf.forest.IzborFajlaTest
           javac -encoding UTF-8 -d /tmp/jt android/app/src/main/java/ba/spd/usf/forest/NativeGpsBuffer.java android/test-java/NativeGpsBufferTest.java
           java -ea -cp /tmp/jt ba.spd.usf.forest.NativeGpsBufferTest
+          javac -encoding UTF-8 -d /tmp/jt android/app/src/main/java/ba/spd/usf/forest/KopijaKarte.java android/test-java/KopijaKarteTest.java
+          java -ea -cp /tmp/jt ba.spd.usf.forest.KopijaKarteTest
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools'
@@ -40,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # APK_RELEASE_VERSION=1.8.8
+          # APK_RELEASE_VERSION=1.8.9
           # UI/runtime oznaka i servisni keš se održavaju zasebno dok se
           # veliki index.html migrira u modularne skripte.
           WEB_VERSION="$(sed -n "s/^const APP_VER = 'v\([^']*\)';/\1/p" index.html)"

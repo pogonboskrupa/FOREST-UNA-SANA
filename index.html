@@ -5093,7 +5093,8 @@ function _nativeSqlmapAdd(info) {
   });
   const active = _sqlmapActiveName() === info.name;
   const rec = { id:'native_' + info.id, nativeId:info.id, native:true, name:info.name,
-    db:null, layer, bounds, thumb:_SQL_THUMB, active, vis:active, zmin:Number(info.minzoom), zmax:Number(info.maxzoom) };
+    db:null, layer, bounds, thumb:_SQL_THUMB, active, vis:active, zmin:Number(info.minzoom), zmax:Number(info.maxzoom),
+    cuvanje: info.cuvanje ? { p: 0 } : null };
   if (active) _sqlLayers.forEach(x => { x.active = false; });
   _sqlLayers.push(rec);
   if (active) layer.addTo(map);
@@ -5114,9 +5115,24 @@ function _nativeSqlmapImported(ok, b64) {
     _sqlmapSetActiveName(rec.name);
     _sqlmapSelect(rec.id, false);
     _baseLoadStatus('');
-    showToast('✅ Karta spremljena za instantno otvaranje: ' + rec.name);
+    showToast(info.cuvanje ? '✅ Karta otvorena — trajno čuvanje teče u pozadini' : '✅ Karta spremljena za instantno otvaranje: ' + rec.name);
     _sqlmapRegRender();
   } catch(e) { showToast('⚠ Karta nije otvorena: ' + e.message); }
+}
+// Trajna kopija (MainActivity.trajnaKopija): karta se već čita iz izvornog fajla, ovo je
+// samo napredak/ishod. stanje: 'kopija' | 'gotovo' | 'prostor' | 'greska'.
+function _sqlKopija(nid, p, stanje, poruka) {
+  const rec = _sqlLayers.find(x => x.nativeId === nid);
+  if (stanje === 'kopija') {
+    if (rec) rec.cuvanje = { p };
+    _baseLoadStatus('💾 Trajno čuvanje karte: ' + (p >= 0 ? p + ' %' : (poruka || '0') + ' MB'));
+  } else {
+    _baseLoadStatus('');
+    if (rec) rec.cuvanje = stanje === 'gotovo' ? null : { greska: true };
+    showToast(stanje === 'gotovo' ? '💾 Karta trajno sačuvana' + (rec ? ': ' + rec.name : '')
+      : '⚠ ' + (poruka || 'Trajna kopija nije uspjela') + (stanje === 'greska' ? ' — karta radi iz izvornog fajla' : ''));
+  }
+  if (document.getElementById('sqlmap-list')?.offsetParent) _sqlmapRegRender();
 }
 
 function _sqlEnsureInit() {
@@ -5498,7 +5514,8 @@ async function _sqlmapRegRender() {
   if (cnt) cnt.textContent = ukupno ? `(${ukupno})` : '';
   if (!ukupno) { el.innerHTML = '<div class="ul-prazno"><b>🗂</b>Još nema offline karata.<br>Učitaj .mbtiles ili .sqlitedb kartu za rad bez signala.</div>'; return; }
   const zoomTxt = r => (Number.isFinite(r.zmin) && Number.isFinite(r.zmax)) ? `zoom ${r.zmin}–${r.zmax}` : '';
-  const meta = r => [zoomTxt(r), r.bounds ? 'granice poznate' : 'bez granica u metapodacima', r.native ? 'brzo spremište' : ''].filter(Boolean).join(' · ');
+  const spremiste = r => !r.native ? '' : !r.cuvanje ? 'brzo spremište' : r.cuvanje.greska ? '⚠ radi iz izvornog fajla' : '💾 trajno čuvanje ' + (r.cuvanje.p >= 0 ? r.cuvanje.p + ' %' : '…');
+  const meta = r => [zoomTxt(r), r.bounds ? 'granice poznate' : 'bez granica u metapodacima', spremiste(r)].filter(Boolean).join(' · ');
   const akt = _sqlLayers.find(r => r.active), ostale = _sqlLayers.filter(r => !r.active);
   let html = '';
   if (akt) html += `<div class="ul-aktivna">
