@@ -171,5 +171,9 @@
   broja (`_odsOdjel`: atribut ODJEL… ili prvi broj u nazivu) u istom sloju. `_odsSpoji`: `_turfUnija`
   (turf v6 `union(a,b)` / v7 `union(fc)`), pukotine ±1 m bafer; razdvojeni ⇒ samo izvještaj. Predaja:
   `npIzPrstena`, `USFSjek.izPrstena`, `_odjelIzvjestajGj` (odjeli.js `_odjelIzvjestajZa`).
+- **Tab Karte** (`karte-panel`): grupe Podloga (Bazna karta, Offline karte) → Moji podaci (KML — preglednik
+  poligona, Tematska) → Teren (Nagib, Ekspozicija i sjenčenje); stanje na karticama `_khStat()` pri
+  `switchMainTab('karte')`. KML panel = „KML — preglednik poligona”: pretraga `#kml-trazi` (`_kmlTraziHtml`,
+  naziv + atributi bez dijakritika, ≤ 100 rezultata), red objekta `_kmlObjekatRed`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

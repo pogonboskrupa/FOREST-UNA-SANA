@@ -99,10 +99,12 @@ t('GFW alarmi za praćenje odjela: parser bez sekcije Sječa', () => {
   assert.ok(!HTML.includes('id="odjeli-pracenje"'), 'bez okvira praćenih odjela u Šumarstvu');
 });
 
-t('Karte: prvo Učitaj kartu, zatim Dodaj KML fajl; bez starog opisa formata', () => {
-  const grid = HTML.slice(HTML.indexOf('<div class="karta-hub-grid">'));
-  const a = grid.indexOf('Učitaj kartu</h3>'), b = grid.indexOf('Dodaj KML fajl</h3>'), c = grid.indexOf('Bazna karta</h3>');
-  assert.ok(a > 0 && a < b && b < c);
+t('Karte: Podloga (bazna, offline) → Moji podaci (KML preglednik, tematska) → Teren', () => {
+  const grid = HTML.slice(HTML.indexOf('<div class="karta-hub-grid">'), HTML.indexOf('<!-- Postavke panel -->'));
+  const idx = s => grid.indexOf(s);
+  const red = ['Podloga</div>', 'Bazna karta</h3>', 'Offline karte</h3>', 'Moji podaci</div>', 'KML — preglednik poligona</h3>', 'Tematska GeoPackage karta</h3>', 'Teren</div>', 'Nagib terena</h3>', 'Ekspozicija i sjenčenje</h3>'].map(idx);
+  assert.ok(red.every((v, i) => v > 0 && (i === 0 || v > red[i - 1])), red.join(','));
+  assert.ok(HTML.includes("_renderKartaBaseList(); _khStat(); }") && HTML.includes('id="kml-trazi"') && HTML.includes('function _kmlTraziHtml('));
   assert.ok(!HTML.includes('Učitaj velike lokalne karte u formatima'));
 });
 
