@@ -65,6 +65,8 @@
   samo osvježi obavijest. Test bafera: `android/test-java/NativeGpsBufferTest.java`.
 - Terenske tačke (`static/js/tacke.js`): localStorage `usf_tacke`, fotografije u
   IndexedDB `usf_foto`; APK kamera ide kroz `imageIntent()` u MainActivity.
+  `nova(la, lo, {gps, foto})`: gps/foto su ZASTAVICE — ne smiju u tačku (`foto:true` je gazio niz
+  fotografija ⇒ „Slikaj” nije otvarao ništa); test `tests/js/tacke.test.js`.
 - **Meni → Praćenje šume**: Šumarstvo, Sušenje-potkornjak (`susenje-panel`: Tlo i potkornjak,
   Vitalnost krošnje NDVI/EVI/NDMI, sušenje deadtrees.earth s projekcijom), Požari. Elementi su
   zadržali ID-ove (`tp-*`, `uk-veg-*`/`veg-*`, `sum-*`); oba panela osvježava `_sumPanelOsvjezi()`.

@@ -202,7 +202,7 @@
   }
   function otvoriUred(t, novo, odmahFoto) {
     const el = sheet();
-    ured = { t: { ...t }, novo, foto: [...(t.foto || [])], nove: [], obrisane: [] };
+    ured = { t: { ...t }, novo, foto: Array.isArray(t.foto) ? [...t.foto] : [], nove: [], obrisane: [] };
     document.getElementById('tk-naslov').textContent = novo ? 'Nova terenska tačka' : 'Uredi tačku';
     document.getElementById('tk-naziv').value = t.naziv || '';
     document.getElementById('tk-opis').value = t.opis || '';
@@ -237,11 +237,12 @@
   // ── Javni API ────────────────────────────────────────────────────────
   function nova(la, lo, dod) {
     const p = gp();
-    const t = { id: 'tk' + Date.now().toString(36), datum: new Date().toISOString(), kat: 'stablo', naziv: '', opis: '', foto: [], vis: true,
-      la, lo, ...(dod || {}) };
-    if (p && dod && dod.gps) Object.assign(t, { al: p.al, ac: p.ac });
-    delete t.gps;
-    otvoriUred(t, true, dod && dod.foto);
+    // gps/foto su zastavice, ne polja tačke — foto:true bi pregazio listu fotografija
+    const { gps, foto: odmahFoto, ...ostalo } = dod || {};
+    const t = { id: 'tk' + Date.now().toString(36), datum: new Date().toISOString(), kat: 'stablo', naziv: '', opis: '', vis: true,
+      la, lo, ...ostalo, foto: [] };
+    if (p && gps) Object.assign(t, { al: p.al, ac: p.ac });
+    otvoriUred(t, true, !!odmahFoto);
     // GPS često ne daje visinu (0) — uzmi je iz ugrađenog DEM-a (offline u 5 općina).
     if (!(t.al > 0) && typeof _msrFetchElev === 'function') _msrFetchElev(t.la, t.lo).then(h => {
       if (ured && ured.t.id === t.id && Number.isFinite(h)) { ured.t.al = h; ured.t.alDem = true; pozTxt(); }
