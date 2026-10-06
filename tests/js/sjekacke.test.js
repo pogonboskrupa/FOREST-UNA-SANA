@@ -178,6 +178,20 @@ t('podjela poligona sjekačkom linijom: lijevo/desno gledano uzbrdo, zbir = cije
   assert.ok(Math.abs(pov(e.lijevo) - 30000) < 1 && Math.abs(pov(e.desno) - 30000) < 1);
 });
 
+t('drugi pad: strana prema liniji prije/poslije (i bez susjeda na jednoj strani)', () => {
+  const linija = x => [pr(x, -100), pr(x, 100)]; // L1..L5 na x = −90, −30, 30, 90 …
+  const pod = S.slPodijeli(kvadrat, linija(30)); // podjela po L3 (x = 30), uzbrdo sjever → desno = istok
+  const s = S.slZonaStrane(pod, linija(-30), linija(90));
+  assert.deepStrictEqual(s, { prije: 'L', poslije: 'D' }, 'L2 (zapad) je lijevo, L4 (istok) desno');
+  assert.ok(S.slUnutra(pr(-30, 0), pod[s.prije === 'L' ? 'lijevo' : 'desno']) && S.slUnutra(pr(90, 0), pod[s.poslije === 'L' ? 'lijevo' : 'desno']));
+  assert.deepStrictEqual(S.slZonaStrane(pod, null, linija(90)), { prije: 'L', poslije: 'D' }, 'prva linija: samo sljedeća');
+  assert.deepStrictEqual(S.slZonaStrane(pod, linija(-30), null), { prije: 'L', poslije: 'D' }, 'zadnja linija: samo prethodna');
+  assert.strictEqual(S.slZonaStrane(pod, null, null), null, 'bez susjeda → stari kriterij');
+  assert.strictEqual(S.slZonaStrane(null, linija(-30), null), null);
+  const J = R('static/js/sjekacke.js');
+  assert.ok(J.includes("'⬅ Prema liniji prije — '") && J.includes("'➡ Prema liniji poslije — '") && J.includes('p.zona = { lid, strana: st, smjer,'));
+});
+
 t('površina partije uz liniju: od granice do L1, L1–L2 …; brojanje s desna obrnuto', () => {
   assert.deepStrictEqual(S.slSpojiTrake([[1, 2, 0.1], [0.2, 3]]).map(v => +v.toFixed(2)), [1, 2, 0.3, 3], 'rub dijelova je ista partija');
   assert.deepStrictEqual(S.slTrakeULinije([1, 2, 3], false), { poLiniji: [1, 2], ostatak: 3 });

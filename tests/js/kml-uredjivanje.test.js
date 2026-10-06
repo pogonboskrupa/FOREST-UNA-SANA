@@ -14,7 +14,7 @@ const tijelo = (src, pocetak) => { const i = src.indexOf(pocetak); assert.ok(i >
 
 t('dodir na kartu dok je kartica otvorena samo je zatvara (capture prije Leaflet klika)', () => {
   const i = H.indexOf("map.getContainer().addEventListener('click', e => {");
-  assert.ok(i > 0 && i < H.indexOf("map.on('click', e => {\n  if (_msrOn"));
+  assert.ok(i > 0 && i < H.indexOf("map.on('click', e => {\n  if (_kmlUred"));
   const blok = H.slice(i, H.indexOf('}, true);', i));
   assert.ok(blok.includes('map.closePopup()') && blok.includes('e.stopPropagation()') && blok.includes(".leaflet-popup, .leaflet-control"));
 });
@@ -26,7 +26,7 @@ t('pkml veže sloj s Placemark-om i geometrijom; kartica ima Uredi/Obriši (ne z
 });
 
 t('izmjene idu u KML tekst i čuvaju se; SHP se pri prvoj izmjeni pretvara u KML', () => {
-  const pr = tijelo(H, 'function _kmlPrimijeni(');
+  const pr = tijelo(H, 'function _kmlPrimijeniDoc(');
   assert.ok(pr.includes('_kmlParseDoc(_kmlSadrzaj(k))') && pr.includes('new XMLSerializer().serializeToString(doc)'));
   const ob = tijelo(H, 'function _kmlObnovi(');
   assert.ok(ob.includes('localStorage.setItem(_LOCAL_KML_KEY') && ob.includes('delete k._shp'));
@@ -34,6 +34,30 @@ t('izmjene idu u KML tekst i čuvaju se; SHP se pri prvoj izmjeni pretvara u KML
   const kr = tijelo(H, 'function _kmlUredKraj(');
   assert.ok(kr.includes("lls.concat([lls[0]])"), 'poligon se zatvara u KML-u');
   assert.ok(tijelo(H, 'async function _kmlObrisiObjekat(').includes("if (!pm.querySelector('Point, LineString, Polygon')) pm.remove()"));
+});
+
+t('stil: KML boja aabbggrr ↔ #rrggbb, vlastiti stil samo uz usf_stil, usf_* skriveni u kartici', () => {
+  const izvuci = ime => /const NAME = ([^\n]+);/.source.replace('NAME', ime);
+  const f = new Function([ '_kmlBojaUKml', '_kmlBojaIzKml' ].map(n => 'const ' + n + ' = ' + new RegExp(izvuci(n)).exec(H)[1] + ';').join('\n') + '\nreturn { u: _kmlBojaUKml, iz: _kmlBojaIzKml };')();
+  assert.strictEqual(f.u('#ff8000'), 'ff0080ff'); assert.strictEqual(f.u('#ff8000', 0.35), '590080ff');
+  assert.deepStrictEqual(f.iz('ff0080ff'), { hex: '#ff8000', a: 1 }); assert.strictEqual(f.iz('nije'), null);
+  assert.ok(tijelo(H, 'function _kmlStilPlacemarka(').includes("ext.usf_stil !== '1'"), 'tuđi KML stilovi ne mijenjaju izgled');
+  assert.ok(tijelo(H, 'function _kmlPopupHtml(').includes("filter(k => !k.startsWith('usf_'))"));
+  assert.ok(tijelo(H, 'function _kmlUpisiStil(').includes("_kmlPostaviExt(doc, pm, 'usf_stil', col ? '1' : null)"));
+  assert.ok(tijelo(H, 'function _kmlObnovi(').includes('stil: k.stil') && tijelo(H, 'function _kmlRestore(').includes('pkml(doc, col, undefined, data.stil)'));
+});
+
+t('uređivanje: poništi, dodir dodaje tačku, novi objekat u sloju', () => {
+  assert.ok(H.includes("if (_kmlUred && !_msrOn && !window._npHvataKlik) { _kmlUredDodaj(e.latlng); return; }"));
+  assert.ok(tijelo(H, 'function _kmlUredVrati(').includes('u.istorija.pop()'));
+  const kr = tijelo(H, 'async function _kmlUredKraj(');
+  assert.ok(kr.includes('if (u.novi)') && kr.includes("doc.createElementNS(ns, 'Placemark')") && kr.includes('_kmlPrimijeniDoc(u.k'));
+  assert.ok(H.includes("_kmlNoviObjekat('${k.id}')"));
+});
+
+t('ikona oka umjesto 🙈 (sjekačke, tragovi, tematska)', () => {
+  assert.ok(!/'🙈 Sakrij'/.test(H.replace(/\/\/[^\n]*/g, '')), 'nema 🙈 dugmadi u index.html');
+  assert.ok(R('static/js/sjekacke.js').includes('_okoDugme(p.vidljiv !== false)'));
 });
 
 t('lista objekata u KML sekciji + izvoz', () => {

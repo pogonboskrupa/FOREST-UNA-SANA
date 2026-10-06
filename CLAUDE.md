@@ -103,7 +103,8 @@
   crta kao stalnu etiketu. Uvoz projekta i "odjel pod centrom" su uklonjeni.
   Drugi pad (`p.zona` {lid, strana, az}): poligon se dijeli sjekačkom linijom
   (`slPodijeli`), drugi dio dobija svoj pad i linije s id prefiksom `z:` koje završavaju
-  na toj liniji; numeracija ide preko oba dijela. GPS vodič snima trag (`lin.trag`),
+  na toj liniji; numeracija ide preko oba dijela. Pri pravljenju korisnik bira „prema liniji prije/poslije”
+  (`zonaSusjedi` po `br`, `slZonaStrane` = strana koja sadrži sredinu prethodne linije) → `zona.smjer`. GPS vodič snima trag (`lin.trag`),
   „Završi liniju“ ⇒ `lin.stvarna` (slGeo je preferira). Površina partije po liniji
   (`lin.ha`): od granice do L1, L1–L2 … (`slPoljaTeren` po dijelu, `slSpojiTrake`,
   `slTrakeULinije`); stvarna linija se računa kao produžena do granice.
@@ -158,7 +159,12 @@
   lista „▸ Objekti” i 📤 u KML sekciji): `pkml` veže sloj s `<Placemark>` (`_kmlPm`/`_kmlTip`/`_kmlGi`);
   izmjena ide u KML DOM → `XMLSerializer` → `_kmlObnovi` (sloj iznova, `usf_kml_layers`). Stilovi,
   ExtendedData i KMZ slike ostaju. SHP se pri prvoj izmjeni pretvara u KML (`_kmlIzGrupe`). Ugrađeni
-  odjeli se ne uređuju. Globalna const/let imena u index.html se NE smiju poklopiti sa static/js
+  odjeli se ne uređuju. Stil sloja (`_kmlStilOtvori`: paleta/vlastita boja, debljina, puna/isprek/tačk,
+  ispuna %) u `usf_kml_layers[ime].stil` → `pkml(doc, col, op, stil)` / `_kmlLeafletStil`. Stil objekta:
+  inline `<Style>` + ExtendedData `usf_stil=1`/`usf_crta` (`_kmlUpisiStil`) — `pkml` ga poštuje SAMO uz
+  `usf_stil` (tuđi KML stilovi ne mijenjaju izgled); `usf_*` se ne prikazuju u kartici. Uređivanje oblika:
+  ↶ poništi (`istorija`), dodir na kartu dodaje tačku (`_kmlUredDodaj`), živa dužina/ha; ➕ novi objekat u
+  sloju (`_kmlNoviObjekat`). Ikona Sakrij/Prikaži: `_okoDugme` (SVG oko), ne 🙈. Globalna const/let imena u index.html se NE smiju poklopiti sa static/js
   (`_kmlKoord` u odjeli.js) — test `tests/js/kml-uredjivanje.test.js`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

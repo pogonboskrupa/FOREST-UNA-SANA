@@ -297,6 +297,16 @@ function slPodijeli(ring, geo) {
   const R1 = nazad(r1), R2 = nazad(r2);
   return slUnutra(t, R1) ? { desno: R1, lijevo: R2 } : { desno: R2, lijevo: R1 };
 }
+// Drugi pad: koja strana podjele (slPodijeli) je „prema liniji prije” (manji broj) — ona koja
+// sadrži sredinu prethodne linije; bez nje suprotna od strane sljedeće; bez obje null.
+function slZonaStrane(pod, prije, poslije) {
+  if (!pod) return null;
+  const sred = g => g.length === 2 ? [(g[0][0] + g[1][0]) / 2, (g[0][1] + g[1][1]) / 2] : g[Math.floor((g.length - 1) / 2)];
+  const strana = g => { const q = sred(g); return slUnutra(q, pod.lijevo) ? 'L' : slUnutra(q, pod.desno) ? 'D' : null; };
+  let s = slIma(prije) ? strana(prije) : null;
+  if (!s && slIma(poslije)) { const t = strana(poslije); if (t) s = t === 'L' ? 'D' : 'L'; }
+  return s ? { prije: s, poslije: s === 'L' ? 'D' : 'L' } : null;
+}
 // Trake susjednih dijelova (s lijeva nadesno): zadnja traka dijela i prva sljedećeg
 // su ista partija (između zadnje linije jednog i prve linije drugog dijela).
 function slSpojiTrake(nizovi) {
@@ -546,7 +556,7 @@ function slSpojiProjekte(lok, dol) {
   return { p: baza, azurirano, planDolazni };
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiProjekte, slPartija, slTrakaObris, slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
+if (typeof module !== 'undefined' && module.exports) module.exports = { slZonaStrane, slSpojiProjekte, slPartija, slTrakaObris, slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
 
 (function () {
   if (typeof window === 'undefined' || typeof L === 'undefined' || typeof map === 'undefined') return;
@@ -1154,16 +1164,35 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiP
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
           <button data-a="st" data-id="${p.id}" data-l="${lin.id}" style="--c:${s.c}">${s.t}</button>
           <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">🧭</button></div>`; }).join('')}</div>
-        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">📤 Podijeli projekat</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij'}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
+        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">📤 Podijeli projekat</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${typeof _okoDugme === 'function' ? _okoDugme(p.vidljiv !== false) : (p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij')}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
       return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>🪓 ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
     }).join('');
   }
   function zonaHtml(p) {
     if (!p.zona) return '';
     const raz = p.linije.find(x => x.id === p.zona.lid), n = p.linije.filter(x => x.zona).length;
-    return `<div class="sl-zona"><b>✂ Drugi pad iza ${raz ? oznaka(raz) : 'linije'}</b> — dio ${p.zona.strana === 'L' ? 'lijevo' : 'desno'} od nje (gledano uzbrdo), ${fmt(p.zona.ha || 0, 2)} ha, ${n} linija; linije završavaju na ${raz ? oznaka(raz) : 'liniji'}.
+    const smjer = zonaSmjer(p), dio = smjer ? 'prema liniji ' + smjer : 'dio ' + (p.zona.strana === 'L' ? 'lijevo' : 'desno') + ' od nje (gledano uzbrdo)';
+    const drugi = smjer === 'prije' ? '⇄ Prema liniji poslije' : smjer === 'poslije' ? '⇄ Prema liniji prije' : '↔ Druga strana';
+    return `<div class="sl-zona"><b>✂ Drugi pad iza ${raz ? oznaka(raz) : 'linije'}</b> — ${dio}, ${fmt(p.zona.ha || 0, 2)} ha, ${n} linija; linije završavaju na ${raz ? oznaka(raz) : 'liniji'}.
       <div class="sl-zona-red"><span>Pad ${p.zona.az}°${p.zona.azDem != null ? ' (DEM ' + p.zona.azDem + '°, ' + strana(p.zona.azDem) + ')' : ''}</span><button data-a="zona-az-" data-id="${p.id}">−5°</button><button data-a="zona-az+" data-id="${p.id}">+5°</button></div>
-      <div class="sl-dug"><button data-a="zona-strana" data-id="${p.id}">↔ Druga strana</button><button data-a="zona-ukloni" data-id="${p.id}" class="opasno">✕ Ukloni podjelu</button></div></div>`;
+      <div class="sl-dug"><button data-a="zona-strana" data-id="${p.id}">${drugi}</button><button data-a="zona-ukloni" data-id="${p.id}" class="opasno">✕ Ukloni podjelu</button></div></div>`;
+  }
+  // Susjedne osnovne linije (bez zone/padina) linije po kojoj se dijeli — po broju.
+  function zonaSusjedi(p, lin) {
+    const o = p.linije.filter(x => !x.zona && x.padina == null && x.id !== lin.id);
+    let prije = null, poslije = null;
+    for (const x of o) {
+      if (x.br < lin.br && (!prije || x.br > prije.br)) prije = x;
+      if (x.br > lin.br && (!poslije || x.br < poslije.br)) poslije = x;
+    }
+    return { prije, poslije };
+  }
+  // 'prije'|'poslije' za postojeću zonu (stari projekti nemaju zona.smjer — izračuna se)
+  function zonaSmjer(p) {
+    if (p.zona.smjer) return p.zona.smjer;
+    const raz = p.linije.find(x => x.id === p.zona.lid); if (!raz) return null;
+    const sus = zonaSusjedi(p, raz), str = slZonaStrane(slPodijeli(p.ring, slGeo(raz)), sus.prije && slGeo(sus.prije), sus.poslije && slGeo(sus.poslije));
+    return str ? (p.zona.strana === str.prije ? 'prije' : 'poslije') : null;
   }
   function izoHtml(p) {
     const los = p.linije.filter(x => x.izo);
@@ -1221,7 +1250,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiP
     else if (a === 'vodi') { switchMainTab('karta'); vodi(p.id, el.dataset.l); return; }
     else if (a === 'kml') { izvozKml(p, false); return; }
     else if (a === 'kml-gotove') { izvozKml(p, true); return; }
-    else if (a === 'zona-strana') { p.zona.strana = p.zona.strana === 'L' ? 'D' : 'L'; p.zona.az = null; p.zona.izbrisane = []; await generisi(p); }
+    else if (a === 'zona-strana') { const sm = zonaSmjer(p); p.zona.strana = p.zona.strana === 'L' ? 'D' : 'L'; if (sm) p.zona.smjer = sm === 'prije' ? 'poslije' : 'prije'; p.zona.az = null; p.zona.izbrisane = []; await generisi(p); }
     else if (a === 'zona-az-' || a === 'zona-az+') { p.zona.az = (p.zona.az + (a === 'zona-az+' ? 5 : -5) + 360) % 360; p.zona.izbrisane = []; await generisi(p); }
     else if (a === 'zona-ukloni') { p.zona = null; await generisi(p); }
     else if (a === 'vid') p.vidljiv = p.vidljiv === false;
@@ -1329,11 +1358,22 @@ ${folderi}
       map.closePopup();
       if (p.zona && !confirm('Postojeća podjela (po ' + (p.linije.find(x => x.id === p.zona.lid) ? oznaka(p.linije.find(x => x.id === p.zona.lid)) : 'liniji') + ') se zamjenjuje. Nastaviti?')) return;
       const pod = slPodijeli(p.ring, slGeo(lin)); if (!pod) { showToast('⚠ Linija ne dijeli poligon'); return; }
-      const st = npPovrsina(pod.desno) <= npPovrsina(pod.lijevo) ? 'D' : 'L';
-      p.zona = { lid, strana: st, az: null, izbrisane: [] }; planIzmjena(p);
+      // korisnik bira: drugi pad prema liniji prije (manji broj) ili poslije
+      const sus = zonaSusjedi(p, lin), str = slZonaStrane(pod, sus.prije && slGeo(sus.prije), sus.poslije && slGeo(sus.poslije));
+      let st = npPovrsina(pod.desno) <= npPovrsina(pod.lijevo) ? 'D' : 'L', smjer = null;
+      if (str) {
+        const ha = s => fmt(npPovrsina(s === 'L' ? pod.lijevo : pod.desno) / 10000, 2) + ' ha';
+        const opis = x => x ? oznaka(x) + ' …' : 'do granice';
+        const i = typeof _dlgActions === 'function' ? await _dlgActions('✂ Drugi pad iza ' + oznaka(lin), [
+          { label: '⬅ Prema liniji prije — ' + opis(sus.prije) + ' (' + ha(str.prije) + ')' },
+          { label: '➡ Prema liniji poslije — ' + opis(sus.poslije) + ' (' + ha(str.poslije) + ')' }]) : 0;
+        if (i !== 0 && i !== 1) return;
+        smjer = i === 0 ? 'prije' : 'poslije'; st = str[smjer];
+      }
+      p.zona = { lid, strana: st, smjer, az: null, izbrisane: [] }; planIzmjena(p);
       _openStubPanel('sjekacke-panel', 'meni'); aktivni = p.id;
       await generisi(p); sacuvaj(p); crtaj(); render();
-      showToast('✂ Drugi dio ima svoj pad ' + p.zona.az + '° (' + strana(p.zona.az) + ')');
+      showToast('✂ Drugi pad' + (smjer ? ' prema liniji ' + smjer : '') + ': ' + p.zona.az + '° (' + strana(p.zona.az) + ')');
     }, crtGps, crtZavrsi, uredi, urediKraj,
     urediSacuvaj: () => urediSacuvaj(false), urediRavno: () => urediSacuvaj(true),
     async obrisiLiniju(pid, lid) {
