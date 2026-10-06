@@ -1140,7 +1140,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiP
       const dos = p.dosljednost != null && p.dosljednost < 0.6 ? `<div class="sl-upoz">⚠ Pad u poligonu nije jednoličan (${Math.round(p.dosljednost * 100)} %) — greben ili vrtača; Alternativni prikaz ispod dijeli ga na padine.</div>` : '';
       const tijelo = !otv ? '' : `
         <div class="sl-param">
-          <label>Širina partije <span><input type="number" min="10" max="200" step="5" value="${p.razmak}" data-a="razmak" data-id="${p.id}"> m</span><small>pojas jedne sjekačke partije ≈ 2 visine stabla</small></label>
+          <label>Širina sjekačke linije <span><input type="number" min="10" max="200" step="5" value="${p.razmak}" data-a="razmak" data-id="${p.id}"> m</span><small>pojas jedne sjekačke partije ≈ 2 visine stabla</small></label>
           <div class="sl-cipovi">${[40, 50, 60, 70, 80].map(v => `<button data-a="raz" data-v="${v}" data-id="${p.id}" class="${v === p.razmak ? 'on' : ''}">${v} m</button>`).join('')}</div>
           <label>Plan linija <select data-a="plan" data-id="${p.id}"><option value="paralelno"${p.plan !== 'teren' ? ' selected' : ''}>paralelne (jedan smjer pada)</option><option value="teren"${p.plan === 'teren' ? ' selected' : ''}>lepeza po terenu (svaka svoj pad)</option></select></label>
           <label>Brojanje <select data-a="brojanje" data-id="${p.id}"><option value="L"${p.brojanje !== 'D' ? ' selected' : ''}>s lijeva nadesno (gledano uzbrdo)</option><option value="D"${p.brojanje === 'D' ? ' selected' : ''}>s desna nalijevo (gledano uzbrdo)</option></select></label>
@@ -1271,7 +1271,7 @@ ${oz(g[g.length - 1], ime + ' ▲', st)}`;
     const projekat = samoGotove ? '' : `<ExtendedData><Data name="usf_sjekacke"><value>${uBase64(JSON.stringify(p))}</value></Data>${fokus ? `<Data name="usf_fokus"><value>${x(fokus.id)}</value></Data>` : ''}</ExtendedData>`;
     const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x((fokus ? oznaka(fokus) + ' · ' : 'Sjekačke linije · ') + p.naziv + (samoGotove ? ' · ofarbane' : ''))}</name>${projekat}
-<description>${x('Širina partije ' + p.razmak + ' m · ' + p.linije.length + ' linija (' + gotove.length + ' ofarbano) · ' + fmt(p.ha || 0, 2) + ' ha · partije uz linije ' + fmt(ukupno, 2) + ' ha, ostatak do granice ' + fmt(p.ostatakHa || 0, 2) + ' ha')}</description>
+<description>${x('Širina sjekačke linije ' + p.razmak + ' m · ' + p.linije.length + ' linija (' + gotove.length + ' ofarbano) · ' + fmt(p.ha || 0, 2) + ' ha · partije uz linije ' + fmt(ukupno, 2) + ' ha, ostatak do granice ' + fmt(p.ostatakHa || 0, 2) + ' ha')}</description>
 ${stilovi}
 <Style id="pol"><LineStyle><color>ff8ae6fd</color><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
 <Placemark><name>${x(p.naziv)}</name><styleUrl>#pol</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>${p.ring.concat([p.ring[0]]).map(k).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
