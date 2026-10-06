@@ -364,7 +364,7 @@
     }));
   }
 
-  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, otvoriListu, zatvoriListu, fotoUrl, crtaj, zip, crc32, renderLista };
+  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, otvoriListu, zatvoriListu, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
   if (typeof module !== 'undefined') module.exports = { zip, crc32, KATEGORIJE };
   if (typeof L !== 'undefined' && imaKartu()) { registruj(); crtaj(); renderLista(); }
 })(typeof window !== 'undefined' ? window : globalThis);

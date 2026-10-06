@@ -175,5 +175,14 @@
   poligona, Tematska) → Teren (Nagib, Ekspozicija i sjenčenje); stanje na karticama `_khStat()` pri
   `switchMainTab('karte')`. KML panel = „KML — preglednik poligona”: pretraga `#kml-trazi` (`_kmlTraziHtml`,
   naziv + atributi bez dijakritika, ≤ 100 rezultata), red objekta `_kmlObjekatRed`.
+- **Primka** (Meni ispod Sjekačkih linija, `static/js/primka.js`, panel `primka-panel`, localStorage
+  `usf_primka`): projekat = sjekački projekat (`sid`) + izabrane partije (`partije[lid].primljeno`) →
+  zelena/crvena ispuna, `prov` % po projektu (pane `primkaPane` z 412, dodir kroz `_kartaKlikIzvor`);
+  unosi {datum, lid, m3, sortiment, odKoga, napomena} po danima/partiji; fotografije zapažanja u IDB
+  terenskih tačaka (`USFTacke.dodajFoto/obrisiFoto/fotoUrl`) s GPS/centar pozicijom; CSV (`pkCsv`, ;).
+  Geometrija: `USFSjek.projekti()` / `USFSjek.partije(sid)` (mreža `slTrakeMreza` jednom po dijelu —
+  11× brže od obrisa po partiji), keš po dužini `usf_sjekacke`. Kartica linije ima „📦 Primka”
+  (`USFPrimka.dugmad`). CSS klase `pkm-*` (NE `pk-*` — `.pk-red`/`.pk-traka` su od `_popKartica`).
+  Količina je `type=text inputmode=decimal` (number odbija decimalni zarez). Test `tests/js/primka.test.js`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

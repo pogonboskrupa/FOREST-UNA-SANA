@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '1.9.6';
+const APP_VERSION = '1.9.7';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -39,6 +39,7 @@ const APP_SHELL = [
   './static/js/tlo-potkornjak.js',
   './static/js/vegetacija.js',
   './static/js/sjekacke.js',
+  './static/js/primka.js',
   './static/data/zima_paketi.json',
   './static/data/tlo_usk.tif',
   './static/data/tlo_usk.json',

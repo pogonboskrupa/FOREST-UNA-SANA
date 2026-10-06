@@ -493,18 +493,24 @@ function slRazdijeli(ring, regije, granice, tol, minHa) {
 // granice) do linije j, D — od linije j do sljedeće. dijelovi: [{ ring, geos }] s lijeva nadesno
 // (gledano uzbrdo); spajaj: rubne trake susjednih dijelova su jedna partija (drugi pad iza
 // sjekačke linije), za padine ne (greben dijeli partije). Vraća prstenove [lat, lon].
-function slTrakaObris(ring, geos, traka) {
+// Mreža dijela: za svaku ćeliju broj linija desno od kojih je (255 = van poligona). Skupo
+// (ćelije × linije) — gradi se jednom, pa se iz nje čitaju obrisi svih partija (Primka).
+function slTrakeMreza(ring, geos) {
   const lat0 = ring.reduce((a, q) => a + q[0], 0) / ring.length, lon0 = ring.reduce((a, q) => a + q[1], 0) / ring.length;
   const L = slLokalno(lat0, lon0), poly = ring.map(q => L.u(q[0], q[1])), ha = slPovrsinaXY(poly) / 1e4;
   const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]), k = Math.max(2.5, Math.sqrt(ha * 1e4 / 12000));
   const x0 = Math.min(...xs), y0 = Math.min(...ys), nx = Math.ceil((Math.max(...xs) - x0) / k), ny = Math.ceil((Math.max(...ys) - y0) / k);
-  const u = new Uint8Array(nx * ny);
+  const c = new Uint8Array(nx * ny).fill(255);
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const ll = L.n(x0 + (i + 0.5) * k, y0 + (j + 0.5) * k); if (!slUnutra(ll, ring)) continue;
-    let c = 0; for (const g of geos) if (slVodic({ geo: g }, ll[0], ll[1]).bocno > 0) c++;
-    if (c === traka) u[j * nx + i] = 1;
+    let n = 0; for (const g of geos) if (slVodic({ geo: g }, ll[0], ll[1]).bocno > 0) n++;
+    c[j * nx + i] = Math.min(254, n);
   }
-  const U = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && u[j * nx + i] === 1;
+  return { c, nx, ny, k, x0, y0, L };
+}
+function slTrakaObris(ring, geos, traka, mreza) {
+  const { c, nx, ny, k, x0, y0, L } = mreza || slTrakeMreza(ring, geos);
+  const U = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && c[j * nx + i] === traka;
   // rubne stranice ćelija, usmjerene tako da je traka lijevo → zatvorene petlje
   const iz = new Map(), kljuc = (i, j) => i + ',' + j, dodaj = (a, b) => { const kk = kljuc(...a); (iz.get(kk) || iz.set(kk, []).get(kk)).push(b); };
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
@@ -529,11 +535,13 @@ function slTrakaObris(ring, geos, traka) {
   }
   return petlje;
 }
-function slPartija(dijelovi, di, j, sDesna, spajaj) {
+// mreze (neobavezno): keš slTrakeMreza po dijelu — za obrise svih partija odjednom.
+function slPartija(dijelovi, di, j, sDesna, spajaj, mreze) {
   const d = dijelovi[di]; if (!d || j < 0 || j >= d.geos.length) return [];
-  const out = slTrakaObris(d.ring, d.geos, sDesna ? j + 1 : j);
-  if (spajaj && !sDesna && j === 0) for (let k = di - 1; k >= 0; k--) { const p = dijelovi[k]; out.push(...slTrakaObris(p.ring, p.geos, p.geos.length)); if (p.geos.length) break; }
-  if (spajaj && sDesna && j === d.geos.length - 1) for (let k = di + 1; k < dijelovi.length; k++) { const p = dijelovi[k]; out.push(...slTrakaObris(p.ring, p.geos, 0)); if (p.geos.length) break; }
+  const m = x => mreze ? (mreze[x] = mreze[x] || slTrakeMreza(dijelovi[x].ring, dijelovi[x].geos)) : undefined;
+  const out = slTrakaObris(d.ring, d.geos, sDesna ? j + 1 : j, m(di));
+  if (spajaj && !sDesna && j === 0) for (let k = di - 1; k >= 0; k--) { const p = dijelovi[k]; out.push(...slTrakaObris(p.ring, p.geos, p.geos.length, m(k))); if (p.geos.length) break; }
+  if (spajaj && sDesna && j === d.geos.length - 1) for (let k = di + 1; k < dijelovi.length; k++) { const p = dijelovi[k]; out.push(...slTrakaObris(p.ring, p.geos, 0, m(k))); if (p.geos.length) break; }
   return out;
 }
 // Spajanje projekta s drugog telefona (dijeljenje KML-om): plan (granica, razmak, pad,
@@ -556,7 +564,7 @@ function slSpojiProjekte(lok, dol) {
   return { p: baza, azurirano, planDolazni };
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { slZonaStrane, slSpojiProjekte, slPartija, slTrakaObris, slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
+if (typeof module !== 'undefined' && module.exports) module.exports = { slTrakeMreza, slZonaStrane, slSpojiProjekte, slPartija, slTrakaObris, slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
 
 (function () {
   if (typeof window === 'undefined' || typeof L === 'undefined' || typeof map === 'undefined') return;
@@ -948,6 +956,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slZonaSt
       ikona: '🪓', boja: s.c, naslov: oznaka(lin) + ' · ' + p.naziv, tip: 'Sjekačka linija', meta: 'razmak ' + p.razmak + ' m', redovi,
       dugmad: [{ t: '🧭 Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: '✓ Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }, { t: '✏ Lomi liniju', on: `USFSjek.uredi('${p.id}','${lin.id}')` },
         ...(slIma(lin.stvarna) || slIma(lin.trag) ? [{ t: '↺ Poništi GPS liniju', on: `USFSjek.ponistiStvarnu('${p.id}','${lin.id}')` }] : []),
+        ...(window.USFPrimka && USFPrimka.dugmad ? USFPrimka.dugmad(p.id, lin.id) : []),
         ...(!lin.zona && lin.padina == null ? [{ t: '✂ Drugi pad iza ove linije', on: `USFSjek.zona('${p.id}','${lin.id}')` }] : []),
         { t: '📤 Pošalji liniju', on: `USFSjek.posaljiLiniju('${p.id}','${lin.id}')` },
         { t: '🗑 Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
@@ -1336,6 +1345,17 @@ ${folderi}
   }
 
   window.USFSjek = {
+    // Za Primku: projekti i poligoni partija (ista geometrija kao klik na liniju).
+    projekti() { return citaj().map(p => ({ id: p.id, naziv: p.naziv, ha: p.ha, linija: p.linije.length })); },
+    partije(pid) {
+      const p = nadji(pid); if (!p) return null;
+      const D = dijeloviProjekta(p), dd = D.d.map(d => ({ ring: d.ring, geos: d.linije.map(slGeo) })), out = [], mreze = [];
+      D.d.forEach((d, di) => d.linije.forEach((lin, j) => {
+        let prsteni = []; try { prsteni = slPartija(dd, di, j, p.brojanje === 'D', D.spajaj, mreze); } catch (e) {}
+        out.push({ lid: lin.id, oznaka: oznaka(lin), br: lin.br, ha: lin.ha, prsteni });
+      }));
+      return out.sort((a, b) => a.br - b.br);
+    },
     otvori() { _openStubPanel('sjekacke-panel', 'meni'); aktivni = aktivni || (citaj()[0] || {}).id || null; crtaj(); render(); },
     izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
     izPrstena(ring, naziv) { map.closePopup(); if (!Array.isArray(ring) || ring.length < 3) return; _openStubPanel('sjekacke-panel', 'meni'); napravi(ring, naziv || 'Spojeni odsjeci'); },

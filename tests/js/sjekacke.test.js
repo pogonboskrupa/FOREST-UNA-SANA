@@ -228,7 +228,7 @@ t('UI: Planiranje ispod Tematske karte, panel, vodič, dijeljenje KML-om', () =>
   const H = R('index.html');
   const i = H.indexOf('id="mc-tematska"'), j = H.indexOf('id="mc-sjekacke"'), k = H.indexOf('<h3>Podaci i karte</h3>');
   assert.ok(i > 0 && j > i && j < k, 'kartica odmah ispod Tematske karte');
-  ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', '.sl-strel', '.sl-zona', "'sjekacke-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
+  ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', '.sl-strel', '.sl-zona', "'sjekacke-panel',", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
   assert.ok(H.indexOf('<script src="static/js/nagib-poligon.js">') < H.indexOf('<script src="static/js/sjekacke.js">'), 'DEM pomoćne funkcije prije');
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes("style.pointerEvents = 'none'") && js.includes('_kartaKlikIzvor') && js.includes('name="usf_oznaka"'), 'KML s natpisima linija');
