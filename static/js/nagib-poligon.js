@@ -892,6 +892,8 @@ body.razmjera-sitna .np-sv-lbl { display:none; }
     while (Array.isArray(ll[0])) ll = ll[0];
     pocni(ll.map(p => [p.lat, p.lng]), sloj._kmlName || 'KML poligon');
   };
+  // spojeni odsjeci (više poligona jednog odjela) — prsten [[lat,lng]…]
+  window.npIzPrstena = (ring, naziv) => { if (Array.isArray(ring) && ring.length >= 3) pocni(ring, naziv || 'Spojeni odsjeci'); };
   window.npIzMjerenja = id => {
     const m = (typeof _msrRegistry !== 'undefined' ? _msrRegistry : []).find(x => x.id === id);
     if (!m) { showToast('⚠ Mjerenje nije pronađeno'); return; }

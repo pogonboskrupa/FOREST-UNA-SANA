@@ -166,5 +166,10 @@
   ↶ poništi (`istorija`), dodir na kartu dodaje tačku (`_kmlUredDodaj`), živa dužina/ha; ➕ novi objekat u
   sloju (`_kmlNoviObjekat`). Ikona Sakrij/Prikaži: `_okoDugme` (SVG oko), ne 🙈. Globalna const/let imena u index.html se NE smiju poklopiti sa static/js
   (`_kmlKoord` u odjeli.js) — test `tests/js/kml-uredjivanje.test.js`.
+- **Više odsjeka jednog odjela** (kartica poligona → „☑ Više odsjeka”, `_odsPocni`): dodir na kartu
+  uključuje/isključuje poligon (`_odsIzbor`, grana u `map.on('click')`), „Cijeli odjel” bira odsjeke istog
+  broja (`_odsOdjel`: atribut ODJEL… ili prvi broj u nazivu) u istom sloju. `_odsSpoji`: `_turfUnija`
+  (turf v6 `union(a,b)` / v7 `union(fc)`), pukotine ±1 m bafer; razdvojeni ⇒ samo izvještaj. Predaja:
+  `npIzPrstena`, `USFSjek.izPrstena`, `_odjelIzvjestajGj` (odjeli.js `_odjelIzvjestajZa`).
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.

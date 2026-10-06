@@ -60,6 +60,20 @@ t('ikona oka umjesto 🙈 (sjekačke, tragovi, tematska)', () => {
   assert.ok(R('static/js/sjekacke.js').includes('_okoDugme(p.vidljiv !== false)'));
 });
 
+t('više odsjeka: izbor dodirom, cijeli odjel, spajanje → nagib / sjekačke / izvještaj', () => {
+  const f = new Function(tijelo(H, 'function _odsOdjel(') + '\nreturn _odsOdjel;')();
+  assert.strictEqual(f({ _kmlExtData: { ODJEL: '012' }, _kmlName: 'x' }), '12', 'atribut ODJEL');
+  assert.strictEqual(f({ _kmlExtData: {}, _kmlName: 'Odjel 7 odsjek b' }), '7', 'broj iz naziva');
+  assert.strictEqual(f({ _kmlExtData: {}, _kmlName: 'bez broja' }), null);
+  assert.ok(H.includes("if (_odsIzbor && !_msrOn && !window._npHvataKlik) { _odsDodir(e.latlng); return; }"));
+  assert.ok(tijelo(H, 'function _kmlPopupHtml(').includes("_odsPocni(${id})"));
+  const sp = tijelo(H, 'function _odsSpoji(');
+  assert.ok(sp.includes('_turfUnija(f)') && sp.includes("turf.buffer(x, 1, { units: 'meters' })"), 'spajanje + zatvaranje pukotina');
+  const ak = tijelo(H, 'function _odsAkcija(');
+  assert.ok(ak.includes('npIzPrstena(s.ring, s.ime)') && ak.includes('USFSjek.izPrstena(s.ring, s.ime)') && ak.includes('_odjelIzvjestajGj(s.gj, s.ime, s.izvor)'));
+  assert.ok(R('static/js/nagib-poligon.js').includes('window.npIzPrstena =') && R('static/js/sjekacke.js').includes('izPrstena(ring, naziv)') && R('static/js/odjeli.js').includes('function _odjelIzvjestajGj('));
+});
+
 t('lista objekata u KML sekciji + izvoz', () => {
   const rr = tijelo(H, 'function _kmlRegRender(');
   assert.ok(rr.includes('_kmlObjektiToggle(') && rr.includes('_kmlIzvoz(') && rr.includes('_kmlObjektiHtml(k)'));

@@ -1088,6 +1088,14 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 #kml-stil .ks-akc button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(148,163,184,.1); color: #e2e8f0; font: 700 13px 'DM Sans', Arial, sans-serif; }
 #kml-stil .ks-akc button.glavno { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
 #kml-ured-bar #kub-vrati { flex: 0 0 48px; font-size: 18px; }
+#ods-bar { display: none; position: fixed; left: 10px; right: 10px; bottom: calc(80px + env(safe-area-inset-bottom,0px)); max-width: 440px; margin: 0 auto; z-index: 930; background: rgba(8,18,14,.95); border: 1px solid rgba(250,204,21,.45); border-radius: 16px; padding: 10px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.45); flex-direction: column; gap: 8px; }
+#ods-bar.show { display: flex; }
+#ods-bar .kub-txt b { color: #fde68a; font-size: 14px; display: block; }
+#ods-bar .kub-txt small { color: #a7b8b0; font-size: 12px; }
+#ods-bar .kub-akc { display: flex; gap: 6px; }
+#ods-bar button { flex: 1; min-height: 40px; border-radius: 11px; border: 1px solid var(--line); background: rgba(148,163,184,.1); color: #e2e8f0; font: 700 13px 'DM Sans', Arial, sans-serif; }
+#ods-bar button.glavno { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
+#ods-bar button:disabled { opacity: .4; }
 .ko-lista { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 320px; overflow-y: auto; }
 .ko-lista small { color: #8aa197; font-size: 11px; padding: 4px 2px; }
 .ko-red { display: flex; gap: 4px; }
@@ -4413,13 +4421,14 @@ function _kartaPogodak(latlng) {
 // odjela/na liniji odmah otvori novu karticu pa se kartica ne može skloniti dodirom.
 map.getContainer().addEventListener('click', e => {
   const pop = map._popup;
-  if (!pop || !map.hasLayer(pop) || _msrOn || window._npHvataKlik || _kmlUred) return;
+  if (!pop || !map.hasLayer(pop) || _msrOn || window._npHvataKlik || _kmlUred || _odsIzbor) return;
   if (e.target.closest && e.target.closest('.leaflet-popup, .leaflet-control')) return;
   e.stopPropagation(); e.preventDefault();
   map.closePopup();
 }, true);
 map.on('click', e => {
   if (_kmlUred && !_msrOn && !window._npHvataKlik) { _kmlUredDodaj(e.latlng); return; } // uređivanje KML-a: dodir dodaje tačku
+  if (_odsIzbor && !_msrOn && !window._npHvataKlik) { _odsDodir(e.latlng); return; } // izbor odsjeka: dodir uključi/isključi
   if (_msrOn || window._npHvataKlik) return; // izmjera / nagib poligona preuzimaju klikove
   const h = _kartaPogodak(e.latlng);
   if (h) h.otvori(e.latlng);
@@ -4472,6 +4481,7 @@ const KCOLS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#8b5cf6','#ec4
 const _LOCAL_KML_KEY = 'usf_kml_layers';
 let kmlLs = [], kmlCI = 0;
 let _kmlUred = null; // aktivno uređivanje oblika (vidi _kmlUrediOblik)
+let _odsIzbor = null; // izbor više odsjeka (vidi _odsPocni)
 
 function pcsKml(s) {
   if (!s) return [];
@@ -4563,7 +4573,7 @@ function pkml(doc, col, op, stilSloja) {
   return g;
 }
 function _bindKmlPopup(layer) {
-  const onClick = e => { if (window._npHvataKlik || _msrOn || _kmlUred) return; L.DomEvent.stopPropagation(e); const h = _kartaPogodak(e.latlng); if (h) h.otvori(e.latlng); else _kmlOpenPopup(layer, e.latlng); };
+  const onClick = e => { if (window._npHvataKlik || _msrOn || _kmlUred || _odsIzbor) return; L.DomEvent.stopPropagation(e); const h = _kartaPogodak(e.latlng); if (h) h.otvori(e.latlng); else _kmlOpenPopup(layer, e.latlng); };
   layer.on('click', onClick);
   // Tanke/isprekidane linije rijetko pogode prst na terenu — širi nevidljiv
   // hit-sloj (isti obrazac kao attachPolyClick za trag). Poligoni (fill hit-
@@ -4591,6 +4601,7 @@ function _kmlPopupHtml(layer) {
   if (layer._kmlIsPolygon && typeof npIzKml === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzKml(${id})`, v: 'glavno' });
   if (layer._kmlIsPolygon && window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('k:${id}')` });
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
+  if (layer._kmlIsPolygon) dugmad.push({ t: '☑ Više odsjeka', on: `_odsPocni(${id})` });
   if (layer._kmlIsPoint) { const ll = layer.getLatLng(); dugmad.push({ t: '🎯 Centriraj', on: `map.setView([${ll.lat},${ll.lng}],Math.max(map.getZoom(),16))` }); }
   if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi', on: `_kmlUrediMeni(${id})` }, { t: '🗑 Obriši', on: `_kmlObrisiObjekat(${id})`, v: 'opasno' });
   return _popKartica({ ikona, boja: layer.options && layer.options.color, naslov: layer._kmlName, tip, meta: sloj ? sloj.name : '', redovi, opis: _kmlOpisHtml(layer._kmlDesc, sloj && sloj.name), dugmad });
@@ -5381,6 +5392,106 @@ function _kmlObjektiHtml(k) {
     return `<div class="ko-red"><button class="ko-ime" onclick="_kmlObjekatPrikazi(${id})"><span>${ik}</span>${_escHtml(l._kmlName || '(bez imena)')}</button>${ured ? `<button onclick="_kmlUrediMeni(${id})" aria-label="Uredi">✏</button><button class="brisi" onclick="_kmlObrisiObjekat(${id})" aria-label="Obriši">🗑</button>` : ''}</div>`;
   };
   return `<div class="ko-lista">${ured ? `<div class="ko-red"><button class="ko-novi" onclick="_kmlNoviObjekat('${k.id}')">➕ Novi objekat (tačka, linija, poligon)</button></div>` : ''}${svi.slice(0, _KML_LISTA_MAX).map(red).join('') || '<small>Nema objekata.</small>'}${svi.length > _KML_LISTA_MAX ? `<small>Prikazano ${_KML_LISTA_MAX} od ${svi.length} — ostale dodirni na karti.</small>` : ''}</div>`;
+}
+
+// ── Više odsjeka jednog odjela → jedna površina za nagib, sjekačke linije i izvještaj ──
+// Dodir na kartu uključuje/isključuje poligon; „Cijeli odjel” bira sve odsjeke istog broja
+// odjela u tom sloju. Odsjeci se spajaju (turf.union); sitne pukotine između susjednih
+// poligona (digitalizacija) zatvara bafer ±1 m.
+function _odsOdjel(l) {
+  const ext = l._kmlExtData || {};
+  const kl = Object.keys(ext).find(k => /^(odjel|odj|odjeljenje|odeljenje|br_?odj|broj_?odj)/i.test(k) && String(ext[k]).trim());
+  if (kl) return String(ext[kl]).trim().replace(/^0+(?=\d)/, '');
+  const m = /(\d+)/.exec(l._kmlName || '');
+  return m ? m[1].replace(/^0+(?=\d)/, '') : null;
+}
+function _odsPoligonNa(ll) {
+  const lp = map.latLngToLayerPoint(ll); let naj = null, np = Infinity;
+  kmlLs.forEach(k => { if (k.vis === false || !map.hasLayer(k.grp)) return; _kmlObjekti(k).forEach(l => {
+    if (!l._kmlIsPolygon) return;
+    let u = false; try { u = !!(l._containsPoint && l._containsPoint(lp)); } catch(e) {}
+    if (!u) return;
+    let a = Infinity; try { a = turf.area(l.toGeoJSON()); } catch(e) {}
+    if (a < np) { np = a; naj = { k, l }; }
+  }); });
+  return naj;
+}
+function _odsPocni(id) {
+  const r = _kmlPoStampu(id); if (!r) return;
+  map.closePopup(); switchMainTab('karta');
+  if (_kmlUred) _kmlUredKraj(false);
+  _odsIzbor = { izabrani: new Map(), sloj: L.layerGroup().addTo(map) };
+  let bar = document.getElementById('ods-bar');
+  if (!bar) {
+    bar = document.createElement('div'); bar.id = 'ods-bar';
+    bar.innerHTML = '<div class="kub-txt"><b id="ods-naslov"></b><small id="ods-info">Dodiruj odsjeke na karti da ih dodaš ili ukloniš</small></div>' +
+      '<div class="kub-akc"><button onclick="_odsCijeliOdjel()">☑ Cijeli odjel</button><button onclick="_odsKraj()">✕</button></div>' +
+      '<div class="kub-akc"><button onclick="_odsAkcija(\'nagib\')">📐 Nagib</button><button onclick="_odsAkcija(\'sjek\')">🪓 Sjekačke</button><button class="glavno" onclick="_odsAkcija(\'izvj\')">📊 Izvještaj</button></div>';
+    document.body.appendChild(bar);
+  }
+  bar.classList.add('show');
+  _odsPrebaci(r.k, r.l);
+}
+function _odsPrebaci(k, l) {
+  const u = _odsIzbor; if (!u) return;
+  const id = L.stamp(l);
+  if (u.izabrani.has(id)) u.izabrani.delete(id); else u.izabrani.set(id, { k, l });
+  _odsCrtaj();
+}
+function _odsDodir(ll) { const h = _odsPoligonNa(ll); if (h) _odsPrebaci(h.k, h.l); else showToast('Dodirni unutar odsjeka'); }
+function _odsCijeliOdjel() {
+  const u = _odsIzbor; if (!u || !u.izabrani.size) { showToast('Prvo izaberi jedan odsjek'); return; }
+  const prvi = [...u.izabrani.values()][0], br = _odsOdjel(prvi.l);
+  if (!br) { showToast('⚠ Broj odjela nije prepoznat u nazivu/atributima'); return; }
+  let n = 0;
+  _kmlObjekti(prvi.k).forEach(l => { if (l._kmlIsPolygon && _odsOdjel(l) === br && !u.izabrani.has(L.stamp(l))) { u.izabrani.set(L.stamp(l), { k: prvi.k, l }); n++; } });
+  _odsCrtaj(); showToast('☑ Odjel ' + br + ': ' + u.izabrani.size + ' odsjeka' + (n ? ' (+' + n + ')' : ''));
+}
+function _odsCrtaj() {
+  const u = _odsIzbor; if (!u) return;
+  u.sloj.clearLayers();
+  let ha = 0;
+  u.izabrani.forEach(({ l }) => {
+    L.polygon(l.getLatLngs(), { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.28, interactive: false, pane: 'tragMsrLines' }).addTo(u.sloj);
+    try { ha += turf.area(l.toGeoJSON()) / 1e4; } catch(e) {}
+  });
+  const n = u.izabrani.size, imena = [...u.izabrani.values()].map(x => x.l._kmlName || '?');
+  document.getElementById('ods-naslov').textContent = '☑ ' + n + (n === 1 ? ' odsjek' : n < 5 ? ' odsjeka' : ' odsjeka') + ' · ' + ha.toLocaleString('bs-BA', { maximumFractionDigits: 2 }) + ' ha';
+  document.getElementById('ods-info').textContent = n ? imena.join(', ').slice(0, 120) : 'Dodiruj odsjeke na karti da ih dodaš';
+  document.querySelectorAll('#ods-bar .kub-akc:last-child button').forEach(b => b.disabled = !n);
+}
+function _odsKraj() {
+  const u = _odsIzbor; if (!u) return;
+  _odsIzbor = null;
+  try { map.removeLayer(u.sloj); } catch(e) {}
+  document.getElementById('ods-bar')?.classList.remove('show');
+}
+// turf v6: union(a, b); v7: union(featureCollection) — radi s oba.
+function _turfUnija(f) {
+  try { return f.reduce((a, b) => (a && b ? turf.union(a, b) : a || b)); }
+  catch(e) { return turf.union(turf.featureCollection(f)); }
+}
+// Spoji izabrane u jednu geometriju; prsten = vanjska granica (za nagib i sjekačke).
+function _odsSpoji() {
+  const u = _odsIzbor; if (!u || !u.izabrani.size) return null;
+  const sel = [...u.izabrani.values()], f = sel.map(x => x.l.toGeoJSON());
+  let gj = f.length === 1 ? f[0] : _turfUnija(f);
+  if (gj && gj.geometry.type === 'MultiPolygon' && f.length > 1) {
+    try { const z = _turfUnija(f.map(x => turf.buffer(x, 1, { units: 'meters' }))); const v = z && turf.buffer(z, -1, { units: 'meters' }); if (v && v.geometry.type === 'Polygon') gj = v; } catch(e) {}
+  }
+  if (!gj) return null;
+  const imena = sel.map(x => x.l._kmlName || '?'), br = _odsOdjel(sel[0].l);
+  const ime = (br && sel.every(x => _odsOdjel(x.l) === br) ? 'Odjel ' + br + ' — ' : '') + 'odsjeci ' + imena.join(', ');
+  const ring = gj.geometry.type === 'Polygon' ? gj.geometry.coordinates[0].slice(0, -1).map(([lo, la]) => [la, lo]) : null;
+  return { gj, ring, ime: ime.slice(0, 80), izvor: sel[0].k.name };
+}
+function _odsAkcija(sta) {
+  const s = _odsSpoji(); if (!s) return;
+  if (sta !== 'izvj' && !s.ring) { showToast('⚠ Izabrani odsjeci nisu susjedni (razdvojeni) — za nagib i sjekačke izaberi odsjeke koji se dodiruju'); return; }
+  _odsKraj();
+  if (sta === 'nagib') { if (typeof npIzPrstena === 'function') npIzPrstena(s.ring, s.ime); }
+  else if (sta === 'sjek') { if (window.USFSjek && USFSjek.izPrstena) USFSjek.izPrstena(s.ring, s.ime); }
+  else if (typeof _odjelIzvjestajGj === 'function') _odjelIzvjestajGj(s.gj, s.ime, s.izvor);
 }
 _kmlRestore();
 

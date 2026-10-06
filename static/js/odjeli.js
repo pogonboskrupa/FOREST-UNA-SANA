@@ -272,7 +272,14 @@ function _odjelModal() {
 function _odjelZatvori() { const m = document.getElementById('odjel-modal'); if (m) m.classList.remove('show'); }
 async function _odjelIzvjestaj(stamp) {
   const o = _odjeliSvi().find(x => L.stamp(x.sloj) === stamp);
-  if (!o) return;
+  if (o) return _odjelIzvjestajZa(o);
+}
+// Izvještaj za proizvoljnu geometriju (npr. više spojenih odsjeka jednog odjela).
+function _odjelIzvjestajGj(gj, ime, izvor) {
+  if (!gj) return;
+  return _odjelIzvjestajZa({ ime, izvor: izvor || 'spojeni odsjeci', sloj: null, gj, bbox: turf.bbox(gj) });
+}
+async function _odjelIzvjestajZa(o) {
   try { map.closePopup(); } catch (e) {}
   _odjelAkt = o;
   _odjelRez = { ime: o.ime, izvor: o.izvor, ha: _r1(turf.area(o.gj) / 1e4), ucitava: true };
