@@ -152,5 +152,13 @@
 - **Birač fajlova u APK-u** (`onShowFileChooser`): offline karta se prepoznaje u
   `IzborFajla.jeOfflineKarta` po CIJELIM tokenima accept-a (`.dbf` iz KML/SHP birača sadrži
   `.db` — podstring je slao svaki KML u uvoz offline karte). Test: `android/test-java/IzborFajlaTest.java`.
+- **Otvorena kartica (popup)**: dodir na kartu je SAMO zatvara (capture `click` listener na
+  `map.getContainer()` prije Leaflet-a) — inače dodir unutar odjela odmah otvori novu karticu.
+- **Uređivanje KML/SHP** (`_kmlUrediMeni`, `_kmlUrediPodatke`, `_kmlUrediOblik`, `_kmlObrisiObjekat`,
+  lista „▸ Objekti” i 📤 u KML sekciji): `pkml` veže sloj s `<Placemark>` (`_kmlPm`/`_kmlTip`/`_kmlGi`);
+  izmjena ide u KML DOM → `XMLSerializer` → `_kmlObnovi` (sloj iznova, `usf_kml_layers`). Stilovi,
+  ExtendedData i KMZ slike ostaju. SHP se pri prvoj izmjeni pretvara u KML (`_kmlIzGrupe`). Ugrađeni
+  odjeli se ne uređuju. Globalna const/let imena u index.html se NE smiju poklopiti sa static/js
+  (`_kmlKoord` u odjeli.js) — test `tests/js/kml-uredjivanje.test.js`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.
