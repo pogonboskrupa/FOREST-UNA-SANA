@@ -3568,7 +3568,11 @@ async function _tragRegShare(id) {
   const fname = t.name.replace(/[^a-zA-Z0-9_\-]/g,'_') + '.kml';
   await _dijeliKml(fname, _tragToKml(t), t.name, `Trag: ${t.name}`);
 }
-function openTragoviPanel() { _activeTragTabOpen = true; _tragRegRender(); document.getElementById('tragovi-panel').classList.add('show'); }
+// Plutajući panel (z 800) je ispod panela preko cijelog ekrana (Meni, z 850) — iz Menija prvo na kartu.
+function openTragoviPanel() {
+  if (document.querySelector('.usf-panel.show')) switchMainTab('karta');
+  _activeTragTabOpen = true; _tragRegRender(); document.getElementById('tragovi-panel').classList.add('show');
+}
 function closeTragoviPanel() { _activeTragTabOpen = false; document.getElementById('tragovi-panel').classList.remove('show'); }
 
 // ── Uglačavanje traga — Douglas-Peucker NE hvata vraćanje istim putem

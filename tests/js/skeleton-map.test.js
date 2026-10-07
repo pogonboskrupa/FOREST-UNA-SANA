@@ -234,4 +234,10 @@ t('Postavke: grupisane kartice, stanje veze uvijek vidljivo, memorija, baterija,
   assert.ok(rs.includes("j.app !== 'grmec-navigator'") && rs.includes('/^(usf_|tvlake_)/.test(k)'), 'vraćanje samo provjerenih ključeva');
 });
 
+t('Meni → Tragovi: plutajući panel se otvara preko karte (ne ostaje iza Menija)', () => {
+  const f = HTML.slice(HTML.indexOf('function openTragoviPanel('), HTML.indexOf('function closeTragoviPanel('));
+  assert.ok(f.includes("if (document.querySelector('.usf-panel.show')) switchMainTab('karta');"));
+  assert.ok(HTML.includes('id="mc-tragovi" onclick="openTragoviPanel()"'));
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — kostur karte');
