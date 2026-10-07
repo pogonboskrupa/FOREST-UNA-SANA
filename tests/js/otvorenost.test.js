@@ -46,35 +46,11 @@ t('poligon s rupom: ćelije rupe se ne broje', () => {
   assert.strictEqual(n1, 1600); assert.strictEqual(n2, 1600 - 400);
 });
 
-t('preporuka: najkraći krak od puta koji otvara odjel; nagib kraka u savjetu', () => {
-  const R = O.otvRaster([[[-500, 0], [2500, 0]]], ob, 20), z = { zona: 300, pragOtv: 70, pragDj: 30 };
-  const odj = kv(0, 600, 500, 400); // y 600–1000: daleko od puta (0 %)
-  const p = O.otvPreporuka(R, odj, z);
-  assert.strictEqual(p.pctPrije, 0); assert.strictEqual(p.klasa, 'otvoren'); assert.ok(p.pctPoslije >= 70);
-  assert.ok(Math.abs(p.S[1]) < 15, 'krak počinje na putu (y ≈ 0)');
-  assert.ok(p.T[1] > 600 && p.T[1] < 1000 && p.len >= 600 && p.len < 1000, 'kraj u odjelu, dužina ' + p.len);
-  assert.ok(p.haNovo > 10 && p.haNovo <= 20.5, 'novo otvoreno ' + p.haNovo + ' ha');
-  assert.strictEqual(p.dMin > 580, true);
-  const blago = O.otvSavjet(p, z, 40, 8).join(' '), strmo = O.otvSavjet(p, z, 150, 8).join(' ');
-  assert.ok(/u granici od 8 %/.test(blago), blago);
-  assert.ok(/serpentine/.test(strmo) && /najmanje ~1875 m/.test(strmo), strmo);
-  // bez puteva u rasteru
-  assert.ok(O.otvPreporuka(O.otvRaster([], ob, 25), odj, z).bezPuta);
-  assert.ok(/glavni ŠKP/.test(O.otvSavjet({ bezPuta: true }, z, null, 8)[0]));
-});
-
-t('preporuka: velik odjel — jedan krak nije dovoljan, savjet za drugi krak / vlake', () => {
-  const R = O.otvRaster([[[-500, 0], [3500, 0]]], { x0: -1000, y0: -1000, x1: 4000, y1: 4000 }, 25), z = { zona: 200, pragOtv: 70, pragDj: 30 };
-  const p = O.otvPreporuka(R, kv(0, 300, 2500, 2500), z);
-  assert.ok(p.klasa !== 'otvoren' && p.pctPoslije > p.pctPrije);
-  assert.ok(O.otvSavjet(p, z, null, 8).some(t => /drugim krakom|traktorskim vlakama/.test(t)));
-});
-
 t('UI: sekcija u projektovanju puta, skripta u APK-u i SW, red u kartici poligona', () => {
   const H = R('index.html'), js = R('static/js/otvorenost.js');
   assert.ok(H.includes('id="otv-sekcija"') && H.includes('<script src="static/js/otvorenost.js"></script>') && H.includes('if (window.USFOtv) USFOtv.render();'));
-  assert.ok(H.includes("['Otvorenost ŠKP',") && H.includes("USFOtv.preporukaId(${id})") && H.includes('id="otv-drive"'), 'kartica → preporuka, Drive u sekciji');
-  assert.ok(js.includes('function prepHtml()') && js.includes("_rdSetPoint('start', a[0], a[1]); _rdSetPoint('end', b[0], b[1]);"), 'preporuka → projektovanje trase');
+  assert.ok(H.includes("['Otvorenost ŠKP',") && H.includes('id="otv-drive"'), 'red u kartici, Drive u sekciji');
+  assert.ok(!js.includes('otvPreporuka') && !H.includes('preporukaId') && !H.includes('.otv-prep'), 'preporuke uklonjene');
   const kmlLista = JSON.parse(R('static/data/kml_drive.json'));
   assert.ok(kmlLista.some(k => /putevi/i.test(k.naziv)), 'ŠKP s Drive-a u listi');
   assert.ok(R('sw.js').includes("'./static/js/otvorenost.js'") && R('android/copy-assets.sh').includes('static/js/otvorenost.js'));
