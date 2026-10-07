@@ -315,6 +315,21 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .otv-op input { flex:1; accent-color:#22c55e; }
 .otv-lista summary { cursor:pointer; padding:8px 0; color:var(--pn-txt); font-size:13px; font-weight:700; }
 .otv-red { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:7px 4px; border:0; border-top:1px solid var(--pn-line); background:none; color:var(--pn-txt); font:inherit; font-size:13px; }
+.otv-drive { margin:4px 0 10px; padding:8px 10px; border:1px solid var(--pn-line); border-radius:10px; background:rgba(255,255,255,.03); }
+.otv-drive .set-nap { display:none; }
+.otv-prep { margin-top:14px; padding-top:10px; border-top:1px dashed rgba(56,189,248,.45); }
+.otv-prep h4 { margin:0 0 6px; font-size:15px; color:#e0f2fe; }
+.otv-prep-det { padding:10px; border:1px solid rgba(56,189,248,.4); border-radius:12px; background:rgba(56,189,248,.06); }
+.otv-prep-nas { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--pn-txt); margin-bottom:8px; }
+.otv-prep-nas i { width:12px; height:12px; border-radius:3px; }
+.otv-prep-nas span { margin-left:auto; color:var(--pn-dim); font-size:12px; }
+.otv-prep-br { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:8px; }
+.otv-prep-br > div { background:#0b1220; border:1px solid var(--pn-line); border-radius:9px; padding:6px; text-align:center; }
+.otv-prep-br b { display:block; font-size:13.5px; color:#f0f9ff; white-space:nowrap; }
+.otv-prep-br small { display:block; font-size:10.5px; color:var(--pn-dim); }
+.otv-prep ul { margin:0 0 8px; padding-left:18px; font-size:13px; line-height:1.4; color:var(--pn-txt); }
+.otv-prep li { margin-bottom:5px; }
+.otv-link { margin-top:8px; border:0; background:none; color:#7dd3fc; font:inherit; font-size:13px; padding:4px 0; }
 .otv-red span { margin-left:auto; color:var(--pn-dim); font-size:11.5px; white-space:nowrap; }
 .rd-akc button { flex:1; padding:9px 4px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
 .rd-akc button.on { background:#1e3a5f; border-color:#3b82f6; color:#dbeafe; }
@@ -2026,6 +2041,7 @@ body.sl-uredi #sl-ured { display: block; }
     <section class="ng-card otv-kartica">
       <h3>🗺 Otvorenost odjela ŠKP-om <small>šumski kamionski putevi</small></h3>
       <div class="otv-legmini"><span style="--c:#22c55e">otvoren</span><span style="--c:#facc15">djelimično</span><span style="--c:#ef4444">neotvoren</span></div>
+      <div id="otv-drive" class="otv-drive" hidden></div>
       <div id="otv-sekcija"></div>
     </section>
   </div>
@@ -4650,9 +4666,10 @@ function _kmlPopupHtml(layer) {
   const ikona = layer._kmlIsPolygon ? '▣' : (layer._kmlIsPoint ? '📍' : '〰');
   const sloj = kmlLs.find(k => k.grp && k.grp.hasLayer && k.grp.hasLayer(layer));
   const redovi = Object.keys(ext).filter(k => !k.startsWith('usf_')).map(k => [k, ext[k]]);
+  let otv = null;
   try {
     if (layer._kmlIsPolygon && typeof turf !== 'undefined') { const gj = layer.toGeoJSON(); redovi.unshift(['Površina', (turf.area(gj) / 10000).toLocaleString('bs-BA', { maximumFractionDigits: 2 }) + ' ha']); }
-    const otv = layer._kmlIsPolygon && window.USFOtv ? USFOtv.zaSloj(layer) : null;
+    otv = layer._kmlIsPolygon && window.USFOtv ? USFOtv.zaSloj(layer) : null;
     if (otv) redovi.splice(1, 0, ['Otvorenost ŠKP', otv.t + ' · ' + otv.pct.toLocaleString('bs-BA') + ' % u zoni · Ø ' + (otv.sr >= 3000 ? '> 3 km' : otv.sr + ' m')]);
     else if (layer._kmlIsPoint) { const ll = layer.getLatLng(); redovi.unshift(['Koordinate', ll.lat.toFixed(5) + ', ' + ll.lng.toFixed(5)]); }
     else if (layer.getLatLngs) { const l = layer.getLatLngs().flat(3); let d = 0; for (let i = 1; i < l.length; i++) d += l[i - 1].distanceTo(l[i]); redovi.unshift(['Dužina', d >= 1000 ? (d / 1000).toFixed(2) + ' km' : Math.round(d) + ' m']); }
@@ -4662,6 +4679,7 @@ function _kmlPopupHtml(layer) {
   if (layer._kmlIsPolygon && window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('k:${id}')` });
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
   if (layer._kmlIsPolygon) dugmad.push({ t: '☑ Više odsjeka', on: `_odsPocni(${id})` });
+  if (otv && otv.k !== 'otvoren') dugmad.push({ t: '💡 Kako otvoriti (ŠKP)', on: `USFOtv.preporukaId(${id})` });
   if (layer._kmlIsPoint) { const ll = layer.getLatLng(); dugmad.push({ t: '🎯 Centriraj', on: `map.setView([${ll.lat},${ll.lng}],Math.max(map.getZoom(),16))` }); }
   if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi', on: `_kmlUrediMeni(${id})` }, { t: '🗑 Obriši', on: `_kmlObrisiObjekat(${id})`, v: 'opasno' });
   return _popKartica({ ikona, boja: layer.options && layer.options.color, naslov: layer._kmlName, tip, meta: sloj ? sloj.name : '', redovi, opis: _kmlOpisHtml(layer._kmlDesc, sloj && sloj.name), dugmad });
@@ -6884,18 +6902,23 @@ async function _dkmlUcitaj() {
   return _dkmlLista;
 }
 const _dkmlImena = k => [k.naziv + '.kml', k.naziv + '.kmz'];
+// Ista lista u KML pregledniku (#drive-kml) i u sekciji otvorenosti ŠKP-om (#otv-drive).
 async function _driveKmlRender() {
-  const el = document.getElementById('drive-kml'), sek = document.getElementById('drive-kml-sek'); if (!el || !window.USFDriveKarte) return;
+  const el = document.getElementById('drive-kml'), sek = document.getElementById('drive-kml-sek'), otv = document.getElementById('otv-drive');
+  if ((!el && !otv) || !window.USFDriveKarte) return;
   const l = _dkmlLista || await (_dkmlP = _dkmlP || _dkmlUcitaj());
   if (sek) sek.hidden = !l.length;
+  if (otv) otv.hidden = !l.length;
   if (!l.length) return;
   const kljuc = _dkKljuc();
-  el.innerHTML = l.map(k => {
+  const html = l.map(k => {
     const n = _dkNapredak[k.id], ucitan = typeof kmlLs !== 'undefined' && kmlLs.some(x => _dkmlImena(k).includes(x.name));
     const desno = n ? `<div class="dk-traka"><u style="width:${n.p || 0}%"></u></div><small>${n.p != null ? n.p + ' %' : '…'}${n.mb ? ' · ' + n.mb + ' MB' : ''}</small><button onclick="_dkPrekini('${k.id}')">Prekini</button>`
       : (ucitan ? '<b class="dk-ok">✓ Učitan</b>' : '') + (kljuc ? `<button class="${ucitan ? '' : 'glavno'}" onclick="_dkmlPreuzmi('${k.id}')">${ucitan ? '↻ Osvježi' : '⬇ Preuzmi'}</button>` : `<button onclick="_dkOtkljucaj()">🔒 Otključaj PIN-om</button>`);
     return `<div class="dk-red"><div><b>${_escHtml(k.naziv)}</b><small>${_escHtml(k.opis || '')}${k.mb ? ' · ' + k.mb + ' MB' : ''}</small></div><div class="dk-akc">${desno}</div></div>`;
   }).join('') + '<p class="set-nap">Sloj se skida jednom i ostaje u aplikaciji (radi bez interneta).</p>';
+  if (el) el.innerHTML = html;
+  if (otv) otv.innerHTML = '<div class="otv-lbl">☁ Preuzmi s Drive-a (odjeli, ŠKP)</div>' + html;
 }
 async function _dkmlPreuzmi(id) {
   const k = (_dkmlLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
@@ -6920,7 +6943,7 @@ function _driveKmlKraj(id, ok, poruka, kmz) {
   const ime = k.naziv + (kmz ? '.kmz' : '.kml');
   kmlLs.filter(x => _dkmlImena(k).includes(x.name)).forEach(x => _kmlDelete(x.id));
   _vectorFileChosen({ target: { files: [new File([u8], ime)], value: '' } }); // KMZ: raspakivanje i slike kao ručni uvoz
-  setTimeout(_driveKmlRender, 1500);
+  setTimeout(() => { _driveKmlRender(); if (window.USFOtv) USFOtv.render(); }, 1500);
 }
 function openSumarstvoSection() { if (!_pinOtkljucano()) { _pinTrazi(openSumarstvoSection); return; } _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
 function openSusenjeSection() { if (!_pinOtkljucano()) { _pinTrazi(openSusenjeSection); return; } _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
@@ -9060,6 +9083,7 @@ function openPutSection() {
   if (!_pinOtkljucano()) { _pinTrazi(openPutSection); return; }
   _openStubPanel('put-panel', 'meni');
   if (window.USFOtv) USFOtv.render();
+  _driveKmlRender();
   Object.keys(RD_DEFAULT_PARAMS).forEach(k => {
     const el = document.getElementById('rd-p-' + k);
     if (!el) return;

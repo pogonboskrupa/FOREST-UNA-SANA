@@ -153,6 +153,12 @@
   otvoren ≥ 70 %, djelimično ≥ 30 % (pragovi bez novog rastera). Pane `otvPane` z 412 (iznad KML-a), bez dodira;
   ŠKP se ponovo crta iznad ispune. Red „Otvorenost ŠKP” u kartici poligona (`USFOtv.zaSloj`); postavke u
   localStorage `usf_otvorenost`, rezultat samo u memoriji. 2000 odsjeka ≈ 3,7 s na 4× sporijem CPU-u.
+  Preporuke za otvaranje (dio na kraju sekcije, i „💡 Kako otvoriti (ŠKP)” u kartici poligona): `otvPreporuka` —
+  krak od najbliže tačke puta (raster pamti `sx/sy` izvora) do kandidata T u odjelu (≤ ~60 ćelija); najkraći krak
+  koji dostiže prag „otvoren”, inače najveći udio. Rang po ha novootvorenog po metru kraka. `otvSavjet`: tekst +
+  nagib pravog kraka iz DEM-a (`npVisinaNa`) vs `rdLoadParams().nagibMax` (prekoračen ⇒ serpentine, min dužina
+  ΔH/nagib). „Projektuj trasu” postavlja A (na ŠKP) i B (u odjelu) u projektovanje (`_rdSetPoint`). Drive lista
+  KML-a (`_driveKmlRender`) se prikazuje i u ovoj sekciji (`#otv-drive`) — tamo je i „Kamionski putevi”.
 - **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
   `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`. Sve
   NEPROVIDNO do ruba (providni uglovi ⇒ Xiaomi/HyperOS crta bijeli okvir i smanjuje ikonu);
