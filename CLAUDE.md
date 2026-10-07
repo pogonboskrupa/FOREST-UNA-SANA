@@ -121,8 +121,11 @@
   pravljenju projekta, prekidač Osnovni/Alternativni u panelu.
   Spajanje (`spojiPadine` → `slSpojiLinije`/`slSpojiGeo`): linije susjednih padina čiji su krajevi ≤ `p.spoj`×razmak
   (zadano ½; Ne/Blizu/Srednje/Šire u panelu) i uz granicu padina postaju JEDNA krivudava linija (id `m:<id>+<id>`,
-  `spoj` geometrija, `komp` [{id, padina, k, geo}]); spajaju se samo linije bez stanja. Površine se računaju po
-  padini PRIJE spajanja (spojena = zbir), obris partije i brisanje idu po `komp`, izo = najgori dio.
+  `spoj` geometrija, `komp` [{id, padina, k, geo}]); spajaju se samo linije bez stanja. Spoj je glatak
+  (`slSpojiGlatko`: krajevi skraćeni ≤ 30 m, kubna Bezier tangentna na oba dijela — ne oštar lom). Slobodni kraj
+  na granici padina produži se pravo do ruba poligona (`slProduzi`: ≤ 2×razmak, ≥ 0,4×razmak od drugih linija;
+  i nespojene linije, u `spoj`). Površine `slPoljaPadine`: po padini, ćelija susjedne padine bliža produžetku nego
+  vlastitim linijama (≤ razmak) ide partijama izvorne; spojena = zbir dijelova; obris/brisanje po `komp`, izo = najgori dio.
   Natpisi (`postaviNatpise`): prioritet + 4 položaja (van kraja linije, dalje, bočno), sakrij
   ako nema mjesta; preračun na zoomend. Klik na liniju crta poligon partije (`slPartija` →
   `slTrakaObris`: ista mreža/klasifikacija kao `slPoljaTeren`, pa površina = `lin.ha`).

@@ -386,6 +386,44 @@ t('padine: bliske linije susjednih padina spajaju se u jednu krivudavu', () => {
   assert.ok(lt.every(l => new Set(l.map(x => x.i)).size === l.length), 'bez ponavljanja (petlje)');
 });
 
+t('padine: glatki (esoidni) spoj — bez oštrog loma, krajevi ostaju', () => {
+  const A = [pr(-300, 0), pr(0, 0)], B = [pr(0, 25), pr(300, 25)]; // pomak 25 m na granici
+  const g = S.slSpojiGlatko([A, B], 30), P = g.map(q => L.u(q[0], q[1]));
+  assert.ok(dist(g[0], A[0]) < 0.5 && dist(g[g.length - 1], B[1]) < 0.5, 'krajevi isti');
+  let maxUgao = 0;
+  for (let i = 2; i < P.length; i++) {
+    const a = Math.atan2(P[i - 1][1] - P[i - 2][1], P[i - 1][0] - P[i - 2][0]), b = Math.atan2(P[i][1] - P[i - 1][1], P[i][0] - P[i - 1][0]);
+    maxUgao = Math.max(maxUgao, Math.abs(((b - a) * 180 / Math.PI + 540) % 360 - 180));
+  }
+  assert.ok(maxUgao < 20, 'najveći lom ' + maxUgao.toFixed(1) + '°');
+  const oster = S.slSpojiGeo([A, B]).map(q => L.u(q[0], q[1]));
+  assert.ok(Math.abs(oster[2][0] - oster[1][0]) < 0.5, 'stari spoj je imao okomit komad (oštar lom)');
+});
+
+t('padine: slobodan kraj linije se produžuje do ruba poligona', () => {
+  const ring = [pr(-150, -100), pr(150, -100), pr(150, 100), pr(-150, 100)];
+  const lin = [pr(-150, 0), pr(100, 0)]; // staje 50 m prije istočnog ruba (granica padine)
+  const g = S.slProduzi(lin, 1, ring, [], 120, 24);
+  assert.ok(g && Math.abs(L.u(g[g.length - 1][0], g[g.length - 1][1])[0] - 150) < 0.5, 'do ruba');
+  assert.strictEqual(S.slProduzi(lin, 0, ring, [], 120, 24), null, 'kraj na rubu se ne dira');
+  assert.strictEqual(S.slProduzi(lin, 1, ring, [], 40, 24), null, 'predaleko (> maxDuz)');
+  assert.strictEqual(S.slProduzi(lin, 1, ring, [[pr(120, -50), pr(120, 50)]], 120, 24), null, 'presjekao bi drugu liniju');
+  assert.strictEqual(S.slProduzi(lin, 1, ring, [[pr(110, 10), pr(150, 10)]], 120, 24), null, 'preblizu drugoj liniji');
+});
+
+t('padine: površine s produžecima — susjedna padina daje dio partijama produženih linija', () => {
+  const P0 = [pr(-150, -100), pr(100, -100), pr(100, 100), pr(-150, 100)], P1 = [pr(100, -100), pr(150, -100), pr(150, 100), pr(100, 100)];
+  const geos = [[pr(-150, -40), pr(100, -40)], [pr(-150, 40), pr(100, 40)]].map(g => g.slice().reverse()); // gledano „uzbrdo” prema zapadu
+  const bez = S.slPoljaPadine([{ ring: P0, geos, ext: [] }, { ring: P1, geos: [], ext: [] }], 60);
+  const ext = [[pr(100, -40), pr(150, -40)], [pr(100, 40), pr(150, 40)]];
+  const sa = S.slPoljaPadine([{ ring: P0, geos: geos.map((g, i) => [ext[i][1]].concat(g)), ext }, { ring: P1, geos: [], ext: [] }], 60);
+  const zb = a => a.flat().reduce((x, y) => x + y, 0);
+  assert.ok(Math.abs(zb(bez) - 6) < 0.05 && Math.abs(zb(sa) - 6) < 0.05, 'ukupno 6 ha');
+  assert.ok(Math.abs(bez[1][0] - 1) < 0.03, 'bez produžetka cijela susjedna padina (1 ha) je ostatak');
+  assert.ok(sa[1][0] < 0.01, 'sa produžecima susjedna padina pripada partijama');
+  assert.ok(Math.abs(sa[0][1] - 2.4) < 0.05 && Math.abs(bez[0][1] - 2.0) < 0.05, 'srednja partija 80 m × 300 m (s produžetkom), bez njega 80 × 250');
+});
+
 t('UI: spajanje linija padina — prekidač, komponente za partiju i brisanje', () => {
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes('data-a="spoj"') && js.includes("p.spoj = Number(el.dataset.v)"), 'izbor praga u panelu');
