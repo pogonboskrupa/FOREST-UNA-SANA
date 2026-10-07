@@ -95,7 +95,10 @@
   Brojanje `p.brojanje` 'L'/'D' (gledano uzbrdo). Ručni lom: `lin.geo` [dno…vrh]
   (`slGeo`, vodič po segmentima) — čuva se uz id kroz brisanja i prenumeraciju.
   Provjera izohipse: uzorak svakih 40 m, pad zaglađen ~150 m (`padGlatko`), nagib < 8 %
-  se ne broji; > 25 % dužine s odstupanjem > 45° ⇒ `lin.izo`. Plan 'teren' = lepeza
+  se ne broji; > 25 % dužine s odstupanjem > 45° ⇒ `lin.izo`. Crveno se crta SAMO dio koji ne ide uz
+  padinu (`lin.izoGeo` iz `slIzoDijelovi`; bez `lin.izo` samo komadi ≥ 80 m). Checkbox „Plohe gdje linije ne idu
+  uz stranu” (`p.plohe`, providnost `p.plohaOp`): `racunajPlohe` — mreža 20–40 m, pravac najbliže linije vs
+  zaglađen pad → `p.izoPlohe` (obris `slTrakaObris`), računa se pri uključivanju i u `generisi`. Plan 'teren' = lepeza
   pravih linija (`slLepeza`: svaka svoj pad, skretanje susjeda ograničeno, provjera
   stvarnog razmaka ≥ 60 % `slMinRazmak`) → `lin.teren`. Linije pada (flow lines)
   NE koristiti: slijevaju se u jarke i sabijaju partije. localStorage `usf_sjekacke`; izvoz KML:
@@ -163,8 +166,9 @@
   prvog zapisa liste (greške `usf_karte_greske`); čuva se samo ključ u `usf_karte_kljuc`. APK: `AndroidKarta.preuzmi`
   → `drive.usercontent.google.com/download?…&confirm=t`, `.part` + Range nastavak, provjera
   „SQLite format 3”, pa uvoz kao `importOfflineMap`. Drive fajl mora biti „Svako s linkom”.
-  **KML poligoni s Drive-a** (KML preglednik → „☁ Poligoni za preuzimanje”): ista lista i PIN, zapis `vrsta:'kml'`
-  (`karta_drive_dodaj.mjs --kml …`); karte ih filtriraju van. APK `AndroidKarta.preuzmiKml` (zajednički `skiniDrive`)
+  **KML poligoni s Drive-a** (KML preglednik → „☁ Poligoni za preuzimanje”): isti PIN, ZASEBNA lista
+  `static/data/kml_drive.json` (`karta_drive_dodaj.mjs --kml …`, zapis `vrsta:'kml'`) — stariji APK-ovi čitaju
+  karte_drive.json i KML bi prikazali kao offline kartu. APK `AndroidKarta.preuzmiKml` (zajednički `skiniDrive`)
   → cache `kml_drive/<id>.dat` (provjera `<?xml`/`<kml`/PK), JS `_driveKmlKraj` uzme bajtove (`uzmiKml`, briše fajl)
   i učita kroz `_vectorFileChosen` (KMZ, IndexedDB) — stari sloj istog imena se zamjenjuje.
 - **Birač fajlova u APK-u** (`onShowFileChooser`): offline karta se prepoznaje u

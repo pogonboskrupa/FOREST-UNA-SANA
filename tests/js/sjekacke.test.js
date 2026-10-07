@@ -436,6 +436,17 @@ t('padine: jedinstven smjer (greben obrće padinu) i redoslijed linija preko pad
   assert.strictEqual(S.slRedoslijed([['a', 'b'], ['b', 'a']]).length, 2, 'petlja ne zaglavi');
 });
 
+t('dio linije koji ne ide uz padinu: samo taj dio crveno; plohe s providnošću', () => {
+  const tacka = x => pr(x, 0), u = (x0, x1, dev, nagib = 20) => ({ p0: tacka(x0), p1: tacka(x1), dev, nagib });
+  const d = S.slIzoDijelovi([u(0, 40, 10), u(40, 80, 60), u(80, 120, 70), u(120, 160, 5), u(160, 200, 80), u(200, 240, 80, 3)]);
+  assert.strictEqual(d.length, 2, 'dva odvojena loša dijela; ravno (< 8 %) se ne broji');
+  assert.ok(Math.abs(S.slDuzina(d[0]) - 80) < 0.5 && Math.abs(S.slDuzina(d[1]) - 40) < 0.5);
+  assert.deepStrictEqual(S.slIzoDijelovi([u(0, 40, 10)]), []);
+  const js = R('static/js/sjekacke.js');
+  assert.ok(js.includes("(lin.izoGeo || []).forEach(d => L.polyline(d,") && !js.includes("if (lin.izo && !vodiOvdje) L.polyline(slGeo(lin)"), 'crveno samo dio, ne cijela linija');
+  assert.ok(js.includes('data-a="plohe"') && js.includes('data-a="plohe-op"') && js.includes('async function racunajPlohe(p)') && js.includes('fillOpacity: p.plohaOp != null ? p.plohaOp : 0.35'));
+});
+
 t('UI: spajanje linija padina — prekidač, komponente za partiju i brisanje', () => {
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes('data-a="spoj"') && js.includes("p.spoj = Number(el.dataset.v)"), 'izbor praga u panelu');

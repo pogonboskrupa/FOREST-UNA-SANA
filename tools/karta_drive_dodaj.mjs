@@ -5,9 +5,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const D = createRequire(import.meta.url)('../static/js/drive-karte.js');
-const FAJL = new URL('../static/data/karte_drive.json', import.meta.url);
 const argv = process.argv.slice(2), kml = argv[0] === '--kml';
 const [link, naziv, opis = '', mb = ''] = kml ? argv.slice(1) : argv;
+// KML ima svoju listu: stariji APK-ovi čitaju karte_drive.json i prikazali bi ga kao kartu
+const FAJL = new URL(kml ? '../static/data/kml_drive.json' : '../static/data/karte_drive.json', import.meta.url);
 const pin = process.env.USF_PIN;
 if (!pin || !/^\d{4}$/.test(pin)) { console.error('USF_PIN (4 cifre) nije postavljen'); process.exit(1); }
 const fileId = D.driveId(link);

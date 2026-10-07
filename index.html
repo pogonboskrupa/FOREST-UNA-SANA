@@ -1232,6 +1232,10 @@ body.sl-uredi #sl-ured { display: block; }
 .sl-cipovi button { min-height: 34px; padding: 0 10px; border-radius: 17px; border: 1px solid var(--pn-line); background: rgba(255,255,255,.04); color: var(--pn-txt); font-weight: 700; font-size: 12.5px; }
 .sl-cipovi button.on { background: #f59e0b; color: #0b1220; border-color: #f59e0b; }
 .sl-chk { display: flex !important; gap: 8px; align-items: center; color: var(--pn-txt) !important; }
+.sl-plohe { margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(239,68,68,.35); border-radius: 10px; background: rgba(239,68,68,.06); }
+.sl-plohe small { display: block; color: var(--pn-dim); font-size: 11.5px; }
+.sl-op { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--pn-txt); font-size: 13px; }
+.sl-op input { flex: 1; accent-color: #ef4444; }
 .sl-chk input { width: 20px !important; height: 20px; padding: 0 !important; }
 .sl-chk small { color: var(--pn-dim); }
 .sl-info { margin-top: 8px; font-size: 11.5px; color: #93c5fd; line-height: 1.4; }
@@ -6789,7 +6793,7 @@ const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc')
 const _dkNaTelefonu = k => (typeof _sqlLayers !== 'undefined') && _sqlLayers.some(x => x.name === k.naziv + '.sqlitedb' || x.name === k.naziv);
 async function _driveKarteRender() {
   const el = document.getElementById('drive-karte'); if (!el || !window.USFDriveKarte) return;
-  const l = (_dkLista || await _dkUcitaj()).filter(k => k.vrsta !== 'kml');
+  const l = _dkLista || await _dkUcitaj();
   if (!l.length) { el.innerHTML = '<div class="ul-status">Trenutno nema karata za preuzimanje.</div>'; return; }
   const kljuc = _dkKljuc();
   el.innerHTML = l.map(k => {
@@ -6803,7 +6807,7 @@ async function _driveKarteRender() {
 // PIN karata je odvojen od PIN-a sekcija i nema heš u kodu: tačan je ako ključ izveden iz
 // njega dešifruje zapis liste (AES-GCM s pogrešnim ključem ne prolazi). Čuva se ključ, ne PIN.
 async function _dkOtkljucaj() {
-  const l = _dkLista || await _dkUcitaj(); if (!l.length) return;
+  const l = (_dkLista || await _dkUcitaj()).concat(_dkmlLista || []); if (!l.length) return;
   let kljuc = null;
   const pin = await _pinUnos('Karte za preuzimanje su zaštićene. Unesi PIN za karte (jednom na ovom telefonu).', 'usf_karte_greske',
     async t => { const k = await USFDriveKarte.kljucIzPina(t); if (!await USFDriveKarte.desifruj(k, l[0].enc)) return false; kljuc = k; return true; });
@@ -6831,11 +6835,21 @@ function _driveKraj(id, ok, poruka) {
 }
 // ── Poligoni (KML/KMZ) za preuzimanje — ista lista, PIN i nativno skidanje kao karte (zapisi vrsta:'kml').
 // MainActivity skida u cache (preuzmiKml), JS uzme bajtove (uzmiKml) i učita kao "Dodaj KML" → IndexedDB.
-let _dkmlP = null;
+// Zasebna lista kml_drive.json: stariji APK-ovi čitaju karte_drive.json i KML bi prikazali kao kartu.
+const _DKML_URL = _DK_URL.replace('karte_drive.json', 'kml_drive.json');
+let _dkmlLista = null, _dkmlP = null;
+async function _dkmlUcitaj() {
+  for (const u of [_DKML_URL + '?t=' + Math.floor(Date.now() / 36e5), 'static/data/kml_drive.json']) {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(u, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(tm)); if (r.ok) { const l = await r.json(); if (Array.isArray(l)) { _dkmlLista = l; try { localStorage.setItem('usf_kml_lista', JSON.stringify(l)); } catch(e) {} return l; } } } catch(e) {}
+  }
+  try { _dkmlLista = JSON.parse(localStorage.getItem('usf_kml_lista') || '[]'); } catch(e) { _dkmlLista = []; }
+  return _dkmlLista;
+}
 const _dkmlImena = k => [k.naziv + '.kml', k.naziv + '.kmz'];
 async function _driveKmlRender() {
   const el = document.getElementById('drive-kml'), sek = document.getElementById('drive-kml-sek'); if (!el || !window.USFDriveKarte) return;
-  const l = (_dkLista || await (_dkmlP = _dkmlP || _dkUcitaj())).filter(k => k.vrsta === 'kml');
+  const l = _dkmlLista || await (_dkmlP = _dkmlP || _dkmlUcitaj());
   if (sek) sek.hidden = !l.length;
   if (!l.length) return;
   const kljuc = _dkKljuc();
@@ -6847,7 +6861,7 @@ async function _driveKmlRender() {
   }).join('') + '<p class="set-nap">Sloj se skida jednom i ostaje u aplikaciji (radi bez interneta).</p>';
 }
 async function _dkmlPreuzmi(id) {
-  const k = (_dkLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
+  const k = (_dkmlLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
   if (!kljuc) { _dkOtkljucaj(); return; }
   const o = await USFDriveKarte.desifruj(kljuc, k.enc);
   if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
@@ -6859,7 +6873,7 @@ async function _dkmlPreuzmi(id) {
 // poziv iz MainActivity: fajl je u cache-u → bajtovi → isti tok kao ručni KML/KMZ (stari sloj istog imena se zamjenjuje)
 function _driveKmlKraj(id, ok, poruka, kmz) {
   delete _dkNapredak[id];
-  const k = (_dkLista || []).find(x => x.id === id);
+  const k = (_dkmlLista || []).find(x => x.id === id);
   if (!ok || !k) { _driveKmlRender(); if (!ok) showToast('⚠ Poligoni nisu preuzeti: ' + (poruka || 'greška')); return; }
   let b64 = '';
   try { b64 = AndroidKarta.uzmiKml(id); } catch(e) {}
