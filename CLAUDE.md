@@ -126,6 +126,12 @@
   na granici padina produži se pravo do ruba poligona (`slProduzi`: ≤ 2×razmak, ≥ 0,4×razmak od drugih linija;
   i nespojene linije, u `spoj`). Površine `slPoljaPadine`: po padini, ćelija susjedne padine bliža produžetku nego
   vlastitim linijama (≤ razmak) ide partijama izvorne; spojena = zbir dijelova; obris/brisanje po `komp`, izo = najgori dio.
+  Partija = od prethodne linije do linije (L1 od granice), zadnja partija = od zadnje linije do granice (`p.ostatakHa`,
+  popup zadnje linije). Padine: spojena linija preko grebena ide u jednoj padini uzbrdo, u drugoj nizbrdo ⇒ ta padina
+  se gleda obrnuto (`slOrijentacija` → flip); numeracija preko padina `slRedoslijed` (topološki iz nizova po padini);
+  traka m u redu numeracije → m-ta linija, traka iza zadnje linije padine → sljedeća linija ako dodiruje padinu
+  (≤ ½ razmaka), inače zadnja partija. `lin.partija` [[padina, traka]] crta obris na klik. `komp.geo` je u SVOM smjeru
+  (dno→vrh) — u lancu `obrni`; brojanje bocno s obrnutom linijom bi pomiješalo trake.
   Natpisi (`postaviNatpise`): prioritet + 4 položaja (van kraja linije, dalje, bočno), sakrij
   ako nema mjesta; preračun na zoomend. Klik na liniju crta poligon partije (`slPartija` →
   `slTrakaObris`: ista mreža/klasifikacija kao `slPoljaTeren`, pa površina = `lin.ha`).
@@ -162,6 +168,10 @@
   `.db` — podstring je slao svaki KML u uvoz offline karte). Test: `android/test-java/IzborFajlaTest.java`.
 - **Otvorena kartica (popup)**: dodir na kartu je SAMO zatvara (capture `click` listener na
   `map.getContainer()` prije Leaflet-a) — inače dodir unutar odjela odmah otvori novu karticu.
+- **KML slojevi trajno**: sadržaj u IndexedDB `usf_kml` (`_kmlSpremi`/`_kmlIdb`), u localStorage
+  `usf_kml_layers` samo meta {col, vis, stil, idb:1} — veliki KML nije stao u ~5 MB localStorage i nestajao je
+  pri ponovnom pokretanju/ažuriranju. Stari zapisi s `content` se sele pri `_kmlRestore`. SHP se odmah čuva kao KML
+  (`_kmlIzGrupe`). Rezervna kopija ubacuje KML tekst u metu (`content`), vraćanje ga piše nazad u IDB.
 - **Uređivanje KML/SHP** (`_kmlUrediMeni`, `_kmlUrediPodatke`, `_kmlUrediOblik`, `_kmlObrisiObjekat`,
   lista „▸ Objekti” i 📤 u KML sekciji): `pkml` veže sloj s `<Placemark>` (`_kmlPm`/`_kmlTip`/`_kmlGi`);
   izmjena ide u KML DOM → `XMLSerializer` → `_kmlObnovi` (sloj iznova, `usf_kml_layers`). Stilovi,

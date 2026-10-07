@@ -4907,7 +4907,10 @@ async function _shpLoadFiles(shpFile, dbfFile, prjFile) {
   });
   if (!grp.getLayers().length) throw new Error('nema podržanih geometrija');
   grp.addTo(map);
-  kmlLs.push({id:'shp_'+Date.now()+'_'+kmlCI,name:shpFile.name,grp,col,vis:true,_shp:true});
+  const k = {id:'shp_'+Date.now()+'_'+kmlCI,name:shpFile.name,grp,col,vis:true,_shp:true};
+  kmlLs.push(k);
+  // SHP se čuva kao KML (inače nestaje pri ponovnom pokretanju); prikaz ostaje ovaj
+  try { _kmlSaveContent(k.name, _kmlIzGrupe(k), col); } catch(e) {}
   _kmlRegRender();
   try { const b=grp.getBounds(); if(b.isValid()) map.fitBounds(b,{padding:[20,20]}); } catch(e) {}
   showToast('✅ SHP učitan: ' + shpFile.name);
@@ -4961,7 +4964,7 @@ function _kmlLoadFile(file) {
       const cnt = grp.getLayers().length;
       if (!cnt) { showToast('⚠ KML nema prepoznatih geometrija: ' + file.name); return; }
       grp.addTo(map);
-      kmlLs.push({ id: 'kml_' + Date.now() + '_' + kmlCI, name: file.name, grp, col, vis: true });
+      kmlLs.push({ id: 'kml_' + Date.now() + '_' + kmlCI, name: file.name, grp, col, vis: true, _content: usedText });
       _kmlSaveContent(file.name, usedText, col);
       _kmlRegRender();
       try { const b = grp.getBounds(); if (b.isValid()) map.fitBounds(b, { padding: [20,20] }); } catch(x) {}
@@ -4969,32 +4972,45 @@ function _kmlLoadFile(file) {
     } catch(x) { showToast('⚠ Greška KML: ' + x.message); }
   })();
 }
+// Sadržaj KML slojeva je u IndexedDB `usf_kml` (localStorage ~5 MB dijele svi moduli: veliki KML se
+// nije upisao i nestajao je pri ponovnom pokretanju / ažuriranju). U localStorage ostaje samo meta
+// {col, vis, stil, idb:1}; stari zapisi s `content` prebacuju se u IDB pri pokretanju (_kmlRestore).
+let _kmlDbP = null;
+function _kmlDb() {
+  if (!_kmlDbP) _kmlDbP = new Promise((res, rej) => { const r = indexedDB.open('usf_kml', 1); r.onupgradeneeded = () => r.result.createObjectStore('sadrzaj'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  return _kmlDbP;
+}
+function _kmlIdb(nacin, fn) {
+  return _kmlDb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('sadrzaj', nacin), r = fn(tx.objectStore('sadrzaj'));
+    tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+  }));
+}
+function _kmlMeta() { try { return JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}') || {}; } catch(e) { return {}; } }
+function _kmlMetaPisi(fn) { const st = _kmlMeta(); fn(st); try { localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(st)); return true; } catch(e) { return false; } }
+// Trajno čuvanje sloja: tekst u IDB, meta u localStorage; bez IDB-a (stari WebView) sve u localStorage.
+async function _kmlSpremi(ime, txt, meta) {
+  const m = { col: meta.col, vis: meta.vis !== false, ...(meta.stil ? { stil: meta.stil } : {}) };
+  try { await _kmlIdb('readwrite', st => st.put(txt, ime)); return _kmlMetaPisi(st => { st[ime] = { ...m, idb: 1 }; }); }
+  catch(e) { return _kmlMetaPisi(st => { st[ime] = { ...m, content: txt }; }); }
+}
 function _kmlSaveContent(name, content, col) {
-  try {
-    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
-    store[name] = { content, col, vis: true };
-    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
-  } catch(e) { showToast('⚠ KML nije sačuvan lokalno (prevelik fajl?)'); }
+  _kmlSpremi(name, content, { col, vis: true }).then(ok => { if (!ok) showToast('⚠ KML nije sačuvan lokalno (memorija puna?)'); });
 }
-function _kmlSaveAll() {
-  try {
-    const store = {};
-    kmlLs.forEach(k => { if (k._content) store[k.name] = { content: k._content, col: k.col, vis: k.vis }; });
-    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
-  } catch(e) {}
-}
-function _kmlRestore() {
-  let store;
-  try { store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}'); } catch(e) { return; }
-  Object.entries(store).forEach(([name, data]) => {
+async function _kmlRestore() {
+  for (const [name, data] of Object.entries(_kmlMeta())) {
     try {
+      let txt = data.content;
+      if (txt == null && data.idb) txt = await _kmlIdb('readonly', st => st.get(name)).catch(() => null);
+      if (!txt) continue;
       const col = data.col || KCOLS[kmlCI % KCOLS.length]; kmlCI++;
-      const doc = new DOMParser().parseFromString(data.content, 'text/xml');
+      const doc = new DOMParser().parseFromString(txt, 'text/xml');
       const grp = pkml(doc, col, undefined, data.stil);
       if (data.vis !== false) grp.addTo(map);
-      kmlLs.push({ id: 'kml_' + Date.now() + '_' + kmlCI, name, grp, col, stil: data.stil, vis: data.vis !== false, _content: data.content });
+      kmlLs.push({ id: 'kml_' + Date.now() + '_' + kmlCI, name, grp, col, stil: data.stil, vis: data.vis !== false, _content: txt });
+      if (data.content != null) _kmlSpremi(name, txt, data); // seoba iz localStorage u IDB
     } catch(e) {}
-  });
+  }
   _kmlRegRender();
 }
 function _kmlToggle(id) {
@@ -5014,23 +5030,15 @@ function _kmlDelete(id) {
   if (!k) return;
   try { map.removeLayer(k.grp); } catch(e) {}
   kmlLs = kmlLs.filter(x => x.id !== id);
-  if (!kmlLs.some(x => x.name === k.name)) _kmzObrisiSlike(k.name);
-  try {
-    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
-    delete store[k.name];
-    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
-  } catch(e) {}
+  if (!kmlLs.some(x => x.name === k.name)) { _kmzObrisiSlike(k.name); _kmlIdb('readwrite', st => st.delete(k.name)).catch(() => {}); }
+  _kmlMetaPisi(st => { delete st[k.name]; });
   _kmlRegRender();
 }
 // _content nije uvijek popunjen na sloju kreiranom preko _kmlLoadFile (samo
 // preko _kmlRestore) — pri toggle-u čitamo postojeći localStorage zapis
 // umjesto da zahtijevamo da svaki sloj nosi svoj sirovi tekst u memoriji.
 function _kmlSaveAllFromRegistry() {
-  try {
-    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
-    kmlLs.forEach(k => { if (store[k.name]) store[k.name].vis = k.vis; });
-    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store));
-  } catch(e) {}
+  _kmlMetaPisi(st => kmlLs.forEach(k => { if (st[k.name]) st[k.name].vis = k.vis; }));
 }
 function _kmlZoom(id) {
   const k = kmlLs.find(x => x.id === id);
@@ -5059,10 +5067,7 @@ async function _kmlPromijeniBoju(id) {
   k.col = r.col; k.stil = r.stil;
   // objekti s vlastitim stilom zadržavaju svoj
   k.grp.eachLayer(l => { if (l._kmlName !== undefined && !l._kmlVlastiti && l.setStyle) l.setStyle(_kmlLeafletStil(_kmlTipSloja(l), k.col, k.stil)); });
-  try {
-    const store = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
-    if (store[k.name]) { store[k.name].col = k.col; store[k.name].stil = k.stil; localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(store)); }
-  } catch(e) {}
+  _kmlMetaPisi(st => { if (st[k.name]) { st[k.name].col = k.col; st[k.name].stil = k.stil; } });
   _kmlRegRender();
 }
 // List za stil (sloja ili objekta): paleta + vlastita boja, debljina, vrsta linije, ispuna.
@@ -5163,7 +5168,8 @@ function _kmlIzGrupe(k) {
 }
 function _kmlSadrzaj(k) {
   if (k._content) return k._content;
-  try { const st = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}'); if (st[k.name] && st[k.name].content) return st[k.name].content; } catch(e) {}
+  const m = _kmlMeta()[k.name];
+  if (m && m.content) return m.content;
   return _kmlIzGrupe(k);
 }
 function _kmlNadji(doc, l) {
@@ -5190,11 +5196,7 @@ function _kmlObnovi(k, txt) {
   try { map.removeLayer(k.grp); } catch(e) {}
   k.grp = grp; k._content = txt; k._stat = null; delete k._shp;
   if (k.vis !== false) grp.addTo(map);
-  try {
-    const st = JSON.parse(localStorage.getItem(_LOCAL_KML_KEY) || '{}');
-    st[k.name] = { content: txt, col: k.col, stil: k.stil, vis: k.vis !== false };
-    localStorage.setItem(_LOCAL_KML_KEY, JSON.stringify(st));
-  } catch(e) { showToast('⚠ Izmjena nije sačuvana lokalno (memorija puna?)'); }
+  _kmlSpremi(k.name, txt, k).then(ok => { if (!ok) showToast('⚠ Izmjena nije sačuvana lokalno (memorija puna?)'); });
   _kmlRegRender();
 }
 function _kmlPostaviTekst(doc, pm, tag, tekst) {
@@ -10333,8 +10335,16 @@ function _setBackupKljucevi() {
   }
   return out;
 }
-function _setBackup() {
+async function _setBackup() {
   const kljucevi = _setBackupKljucevi();
+  // KML sadržaj je u IndexedDB — u kopiju ide uz metu (content)
+  if (kljucevi[_LOCAL_KML_KEY]) {
+    try {
+      const m = JSON.parse(kljucevi[_LOCAL_KML_KEY]);
+      for (const [ime, d] of Object.entries(m)) if (d && d.idb) { const t = await _kmlIdb('readonly', st => st.get(ime)).catch(() => null); if (t) { d.content = t; delete d.idb; } }
+      kljucevi[_LOCAL_KML_KEY] = JSON.stringify(m);
+    } catch(e) {}
+  }
   const sadrzaj = JSON.stringify({ app: 'grmec-navigator', v: 1, verzija: APP_VER, datum: new Date().toISOString(), kljucevi });
   if (typeof _izvozFajl !== 'function') { showToast('⚠ Izvoz nije dostupan'); return; }
   _izvozFajl('grmec_navigator_kopija_' + new Date().toISOString().slice(0, 10) + '.json', sadrzaj, 'application/json', 'Grmeč Navigator — rezervna kopija');
@@ -10351,6 +10361,14 @@ function _setRestore(ev) {
     const ulaz = Object.entries(j.kljucevi).filter(([k, v]) => /^(usf_|tvlake_)/.test(k) && typeof v === 'string');
     const ok = await _dlgConfirm(`Vratiti ${ulaz.length} stavki iz kopije od ${new Date(j.datum).toLocaleDateString('bs-BA')}? Postojeći podaci istog imena biće zamijenjeni, pa se aplikacija ponovo učitava.`, { title: '⤒ Vrati iz kopije', okLabel: 'Vrati' });
     if (!ok) return;
+    const ki = ulaz.findIndex(([k]) => k === _LOCAL_KML_KEY);
+    if (ki >= 0) {
+      try {
+        const m = JSON.parse(ulaz[ki][1]);
+        for (const [ime, d] of Object.entries(m)) if (d && d.content != null) { try { await _kmlIdb('readwrite', st => st.put(d.content, ime)); delete d.content; d.idb = 1; } catch(e) {} }
+        ulaz[ki] = [_LOCAL_KML_KEY, JSON.stringify(m)];
+      } catch(e) {}
+    }
     try { ulaz.forEach(([k, v]) => localStorage.setItem(k, v)); }
     catch(e) { showToast('⚠ Nema dovoljno mjesta za vraćanje'); return; }
     showToast('✅ Vraćeno — ponovno učitavanje…');

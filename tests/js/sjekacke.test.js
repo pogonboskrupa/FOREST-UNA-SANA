@@ -248,7 +248,7 @@ t('vodič snima pod zaključanim ekranom (native servis), površina samo u info 
   assert.ok(js.includes("localStorage.getItem(KLJUC_VODIC)"), 'vodič se nastavlja kad Android ubije app');
   assert.ok(js.includes('!vodic.nat && vodicDodaj('), 'u APK-u samo native tačke (bez duplih)');
   assert.ok(!/sl-lbl[^`]*lin\.ha/.test(js) && !/gledano uzbrdo\$\{lin\.ha/.test(js), 'nema ha na karti');
-  assert.ok(js.includes("redovi.push(['Partija', fmt(lin.ha, 2) + ' ha'])"), 'ha ostaje u popup-u');
+  assert.ok(js.includes("redovi.push(['Partija', fmt(lin.ha, 2) + ' ha'") && js.includes("['Zadnja partija'"), 'ha ostaje u popup-u, i zadnja partija do granice');
 });
 
 // Sintetički DEM za čitanje padina: mreža 40 × 30 ćelija po 20 m, šum ±1,5 m (krošnje)
@@ -424,11 +424,23 @@ t('padine: površine s produžecima — susjedna padina daje dio partijama produ
   assert.ok(Math.abs(sa[0][1] - 2.4) < 0.05 && Math.abs(bez[0][1] - 2.0) < 0.05, 'srednja partija 80 m × 300 m (s produžetkom), bez njega 80 × 250');
 });
 
+t('padine: jedinstven smjer (greben obrće padinu) i redoslijed linija preko padina', () => {
+  // lanac P0 (uzbrdo) + P1 (obrnuto, preko grebena) → P1 se gleda obrnuto; P2 nepovezana
+  assert.deepStrictEqual(S.slOrijentacija(3, [[{ padina: 0, obrni: false }, { padina: 1, obrni: true }]]), [false, true, false]);
+  assert.deepStrictEqual(S.slOrijentacija(2, [[{ padina: 0, obrni: false }, { padina: 1, obrni: false }]]), [false, false], 'isti smjer (jarak/prelom)');
+  // P0: a b M ; P1: M c d (M spojena) → a b M c d
+  assert.deepStrictEqual(S.slRedoslijed([['a', 'b', 'M'], ['M', 'c', 'd']]), ['a', 'b', 'M', 'c', 'd']);
+  // dvije spojene: P0: a M1 M2 ; P1: x M1 M2 y → a, x prije M1, y poslije M2
+  const r = S.slRedoslijed([['a', 'M1', 'M2'], ['x', 'M1', 'M2', 'y']]);
+  assert.ok(r.indexOf('a') < r.indexOf('M1') && r.indexOf('x') < r.indexOf('M1') && r.indexOf('M2') < r.indexOf('y') && r.length === 5);
+  assert.strictEqual(S.slRedoslijed([['a', 'b'], ['b', 'a']]).length, 2, 'petlja ne zaglavi');
+});
+
 t('UI: spajanje linija padina — prekidač, komponente za partiju i brisanje', () => {
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes('data-a="spoj"') && js.includes("p.spoj = Number(el.dataset.v)"), 'izbor praga u panelu');
   assert.ok(js.includes('await spojiPadine(p, dijelovi, stari)'), 'spaja se poslije površina po padini');
-  assert.ok(js.includes('x.vlasnik === lin.id') && js.includes('lin.komp.forEach(c =>'), 'partija i brisanje po komponentama');
+  assert.ok(js.includes('(lin.partija || []).forEach(([i, t])') && js.includes('lin.komp.forEach(c =>'), 'partija i brisanje po komponentama');
   assert.ok(S.slGeo({ spoj: [[1, 1], [2, 2], [3, 3]], dno: [0, 0], vrh: [9, 9] }).length === 3, 'slGeo koristi spojenu geometriju');
   assert.ok(S.slGeo({ geo: [[1, 1], [2, 2]], spoj: [[1, 1], [2, 2], [3, 3]] }).length === 2, 'ručni lom ima prednost');
 });

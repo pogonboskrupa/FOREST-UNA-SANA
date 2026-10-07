@@ -25,11 +25,20 @@ t('pkml veže sloj s Placemark-om i geometrijom; kartica ima Uredi/Obriši (ne z
   assert.ok(tijelo(H, 'function _kmlPopupHtml(').includes("if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi'"));
 });
 
+t('KML sadržaj u IndexedDB (ne nestaje pri ažuriranju), SHP se čuva, kopija nosi KML', () => {
+  const sp = tijelo(H, 'async function _kmlSpremi(');
+  assert.ok(sp.includes("st.put(txt, ime)") && sp.includes('idb: 1') && sp.includes('content: txt'), 'IDB, rezerva localStorage');
+  const rs = tijelo(H, 'async function _kmlRestore(');
+  assert.ok(rs.includes("st.get(name)") && rs.includes('_kmlSpremi(name, txt, data)'), 'čitanje iz IDB + seoba starih zapisa');
+  assert.ok(tijelo(H, 'async function _shpLoadFiles(').includes('_kmlSaveContent(k.name, _kmlIzGrupe(k), col)'), 'SHP se čuva kao KML');
+  assert.ok(tijelo(H, 'async function _setBackup(').includes('d.content = t') && tijelo(H, 'function _setRestore(').includes('st.put(d.content, ime)'));
+});
+
 t('izmjene idu u KML tekst i čuvaju se; SHP se pri prvoj izmjeni pretvara u KML', () => {
   const pr = tijelo(H, 'function _kmlPrimijeniDoc(');
   assert.ok(pr.includes('_kmlParseDoc(_kmlSadrzaj(k))') && pr.includes('new XMLSerializer().serializeToString(doc)'));
   const ob = tijelo(H, 'function _kmlObnovi(');
-  assert.ok(ob.includes('localStorage.setItem(_LOCAL_KML_KEY') && ob.includes('delete k._shp'));
+  assert.ok(ob.includes('_kmlSpremi(k.name, txt, k)') && ob.includes('delete k._shp'));
   assert.ok(tijelo(H, 'function _kmlSadrzaj(').includes('return _kmlIzGrupe(k)'));
   const kr = tijelo(H, 'function _kmlUredKraj(');
   assert.ok(kr.includes("lls.concat([lls[0]])"), 'poligon se zatvara u KML-u');
@@ -44,7 +53,7 @@ t('stil: KML boja aabbggrr ↔ #rrggbb, vlastiti stil samo uz usf_stil, usf_* sk
   assert.ok(tijelo(H, 'function _kmlStilPlacemarka(').includes("ext.usf_stil !== '1'"), 'tuđi KML stilovi ne mijenjaju izgled');
   assert.ok(tijelo(H, 'function _kmlPopupHtml(').includes("filter(k => !k.startsWith('usf_'))"));
   assert.ok(tijelo(H, 'function _kmlUpisiStil(').includes("_kmlPostaviExt(doc, pm, 'usf_stil', col ? '1' : null)"));
-  assert.ok(tijelo(H, 'function _kmlObnovi(').includes('stil: k.stil') && tijelo(H, 'function _kmlRestore(').includes('pkml(doc, col, undefined, data.stil)'));
+  assert.ok(tijelo(H, 'async function _kmlSpremi(').includes('stil: meta.stil') && tijelo(H, 'function _kmlRestore(').includes('pkml(doc, col, undefined, data.stil)'));
 });
 
 t('uređivanje: poništi, dodir dodaje tačku, novi objekat u sloju', () => {

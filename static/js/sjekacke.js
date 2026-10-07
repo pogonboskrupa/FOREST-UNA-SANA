@@ -668,6 +668,39 @@ function slPoljaPadine(D, razmak) {
   });
   return out;
 }
+// Jedinstven smjer „s lijeva nadesno” preko padina: spojena linija u jednoj padini ide uzbrdo, a u
+// drugoj (preko grebena) nizbrdo — ta padina se gleda obrnuto (flip). lanci [[{padina, obrni}]] → flip[].
+function slOrijentacija(nPadina, lanci) {
+  const sus = Array.from({ length: nPadina }, () => []);
+  for (const l of lanci) for (let i = 1; i < l.length; i++) {
+    const a = l[i - 1], b = l[i], r = (a.obrni ? 1 : 0) ^ (b.obrni ? 1 : 0);
+    if (a.padina !== b.padina) { sus[a.padina].push([b.padina, r]); sus[b.padina].push([a.padina, r]); }
+  }
+  const flip = new Array(nPadina).fill(null);
+  for (let s = 0; s < nPadina; s++) {
+    if (flip[s] !== null) continue;
+    flip[s] = 0; const st = [s];
+    while (st.length) { const a = st.pop(); for (const [b, r] of sus[a]) if (flip[b] === null) { flip[b] = flip[a] ^ r; st.push(b); } }
+  }
+  return flip.map(Boolean);
+}
+// Redoslijed linija preko svih padina iz redoslijeda po padini (spojena linija je u više nizova):
+// topološki, pri izboru prednost ranija padina/položaj; petlja (rijetko) → ostatak po prednosti.
+function slRedoslijed(nizovi) {
+  const cvor = new Map(), c = k => cvor.get(k) || cvor.set(k, { k, ul: 0, iz: new Set(), pr: null }).get(k);
+  nizovi.forEach((n, ni) => n.forEach((k, j) => {
+    const x = c(k); if (!x.pr) x.pr = [ni, j];
+    if (j && n[j - 1] !== k) { const a = c(n[j - 1]); if (!a.iz.has(k)) { a.iz.add(k); x.ul++; } }
+  }));
+  const pr = (a, b) => a.pr[0] - b.pr[0] || a.pr[1] - b.pr[1], out = [], gotov = new Set();
+  while (out.length < cvor.size) {
+    const sl = [...cvor.values()].filter(x => !gotov.has(x.k));
+    const x = sl.filter(v => v.ul === 0).sort(pr)[0] || sl.sort(pr)[0];
+    out.push(x.k); gotov.add(x.k);
+    for (const k of x.iz) cvor.get(k).ul--;
+  }
+  return out;
+}
 // Spajanje projekta s drugog telefona (dijeljenje KML-om): plan (granica, razmak, pad,
 // podjele) uzima se iz projekta s novijom izmjenom plana `tPlan`, a stanje svake linije
 // (status, radnik, lom, GPS linija) iz verzije s novijim `lin.t` — tako planer dobije
@@ -688,7 +721,7 @@ function slSpojiProjekte(lok, dol) {
   return { p: baza, azurirano, planDolazni };
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiLinije, slSpojiGeo, slSpojiGlatko, slProduzi, slPoljaPadine, slTrakeMreza, slZonaStrane, slSpojiProjekte, slPartija, slTrakaObris, slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
+if (typeof module !== 'undefined' && module.exports) module.exports = { slOrijentacija, slRedoslijed, slSpojiLinije, slSpojiGeo, slSpojiGlatko, slProduzi, slPoljaPadine, slTrakeMreza, slZonaStrane, slSpojiProjekte, slPartija, slTrakaObris, slPadineMreza, slGranicaLinija, slRazdijeli, slDoRuba, slUgaoRazlika, slUprosti, slPodijeli, slSpojiTrake, slTrakeULinije, slAzimut, slOdstupanje, slOcjenaPravca, slLepeza, slMinRazmak, slLinijaKroz, slPoljaTeren, slUnutra, slGeo, slDuzina, slLinije, slRaspored, slPresjek, slTraka, slDominantniPad, slVodic, slLokalno };
 
 (function () {
   if (typeof window === 'undefined' || typeof L === 'undefined' || typeof map === 'undefined') return;
@@ -888,36 +921,50 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
   // Površine: po padini (partije se ne spajaju preko grebena), produžeci uzimaju dio susjedne (slPoljaPadine).
   const SL_SPOJ = 0.5, spojFak = p => (p.spoj != null ? p.spoj : SL_SPOJ);
   async function spojiPadine(p, dijelovi, stari) {
-    const R = p.razmak, sve = dijelovi.flatMap(d => d.linije), cist = x => !['geo', 'stvarna', 'trag'].some(k => slIma(x[k]));
+    const R = p.razmak, D = p.brojanje === 'D', sve = dijelovi.flatMap(d => d.linije), cist = x => !['geo', 'stvarna', 'trag'].some(k => slIma(x[k]));
     const kand = sve.filter(x => !x.dio && x.status === 'ne' && !x.radnik && cist(x));
     const lanci = slSpojiLinije(kand.map(x => ({ padina: x.padina, geo: slGeo(x) })), p.padine.granice.map(g => g.geo), spojFak(p) * R).filter(l => l.length > 1);
+    // jedinica = spojeni lanac ili samostalna linija; komponenta: geo u SVOM smjeru (dno→vrh), obrni = smjer u lancu
     const ukloni = new Set(), jed = [];
-    for (const l of lanci) jed.push({ komp: l.map(({ i, obrni }) => { const x = kand[i], g = slGeo(x); ukloni.add(x); return { x, geo: obrni ? g.slice().reverse() : g }; }) });
-    for (const x of sve) if (!ukloni.has(x) && !x.dio && cist(x)) jed.push({ komp: [{ x, geo: slGeo(x) }], sam: true });
+    for (const l of lanci) jed.push({ spoj: true, prod: true, komp: l.map(({ i, obrni }) => { ukloni.add(kand[i]); return { x: kand[i], obrni, geo: slGeo(kand[i]) }; }) });
+    for (const x of sve) if (!ukloni.has(x) && !x.dio) jed.push({ prod: cist(x), komp: [{ x, obrni: false, geo: slGeo(x) }] });
+    const lancGeo = j => slSpojiGeo(j.komp.map(c => (c.obrni ? c.geo.slice().reverse() : c.geo)));
     // produženje slobodnih krajeva do ruba poligona
     status('⏳ Produžujem linije do ruba…');
-    const fiksne = sve.filter(x => x.dio || !cist(x)).map(slGeo), geoJ = j => slSpojiGeo(j.komp.map(c => c.geo)), ext = dijelovi.map(() => []);
-    for (const j of jed) for (const kraj of [0, 1]) {
-      const c = kraj ? j.komp[j.komp.length - 1] : j.komp[0];
-      const g2 = slProduzi(c.geo, kraj, p.ring, fiksne.concat(jed.filter(o => o !== j).map(geoJ)), 2 * R, 0.4 * R);
+    const fiksne = sve.filter(x => x.dio).map(slGeo), ext = dijelovi.map(() => []);
+    for (const j of jed) if (j.prod) for (const kraj of [0, 1]) {
+      const c = kraj ? j.komp[j.komp.length - 1] : j.komp[0], vk = kraj ^ (c.obrni ? 1 : 0);
+      const g2 = slProduzi(c.geo, vk, p.ring, fiksne.concat(jed.filter(o => o !== j).map(lancGeo)), 2 * R, 0.4 * R);
       if (!g2) continue;
-      ext[c.x.padina].push(kraj ? g2.slice(-2) : g2.slice(0, 2)); c.geo = g2;
+      ext[c.x.padina].push(vk ? g2.slice(-2) : g2.slice(0, 2)); c.geo = g2;
     }
-    jed.filter(j => j.sam).forEach(({ komp: [c] }) => { if (c.geo.length !== slGeo(c.x).length) { const x = c.x; x.spoj = c.geo; x.dno = c.geo[0]; x.vrh = c.geo[c.geo.length - 1]; x.duz = slDuzina(c.geo); } });
-    // površine po padini (komponente spojenih linija posebno)
-    const jedinice = dijelovi.map((d, i) => d.linije.filter(x => !x.dio && !ukloni.has(x)).map(x => ({ x, k: x.k, geo: slGeo(x) }))
-      .concat(jed.filter(j => !j.sam).flatMap(j => j.komp.filter(c => c.x.padina === i).map(c => ({ x: c.x, k: c.x.k, geo: c.geo })))).sort((a, b) => a.k - b.k));
+    jed.filter(j => !j.spoj).forEach(({ komp: [c] }) => { if (c.geo.length !== slGeo(c.x).length) { const x = c.x; x.spoj = c.geo; x.dno = c.geo[0]; x.vrh = c.geo[c.geo.length - 1]; x.duz = slDuzina(c.geo); } });
+    // jedinstven smjer i redoslijed preko padina (s lijeva nadesno gledano kao prva padina; D = zdesna)
+    const flip = slOrijentacija(dijelovi.length, jed.filter(j => j.spoj).map(j => j.komp.map(c => ({ padina: c.x.padina, obrni: c.obrni }))));
+    const poPadini = dijelovi.map((d, i) => jed.flatMap(j => j.komp.filter(c => c.x.padina === i).map(c => ({ j, c }))).sort((a, b) => a.c.x.k - b.c.x.k));
+    const obr = i => flip[i] !== D; // niz padine u redoslijedu numeracije je obrnut lokalnom (lijevo→desno uzbrdo)
+    const red = slRedoslijed(poPadini.map((n, i) => (obr(i) ? n.slice().reverse() : n).map(o => jed.indexOf(o.j))));
+    jed.forEach(j => { j.br = red.indexOf(jed.indexOf(j)) + 1; j.ha = 0; j.partija = []; });
+    // površine: trake po padini (komponente u svom smjeru), traka m (u redu numeracije) → m-ta linija;
+    // traka iza zadnje linije padine → sljedeća linija ako dodiruje padinu, inače ostatak do granice
     status('⏳ Površine partija…');
-    const S = slPoljaPadine(dijelovi.map((d, i) => ({ ring: d.ring, geos: jedinice[i].map(u => u.geo), ext: ext[i] })), R);
+    const S = slPoljaPadine(dijelovi.map((d, i) => ({ ring: d.ring, geos: poPadini[i].map(o => o.c.geo), ext: ext[i] })), R);
+    const poBr = new Map(jed.map(j => [j.br, j])), zatvoren = d => d.ring.concat([d.ring[0]]);
     p.ostatakHa = 0;
-    jedinice.forEach((us, i) => { const pov = slTrakeULinije(S[i], p.brojanje === 'D'); us.forEach((u, j) => { u.x.ha = pov.poLiniji[j]; }); p.ostatakHa += pov.ostatak; });
-    for (const j of jed.filter(o => !o.sam)) {
-      const komp = j.komp.map(c => ({ id: c.x.id, padina: c.x.padina, k: c.x.k, ha: c.x.ha, geo: c.geo }));
-      const geo = slSpojiGlatko(komp.map(c => c.geo), Math.min(0.5 * R, 30)), h0 = await visina(geo[0]), h1 = await visina(geo[geo.length - 1]);
+    dijelovi.forEach((d, i) => {
+      const n = poPadini[i].length, o = obr(i), niz = o ? poPadini[i].slice().reverse() : poPadini[i], lok = m => (o ? n - m : m);
+      niz.forEach(({ j }, m) => { j.ha += S[i][lok(m)]; j.partija.push([i, lok(m)]); });
+      const rep = S[i][lok(n)], sl = n ? poBr.get(niz[n - 1].j.br + 1) : null;
+      if (sl && slMinRazmak(lancGeo(sl), zatvoren(d)) <= 0.5 * R) { sl.ha += rep; sl.partija.push([i, lok(n)]); } else p.ostatakHa += rep;
+    });
+    for (const j of jed) if (!j.spoj) { const x = j.komp[0].x; x.br = j.br; x.ha = j.ha; x.partija = j.partija; }
+    for (const j of jed.filter(o => o.spoj)) {
+      const komp = j.komp.map(c => ({ id: c.x.id, padina: c.x.padina, k: c.x.k, geo: c.geo }));
+      const geo = slSpojiGlatko(j.komp.map(c => (c.obrni ? c.geo.slice().reverse() : c.geo)), Math.min(0.5 * R, 30)), h0 = await visina(geo[0]), h1 = await visina(geo[geo.length - 1]);
       if (h0 != null && h1 != null && h0 > h1) geo.reverse();
       const prvi = komp.reduce((a, c) => (c.padina < a.padina ? c : a)), id = 'm:' + komp.map(c => c.id).sort().join('+'), s = stari.get(id) || {};
-      const o = { id, k: prvi.k, dio: 0, padina: prvi.padina, komp: komp.map(({ ha, ...c }) => c), spoj: geo, dno: geo[0], vrh: geo[geo.length - 1], duz: slDuzina(geo),
-        status: s.status || 'ne', radnik: s.radnik || '', ha: komp.every(c => c.ha != null) ? komp.reduce((a, c) => a + c.ha, 0) : null };
+      const o = { id, k: prvi.k, dio: 0, br: j.br, padina: prvi.padina, komp, spoj: geo, dno: geo[0], vrh: geo[geo.length - 1], duz: slDuzina(geo),
+        status: s.status || 'ne', radnik: s.radnik || '', ha: j.ha, partija: j.partija };
       if (s.t) o.t = s.t;
       for (const k of ['geo', 'stvarna', 'trag']) if (slIma(s[k])) o[k] = s[k];
       const g = slIma(o.stvarna) ? o.stvarna : slIma(o.geo) ? o.geo : null;
@@ -925,6 +972,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
       dijelovi[prvi.padina].linije.push(o);
     }
     dijelovi.forEach(d => { d.linije = d.linije.filter(x => !ukloni.has(x)); });
+    // komadi (dio > 0) dijele broj s linijom iste padine i položaja
+    const brK = new Map(); jed.forEach(j => j.komp.forEach(c => brK.set(c.x.padina + ':' + c.x.k, j.br)));
+    sve.filter(x => x.dio).forEach(x => { x.br = brK.get(x.padina + ':' + x.k) || jed.length + 1; x.ha = null; x.partija = null; });
   }
   // površina partije: stvarne linije se računaju kao da dosežu granicu
   const trake = d => { status('⏳ Površine partija…'); return slPoljaTeren(d.ring, d.linije.filter(x => !x.dio).sort((a, b) => a.k - b.k).map(slGeo)); };
@@ -967,12 +1017,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
         dijelovi = p.zona.strana === 'L' ? [Z, A] : [A, Z];
       }
     }
-    // numeracija preko svih dijelova s lijeva nadesno; komadi iste linije dijele broj
+    // numeracija preko svih dijelova s lijeva nadesno; komadi iste linije dijele broj (padine: spojiPadine)
     const red = [];
     dijelovi.forEach((d, di) => d.linije.slice().sort((a, b) => a.k - b.k || a.dio - b.dio).forEach(x => red.push({ x, di })));
-    let br = 0, pk = null;
-    red.forEach(({ x, di }) => { const kl = di + ':' + x.k; if (kl !== pk) { br++; pk = kl; } x.br = br; });
-    if (p.brojanje === 'D') red.forEach(({ x }) => { x.br = br + 1 - x.br; });
+    if (!alt) {
+      let br = 0, pk = null;
+      red.forEach(({ x, di }) => { const kl = di + ':' + x.k; if (kl !== pk) { br++; pk = kl; } x.br = br; delete x.partija; });
+      if (p.brojanje === 'D') red.forEach(({ x }) => { x.br = br + 1 - x.br; });
+    }
     p.linije = red.map(o => o.x).sort((a, b) => a.br - b.br || a.dio - b.dio);
     // površina partije po liniji (stvarne linije se računaju kao da dosežu granicu)
     p.linije.forEach(x => { if (x.dio) x.ha = null; });
@@ -1000,6 +1052,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
   function sacuvaj(p) { const l = citaj(), i = l.findIndex(x => x.id === p.id); if (i >= 0) l[i] = p; else l.unshift(p); return pisi(l); }
 
   // ── Karta ────────────────────────────────────────────────────────────
+  const zadnjiBr = p => p.linije.reduce((m, x) => Math.max(m, x.br || 0), 0);
   function oznaka(lin) { return 'L' + lin.br + (lin.dio ? String.fromCharCode(97 + lin.dio) : ''); }
   function crtaj() {
     grp.clearLayers(); natpisi = [];
@@ -1087,7 +1140,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
   function dijeloviProjekta(p) {
     const sortiraj = l => l.filter(x => !x.dio).sort((a, b) => a.k - b.k);
     // spojena linija se razlaže na komponente po padinama (vlasnik = id spojene)
-    if (altAktivan(p)) return { spajaj: false, d: p.padine.dijelovi.map((d, i) => ({ ring: d.ring, linije: sortiraj(p.linije.flatMap(x => x.komp ? x.komp.filter(c => c.padina === i).map(c => ({ ...c, dio: 0, vlasnik: x.id })) : x.padina === i ? [x] : [])) })) };
+    if (altAktivan(p)) return { alt: true, d: p.padine.dijelovi.map((d, i) => ({ ring: d.ring, linije: sortiraj(p.linije.flatMap(x => x.komp ? x.komp.filter(c => c.padina === i).map(c => ({ ...c, dio: 0, vlasnik: x.id })) : x.padina === i ? [x] : [])) })) };
     if (p.zona) {
       const raz = p.linije.find(x => x.id === p.zona.lid), pod = raz && slPodijeli(p.ring, slGeo(raz));
       if (pod) {
@@ -1104,7 +1157,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
     if (lin.dio) return;
     try {
       const D = dijeloviProjekta(p), c = (STATUS[lin.status] || STATUS.ne).c, dd = D.d.map(d => ({ ring: d.ring, geos: d.linije.map(slGeo) })), prst = [];
-      D.d.forEach((d, di) => d.linije.forEach((x, j) => { if (x.id === lin.id || x.vlasnik === lin.id) prst.push(...slPartija(dd, di, j, p.brojanje === 'D', D.spajaj)); }));
+      // padine: trake partije izračunate u spojiPadine ([padina, traka]), i preko granice padina
+      if (D.alt) (lin.partija || []).forEach(([i, t]) => { if (dd[i]) prst.push(...slTrakaObris(dd[i].ring, dd[i].geos, t)); });
+      else D.d.forEach((d, di) => d.linije.forEach((x, j) => { if (x.id === lin.id) prst.push(...slPartija(dd, di, j, p.brojanje === 'D', D.spajaj)); }));
       if (prst.length) L.polygon(prst, { pane: 'sjekackePane', color: c, weight: 2, fillColor: c, fillOpacity: 0.28, fillRule: 'evenodd', interactive: false }).addTo(partijaGrp);
     } catch (e) {}
   }
@@ -1114,7 +1169,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
   function popup(p, lin, at) {
     const s = STATUS[lin.status] || STATUS.ne;
     const redovi = [['Dužina', fmt(lin.duz) + ' m'], ['Dno → vrh', (lin.hDno != null ? lin.hDno + ' m' : '—') + ' → ' + (lin.hVrh != null ? lin.hVrh + ' m' : '—')], ['Status', s.t]];
-    if (lin.ha != null) redovi.push(['Partija', fmt(lin.ha, 2) + ' ha']);
+    if (lin.ha != null) redovi.push(['Partija', fmt(lin.ha, 2) + ' ha' + (lin.br > 1 ? ' (L' + (lin.br - 1) + ' → ' + oznaka(lin) + ')' : ' (granica → ' + oznaka(lin) + ')')]);
+    if (lin.br === zadnjiBr(p) && p.ostatakHa != null) redovi.push(['Zadnja partija', fmt(p.ostatakHa, 2) + ' ha (' + oznaka(lin) + ' → granica)']);
     if (lin.komp && p.padine) redovi.push(['Spojena preko padina', [...new Set(lin.komp.map(c => c.padina))].map(i => p.padine.dijelovi[i] ? imeP(p.padine.dijelovi[i], i) : '?').join(' + ')]);
     else if (lin.padina != null && p.padine && p.padine.dijelovi[lin.padina]) { const d = p.padine.dijelovi[lin.padina]; redovi.push(['Padina', imeP(d, lin.padina) + ' · ' + d.nagibPct + ' %']); }
     if (slIma(lin.stvarna)) redovi.push(['Stvarna (GPS)', fmt(slDuzina(lin.stvarna)) + ' m']);
@@ -1336,7 +1392,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slSpojiL
           ${altAktivan(p) ? '' : `<label>Smjer pada <span><button data-a="az-" data-id="${p.id}">−5°</button><input type="number" min="0" max="359" value="${p.az}" data-a="az" data-id="${p.id}">°<button data-a="az+" data-id="${p.id}">+5°</button></span><small>${p.azDem != null ? 'DEM: ' + p.azDem + '° (' + strana(p.azDem) + '), nagib ~' + Math.round(p.nagibSt) + '°' : 'bez DEM-a'}</small></label>`}
         </div>${altAktivan(p) ? '' : dos}${padineHtml(p)}${izoHtml(p)}${optHtml(p.optInfo)}
         ${altAktivan(p) ? '' : zonaHtml(p)}
-        <div class="sl-sazetak">Površina partije uz svaku liniju: od ${p.brojanje === 'D' ? 'desne' : 'lijeve'} granice do L1, od L1 do L2 … ${p.ostatakHa != null ? '· ostatak do granice <b>' + fmt(p.ostatakHa, 2) + ' ha</b>' : ''}</div>
+        <div class="sl-sazetak">Partija linije: od ${p.brojanje === 'D' ? 'desne' : 'lijeve'} granice do L1, od L1 do L2 …${p.ostatakHa != null && p.linije.length ? ` · <b>zadnja partija</b> od L${zadnjiBr(p)} do granice <b>${fmt(p.ostatakHa, 2)} ha</b>` : ''}</div>
         <div class="sl-lin">${p.linije.map(lin => { const s = STATUS[lin.status] || STATUS.ne; return `<div class="sl-lin-red">
           <b style="--c:${s.c}">${oznaka(lin)}${lin.izo ? ' <i title="ide po izohipsi">⚠</i>' : ''}</b><span>${lin.ha != null ? '<b class="sl-ha">' + fmt(lin.ha, 2) + ' ha</b> · ' : ''}${fmt(lin.duz)} m${slIma(lin.stvarna) ? ' <i class="sl-gps">GPS</i>' : ''}</span>
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
