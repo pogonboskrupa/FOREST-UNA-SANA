@@ -190,7 +190,7 @@ t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
   const meni = HTML.slice(a, b);
   assert.ok((meni.match(/class="meni-grp"/g) || []).length >= 4);
   const kartice = meni.match(/<button type="button" class="meni-card"[\s\S]*?<\/button>/g) || [];
-  assert.strictEqual(kartice.length, 12, 'Sječa i vjetroizvale uklonjena (pokriva Šumarstvo); Tačke i fotografije, Sjekačke linije, Sušenje-potkornjak, Primka dodane');
+  assert.strictEqual(kartice.length, 11, 'Sječa i vjetroizvale uklonjena (pokriva Šumarstvo); Tačke i fotografije, Sjekačke linije, Sušenje-potkornjak dodane');
   const red = ['mc-sumarstvo', 'mc-susenje', 'mc-pozari'].map(id => meni.indexOf('id="' + id + '"'));
   assert.ok(red[0] > 0 && red[0] < red[1] && red[1] < red[2], 'Šumarstvo prvo, pa Sušenje-potkornjak, pa Požari');
   const sus = HTML.slice(HTML.indexOf('<div id="susenje-panel"'), HTML.indexOf('<!-- Projektovanje šumskog puta -->'));

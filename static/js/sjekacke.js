@@ -494,7 +494,7 @@ function slRazdijeli(ring, regije, granice, tol, minHa) {
 // (gledano uzbrdo); spajaj: rubne trake susjednih dijelova su jedna partija (drugi pad iza
 // sjekačke linije), za padine ne (greben dijeli partije). Vraća prstenove [lat, lon].
 // Mreža dijela: za svaku ćeliju broj linija desno od kojih je (255 = van poligona). Skupo
-// (ćelije × linije) — gradi se jednom, pa se iz nje čitaju obrisi svih partija (Primka).
+// (ćelije × linije) — gradi se jednom, pa se iz nje čitaju obrisi više partija.
 function slTrakeMreza(ring, geos) {
   const lat0 = ring.reduce((a, q) => a + q[0], 0) / ring.length, lon0 = ring.reduce((a, q) => a + q[1], 0) / ring.length;
   const L = slLokalno(lat0, lon0), poly = ring.map(q => L.u(q[0], q[1])), ha = slPovrsinaXY(poly) / 1e4;
@@ -956,7 +956,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slTrakeM
       ikona: '🪓', boja: s.c, naslov: oznaka(lin) + ' · ' + p.naziv, tip: 'Sjekačka linija', meta: 'razmak ' + p.razmak + ' m', redovi,
       dugmad: [{ t: '🧭 Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: '✓ Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }, { t: '✏ Lomi liniju', on: `USFSjek.uredi('${p.id}','${lin.id}')` },
         ...(slIma(lin.stvarna) || slIma(lin.trag) ? [{ t: '↺ Poništi GPS liniju', on: `USFSjek.ponistiStvarnu('${p.id}','${lin.id}')` }] : []),
-        ...(window.USFPrimka && USFPrimka.dugmad ? USFPrimka.dugmad(p.id, lin.id) : []),
         ...(!lin.zona && lin.padina == null ? [{ t: '✂ Drugi pad iza ove linije', on: `USFSjek.zona('${p.id}','${lin.id}')` }] : []),
         { t: '📤 Pošalji liniju', on: `USFSjek.posaljiLiniju('${p.id}','${lin.id}')` },
         { t: '🗑 Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
@@ -1345,17 +1344,6 @@ ${folderi}
   }
 
   window.USFSjek = {
-    // Za Primku: projekti i poligoni partija (ista geometrija kao klik na liniju).
-    projekti() { return citaj().map(p => ({ id: p.id, naziv: p.naziv, ha: p.ha, linija: p.linije.length })); },
-    partije(pid) {
-      const p = nadji(pid); if (!p) return null;
-      const D = dijeloviProjekta(p), dd = D.d.map(d => ({ ring: d.ring, geos: d.linije.map(slGeo) })), out = [], mreze = [];
-      D.d.forEach((d, di) => d.linije.forEach((lin, j) => {
-        let prsteni = []; try { prsteni = slPartija(dd, di, j, p.brojanje === 'D', D.spajaj, mreze); } catch (e) {}
-        out.push({ lid: lin.id, oznaka: oznaka(lin), br: lin.br, ha: lin.ha, prsteni });
-      }));
-      return out.sort((a, b) => a.br - b.br);
-    },
     otvori() { _openStubPanel('sjekacke-panel', 'meni'); aktivni = aktivni || (citaj()[0] || {}).id || null; crtaj(); render(); },
     izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
     izPrstena(ring, naziv) { map.closePopup(); if (!Array.isArray(ring) || ring.length < 3) return; _openStubPanel('sjekacke-panel', 'meni'); napravi(ring, naziv || 'Spojeni odsjeci'); },

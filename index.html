@@ -1095,52 +1095,6 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 #kml-stil .ks-akc button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(148,163,184,.1); color: #e2e8f0; font: 700 13px 'DM Sans', Arial, sans-serif; }
 #kml-stil .ks-akc button.glavno { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
 #kml-ured-bar #kub-vrati { flex: 0 0 48px; font-size: 18px; }
-#pk-obr { position: fixed; inset: 0; z-index: 999700; }
-#pk-obr .ks-ov { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
-#pk-obr .ks-list { position: absolute; left: 0; right: 0; bottom: 0; max-width: 480px; max-height: 88vh; overflow-y: auto; margin: 0 auto; background: #0d1b15; border: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom,0px)); display: flex; flex-direction: column; gap: 10px; color: #e2e8f0; box-sizing: border-box; }
-#pk-obr .ks-list > b { font-size: 15px; }
-#pk-obr .ks-akc { display: flex; gap: 8px; margin-top: 4px; position: sticky; bottom: 0; }
-#pk-obr .ks-akc button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(148,163,184,.1); color: #e2e8f0; font: 700 13px 'DM Sans', Arial, sans-serif; }
-#pk-obr .ks-akc button.glavno { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
-.pkm-polje { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #9fb3aa; font-weight: 700; }
-.pkm-polje input, .pkm-polje select { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0b1a13; color: #e2e8f0; font-size: 14px; }
-.pkm-chk { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; }
-.pkm-chk label { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 10px; background: rgba(148,163,184,.06); font-size: 14px; }
-.pkm-chk label small { margin-left: auto; color: #8aa197; }
-.pkm-chk input { width: 20px; height: 20px; accent-color: #22c55e; }
-.pkm-chk-akc { display: flex; gap: 6px; }
-.pkm-chk-akc button { flex: 1; min-height: 34px; border-radius: 9px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #d5e6dc; font-weight: 700; }
-.pkm-proj { background: #12241b; border: 1px solid #1f3b2d; border-radius: 14px; padding: 12px; margin-bottom: 8px; cursor: pointer; }
-.pkm-proj-zag b { display: block; color: #e2e8f0; font-size: 14px; }
-.pkm-proj-zag small, .pkm-traka-txt { color: #8aa197; font-size: 12px; }
-.pkm-traka { height: 8px; border-radius: 6px; background: rgba(239,68,68,.35); overflow: hidden; margin: 8px 0 4px; }
-.pkm-traka u { display: block; height: 100%; background: #22c55e; }
-.pkm-nazad { margin: 0 0 10px; min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #bbf7d0; font-weight: 700; }
-.pkm-det-zag { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
-.pkm-det-zag h3 { margin: 0; } .pkm-det-zag small { color: #8aa197; font-size: 12px; }
-.pkm-det-zag button, .pkm-sek button { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #d5e6dc; font-weight: 700; }
-.pkm-sek { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; } .pkm-sek h3 { margin: 0; }
-.pkm-sek button.glavno { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
-.pkm-prov { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9fb3aa; margin: 10px 0 0; } .pkm-prov input { flex: 1; accent-color: #22c55e; }
-.pkm-leg { font-size: 11px; color: #8aa197; margin: 4px 0 8px; } .pkm-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--c); margin: 0 3px 0 6px; vertical-align: -1px; }
-.pkm-red { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(148,163,184,.1); }
-.pkm-red-txt { flex: 1; } .pkm-red-txt b { display: block; color: #e2e8f0; } .pkm-red-txt small { color: #8aa197; font-size: 12px; }
-.pkm-red > button { min-height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #d5e6dc; font-weight: 700; }
-.pkm-red .pkm-status { width: 42px; padding: 0; background: rgba(239,68,68,.22); border-color: rgba(239,68,68,.5); color: #fecaca; font-size: 16px; }
-.pkm-red .pkm-status.ok { background: rgba(34,197,94,.25); border-color: rgba(34,197,94,.6); color: #bbf7d0; }
-.pkm-dan { display: flex; justify-content: space-between; padding: 10px 2px 4px; color: #bbf7d0; font-size: 13px; border-top: 1px solid rgba(148,163,184,.12); }
-.pkm-unos { display: flex; gap: 6px; align-items: center; padding: 5px 0 5px 10px; font-size: 13px; color: #d5e6dc; }
-.pkm-unos > div { flex: 1; } .pkm-unos small { display: block; color: #8aa197; font-size: 11px; }
-.pkm-unos button { min-height: 32px; width: 36px; border-radius: 9px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #d5e6dc; }
-.pkm-unos button.brisi { color: #fca5a5; }
-.pkm-foto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
-.pkm-f { position: relative; } .pkm-f img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: #0b1a13; display: block; }
-.pkm-f small { display: block; font-size: 10px; color: #8aa197; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pkm-f button { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: none; background: rgba(0,0,0,.6); color: #fff; }
-.pkm-fakc { display: flex; gap: 8px; margin-top: 4px; }
-.pkm-fakc label { flex: 1; min-height: 42px; display: grid; place-items: center; border-radius: 11px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #d5e6dc; font-weight: 700; font-size: 13px; cursor: pointer; }
-.pkm-fakc label.glavno { background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
-.pkm-foto-ik { width: 26px; height: 26px; border-radius: 50%; background: #0d1b15; border: 2px solid #22c55e; display: grid; place-items: center; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 #ods-bar { display: none; position: fixed; left: 10px; right: 10px; bottom: calc(80px + env(safe-area-inset-bottom,0px)); max-width: 440px; margin: 0 auto; z-index: 930; background: rgba(8,18,14,.95); border: 1px solid rgba(250,204,21,.45); border-radius: 16px; padding: 10px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.45); flex-direction: column; gap: 8px; }
 #ods-bar.show { display: flex; }
 #ods-bar .kub-txt b { color: #fde68a; font-size: 14px; display: block; }
@@ -1613,12 +1567,6 @@ body.sl-uredi #sl-ured { display: block; }
         <span class="mc-stat" id="mc-stat-sjekacke"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button type="button" class="meni-card" id="mc-primka" onclick="USFPrimka.otvoriPanel()" style="--mc:#22c55e">
-        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></span>
-        <span class="mc-txt"><b>Primka</b><span>Primljena drvna masa po partijama i danima, zapažanja</span></span>
-        <span class="mc-stat" id="mc-stat-primka"></span>
-        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-      </button>
     </section>
     <section class="meni-grp">
       <h3>Podaci i karte</h3>
@@ -2049,19 +1997,6 @@ body.sl-uredi #sl-ured { display: block; }
     <button class="loc-btn" style="margin-bottom:8px;" onclick="document.getElementById('tem-file-input').click()">📂 Izaberi .gpkg fajl</button>
     <div id="tem-status" style="color:#94a3b8;font-size:12px;margin-bottom:14px;min-height:16px;"></div>
     <div id="tem-list"></div>
-  </div>
-</div>
-
-<!-- Primka drvne mase (static/js/primka.js) -->
-<div id="primka-panel" class="usf-panel">
-  <div class="up-hdr"><h2>📦 Primka</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
-  <div class="up-body">
-    <section class="ng-card">
-      <h3>Novi projekat primke</h3>
-      <p class="uk-izvor">Primka se vodi po partijama sjekačkih linija: zelena = roba primljena, crvena = nije. Unosi m³ po danu i partiji, od koga je primljeno i fotografije zapažanja.</p>
-      <div class="sl-dug"><button class="zp-glavno" onclick="USFPrimka.novi()">➕ Novi projekat primke</button></div>
-    </section>
-    <div id="pk-sadrzaj"></div>
   </div>
 </div>
 
@@ -10263,7 +10198,7 @@ _temRestore();
 // GLAVNA NAVIGACIJA — Mapa / Karte / Meni / Postavke
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel','primka-panel'];
+const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -10311,8 +10246,6 @@ function _meniStatusRender() {
     el.textContent = s[k].t;
     el.classList.toggle('on', s[k].on);
   });
-  const pk = document.getElementById('mc-stat-primka');
-  if (pk && window.USFPrimka) { const x = USFPrimka.stat(); pk.textContent = x.n ? x.m3.toLocaleString('bs-BA', { maximumFractionDigits: 1 }) + ' m³' : ''; }
 }
 function _openStubPanel(panelId, tabForBack) {
   _activeMainTab = tabForBack;
@@ -10494,6 +10427,5 @@ window.addEventListener('load', () => {
 <script src="static/js/tlo-potkornjak.js"></script>
 <script src="static/js/vegetacija.js"></script>
 <script src="static/js/sjekacke.js"></script>
-<script src="static/js/primka.js"></script>
 </body>
 </html>
