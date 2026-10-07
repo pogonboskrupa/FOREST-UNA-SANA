@@ -119,6 +119,10 @@
   Svaka padina svoj pad, linije id `pN:`, `izbrisane` po padini; padina s izo linijama
   dobija lepezu; partije se NE spajaju preko grebena (ostatak po padini). Računa se pri
   pravljenju projekta, prekidač Osnovni/Alternativni u panelu.
+  Spajanje (`spojiPadine` → `slSpojiLinije`/`slSpojiGeo`): linije susjednih padina čiji su krajevi ≤ `p.spoj`×razmak
+  (zadano ½; Ne/Blizu/Srednje/Šire u panelu) i uz granicu padina postaju JEDNA krivudava linija (id `m:<id>+<id>`,
+  `spoj` geometrija, `komp` [{id, padina, k, geo}]); spajaju se samo linije bez stanja. Površine se računaju po
+  padini PRIJE spajanja (spojena = zbir), obris partije i brisanje idu po `komp`, izo = najgori dio.
   Natpisi (`postaviNatpise`): prioritet + 4 položaja (van kraja linije, dalje, bočno), sakrij
   ako nema mjesta; preračun na zoomend. Klik na liniju crta poligon partije (`slPartija` →
   `slTrakaObris`: ista mreža/klasifikacija kao `slPoljaTeren`, pa površina = `lin.ha`).

@@ -312,7 +312,7 @@ t('granica padina: tačke ćelija → uređena linija od kraja do kraja', () => 
 t('UI: alternativni prikaz (padine) — prekidač, padine bez spajanja partija preko grebena', () => {
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes('data-a="prikaz" data-v="padine"') && js.includes("p.padine = await citajPadine(p)") && js.includes("'p' + di + ':'"));
-  assert.ok(js.includes('partije se ne spajaju preko njega'), 'svaka padina svoje partije');
+  assert.ok(js.includes('partije se ne spajaju preko grebena'), 'svaka padina svoje partije');
   assert.ok(js.includes('<name>Granice padina</name>'), 'KML s granicama padina');
   assert.ok(R('index.html').includes('.sl-prikaz button.on'));
 });
@@ -336,7 +336,7 @@ t('natpisi bez preklapanja i poligon partije na klik linije', () => {
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes('function postaviNatpise()') && js.includes("else postaviNatpise();"), 'raspored natpisa na svaki zoom');
   assert.ok(!/L\.marker\(lin\.(dno|vrh)/.test(js), 'krajevi linija idu kroz raspored, ne direktno');
-  assert.ok(js.includes('prikaziPartiju(p, lin);') && js.includes('slPartija(D.d.map'), 'klik na liniju crta partiju');
+  assert.ok(js.includes('prikaziPartiju(p, lin);') && js.includes('slPartija(dd, di, j'), 'klik na liniju crta partiju');
 });
 
 t('dijeljenje: spajanje projekata — plan iz novijeg tPlan, stanje linije iz novijeg lin.t', () => {
@@ -358,6 +358,41 @@ t('dijeljenje: spajanje projekata — plan iz novijeg tPlan, stanje linije iz no
   // poništena GPS linija (noviji t bez stvarne) briše staru stvarnu
   r = S.slSpojiProjekte(radnik, { ...radnik, linije: [L0('a', 400, 'rad')] });
   assert.ok(!r.p.linije.find(l => l.id === 'a').stvarna);
+});
+
+t('padine: bliske linije susjednih padina spajaju se u jednu krivudavu', () => {
+  // greben na x = 0: lijeva padina (0) linije od x=-300 do grebena, desna (1) od x=300 do grebena
+  const lijevo = y => ({ padina: 0, geo: [pr(-300, y), pr(-150, y + 5), pr(0, y)] }), desno = y => ({ padina: 1, geo: [pr(300, y), pr(0, y)] });
+  const lin = [lijevo(0), lijevo(60), lijevo(120), desno(12), desno(75), desno(118), desno(200)], gr = [[pr(0, -100), pr(0, 300)]];
+  const lanci = S.slSpojiLinije(lin, gr, 30);
+  assert.strictEqual(lanci.length, 4, '3 spojene + 1 bez para');
+  assert.strictEqual(lanci.reduce((a, l) => a + l.length, 0), lin.length, 'svaka linija tačno jednom');
+  const spoj = lanci.filter(l => l.length === 2);
+  assert.strictEqual(spoj.length, 3);
+  const parovi = spoj.map(l => l.map(x => x.i).sort((a, b) => a - b).join('-')).sort();
+  assert.deepStrictEqual(parovi, ['0-3', '1-4', '2-5'], 'najbliži parovi, svaki kraj jednom');
+  const g = S.slSpojiGeo(spoj[0].map(({ i, obrni }) => obrni ? lin[i].geo.slice().reverse() : lin[i].geo));
+  const x0 = L.u(g[0][0], g[0][1])[0], x1 = L.u(g[g.length - 1][0], g[g.length - 1][1])[0];
+  assert.ok(Math.abs(Math.abs(x0) - 300) < 0.5 && Math.abs(Math.abs(x1) - 300) < 0.5 && Math.sign(x0) !== Math.sign(x1), 'od jednog do drugog ruba preko grebena');
+  assert.ok(g.length === 5, 'kratak komad uz granicu ostaje (krajevi 12 m razmaka)');
+  // prag 0 / ista padina / daleko od granice → bez spajanja
+  assert.ok(S.slSpojiLinije(lin, gr, 0).every(l => l.length === 1));
+  assert.ok(S.slSpojiLinije([lijevo(0), lijevo(10)], gr, 30).every(l => l.length === 1), 'ista padina se ne spaja');
+  assert.ok(S.slSpojiLinije([lijevo(0), desno(12)], [[pr(500, -100), pr(500, 300)]], 30).every(l => l.length === 1), 'krajevi daleko od granice padina');
+  // tri padine oko jedne tačke: lanac bez petlje
+  const tri = [{ padina: 0, geo: [pr(-200, 0), pr(0, 0)] }, { padina: 1, geo: [pr(0, 5), pr(200, 0)] }, { padina: 2, geo: [pr(200, 4), pr(5, 3)] }];
+  const lt = S.slSpojiLinije(tri, [], 30);
+  assert.strictEqual(lt.reduce((a, l) => a + l.length, 0), 3);
+  assert.ok(lt.every(l => new Set(l.map(x => x.i)).size === l.length), 'bez ponavljanja (petlje)');
+});
+
+t('UI: spajanje linija padina — prekidač, komponente za partiju i brisanje', () => {
+  const js = R('static/js/sjekacke.js');
+  assert.ok(js.includes('data-a="spoj"') && js.includes("p.spoj = Number(el.dataset.v)"), 'izbor praga u panelu');
+  assert.ok(js.includes('await spojiPadine(p, dijelovi, stari)'), 'spaja se poslije površina po padini');
+  assert.ok(js.includes('x.vlasnik === lin.id') && js.includes('lin.komp.forEach(c =>'), 'partija i brisanje po komponentama');
+  assert.ok(S.slGeo({ spoj: [[1, 1], [2, 2], [3, 3]], dno: [0, 0], vrh: [9, 9] }).length === 3, 'slGeo koristi spojenu geometriju');
+  assert.ok(S.slGeo({ geo: [[1, 1], [2, 2]], spoj: [[1, 1], [2, 2], [3, 3]] }).length === 2, 'ručni lom ima prednost');
 });
 
 t('dijeljenje: projekat u KML-u, prijem iz drugih aplikacija (Android)', () => {
