@@ -145,6 +145,14 @@
   pri statusu/radniku/lomu/GPS-u). APK prima KML/KMZ iz drugih app-ova (intent VIEW/SEND,
   `launchMode singleTask`, `primiFajl` → `AndroidShare.uzmiDolazni()` → JS `_dolazniFajl`).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
+- **Otvorenost odjela ŠKP-om** (Projektovanje šumskog puta → sekcija, `static/js/otvorenost.js`): poligoni iz
+  KML sloja (odjeli/odsjeci), putevi = KML/SHP linije izabranih slojeva + sačuvane trase (`_rdGetSavedRoutes`).
+  `otvRaster`: raster udaljenosti od puteva za cijelo područje (ćelija 15–60 m, ≤ ~2,5 M ćelija, propagacija
+  najbližeg izvora 2 prolaza) + dužina puta po ćeliji; `otvOdjel` scanline po poligonu (rupe par/nepar): udio
+  površine ≤ zona privlačenja (zadano 400 m), Ø udaljenost (bez puta = 3 km), gustoća m/ha. Klasa po udjelu:
+  otvoren ≥ 70 %, djelimično ≥ 30 % (pragovi bez novog rastera). Pane `otvPane` z 412 (iznad KML-a), bez dodira;
+  ŠKP se ponovo crta iznad ispune. Red „Otvorenost ŠKP” u kartici poligona (`USFOtv.zaSloj`); postavke u
+  localStorage `usf_otvorenost`, rezultat samo u memoriji. 2000 odsjeka ≈ 3,7 s na 4× sporijem CPU-u.
 - **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
   `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`. Sve
   NEPROVIDNO do ruba (providni uglovi ⇒ Xiaomi/HyperOS crta bijeli okvir i smanjuje ikonu);
