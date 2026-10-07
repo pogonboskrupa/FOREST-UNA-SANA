@@ -108,10 +108,10 @@ t('Karte: Podloga (bazna, offline) → Moji podaci (KML preglednik, tematska) �
   assert.ok(!HTML.includes('Učitaj velike lokalne karte u formatima'));
 });
 
-t('izvještaj odjela: nagib u stepenima (klase, raspon), stvarna površina, ruža ekspozicije, obim', () => {
+t('izvještaj odjela: nagib u % (klase, raspon), stvarna površina, ruža ekspozicije, obim', () => {
   const js = fs.readFileSync(path.join(__dirname, '../../static/js/odjeli.js'), 'utf8');
-  assert.ok(js.includes("{ max: 5, c: '#22c55e', t: '0–5°' }") && js.includes("klase[_ODJ_NAGIB_KL.findIndex(k => ne.nagib < k.max)]++"), 'klase u stepenima');
-  assert.ok(!js.includes('terrainSlopeClasses.findIndex'), 'ne više klase u %');
+  assert.ok(js.includes('klase[terrainSlopeClasses.findIndex(k => pc < k.max)]++') && js.includes("nSum += pc"), 'nagib i klase u %');
+  assert.ok(!js.includes("+ '°'") && !js.includes('_ODJ_NAGIB_KL'), 'nigdje stepeni');
   assert.ok(js.includes('sek += 1 / Math.cos(ne.nagib * Math.PI / 180)') && js.includes("'stvarna (po nagibu)'"));
   assert.ok(js.includes('function _odjRuza(eksp)') && js.includes("turf.polygonToLine(o.gj)") && js.includes("'Raspon nagiba (80 % površine)'"));
   const svg = new Function(js + '; return _odjRuza;')()([10, 0, 0, 44, 23, 0, 0, 0, 1]);

@@ -184,11 +184,8 @@ function _odjelNaTacki(la, lo) {
 const _uBbox = (b, lo, la) => lo >= b[0] && lo <= b[2] && la >= b[1] && la <= b[3];
 
 // ── Izvještaj odjela ─────────────────────────────────────────────────
-// Klase nagiba u STEPENIMA (šumarska praksa); boje kao karta nagiba.
-const _ODJ_NAGIB_KL = [
-  { max: 5, c: '#22c55e', t: '0–5°' }, { max: 10, c: '#84cc16', t: '5–10°' }, { max: 20, c: '#facc15', t: '10–20°' },
-  { max: 30, c: '#f97316', t: '20–30°' }, { max: 40, c: '#dc2626', t: '30–40°' }, { max: Infinity, c: '#7e22ce', t: '> 40°' }
-];
+// Nagib u izvještaju je u PROCENTIMA (tan × 100); klase i boje iste kao karta nagiba (terrainSlopeClasses).
+const _odjPct = st => Math.tan(st * Math.PI / 180) * 100;
 const _ODJ_STRANE = ['S', 'SI', 'I', 'JI', 'J', 'JZ', 'Z', 'SZ'];
 // Ruža ekspozicije: 8 isječaka, dužina po udjelu (eksp[0..7] u %).
 function _odjRuza(eksp) {
@@ -206,7 +203,7 @@ async function _odjelTeren(gj) {
   const y0 = Math.max(0, Math.floor((n - d.oy) / d.ry)), y1 = Math.min(d.H, Math.ceil((s - d.oy) / d.ry));
   const korak = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, (x1 - x0) * (y1 - y0)) / 20000)));
   let broj = 0, hMin = Infinity, hMax = -Infinity, hSum = 0, nSum = 0, sek = 0;
-  const klase = new Array(_ODJ_NAGIB_KL.length).fill(0), eksp = new Array(9).fill(0), nagibi = [];
+  const klase = new Array(terrainSlopeClasses.length).fill(0), eksp = new Array(9).fill(0), nagibi = [];
   for (let iy = y0; iy < y1; iy += korak) {
     const lat = d.oy + (iy + 0.5) * d.ry;
     for (let ix = x0; ix < x1; ix += korak) {
@@ -215,9 +212,10 @@ async function _odjelTeren(gj) {
       if (!turf.booleanPointInPolygon([d.ox + (ix + 0.5) * d.rx, lat], gj)) continue;
       const ne = USFDem.nagibEkspozicija(d, ix, iy, lat);
       if (!ne) continue;
-      broj++; hSum += h; nSum += ne.nagib; nagibi.push(ne.nagib); sek += 1 / Math.cos(ne.nagib * Math.PI / 180);
+      const pc = _odjPct(ne.nagib);
+      broj++; hSum += h; nSum += pc; nagibi.push(pc); sek += 1 / Math.cos(ne.nagib * Math.PI / 180);
       if (h < hMin) hMin = h; if (h > hMax) hMax = h;
-      klase[_ODJ_NAGIB_KL.findIndex(k => ne.nagib < k.max)]++;
+      klase[terrainSlopeClasses.findIndex(k => pc < k.max)]++;
       eksp[ne.nagib < 5 ? 8 : Math.floor((ne.eksp + 22.5) / 45) % 8]++;
     }
   }
@@ -225,7 +223,7 @@ async function _odjelTeren(gj) {
   const pct = a => a.map(v => Math.round(v / broj * 100)), ep = pct(eksp);
   nagibi.sort((a, b) => a - b);
   const kv = q => _r1(nagibi[Math.min(nagibi.length - 1, Math.floor(q * nagibi.length))]), dom = ep.slice(0, 8).indexOf(Math.max(...ep.slice(0, 8)));
-  // stvarna (nagibna) površina = horizontalna × prosjek 1/cos(nagib)
+  // nagib* u %; stvarna (nagibna) površina = horizontalna × prosjek 1/cos(nagib)
   return { hMin, hMax, hSr: Math.round(hSum / broj), nagibSr: _r1(nSum / broj), nagibP10: kv(0.1), nagibP90: kv(0.9), nagibMax: _r1(nagibi[nagibi.length - 1]),
     faktor: sek / broj, klase: pct(klase), eksp: ep, dom: ep[dom] ? _ODJ_STRANE[dom] : null, domPct: ep[dom] || 0 };
 }
@@ -329,15 +327,15 @@ function _odjelRender() {
   const cekaj = '<div class="om-gr">⏳ računam…</div>';
   const T = r.teren && !r.teren.greska ? r.teren : null, fmt1 = v => String(v).replace('.', ',');
   const kpi = (v, l) => `<div class="om-kpi"><b>${v}</b><small>${l}</small></div>`;
-  const kpis = `<div class="om-kpis">${kpi(fmt1(r.ha) + ' ha', 'površina')}${kpi(T ? fmt1(_r1(r.ha * T.faktor)) + ' ha' : '…', 'stvarna (po nagibu)')}${kpi(T ? fmt1(T.nagibSr) + '°' : '…', 'prosječan nagib')}${kpi(r.obim != null ? fmt1(r.obim) + ' km' : '—', 'obim')}</div>`;
+  const kpis = `<div class="om-kpis">${kpi(fmt1(r.ha) + ' ha', 'površina')}${kpi(T ? fmt1(_r1(r.ha * T.faktor)) + ' ha' : '…', 'stvarna (po nagibu)')}${kpi(T ? fmt1(T.nagibSr) + ' %' : '…', 'prosječan nagib')}${kpi(r.obim != null ? fmt1(r.obim) + ' km' : '—', 'obim')}</div>`;
   let teren = cekaj;
   if (r.teren) teren = r.teren.greska ? greska(r.teren.greska)
-    : red('Prosječan nagib', `<span class="om-v">${fmt1(T.nagibSr)}°</span> (${Math.round(Math.tan(T.nagibSr * Math.PI / 180) * 100)} %)`)
-      + red('Raspon nagiba (80 % površine)', `${fmt1(T.nagibP10)}° – ${fmt1(T.nagibP90)}°`) + red('Najstrmije', fmt1(T.nagibMax) + '°')
-      + `<div class="om-traka">${_ODJ_NAGIB_KL.map((k, i) => T.klase[i] ? `<i style="flex:${T.klase[i]};background:${k.c}" title="${k.t}"></i>` : '').join('')}</div>`
-      + `<div class="om-leg">${_ODJ_NAGIB_KL.map((k, i) => `<span><i style="background:${k.c}"></i>${k.t} <b>${T.klase[i]}%</b></span>`).join('')}</div>`
+    : red('Prosječan nagib', `<span class="om-v">${fmt1(T.nagibSr)} %</span>`)
+      + red('Raspon nagiba (80 % površine)', `${fmt1(T.nagibP10)} – ${fmt1(T.nagibP90)} %`) + red('Najstrmije', fmt1(T.nagibMax) + ' %')
+      + `<div class="om-traka">${terrainSlopeClasses.map((k, i) => T.klase[i] ? `<i style="flex:${T.klase[i]};background:${k.color}" title="${k.label}"></i>` : '').join('')}</div>`
+      + `<div class="om-leg">${terrainSlopeClasses.map((k, i) => `<span><i style="background:${k.color}"></i>${k.label} <b>${T.klase[i]} % pov.</b></span>`).join('')}</div>`
       + `<div class="om-dva"><div>${red('Nadmorska visina', `${T.hMin}–${T.hMax} m`) + red('Prosječna visina', T.hSr + ' m') + red('Visinska razlika', (T.hMax - T.hMin) + ' m')
-        + red('Dominantna ekspozicija', T.dom ? `${T.dom} (${T.domPct} %)` : 'ravno') + (T.eksp[8] ? red('Ravno (< 5°)', T.eksp[8] + ' %') : '')}</div>${_odjRuza(T.eksp)}</div>`;
+        + red('Dominantna ekspozicija', T.dom ? `${T.dom} (${T.domPct} %)` : 'ravno') + (T.eksp[8] ? red('Ravno (< 9 %)', T.eksp[8] + ' %') : '')}</div>${_odjRuza(T.eksp)}</div>`;
   let por = cekaj;
   if (r.por) por = r.por.greska ? greska(r.por.greska)
     : `<table class="om-tab"><tr><th>Uzrok</th><th>1985–2024</th><th>od 2015.</th><th>zadnji</th></tr>${[3, 1, 2].map(u => `<tr><td>${USFEfda.UZROCI[u].naziv}</td><td>${r.por.po[u].ha} ha</td><td>${r.por.po[u].ha10} ha</td><td>${r.por.po[u].zadnja || '—'}</td></tr>`).join('')}<tr><td><b>Ukupno</b></td><td><b>${r.por.ukupno} ha</b></td><td></td><td></td></tr></table>`;
@@ -364,8 +362,8 @@ function _izvozOdjel() {
   if (r.centar) s.push(['centar', r.centar]);
   if (r.teren && !r.teren.greska) {
     s.push(['povrsina_stvarna_ha', _r1(r.ha * r.teren.faktor)], ['visina_min_m', r.teren.hMin], ['visina_max_m', r.teren.hMax], ['visina_sr_m', r.teren.hSr],
-      ['nagib_sr_st', r.teren.nagibSr], ['nagib_p10_st', r.teren.nagibP10], ['nagib_p90_st', r.teren.nagibP90], ['nagib_max_st', r.teren.nagibMax], ['ekspozicija_dominantna', r.teren.dom || 'ravno']);
-    _ODJ_NAGIB_KL.forEach((k, i) => s.push(['nagib_' + k.t.replace('> ', 'preko_').replace('°', '').replace('–', '_') + '_st_udio_pct', r.teren.klase[i]]));
+      ['nagib_sr_pct', r.teren.nagibSr], ['nagib_p10_pct', r.teren.nagibP10], ['nagib_p90_pct', r.teren.nagibP90], ['nagib_max_pct', r.teren.nagibMax], ['ekspozicija_dominantna', r.teren.dom || 'ravno']);
+    terrainSlopeClasses.forEach((k, i) => s.push(['nagib_' + k.label.replace(' %', '').replace('>', 'preko_') + 'pct_udio', r.teren.klase[i]]));
     ['S', 'SI', 'I', 'JI', 'J', 'JZ', 'Z', 'SZ', 'ravno'].forEach((t, i) => s.push(['ekspozicija_' + t + '_pct', r.teren.eksp[i]]));
   }
   if (r.por && !r.por.greska) [3, 1, 2].forEach(u => { const n = USFEfda.UZROCI[u].naziv; s.push([n + ' 1985-2024 ha', r.por.po[u].ha], [n + ' od 2015 ha', r.por.po[u].ha10], [n + ' zadnja godina', r.por.po[u].zadnja || '']); });
