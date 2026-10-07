@@ -29,7 +29,8 @@ t('lista karata: samo šifrovani zapisi, bez linka i PIN-a u čistom tekstu', ()
   const l = JSON.parse(R('static/data/karte_drive.json'));
   assert.ok(Array.isArray(l) && l.length >= 1);
   for (const k of l) {
-    assert.deepStrictEqual(Object.keys(k).sort(), ['enc', 'id', 'mb', 'naziv', 'opis']);
+    assert.deepStrictEqual(Object.keys(k).filter(x => x !== 'vrsta').sort(), ['enc', 'id', 'mb', 'naziv', 'opis']);
+    assert.ok(k.vrsta === undefined || k.vrsta === 'kml');
     assert.ok(/^[A-Za-z0-9+/=]{40,}$/.test(k.enc) && D.izB64(k.enc).length > 28, 'iv + šifrat + GCM tag');
   }
   for (const f of ['index.html', 'static/data/karte_drive.json', 'static/js/drive-karte.js', 'CLAUDE.md'])
@@ -46,6 +47,17 @@ t('app: zaseban PIN karata (provjera dešifrovanjem), nativno preuzimanje, provj
   assert.ok(J.includes('new KartaBridge(), "AndroidKarta"') && J.includes('equals("SQLite format 3")') && J.includes('"Range", "bytes=" + imam + "-"'));
   assert.ok(J.includes('url.startsWith("https://drive.usercontent.google.com/")'), 'most skida samo s Drive-a');
   assert.ok(R('sw.js').includes("'./static/js/drive-karte.js'") && R('android/copy-assets.sh').includes('static/data/karte_drive.json'));
+});
+
+t('KML poligoni s Drive-a: ista lista (vrsta kml), KML preglednik, nativno u cache pa uvoz kao ručni KML', () => {
+  const H = R('index.html'), J = R('android/app/src/main/java/ba/spd/usf/forest/MainActivity.java'), lista = JSON.parse(R('static/data/karte_drive.json'));
+  assert.ok(lista.some(k => k.vrsta === 'kml'), 'zapis KML-a u listi');
+  assert.ok(H.includes("filter(k => k.vrsta !== 'kml')") && H.includes("filter(k => k.vrsta === 'kml')"), 'karte i KML odvojeno');
+  assert.ok(H.includes('id="drive-kml"') && H.includes('AndroidKarta.preuzmiKml(id, USFDriveKarte.urlPreuzimanja(o.fileId))') && H.includes('AndroidKarta.uzmiKml(id)'));
+  assert.ok(H.includes("_vectorFileChosen({ target: { files: [new File([u8], ime)], value: '' } })"), 'isti tok kao ručni uvoz (KMZ, IDB)');
+  assert.ok(J.includes('public void preuzmiKml(String kid, String url)') && J.includes('public String uzmiKml(String kid)') && J.includes('private void skiniDrive('));
+  assert.ok(J.includes('nije KML (Drive je vratio stranicu umjesto fajla)'), 'HTML umjesto KML-a se odbija');
+  assert.ok(R('tools/karta_drive_dodaj.mjs').includes("vrsta: 'kml'"));
 });
 
 (async () => {

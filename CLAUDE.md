@@ -163,6 +163,10 @@
   prvog zapisa liste (greške `usf_karte_greske`); čuva se samo ključ u `usf_karte_kljuc`. APK: `AndroidKarta.preuzmi`
   → `drive.usercontent.google.com/download?…&confirm=t`, `.part` + Range nastavak, provjera
   „SQLite format 3”, pa uvoz kao `importOfflineMap`. Drive fajl mora biti „Svako s linkom”.
+  **KML poligoni s Drive-a** (KML preglednik → „☁ Poligoni za preuzimanje”): ista lista i PIN, zapis `vrsta:'kml'`
+  (`karta_drive_dodaj.mjs --kml …`); karte ih filtriraju van. APK `AndroidKarta.preuzmiKml` (zajednički `skiniDrive`)
+  → cache `kml_drive/<id>.dat` (provjera `<?xml`/`<kml`/PK), JS `_driveKmlKraj` uzme bajtove (`uzmiKml`, briše fajl)
+  i učita kroz `_vectorFileChosen` (KMZ, IndexedDB) — stari sloj istog imena se zamjenjuje.
 - **Birač fajlova u APK-u** (`onShowFileChooser`): offline karta se prepoznaje u
   `IzborFajla.jeOfflineKarta` po CIJELIM tokenima accept-a (`.dbf` iz KML/SHP birača sadrži
   `.db` — podstring je slao svaki KML u uvoz offline karte). Test: `android/test-java/IzborFajlaTest.java`.

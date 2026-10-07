@@ -933,13 +933,70 @@ public class MainActivity extends Activity {
             Thread t = karteUToku.get(kid);
             if (t != null) t.interrupt();
         }
+
+        // KML/KMZ s Drive-a (KML preglednik): skida u cache, JS ga uzme (uzmiKml) i učita kao "Dodaj KML"
+        @JavascriptInterface
+        public void preuzmiKml(String kid, String url) {
+            if (kid == null || url == null || !url.startsWith("https://drive.usercontent.google.com/") || karteUToku.containsKey(kid)) return;
+            Thread t = new Thread(() -> preuzmiKmlFajl(kid, url), "kml-" + kid);
+            karteUToku.put(kid, t);
+            t.start();
+        }
+
+        @JavascriptInterface
+        public String uzmiKml(String kid) {
+            File f = kmlDriveFajl(kid, ".dat");
+            try (InputStream in = new java.io.FileInputStream(f)) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                byte[] buf = new byte[262144]; int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP);
+            } catch (Exception e) {
+                return "";
+            } finally {
+                f.delete();
+            }
+        }
+    }
+
+    private File kmlDriveFajl(String kid, String nastavak) {
+        File dir = new File(getCacheDir(), "kml_drive");
+        if (!dir.exists()) dir.mkdirs();
+        return new File(dir, kid.replaceAll("[^A-Za-z0-9_-]", "") + nastavak);
+    }
+
+    private void preuzmiKmlFajl(String kid, String url) {
+        File part = kmlDriveFajl(kid, ".part");
+        try {
+            skiniDrive(kid, url, part);
+            byte[] zag = new byte[256];
+            int n;
+            try (InputStream in = new java.io.FileInputStream(part)) { n = in.read(zag); }
+            String poc = n > 0 ? new String(zag, 0, n, StandardCharsets.ISO_8859_1).replace("\u00EF\u00BB\u00BF", "").trim() : "";
+            boolean kmz = n >= 2 && zag[0] == 'P' && zag[1] == 'K';
+            if (!kmz && !(poc.startsWith("<?xml") || poc.startsWith("<kml")) || poc.toLowerCase().startsWith("<!doctype html") || poc.toLowerCase().startsWith("<html")) {
+                part.delete();
+                throw new IOException("Preuzeti fajl nije KML (Drive je vratio stranicu umjesto fajla)");
+            }
+            File gotov = kmlDriveFajl(kid, ".dat");
+            gotov.delete();
+            if (!part.renameTo(gotov)) throw new IOException("Fajl se ne može premjestiti");
+            javiKarti("window._driveKmlKraj&&_driveKmlKraj(" + JSONObject.quote(kid) + ",true,''," + kmz + ")");
+        } catch (InterruptedException e) {
+            javiKarti("window._driveKmlKraj&&_driveKmlKraj(" + JSONObject.quote(kid) + ",false,'prekinuto — nastavlja se od istog mjesta',false)");
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+            javiKarti("window._driveKmlKraj&&_driveKmlKraj(" + JSONObject.quote(kid) + ",false," + JSONObject.quote(msg) + ",false)");
+        } finally {
+            karteUToku.remove(kid);
+        }
     }
 
     private void javiKarti(String js) { runOnUiThread(() -> { if (webView != null) webView.evaluateJavascript(js, null); }); }
 
-    private void preuzmiKartu(String kid, String url, String naziv) {
-        String ime = (naziv == null || naziv.trim().isEmpty()) ? "Karta" : naziv.trim();
-        File part = new File(mbtilesDir(), "drive_" + kid.replaceAll("[^A-Za-z0-9_-]", "") + ".part");
+    // Skidanje s Drive-a u `part` (nastavak preko Range, redirekti, HTML umjesto fajla = greška).
+    // Napredak: _driveNapredak(kid, %, MB). Prekid: InterruptedException (part ostaje za nastavak).
+    private void skiniDrive(String kid, String url, File part) throws IOException, InterruptedException {
         HttpURLConnection con = null;
         try {
             long imam = part.exists() ? part.length() : 0;
@@ -958,6 +1015,7 @@ public class MainActivity extends Activity {
                 }
                 break;
             }
+            if (status == 416 && imam > 0) return; // već skinuto do kraja
             if (status != 200 && status != 206) throw new IOException("Drive HTTP " + status);
             String tip = con.getContentType();
             if (tip != null && tip.toLowerCase().startsWith("text/html"))
@@ -981,6 +1039,16 @@ public class MainActivity extends Activity {
                     }
                 }
             }
+        } finally {
+            if (con != null) con.disconnect();
+        }
+    }
+
+    private void preuzmiKartu(String kid, String url, String naziv) {
+        String ime = (naziv == null || naziv.trim().isEmpty()) ? "Karta" : naziv.trim();
+        File part = new File(mbtilesDir(), "drive_" + kid.replaceAll("[^A-Za-z0-9_-]", "") + ".part");
+        try {
+            skiniDrive(kid, url, part);
             byte[] zag = new byte[16];
             try (InputStream in = new java.io.FileInputStream(part)) { if (in.read(zag) != 16) throw new IOException("Prazan fajl"); }
             if (!new String(zag, 0, 15, StandardCharsets.US_ASCII).equals("SQLite format 3")) {
@@ -1000,7 +1068,6 @@ public class MainActivity extends Activity {
             String msg = e.getMessage() != null ? e.getMessage() : e.toString();
             javiKarti("window._driveKraj&&_driveKraj(" + JSONObject.quote(kid) + ",false," + JSONObject.quote(msg) + ")");
         } finally {
-            if (con != null) con.disconnect();
             karteUToku.remove(kid);
         }
     }

@@ -2050,6 +2050,10 @@ body.sl-uredi #sl-ured { display: block; }
       <button class="ng-glavno" onclick="document.getElementById('kml-file-input').click()">📂 Dodaj KML / KMZ / SHP</button>
       <p class="ul-nap">Za SHP označi zajedno istoimene .shp, .dbf i .prj (.prj treba za lokalnu projekciju).</p>
     </section>
+    <section class="ng-card dk-sekcija" id="drive-kml-sek" hidden>
+      <h3>☁ Poligoni za preuzimanje <small>odjeli/odsjeci s Drive-a, uz PIN karata</small></h3>
+      <div id="drive-kml"></div>
+    </section>
     <input id="kml-trazi" class="kh-trazi" type="search" placeholder="🔎 Traži odjel, odsjek ili atribut…" enterkeyhint="search" oninput="_kmlRegRender()">
     <div id="kml-list"></div>
   </div>
@@ -5104,6 +5108,7 @@ function _kmlRegRender() {
   const el = document.getElementById('kml-list');
   const cnt = document.getElementById('kml-count');
   if (!el) return;
+  _driveKmlRender();
   if (cnt) cnt.textContent = kmlLs.length ? `(${kmlLs.length})` : '';
   if (!kmlLs.length) { el.innerHTML = '<div class="ul-prazno"><b>🗺</b>Još nema učitanih slojeva.<br>Dodaj granice odjela, puteve ili tačke iz KML/SHP fajla.</div>'; return; }
   const ukupno = kmlLs.reduce((a, k) => { const s = _kmlStat(k); a.pol += s.pol; a.lin += s.lin; a.tac += s.tac; return a; }, { pol: 0, lin: 0, tac: 0 });
@@ -6784,7 +6789,7 @@ const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc')
 const _dkNaTelefonu = k => (typeof _sqlLayers !== 'undefined') && _sqlLayers.some(x => x.name === k.naziv + '.sqlitedb' || x.name === k.naziv);
 async function _driveKarteRender() {
   const el = document.getElementById('drive-karte'); if (!el || !window.USFDriveKarte) return;
-  const l = _dkLista || await _dkUcitaj();
+  const l = (_dkLista || await _dkUcitaj()).filter(k => k.vrsta !== 'kml');
   if (!l.length) { el.innerHTML = '<div class="ul-status">Trenutno nema karata za preuzimanje.</div>'; return; }
   const kljuc = _dkKljuc();
   el.innerHTML = l.map(k => {
@@ -6819,10 +6824,52 @@ async function _dkPreuzmi(id) {
 }
 function _dkPrekini(id) { try { AndroidKarta.prekini(id); } catch(e) {} }
 // pozivi iz MainActivity (AndroidKarta)
-function _driveNapredak(id, p, mb) { _dkNapredak[id] = { p: p >= 0 ? p : null, mb }; _driveKarteRender(); }
+function _driveNapredak(id, p, mb) { _dkNapredak[id] = { p: p >= 0 ? p : null, mb }; _driveKarteRender(); _driveKmlRender(); }
 function _driveKraj(id, ok, poruka) {
   delete _dkNapredak[id]; _driveKarteRender();
   if (!ok) showToast('⚠ Karta nije preuzeta: ' + (poruka || 'greška'));
+}
+// ── Poligoni (KML/KMZ) za preuzimanje — ista lista, PIN i nativno skidanje kao karte (zapisi vrsta:'kml').
+// MainActivity skida u cache (preuzmiKml), JS uzme bajtove (uzmiKml) i učita kao "Dodaj KML" → IndexedDB.
+let _dkmlP = null;
+const _dkmlImena = k => [k.naziv + '.kml', k.naziv + '.kmz'];
+async function _driveKmlRender() {
+  const el = document.getElementById('drive-kml'), sek = document.getElementById('drive-kml-sek'); if (!el || !window.USFDriveKarte) return;
+  const l = (_dkLista || await (_dkmlP = _dkmlP || _dkUcitaj())).filter(k => k.vrsta === 'kml');
+  if (sek) sek.hidden = !l.length;
+  if (!l.length) return;
+  const kljuc = _dkKljuc();
+  el.innerHTML = l.map(k => {
+    const n = _dkNapredak[k.id], ucitan = typeof kmlLs !== 'undefined' && kmlLs.some(x => _dkmlImena(k).includes(x.name));
+    const desno = n ? `<div class="dk-traka"><u style="width:${n.p || 0}%"></u></div><small>${n.p != null ? n.p + ' %' : '…'}${n.mb ? ' · ' + n.mb + ' MB' : ''}</small><button onclick="_dkPrekini('${k.id}')">Prekini</button>`
+      : (ucitan ? '<b class="dk-ok">✓ Učitan</b>' : '') + (kljuc ? `<button class="${ucitan ? '' : 'glavno'}" onclick="_dkmlPreuzmi('${k.id}')">${ucitan ? '↻ Osvježi' : '⬇ Preuzmi'}</button>` : `<button onclick="_dkOtkljucaj()">🔒 Otključaj PIN-om</button>`);
+    return `<div class="dk-red"><div><b>${_escHtml(k.naziv)}</b><small>${_escHtml(k.opis || '')}${k.mb ? ' · ' + k.mb + ' MB' : ''}</small></div><div class="dk-akc">${desno}</div></div>`;
+  }).join('') + '<p class="set-nap">Sloj se skida jednom i ostaje u aplikaciji (radi bez interneta).</p>';
+}
+async function _dkmlPreuzmi(id) {
+  const k = (_dkLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
+  if (!kljuc) { _dkOtkljucaj(); return; }
+  const o = await USFDriveKarte.desifruj(kljuc, k.enc);
+  if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
+  if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmiKml) { showToast('⬇ Preuzimanje radi u aplikaciji (APK)'); return; }
+  _dkNapredak[id] = { p: 0 }; _driveKmlRender();
+  try { AndroidKarta.preuzmiKml(id, USFDriveKarte.urlPreuzimanja(o.fileId)); }
+  catch(e) { delete _dkNapredak[id]; _driveKmlRender(); showToast('⚠ Preuzimanje nije pokrenuto: ' + e.message); }
+}
+// poziv iz MainActivity: fajl je u cache-u → bajtovi → isti tok kao ručni KML/KMZ (stari sloj istog imena se zamjenjuje)
+function _driveKmlKraj(id, ok, poruka, kmz) {
+  delete _dkNapredak[id];
+  const k = (_dkLista || []).find(x => x.id === id);
+  if (!ok || !k) { _driveKmlRender(); if (!ok) showToast('⚠ Poligoni nisu preuzeti: ' + (poruka || 'greška')); return; }
+  let b64 = '';
+  try { b64 = AndroidKarta.uzmiKml(id); } catch(e) {}
+  if (!b64) { _driveKmlRender(); showToast('⚠ Preuzeti fajl se ne može pročitati'); return; }
+  const bin = atob(b64), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const ime = k.naziv + (kmz ? '.kmz' : '.kml');
+  kmlLs.filter(x => _dkmlImena(k).includes(x.name)).forEach(x => _kmlDelete(x.id));
+  _vectorFileChosen({ target: { files: [new File([u8], ime)], value: '' } }); // KMZ: raspakivanje i slike kao ručni uvoz
+  setTimeout(_driveKmlRender, 1500);
 }
 function openSumarstvoSection() { if (!_pinOtkljucano()) { _pinTrazi(openSumarstvoSection); return; } _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
 function openSusenjeSection() { if (!_pinOtkljucano()) { _pinTrazi(openSusenjeSection); return; } _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
