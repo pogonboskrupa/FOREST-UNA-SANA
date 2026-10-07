@@ -843,6 +843,16 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #odjel-modal .om-tab th { color:#80958a; font-weight:600; font-size:10px; }
 #odjel-modal .om-akcije { display:flex; gap:6px; margin:4px 0; }
 #odjel-modal .om-btn { flex:1; padding:9px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#cbd5e1; font-size:12px; font-weight:700; cursor:pointer; }
+#odjel-modal .om-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:8px; }
+#odjel-modal .om-kpi { background:#0f172a; border:1px solid #1e293b; border-radius:11px; padding:7px 6px; text-align:center; min-width:0; }
+#odjel-modal .om-kpi b { display:block; font-size:14px; color:#f0fdf4; white-space:nowrap; }
+#odjel-modal .om-kpi small { display:block; font-size:9.5px; color:#80958a; margin-top:2px; line-height:1.2; }
+#odjel-modal .om-red span.om-v { color:#fde68a; font-size:14px; }
+#odjel-modal .om-dva { display:flex; align-items:center; gap:8px; margin-top:8px; }
+#odjel-modal .om-dva > div { flex:1; min-width:0; }
+#odjel-modal .om-ruza { flex:none; }
+#odjel-modal .om-leg b { color:#f0fdf4; font-weight:700; }
+@media (max-width:360px) { #odjel-modal .om-kpis { grid-template-columns:repeat(2,1fr); } }
 #odjel-modal .om-btn.on { background:rgba(245,158,11,.18); border-color:#f59e0b; color:#fde68a; }
 .poz-filter-akt { display:flex; align-items:center; gap:9px; margin:-2px 0 10px; padding:9px 11px; border-radius:10px; background:#0f172a; border:1px solid #1e293b; color:#cbd5e1; font-size:11px; cursor:pointer; }
 .poz-filter-akt input { width:18px; height:18px; flex:none; accent-color:#ef4444; }
