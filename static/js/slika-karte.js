@@ -186,7 +186,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
       put(p.ring); g.closePath();
       if (p.ispuna) { g.fillStyle = p.ispuna; g.fill('evenodd'); }
       // granica glavnog poligona dobija bijeli rub — ne gubi se na tamnoj/šarenoj podlozi
-      if (p.glavni) { g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = (p.sirina || 2) + (p.sirina >= 8 ? 8 : 6); g.lineJoin = 'round'; g.stroke(); }
+      if (p.glavni || p.rub) { g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = (p.sirina || 2) + (p.sirina >= 8 ? 8 : 6); g.lineJoin = 'round'; g.stroke(); }
       g.setLineDash(p.crta || []); g.strokeStyle = p.boja || '#334155'; g.lineWidth = p.sirina || 2; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
     }
     // linije s tamnim rubom
@@ -212,7 +212,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
         for (const r of [26, 46, 66]) if (natpis(t, x + (x - sx) / d * r, y + (y - sy) / d * r, 22, l.boja || '#f59e0b')) break;
       }
     }
-    for (const p of opis.poligoni) if (p.natpis && !cista) {
+    for (const p of opis.poligoni) if (p.natpis) {
       const xs = p.ring.map(q => px(q[0], q[1])), cx = xs.reduce((a, q) => a + q[0], 0) / xs.length, cy = xs.reduce((a, q) => a + q[1], 0) / xs.length;
       natpis(p.natpis, cx, cy, p.glavni ? 26 : 19, p.boja || '#334155', p.glavni ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.7)');
     }

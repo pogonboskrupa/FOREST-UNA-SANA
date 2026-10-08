@@ -288,23 +288,29 @@ function _odjelModal() {
 }
 function _odjelZatvori() { const m = document.getElementById('odjel-modal'); if (m) m.classList.remove('show'); }
 // Slika odjela u razmjeri: odjel istaknut, susjedni poligoni istog sloja u obuhvatu tanko s nazivima.
+// Oznaka za sliku: ODJEL (+ ODSJEK) iz atributa KML-a; bez atributa ostaje naziv objekta.
+function _odjelOznaka(sloj, rezerva) {
+  const ext = (sloj && sloj._kmlExtData) || {}, uzmi = k => { const kk = Object.keys(ext).find(x => x.toUpperCase() === k); return kk && ext[kk] != null ? String(ext[kk]).trim() : ''; };
+  const odj = uzmi('ODJEL'), ods = uzmi('ODSJEK');
+  return odj ? odj + (ods ? ' · ' + ods : '') : rezerva;
+}
 function _odjelSlika(stamp, gj, ime) {
   if (!window.USFSlika) { showToast('⚠ Izvoz slike nije dostupan'); return; }
   const o = stamp != null ? _odjeliSvi().find(x => x.sloj && L.stamp(x.sloj) === stamp) : null;
   const g = o ? o.gj : gj, naziv = o ? o.ime : ime || 'Odjel'; if (!g) return;
   const prsteni = gg => { const geo = gg.geometry || gg; return (geo.type === 'MultiPolygon' ? geo.coordinates : [geo.coordinates]).map(p => p[0].map(([lo, la]) => [la, lo])); };
-  const glavni = prsteni(g).map((ring, i) => ({ ring, boja: '#000000', sirina: 9, crta: [30, 14], ispuna: 'rgba(15,23,42,.07)', glavni: true, natpis: i ? '' : naziv }));
+  const glavni = prsteni(g).map((ring, i) => ({ ring, boja: '#000000', sirina: 9, crta: [30, 14], ispuna: 'rgba(15,23,42,.07)', glavni: true, natpis: i ? '' : _odjelOznaka(o && o.sloj, naziv) }));
   const b = turf.bbox(g), m = Math.max(b[2] - b[0], b[3] - b[1]) * 0.6, susj = [];
   // granice iz karte: svi poligoni slojeva koji su trenutno na karti (i providni), ne samo isti sloj
   if (o) _odjeliSvi().filter(x => x !== o && x.sloj._map && x.bbox[0] < b[2] + m && x.bbox[2] > b[0] - m && x.bbox[1] < b[3] + m && x.bbox[3] > b[1] - m).slice(0, 400)
-    .forEach(x => prsteni(x.gj).forEach((ring, i) => susj.push({ ring, boja: '#000000', sirina: 4, crta: [16, 9], natpis: i ? '' : x.ime })));
+    .forEach(x => prsteni(x.gj).forEach((ring, i) => susj.push({ ring, boja: '#000000', sirina: 9, crta: [30, 14], rub: true, natpis: i ? '' : _odjelOznaka(x.sloj, x.ime) })));
   const ha = _r1(turf.area(g) / 1e4);
   let obim = null; try { obim = Math.round(turf.length(turf.polygonToLine(g), { units: 'kilometers' }) * 100) / 100; } catch (e) {}
   // slika bez teksta: korisnik po želji upiše broj odjela koji ide gore u sredinu (prazno = bez natpisa, Odustani = ništa)
   const natpisGore = prompt('Natpis na vrhu slike (npr. broj odjela).\nOstavi prazno za sliku bez ikakvog teksta:', '');
   if (natpisGore === null) return;
   USFSlika.sacuvaj({ cista: true, natpisGore: natpisGore.trim(), naslov: '📊 ' + (/^odjel/i.test(naziv) ? naziv : 'Odjel ' + naziv), ime: 'odjel_' + naziv, podnaslov: o ? o.izvor : '', poligoni: susj.concat(glavni),
-    legenda: [{ boja: '#000000', t: 'odjel', tip: 'isprek' }].concat(susj.length ? [{ boja: '#000000', t: 'granice iz karte (susjedni odjeli/odsjeci)', tip: 'linija' }] : []),
+    legenda: [{ boja: '#000000', t: 'odjel', tip: 'isprek' }].concat(susj.length ? [{ boja: '#000000', t: 'granice iz karte (susjedni odjeli/odsjeci)', tip: 'isprek' }] : []),
     info: ['Površina ' + String(ha).replace('.', ',') + ' ha' + (obim != null ? ' · obim ' + String(obim).replace('.', ',') + ' km' : '')] });
 }
 async function _odjelIzvjestaj(stamp) {
