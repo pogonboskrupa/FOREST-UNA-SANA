@@ -41,12 +41,92 @@ function slkIzohipse(z, nx, ny, interval) {
   return out;
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { slkRazmjera, slkMjerilo, slkInterval, slkIzohipse, SLK_RAZMJERE };
+// Zoom pločica za sliku: rezolucija karte (m/px na zoomu z, 256 px svijet) najbliža rezoluciji slike,
+// unutar [zMin, zMax] sloja; ako bi pločica bilo previše (> maxPl), zoom se smanjuje.
+function slkZoom(mPoPx, lat, zMin, zMax, sirPx, visPx, maxPl = 160) {
+  const r0 = 156543.03392 * Math.cos(lat * Math.PI / 180);
+  let z = Math.round(Math.log2(r0 / mPoPx));
+  z = Math.max(zMin, Math.min(zMax, z));
+  while (z > zMin) { const f = (r0 / 2 ** z) / mPoPx, n = (sirPx / (256 * f) + 2) * (visPx / (256 * f) + 2); if (n <= maxPl) break; z--; }
+  return z;
+}
+
+if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom, slkRazmjera, slkMjerilo, slkInterval, slkIzohipse, SLK_RAZMJERE };
 
 (function () {
   if (typeof window === 'undefined') return;
   const fmt = (v, d = 0) => Number(v).toLocaleString('bs-BA', { minimumFractionDigits: d, maximumFractionDigits: d });
   const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ── Podloga: slojevi pločica koji su TRENUTNO na karti (offline .sqlitedb/MBTiles, online, tematski) ──
+  // Pločice daje sam sloj (createTile) — isti put kao na ekranu (keš, most, sql.js), na zoomu prema
+  // razmjeri slike; zalijepe se na svoje koordinate. Podloga ide na zaseban canvas: ako server nema CORS
+  // (canvas „zaprljan”), odbacuje se i slika ostaje s reljefom.
+  function slojeviPodloge() {
+    if (typeof map === 'undefined') return [];
+    const out = [];
+    map.eachLayer(l => {
+      if (!(l instanceof L.GridLayer) || !l._map || l.options.opacity === 0 || typeof l.createTile !== 'function') return;
+      const pane = map.getPane(l.options.pane || 'tilePane'); if (pane && getComputedStyle(pane).display === 'none') return;
+      out.push({ l, z: Number((pane && getComputedStyle(pane).zIndex) || 0) * 1000 + (Number(l.options.zIndex) || 0) });
+    });
+    return out.sort((a, b) => a.z - b.z).map(x => x.l);
+  }
+  function imeSloja(l) {
+    const rec = typeof _sqlLayers !== 'undefined' ? _sqlLayers.find(x => x.layer === l) : null;
+    if (rec) return rec.name.replace(/\.(sqlitedb|mbtiles)$/i, '');
+    const a = String(l.options.attribution || '').replace(/<[^>]+>/g, '').replace(/&copy;|©/g, '©').trim();
+    return a ? a.slice(0, 60) : '';
+  }
+  function plocica(l, x, y, z) {
+    return new Promise(res => {
+      let gotovo = false; const kraj = el => { if (!gotovo) { gotovo = true; clearTimeout(t); res(el); } };
+      const t = setTimeout(() => kraj(null), 9000);
+      try {
+        const coords = L.point(x, y); coords.z = z;
+        const stari = l._tileZoom; l._tileZoom = z; // TileLayer.getTileUrl čita zoom iz _tileZoom
+        let el;
+        try { el = l.createTile(coords, (err, tile) => { const e2 = tile || el; if (!e2) return kraj(null); if (e2.tagName === 'IMG' && !e2.complete) { e2.onload = () => kraj(e2); e2.onerror = () => kraj(null); } else kraj(err ? null : e2); }); }
+        finally { l._tileZoom = stari; }
+        if (el && el.tagName === 'IMG' && !el.crossOrigin && el.src && /^https?:/.test(el.src) && !el.src.startsWith(location.origin)) {
+          // obični L.TileLayer bez CORS-a: ponovo s crossOrigin (inače bi zaprljao canvas)
+          el.crossOrigin = 'anonymous'; const src = el.src; el.src = ''; el.src = src;
+        }
+      } catch (e) { kraj(null); }
+    });
+  }
+  async function crtajPodlogu(g, mapX, mapY, mapW, mapH, mPoPx, c, px) {
+    const slojevi = slojeviPodloge(); if (!slojevi.length) return null;
+    const cv = document.createElement('canvas'); cv.width = mapW; cv.height = mapH;
+    const pg = cv.getContext('2d'), crs = map.options.crs, imena = [];
+    const ll0 = (x, y) => [c[0] - (y - mapH / 2) * mPoPx / 111320, c[1] + (x - mapW / 2) * mPoPx / (111320 * Math.cos(c[0] * Math.PI / 180))];
+    let nacrtano = 0;
+    for (const l of slojevi) {
+      const o = l.options, ts = typeof l.getTileSize === 'function' ? l.getTileSize().x : 256;
+      const zMin = o.minNativeZoom != null ? o.minNativeZoom : (o.minZoom || 0), zMax = o.maxNativeZoom != null ? o.maxNativeZoom : (o.maxZoom != null ? o.maxZoom : 19);
+      const z = slkZoom(mPoPx * 256 / ts, c[0], zMin, zMax, mapW, mapH);
+      const nw = crs.latLngToPoint(L.latLng(...ll0(0, 0)), z), se = crs.latLngToPoint(L.latLng(...ll0(mapW, mapH)), z);
+      const x0 = Math.floor(nw.x / ts), x1 = Math.floor(se.x / ts), y0 = Math.floor(nw.y / ts), y1 = Math.floor(se.y / ts), n = 2 ** z;
+      const zadaci = [];
+      for (let ty = Math.max(0, y0); ty <= Math.min(n - 1, y1); ty++) for (let tx = x0; tx <= x1; tx++) zadaci.push([((tx % n) + n) % n, ty, tx]);
+      if (!zadaci.length || zadaci.length > 400) continue;
+      const el = await Promise.all(zadaci.map(([x, y]) => plocica(l, x, y, z)));
+      pg.globalAlpha = o.opacity != null ? o.opacity : 1;
+      let ok = 0;
+      zadaci.forEach(([x, y, tx], i) => {
+        const e = el[i]; if (!e || (e.tagName === 'IMG' && !e.naturalWidth)) return;
+        const a = crs.pointToLatLng(L.point(tx * ts, y * ts), z), b = crs.pointToLatLng(L.point((tx + 1) * ts, (y + 1) * ts), z);
+        const [ax, ay] = px(a.lat, a.lng), [bx, by] = px(b.lat, b.lng);
+        try { pg.drawImage(e, ax - mapX, ay - mapY, bx - ax + 0.6, by - ay + 0.6); ok++; } catch (er) {}
+      });
+      pg.globalAlpha = 1;
+      if (ok) { nacrtano += ok; const ime = imeSloja(l); if (ime && !imena.includes(ime)) imena.push(ime); }
+    }
+    if (!nacrtano) return null;
+    try { pg.getImageData(0, 0, 1, 1); } catch (e) { return null; } // zaprljan (bez CORS-a) — bez podloge
+    g.drawImage(cv, mapX, mapY);
+    return { imena };
+  }
 
   // opis: { naslov, podnaslov, ime (fajl), poligoni:[{ring:[[lat,lon]…], boja, sirina, ispuna, crta, natpis, glavni}],
   //   linije:[{geo:[[lat,lon]…], boja, sirina, crta, oznaka, oznakaVrh}], legenda:[{boja, t, tip:'linija'|'ploha'|'isprek'}], info:[string] }
@@ -70,10 +150,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkRazmj
     g.save(); g.beginPath(); g.rect(mapX, mapY, mapW, mapH); g.clip();
     g.fillStyle = '#f4f7f2'; g.fillRect(mapX, mapY, mapW, mapH);
 
-    // reljef: sjenčenje + izohipse iz lokalnog DEM-a (samo ako pokriva centar)
+    // podloga s karte; bez nje reljef: sjenčenje + izohipse iz lokalnog DEM-a (samo ako pokriva centar)
+    let podl = null;
+    if (opis.podloga !== false) { try { podl = await crtajPodlogu(g, mapX, mapY, mapW, mapH, mPoPx, c, px); } catch (e) { podl = null; } }
     let relj = null;
     try {
-      if (window.USFDem && USFDem.uObuhvatu && USFDem.uObuhvatu(await USFDem.ucitaj(), c[0], c[1])) {
+      if (!podl && window.USFDem && USFDem.uObuhvatu && USFDem.uObuhvatu(await USFDem.ucitaj(), c[0], c[1])) {
         const d = await USFDem.ucitaj(), korak = 8, nx = Math.ceil(mapW / korak) + 1, ny = Math.ceil(mapH / korak) + 1, z = new Float64Array(nx * ny).fill(NaN);
         for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const q = ll(mapX + i * korak, mapY + j * korak), h = USFDem.visina(d, q[0], q[1]); if (h != null && Number.isFinite(h)) z[j * nx + i] = h; }
         const img = g.createImageData(mapW, mapH), mK = korak * mPoPx;
@@ -169,7 +251,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkRazmj
     ly += 44; g.fillStyle = '#334155'; g.font = `500 21px ${FONT}`;
     (opis.info || []).forEach((t, i) => g.fillText(t, M, ly + i * 30));
     g.textAlign = 'right'; g.fillStyle = '#94a3b8'; g.font = `500 18px ${FONT}`;
-    g.fillText('Grmeč Navigator · ' + new Date().toLocaleDateString('bs-BA') + (relj ? ' · DEM Copernicus 30 m' : ''), W - M, H - 30);
+    g.fillText('Grmeč Navigator · ' + new Date().toLocaleDateString('bs-BA') + (podl && podl.imena.length ? ' · podloga: ' + podl.imena.join(', ') : '') + (relj ? ' · DEM Copernicus 30 m' : ''), W - M, H - 30);
 
     return await new Promise((res, rej) => cv.toBlob(b => (b ? res(b) : rej(new Error('slika nije napravljena'))), 'image/png'));
   }

@@ -161,6 +161,11 @@
   orijentacija po obliku, razmjera = najmanja standardna (`slkRazmjera`, 1:500…1:200 000) u koju objekat stane;
   reljef + izohipse iz lokalnog DEM-a (`USFDem`, samo 5 općina; `slkIzohipse` marching squares, `slkInterval`),
   mjerilo, sjever (S), legenda, podaci. Dijeljenje kroz `_izvozFajl` (Blob) → `AndroidShare.shareFile` (`image/png`).
+  PODLOGA = slojevi pločica koji su trenutno na karti (`map.eachLayer` GridLayer, po z-indexu pane-a): pločice daje
+  sam sloj (`createTile`, isti put kao ekran: keš, nativni most, sql.js), zoom `slkZoom` (rezolucija slike, ≤
+  maxNativeZoom, ≤ 160 pločica); `l._tileZoom = z` privremeno jer `TileLayer.getTileUrl` čita zoom odatle; obični
+  `L.tileLayer` dobija `crossOrigin`. Zaseban canvas: zaprljan (server bez CORS-a) ⇒ odbacuje se, slika s reljefom
+  (DEM) kao prije. Ime podloge (offline karta / attribution) u podnožju.
 - **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
   `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`. Sve
   NEPROVIDNO do ruba (providni uglovi ⇒ Xiaomi/HyperOS crta bijeli okvir i smanjuje ikonu);

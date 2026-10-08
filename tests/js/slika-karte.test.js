@@ -34,6 +34,15 @@ t('izohipse (marching squares): nagnuta ravan → prave linije na tačnom mjestu
   z[0] = NaN; assert.ok(S.slkIzohipse(z, nx, ny, 10).every(x => !(x[1] < 1 && x[0] < 1)), 'ćelija bez visine se preskače');
 });
 
+t('podloga: zoom pločica prema razmjeri, ograničen slojem i brojem pločica', () => {
+  assert.strictEqual(S.slkZoom(0.5, 44.75, 0, 19, 1514, 1889), 18);   // ~0,43 m/px na z18
+  assert.strictEqual(S.slkZoom(0.5, 44.75, 0, 16, 1514, 1889), 16, 'offline karta do z16');
+  assert.strictEqual(S.slkZoom(0.5, 44.75, 15, 19, 1514, 1889, 20) >= 15, true, 'ne ispod minZoom sloja');
+  assert.ok(S.slkZoom(0.5, 44.75, 0, 19, 1514, 1889, 20) < 18, 'previše pločica → manji zoom');
+  const js = R('static/js/slika-karte.js');
+  assert.ok(js.includes('l._tileZoom = z;') && js.includes('pg.getImageData(0, 0, 1, 1)') && js.includes("if (!podl && window.USFDem"), 'zoom za URL, provjera CORS-a, reljef samo bez podloge');
+});
+
 t('UI: dugmad u sjekačkim linijama, kartici poligona i izvještaju odjela; PNG u APK dijeljenju', () => {
   const H = R('index.html'), sj = R('static/js/sjekacke.js'), od = R('static/js/odjeli.js'), J = R('android/app/src/main/java/ba/spd/usf/forest/MainActivity.java');
   assert.ok(sj.includes('data-a="slika"') && sj.includes('USFSlika.podijeli({'));
