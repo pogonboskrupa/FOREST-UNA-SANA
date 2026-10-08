@@ -251,3 +251,4 @@
 - **Slika odjela bez teksta** (`opis.cista`, samo `_odjelSlika`): jednaki bijeli okvir 36 px sa svih strana, nema zaglavlja/mjerila/legende/podnožja ni natpisa
   susjeda; „S” ispod strelice izostavljen. Pita se `prompt` za natpis (`opis.natpisGore`, gore u sredini; prazno = bez ičega, Odustani = ne sprema).
   Glavna granica (`glavni`) ima bijeli rub ispod crte da se ne gubi na podlozi (važi i za sjekačke linije).
+- **Slika odjela — linije poligona**: SVE crno isprekidano (odjel 9 px `[30,14]` s bijelim rubom, susjedi 4 px `[16,9]`), bez crvene — kao štampana granica na podlozi.
