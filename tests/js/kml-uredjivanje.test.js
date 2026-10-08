@@ -66,7 +66,7 @@ t('uređivanje: poništi, dodir dodaje tačku, novi objekat u sloju', () => {
 
 t('ikona oka umjesto 🙈 (sjekačke, tragovi, tematska)', () => {
   assert.ok(!/'🙈 Sakrij'/.test(H.replace(/\/\/[^\n]*/g, '')), 'nema 🙈 dugmadi u index.html');
-  assert.ok(R('static/js/sjekacke.js').includes('_okoDugme(p.vidljiv !== false)'));
+  assert.ok(R('static/js/sjekacke.js').includes("ik('oko-off', 19) + ' Sakrij' : ik('oko', 19) + ' Prikaži'"), 'sjekačke: ikona iz ikone.js, ne emoji');
 });
 
 t('više odsjeka: izbor dodirom, cijeli odjel, spajanje → nagib / sjekačke / izvještaj', () => {

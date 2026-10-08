@@ -224,7 +224,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
 
     // zaglavlje
     g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#0f172a';
-    g.font = `800 44px ${FONT}`; g.fillText(opis.naslov || 'Karta', M, 78);
+    let nx = M;
+    if (opis.ikona && typeof USFIkPath === 'function' && USFIkPath(opis.ikona)) { // ikona iz ikone.js (Path2D), ne emoji
+      g.save(); g.translate(M, 36); g.scale(2.1, 2.1); g.lineWidth = 2; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#b45309';
+      g.stroke(new Path2D(USFIkPath(opis.ikona))); g.restore(); nx = M + 62;
+    }
+    g.font = `800 44px ${FONT}`; g.fillText(opis.naslov || 'Karta', nx, 78);
     g.font = `500 24px ${FONT}`; g.fillStyle = '#475569'; g.fillText(opis.podnaslov || '', M, 118);
     g.textAlign = 'right'; g.fillStyle = '#0f172a'; g.font = `800 40px ${FONT}`; g.fillText('R 1:' + fmt(R), W - M, 78);
     g.font = `500 20px ${FONT}`; g.fillStyle = '#475569'; g.fillText('razmjera pri štampi A4' + (polozeno ? ' (položeno)' : ''), W - M, 112);

@@ -738,6 +738,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
 (function () {
   if (typeof window === 'undefined' || typeof L === 'undefined' || typeof map === 'undefined') return;
   const KLJUC = 'usf_sjekacke';
+  const ik = (n, v) => (typeof USFIk === 'function' ? USFIk(n, v) : ''); // ikone.js; bez nje samo tekst
   const STATUS = { ne: { t: 'nije', c: '#f59e0b' }, rad: { t: 'u radu', c: '#38bdf8' }, gotovo: { t: 'ofarbano', c: '#22c55e' } };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (v, d = 0) => Number(v).toLocaleString('bs-BA', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -1218,13 +1219,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     if (lin.radnik) redovi.push(['Radnik', lin.radnik]);
     if (lin.geo) redovi.push(['Lomova', String(lin.geo.length - 2)]);
     if (lin.izo) redovi.push(['⚠ Po izohipsi', fmt(lin.izo.udio * 100) + ' % dužine (do ' + fmt(lin.izo.max) + '°)']);
-    L.popup({ maxWidth: 290, minWidth: 220, className: 'pk-pop' }).setLatLng(at).setContent(_popKartica({
-      ikona: '🪓', boja: s.c, naslov: oznaka(lin) + ' · ' + p.naziv, tip: 'Sjekačka linija', meta: 'razmak ' + p.razmak + ' m', redovi,
-      dugmad: [{ t: '🧭 Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: '✓ Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }, { t: '✏ Lomi liniju', on: `USFSjek.uredi('${p.id}','${lin.id}')` },
-        ...(slIma(lin.stvarna) || slIma(lin.trag) ? [{ t: '↺ Poništi GPS liniju', on: `USFSjek.ponistiStvarnu('${p.id}','${lin.id}')` }] : []),
-        ...(!lin.zona && lin.padina == null ? [{ t: '✂ Drugi pad iza ove linije', on: `USFSjek.zona('${p.id}','${lin.id}')` }] : []),
-        { t: '📤 Pošalji liniju', on: `USFSjek.posaljiLiniju('${p.id}','${lin.id}')` },
-        { t: '🗑 Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
+    L.popup({ maxWidth: 290, minWidth: 220, className: 'pk-pop sl-pop' }).setLatLng(at).setContent(_popKartica({
+      ikona: ik('pila', 22), boja: s.c, naslov: oznaka(lin) + ' · ' + p.naziv, tip: 'Sjekačka linija', meta: 'razmak ' + p.razmak + ' m', redovi,
+      dugmad: [{ t: ik('vodi') + ' Vodi me', on: `USFSjek.vodi('${p.id}','${lin.id}')`, v: 'glavno' }, { t: ik('ok') + ' Ofarbano', on: `USFSjek.status('${p.id}','${lin.id}','gotovo')` }, { t: ik('lom') + ' Lomi liniju', on: `USFSjek.uredi('${p.id}','${lin.id}')` },
+        ...(slIma(lin.stvarna) || slIma(lin.trag) ? [{ t: ik('ponisti') + ' Poništi GPS liniju', on: `USFSjek.ponistiStvarnu('${p.id}','${lin.id}')` }] : []),
+        ...(!lin.zona && lin.padina == null ? [{ t: ik('razdvoji') + ' Drugi pad iza ove linije', on: `USFSjek.zona('${p.id}','${lin.id}')` }] : []),
+        { t: ik('salji') + ' Pošalji liniju', on: `USFSjek.posaljiLiniju('${p.id}','${lin.id}')` },
+        { t: ik('smece') + ' Obriši', on: `USFSjek.obrisiLiniju('${p.id}','${lin.id}')`, v: 'opasno' }]
     })).openOn(map);
     prikaziPartiju(p, lin);
   }
@@ -1301,22 +1302,22 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     const el = document.getElementById('sl-vodic'); if (!el || !vodic) return;
     const p = nadji(vodic.pid), lin = p && p.linije.find(x => x.id === vodic.lid); if (!lin) { vodicKraj(); return; }
     const gps = typeof lastP !== 'undefined' && lastP && Number.isFinite(lastP.la) ? lastP : null;
-    let glavno = '📍 Čekam GPS…', sporedno = '', boja = '#64748b';
+    let glavno = ik('lokacija') + ' Čekam GPS…', sporedno = '', boja = '#64748b';
     if (gps) {
       // snimanje stvarne linije; u APK-u isključivo iz native bafera (inače dupli fiksovi)
       if (!vodic.nat && vodicDodaj(gps.la, gps.lo, gps.ac || 99, Date.now())) crtaj();
       if (vodic.prati) map.panTo([gps.la, gps.lo], { animate: true });
       const v = slVodic(lin, gps.la, gps.lo), b = Math.abs(v.bocno), tol = Math.max(3, Math.min(8, (gps.ac || 5) * 0.8));
       boja = b <= tol ? '#22c55e' : b <= 15 ? '#f59e0b' : '#ef4444';
-      glavno = b <= tol ? '✓ Na liniji' : (v.bocno > 0 ? '← ' : '') + fmt(b, b < 10 ? 1 : 0) + ' m do linije' + (v.bocno < 0 ? ' →' : '');
+      glavno = b <= tol ? ik('ok') + ' Na liniji' : (v.bocno > 0 ? '← ' : '') + fmt(b, b < 10 ? 1 : 0) + ' m do linije' + (v.bocno < 0 ? ' →' : '');
       sporedno = v.duz < -5 ? fmt(-v.duz) + ' m ispod dna linije' : v.duz > v.len + 5 ? fmt(v.duz - v.len) + ' m iznad vrha — linija završena' : fmt(Math.max(0, v.duz)) + ' / ' + fmt(v.len) + ' m uzbrdo';
       sporedno += ' · GPS ±' + fmt(gps.ac || 0) + ' m';
     }
     const snimljeno = vodic.trag.length >= 2 ? fmt(slDuzina(vodic.trag)) + ' m' : '—';
     el.style.setProperty('--c', boja);
-    el.innerHTML = `<div class="sl-v-nasl">🪓 ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>gledano uzbrdo</small></div><div class="sl-v-glavno">${glavno}</div><div class="sl-v-sporedno">${sporedno}</div>
+    el.innerHTML = `<div class="sl-v-nasl">${ik('pila')} ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>gledano uzbrdo</small></div><div class="sl-v-glavno">${glavno}</div><div class="sl-v-sporedno">${sporedno}</div>
       <div class="sl-v-snim">${vodic.snima ? '🔴' : '⏸'} Stvarna linija: <b>${snimljeno}</b></div>
-      <div class="sl-v-dug"><button onclick="USFSjek.zavrsiLiniju()">✓ Završi liniju</button><button onclick="USFSjek.snimanje()">${vodic.snima ? '⏸' : '▶'}</button><button onclick="USFSjek.prati()" class="${vodic.prati ? 'on' : ''}">🎯</button><button onclick="USFSjek.vodicKraj()">✕</button></div>`;
+      <div class="sl-v-dug"><button onclick="USFSjek.zavrsiLiniju()">${ik('ok')} Završi liniju</button><button onclick="USFSjek.snimanje()">${vodic.snima ? '⏸' : '▶'}</button><button onclick="USFSjek.prati()" class="${vodic.prati ? 'on' : ''}">${ik('lokacija')}</button><button onclick="USFSjek.vodicKraj()">✕</button></div>`;
   }
 
   // ── Crtanje poligona: dodirom na kartu ili obilaskom granice s GPS-om ──
@@ -1341,9 +1342,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     crt.pts.forEach((q, i) => L.circleMarker(q, { pane: 'sjekackePane', radius: i ? 5 : 7, color: '#0b1220', weight: 2, fillColor: '#fde68a', fillOpacity: 1, interactive: false }).addTo(crt.sloj));
     const el = document.getElementById('sl-crt'); if (!el) return;
     const ha = crt.pts.length > 2 && typeof npPovrsina === 'function' ? npPovrsina(crt.pts) / 1e4 : 0;
-    el.innerHTML = `<div class="sl-v-nasl">🪓 Granica sječe <small>dodirni kartu ili idi granicom i dodaj 📍</small></div>
+    el.innerHTML = `<div class="sl-v-nasl">${ik('pila')} Granica sječe <small>dodirni kartu ili idi granicom i dodaj tačku</small></div>
       <div class="sl-v-sporedno">${crt.pts.length} tačaka${ha ? ' · ' + fmt(ha, 2) + ' ha' : ''}</div>
-      <div class="sl-v-dug"><button onclick="USFSjek.crtGps()">📍 Moja pozicija</button><button onclick="USFSjek.crtVrati()">↶</button><button onclick="USFSjek.crtZavrsi()">✓ Gotovo</button><button onclick="USFSjek.crtOdustani()">✕</button></div>`;
+      <div class="sl-v-dug"><button onclick="USFSjek.crtGps()">${ik('lokacija')} Moja pozicija</button><button onclick="USFSjek.crtVrati()">${ik('ponisti')}</button><button onclick="USFSjek.crtZavrsi()">${ik('ok')} Gotovo</button><button onclick="USFSjek.crtOdustani()">✕</button></div>`;
   }
   function crtZavrsi() {
     if (!crt || crt.pts.length < 3) { showToast('Treba bar 3 tačke granice'); return; }
@@ -1386,9 +1387,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
         .on('click', () => { u.pts.splice(i, 0, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]); urediCrtaj(); });
     }
     const el = document.getElementById('sl-ured'), p = nadji(u.pid), lin = p && p.linije.find(x => x.id === u.lid);
-    if (el && lin) el.innerHTML = `<div class="sl-v-nasl">✏ ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>povuci tačku · ＋ dodaje lom · dodir na lom briše</small></div>
+    if (el && lin) el.innerHTML = `<div class="sl-v-nasl">${ik('lom')} ${esc(oznaka(lin))} · ${esc(p.naziv)} <small>povuci tačku · ＋ dodaje lom · dodir na lom briše</small></div>
       <div class="sl-v-sporedno">${u.pts.length - 2} lomova · ${fmt(slDuzina(u.pts))} m</div>
-      <div class="sl-v-dug"><button onclick="USFSjek.urediSacuvaj()">✓ Sačuvaj</button><button onclick="USFSjek.urediRavno()">↺ Poništi lom</button><button onclick="USFSjek.urediKraj()">✕</button></div>`;
+      <div class="sl-v-dug"><button onclick="USFSjek.urediSacuvaj()">${ik('ok')} Sačuvaj</button><button onclick="USFSjek.urediRavno()">${ik('ponisti')} Poništi lom</button><button onclick="USFSjek.urediKraj()">✕</button></div>`;
   }
   function urediKraj() {
     if (!ured) return;
@@ -1421,7 +1422,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     if (!l.length) { el.innerHTML = '<div class="treg-empty">Nema projekata. Izaberi poligon iznad.</div>'; return; }
     el.innerHTML = l.map(p => {
       const otv = p.id === aktivni, gotovo = p.linije.filter(x => x.status === 'gotovo').length;
-      const dos = p.dosljednost != null && p.dosljednost < 0.6 ? `<div class="sl-upoz">⚠ Pad u poligonu nije jednoličan (${Math.round(p.dosljednost * 100)} %) — greben ili vrtača; Alternativni prikaz ispod dijeli ga na padine.</div>` : '';
+      const dos = p.dosljednost != null && p.dosljednost < 0.6 ? `<div class="sl-upoz">${ik('upozorenje', 16)} Pad u poligonu nije jednoličan (${Math.round(p.dosljednost * 100)} %) — greben ili vrtača; Alternativni prikaz ispod dijeli ga na padine.</div>` : '';
       const tijelo = !otv ? '' : `
         <div class="sl-param">
           <label>Širina sjekačke linije <span><input type="number" min="10" max="200" step="5" value="${p.razmak}" data-a="razmak" data-id="${p.id}"> m</span><small>pojas jedne sjekačke partije ≈ 2 visine stabla</small></label>
@@ -1434,22 +1435,22 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
         ${altAktivan(p) ? '' : zonaHtml(p)}
         <div class="sl-sazetak">Partija linije: od ${p.brojanje === 'D' ? 'desne' : 'lijeve'} granice do L1, od L1 do L2 …${p.ostatakHa != null && p.linije.length ? ` · <b>zadnja partija</b> od L${zadnjiBr(p)} do granice <b>${fmt(p.ostatakHa, 2)} ha</b>` : ''}</div>
         <div class="sl-lin">${p.linije.map(lin => { const s = STATUS[lin.status] || STATUS.ne; return `<div class="sl-lin-red">
-          <b style="--c:${s.c}">${oznaka(lin)}${lin.izo ? ' <i title="ide po izohipsi">⚠</i>' : ''}</b><span>${lin.ha != null ? '<b class="sl-ha">' + fmt(lin.ha, 2) + ' ha</b> · ' : ''}${fmt(lin.duz)} m${slIma(lin.stvarna) ? ' <i class="sl-gps">GPS</i>' : ''}</span>
+          <b style="--c:${s.c}">${oznaka(lin)}${lin.izo ? ' <i title="ide po izohipsi">' + ik('upozorenje', 14) + '</i>' : ''}</b><span>${lin.ha != null ? '<b class="sl-ha">' + fmt(lin.ha, 2) + ' ha</b> · ' : ''}${fmt(lin.duz)} m${slIma(lin.stvarna) ? ' <i class="sl-gps">GPS</i>' : ''}</span>
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
           <button data-a="st" data-id="${p.id}" data-l="${lin.id}" style="--c:${s.c}">${s.t}</button>
-          <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">🧭</button></div>`; }).join('')}</div>
-        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">📤 Podijeli projekat</button><button data-a="slika" data-id="${p.id}">🖼 Slika (A4)</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${typeof _okoDugme === 'function' ? _okoDugme(p.vidljiv !== false) : (p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij')}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
-      return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>🪓 ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
+          <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">${ik('vodi')}</button></div>`; }).join('')}</div>
+        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">${ik('ponisti')} Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">${ik('salji')} Podijeli projekat</button><button data-a="slika" data-id="${p.id}">${ik('slika')} Slika (A4)</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${p.vidljiv !== false ? ik('oko-off', 19) + ' Sakrij' : ik('oko', 19) + ' Prikaži'}</button><button data-a="brisi" data-id="${p.id}" class="opasno">${ik('smece')}</button></div>`;
+      return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>${ik('pila', 19)} ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
     }).join('');
   }
   function zonaHtml(p) {
     if (!p.zona) return '';
     const raz = p.linije.find(x => x.id === p.zona.lid), n = p.linije.filter(x => x.zona).length;
     const smjer = zonaSmjer(p), dio = smjer ? 'prema liniji ' + smjer : 'dio ' + (p.zona.strana === 'L' ? 'lijevo' : 'desno') + ' od nje (gledano uzbrdo)';
-    const drugi = smjer === 'prije' ? '⇄ Prema liniji poslije' : smjer === 'poslije' ? '⇄ Prema liniji prije' : '↔ Druga strana';
-    return `<div class="sl-zona"><b>✂ Drugi pad iza ${raz ? oznaka(raz) : 'linije'}</b> — ${dio}, ${fmt(p.zona.ha || 0, 2)} ha, ${n} linija; linije završavaju na ${raz ? oznaka(raz) : 'liniji'}.
+    const drugi = ik('sirenje') + (smjer === 'prije' ? ' Prema liniji poslije' : smjer === 'poslije' ? ' Prema liniji prije' : ' Druga strana');
+    return `<div class="sl-zona"><b>${ik('razdvoji')} Drugi pad iza ${raz ? oznaka(raz) : 'linije'}</b> — ${dio}, ${fmt(p.zona.ha || 0, 2)} ha, ${n} linija; linije završavaju na ${raz ? oznaka(raz) : 'liniji'}.
       <div class="sl-zona-red"><span>Pad ${p.zona.az}°${p.zona.azDem != null ? ' (DEM ' + p.zona.azDem + '°, ' + strana(p.zona.azDem) + ')' : ''}</span><button data-a="zona-az-" data-id="${p.id}">−5°</button><button data-a="zona-az+" data-id="${p.id}">+5°</button></div>
-      <div class="sl-dug"><button data-a="zona-strana" data-id="${p.id}">${drugi}</button><button data-a="zona-ukloni" data-id="${p.id}" class="opasno">✕ Ukloni podjelu</button></div></div>`;
+      <div class="sl-dug"><button data-a="zona-strana" data-id="${p.id}">${drugi}</button><button data-a="zona-ukloni" data-id="${p.id}" class="opasno">${ik('smece')} Ukloni podjelu</button></div></div>`;
   }
   // Susjedne osnovne linije (bez zone/padina) linije po kojoj se dijeli — po broju.
   function zonaSusjedi(p, lin) {
@@ -1478,8 +1479,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     const los = p.linije.filter(x => x.izo);
     if (!los.length) return '';
     const mx = Math.max(...los.map(x => x.izo.max));
-    return `<div class="sl-upoz sl-izo">⚠ ${los.map(oznaka).join(', ')} ${los.length === 1 ? 'ide' : 'idu'} dijelom po izohipsi (do ${fmt(mx)}° od pada) — tu obaranje niz padinu nije sigurno.
-      ${p.plan !== 'teren' ? `<button data-a="plan-teren" data-id="${p.id}">🔀 Napravi lepezu po terenu</button>` : `<small>Lepeza već prati pad poprijeko. Ostalo je promjena pada duž linije (greben, vrtača): izlomi liniju (✏) ili na liniji na prelazu uključi „✂ Drugi pad iza ove linije“.</small>`}</div>`;
+    return `<div class="sl-upoz sl-izo">${ik('upozorenje', 16)} ${los.map(oznaka).join(', ')} ${los.length === 1 ? 'ide' : 'idu'} dijelom po izohipsi (do ${fmt(mx)}° od pada) — tu obaranje niz padinu nije sigurno.
+      ${p.plan !== 'teren' ? `<button data-a="plan-teren" data-id="${p.id}">${ik('lepeza')} Napravi lepezu po terenu</button>` : `<small>Lepeza već prati pad poprijeko. Ostalo je promjena pada duž linije (greben, vrtača): izlomi liniju (dugme „Lomi liniju“) ili na liniji na prelazu uključi „Drugi pad iza ove linije“.</small>`}</div>`;
   }
   function optHtml(o) {
     if (!o) return '';
@@ -1489,7 +1490,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     if (o.nacin) t.push(o.nacin === 'suzeno' ? 'zadnje ' + o.k + ' partije sužene na ' + fmt(o.w) + ' m (ostatak bi bio ' + fmt(o.ostatak) + ' m)' : 'ostatak ' + fmt(o.ostatak) + ' m raspoređen na zadnje ' + o.k + ' partije (' + fmt(o.w) + ' m)');
     if (o.obrisano) t.push(o.obrisano + ' linij' + (o.obrisano === 1 ? 'a ručno obrisana' : 'e ručno obrisane'));
     if (o.izbaceno) t.push(o.izbaceno + ' kratk' + (o.izbaceno === 1 ? 'i komad linije izbačen' : 'a komada linija izbačena') + ' (krivudav rub)');
-    return `<div class="sl-info">↔ ${t.join('; ')}.</div>`;
+    return `<div class="sl-info">${ik('sirenje', 16)} ${t.join('; ')}.</div>`;
   }
   const STRANE = ['S', 'SI', 'I', 'JI', 'J', 'JZ', 'Z', 'SZ'];
   const strana = az => STRANE[Math.round(az / 45) % 8]; // ekspozicija = smjer u kojem padina gleda (= smjer pada)
@@ -1500,15 +1501,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   const SPOJ_IZBOR = [[0, 'Ne'], [0.3, 'Blizu'], [0.5, 'Srednje'], [0.75, 'Šire']];
   function spojHtml(p) {
     const f = spojFak(p), n = p.linije.filter(x => x.komp).length;
-    return `<div class="sl-spoj"><small>🔗 Spoji bliske linije susjednih padina u jednu${n ? ` — <b>${n} spojeno</b>` : ''}:</small><div class="sl-prikaz">${SPOJ_IZBOR.map(([v, t]) => `<button data-a="spoj" data-v="${v}" data-id="${p.id}" class="${Math.abs(f - v) < 1e-6 ? 'on' : ''}">${t}${v ? '<small>≤ ' + Math.round(v * p.razmak) + ' m</small>' : ''}</button>`).join('')}</div></div>`;
+    return `<div class="sl-spoj"><small>${ik('spoj', 16)} Spoji bliske linije susjednih padina u jednu${n ? ` — <b>${n} spojeno</b>` : ''}:</small><div class="sl-prikaz">${SPOJ_IZBOR.map(([v, t]) => `<button data-a="spoj" data-v="${v}" data-id="${p.id}" class="${Math.abs(f - v) < 1e-6 ? 'on' : ''}">${t}${v ? '<small>≤ ' + Math.round(v * p.razmak) + ' m</small>' : ''}</button>`).join('')}</div></div>`;
   }
   function padineHtml(p) {
-    if (!p.padine) return `<div class="sl-padine"><button data-a="padine-citaj" data-id="${p.id}">⛰ Alternativni prikaz — pročitaj padine iz terena</button><small>Za odjel s dva brda ili padinama na više strana: svaka padina dobija svoj pad i svoje linije.</small></div>`;
+    if (!p.padine) return `<div class="sl-padine"><button data-a="padine-citaj" data-id="${p.id}">${ik('planina')} Alternativni prikaz — pročitaj padine iz terena</button><small>Za odjel s dva brda ili padinama na više strana: svaka padina dobija svoj pad i svoje linije.</small></div>`;
     const D = p.padine.dijelovi;
-    if (D.length < 2) return `<div class="sl-padine"><b>⛰ Teren: jedna padina</b> — ${strana(D[0].azDem)} (${D[0].azDem}°), nagib ~${D[0].nagibPct} %, ${D[0].hMin}–${D[0].hMax} m. Osnovni prikaz je dovoljan. <button data-a="padine-citaj" data-id="${p.id}">↻</button></div>`;
+    if (D.length < 2) return `<div class="sl-padine"><b>${ik('planina', 16)} Teren: jedna padina</b> — ${strana(D[0].azDem)} (${D[0].azDem}°), nagib ~${D[0].nagibPct} %, ${D[0].hMin}–${D[0].hMax} m. Osnovni prikaz je dovoljan. <button data-a="padine-citaj" data-id="${p.id}">↻</button></div>`;
     const alt = altAktivan(p), gr = p.padine.granice.reduce((a, g) => { a[g.tip] = (a[g.tip] || 0) + 1; return a; }, {});
     const grT = Object.entries(gr).map(([t, n]) => (n > 1 ? n + '× ' : '') + t).join(', ');
-    return `<div class="sl-padine"><div class="sl-prikaz"><button data-a="prikaz" data-v="osnovni" data-id="${p.id}" class="${alt ? '' : 'on'}">Osnovni</button><button data-a="prikaz" data-v="padine" data-id="${p.id}" class="${alt ? 'on' : ''}">⛰ Alternativni · ${D.length} padine</button></div>
+    return `<div class="sl-padine"><div class="sl-prikaz"><button data-a="prikaz" data-v="osnovni" data-id="${p.id}" class="${alt ? '' : 'on'}">Osnovni</button><button data-a="prikaz" data-v="padine" data-id="${p.id}" class="${alt ? 'on' : ''}">${ik('planina')} Alternativni · ${D.length} padine</button></div>
       <small>Granice padina iz DEM-a: ${grT || '—'}. Linije svake padine idu uz njen pad i završavaju na granici padine.</small>
       ${alt ? spojHtml(p) + D.map((d, i) => `<div class="sl-zona-red"><span><b>${imeP(d, i)}</b> ${d.az}°${d.az !== d.azDem ? ' (DEM ' + d.azDem + '°)' : ''} · ${d.nagibPct} % · ${d.hMin}–${d.hMax} m · ${fmt(d.ha, 2)} ha · ${p.linije.filter(x => x.padina === i || (x.komp && x.komp.some(c => c.padina === i))).length} lin.${d.lepeza && p.plan !== 'teren' ? ' · lepeza (krive izohipse)' : ''}</span><button data-a="pad-az-" data-d="${i}" data-id="${p.id}">−5°</button><button data-a="pad-az+" data-d="${i}" data-id="${p.id}">+5°</button></div>`).join('') + `<div class="sl-dug"><button data-a="padine-citaj" data-id="${p.id}">↻ Pročitaj teren ponovo</button></div>` : ''}</div>`;
   }
@@ -1581,7 +1582,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     const leg = [{ boja: '#14532d', t: 'granica odjela', tip: 'linija' }].concat(Object.values(STATUS).filter(s => p.linije.some(l => (STATUS[l.status] || STATUS.ne) === s)).map(s => ({ boja: s.c, t: 'sjekačka linija — ' + s.t, tip: 'isprek' })));
     if (p.plohe && (p.izoPlohe || []).length) leg.push({ boja: 'rgba(239,68,68,.35)', t: 'linije ne idu uz stranu', tip: 'ploha' });
     if (otvorene.length) leg.push({ boja: '#57534e', t: 'granica padina (greben/jarak)', tip: 'isprek' });
-    USFSlika.podijeli({ naslov: '🪓 ' + p.naziv, ime: 'sjekacke_' + p.naziv, podnaslov: 'Sjekačke linije · razmak ' + p.razmak + ' m · pad ' + p.az + '°' + (altAktivan(p) ? ' · padine' : ''), poligoni, linije, legenda: leg,
+    USFSlika.podijeli({ ikona: 'pila', naslov: p.naziv, ime: 'sjekacke_' + p.naziv, podnaslov: 'Sjekačke linije · razmak ' + p.razmak + ' m · pad ' + p.az + '°' + (altAktivan(p) ? ' · padine' : ''), poligoni, linije, legenda: leg,
       info: [`Površina ${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ofarbano ${gotove}/${p.linije.length} · partije uz linije ${fmt(ukupno, 2)} ha${p.ostatakHa != null ? ' · zadnja partija ' + fmt(p.ostatakHa, 2) + ' ha' : ''}`,
         'Oznaka na dnu linije (L1…), ▲ na vrhu; brojanje ' + (p.brojanje === 'D' ? 's desna nalijevo' : 's lijeva nadesno') + ' gledano uzbrdo.'] });
   }
@@ -1711,7 +1712,7 @@ ${folderi}
   // Android je ubio app usred vodiča → nastavi; tačke iz native bafera nakon zadnjeg snimka idu u liniju
   try {
     const v = JSON.parse(localStorage.getItem(KLJUC_VODIC) || 'null'), p = v && nadji(v.pid), lin = p && p.linije.find(x => x.id === v.lid);
-    if (lin && lin.status !== 'gotovo') { vodi(v.pid, v.lid, v.t); if (typeof showToast === 'function') showToast('🪓 Nastavljen vodič ' + oznaka(lin)); }
+    if (lin && lin.status !== 'gotovo') { vodi(v.pid, v.lid, v.t); if (typeof showToast === 'function') showToast('Nastavljen vodič ' + oznaka(lin)); }
     else localStorage.removeItem(KLJUC_VODIC);
   } catch (e) {}
 })();

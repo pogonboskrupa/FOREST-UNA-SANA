@@ -1238,6 +1238,12 @@ body.sl-uredi #sl-ured { display: block; }
 .sl-prikaz { display: flex; gap: 6px; }
 .sl-prikaz button { flex: 1; min-height: 38px; border-radius: 9px; border: 1px solid var(--pn-line); background: rgba(255,255,255,.04); color: var(--pn-txt); font-weight: 700; }
 .sl-prikaz button.on { background: #fde68a; color: #1c1917; border-color: #fde68a; }
+.ik { flex: none; vertical-align: -3px; }
+.up-hdr h2 .ik { vertical-align: -4px; color: #f59e0b; }
+.sl-pop .pk-ico .ik { width: 22px; height: 22px; }
+.sl-pop .pk-akc button, .sl-dug button, .sl-v-dug button, .sl-padine button, .sl-upoz button, .sl-prikaz button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.sl-v-nasl .ik, .sl-proj-zag .ik { vertical-align: -4px; color: #f59e0b; }
+.sl-spoj .sl-prikaz button { display: block; }
 .sl-spoj { margin: 8px 0 2px; }
 .sl-spoj small { display: block; margin-bottom: 4px; }
 .sl-spoj .sl-prikaz button { min-height: 40px; font-size: 13px; padding: 2px 4px; line-height: 1.15; }
@@ -2048,11 +2054,11 @@ body.sl-uredi #sl-ured { display: block; }
 
 <!-- Sjekačke linije -->
 <div id="sjekacke-panel" class="usf-panel">
-  <div class="up-hdr"><h2>🪓 Sjekačke linije</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
+  <div class="up-hdr"><h2><span data-ik="pila" data-ikv="22"></span> Sjekačke linije</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body">
     <section class="ng-card">
       <h3>Novi projekat</h3>
-      <div class="sl-dug"><button class="zp-glavno" onclick="USFSjek.crtPocni()">✏ Nacrtaj granicu odjela</button></div>
+      <div class="sl-dug"><button class="zp-glavno" onclick="USFSjek.crtPocni()"><span data-ik="poligon" data-ikv="19"></span> Nacrtaj granicu odjela</button></div>
       <select id="sl-izvor" class="sl-izvor"></select>
       <div class="sl-dug"><button onclick="USFSjek.izIzvora()">Napravi linije iz izabranog</button></div>
       <p class="uk-izvor">Ili iz sačuvane površine (📏 Mjerenja) ili učitanog KML poligona.</p>
@@ -10562,6 +10568,7 @@ window.addEventListener('load', () => {
 <script src="static/js/usk-slojevi.js"></script>
 <script src="static/js/tlo-potkornjak.js"></script>
 <script src="static/js/vegetacija.js"></script>
+<script src="static/js/ikone.js"></script>
 <script src="static/js/sjekacke.js"></script>
 <script src="static/js/otvorenost.js"></script>
 <script src="static/js/slika-karte.js"></script>

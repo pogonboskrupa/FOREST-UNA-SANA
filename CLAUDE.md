@@ -166,6 +166,12 @@
   maxNativeZoom, ≤ 160 pločica); `l._tileZoom = z` privremeno jer `TileLayer.getTileUrl` čita zoom odatle; obični
   `L.tileLayer` dobija `crossOrigin`. Zaseban canvas: zaprljan (server bez CORS-a) ⇒ odbacuje se, slika s reljefom
   (DEM) kao prije. Ime podloge (offline karta / attribution) u podnožju.
+- **Ikone u Sjekačkim linijama** (`static/js/ikone.js`, `USFIk(ime, vel)`): vlastiti set linijskih SVG ikona (24×24,
+  `currentColor`) umjesto emojija — Unicode nema motornu pilu, sjekira 🪓 je zamijenjena ikonom `pila`; Sakrij/Prikaži
+  = `oko-off`/`oko` (maska prekida konturu oka). SAMO sekcija Sjekačke linije (panel, kartica linije `sl-pop`, vodič,
+  crtanje granice, slika A4 preko `USFIkPath` + Path2D u naslovu); `_okoDugme`/`_okoIkona` i emoji u kartici poligona,
+  Terenskim tačkama i obavijestima su namjerno netaknuti. Statični HTML: `<span data-ik="pila" data-ikv="22">`
+  (hidrira se pri učitavanju). Toast poruke i natpisi na karti ostaju tekst. Test `tests/js/sjekacke-ikone.test.js`.
 - **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
   `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`. Sve
   NEPROVIDNO do ruba (providni uglovi ⇒ Xiaomi/HyperOS crta bijeli okvir i smanjuje ikonu);
