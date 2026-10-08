@@ -244,3 +244,7 @@
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.
 - **Sačuvaj sliku (A4)** (Sjekačke linije, dugme `slika-sac`): `USFSlika.sacuvaj` — APK `AndroidDownload.save` (Downloads, MediaStore),
   desktop `<a download>`; „Slika (A4)” i dalje otvara share sheet.
+- **Kartica poligona i providni prikaz**: popup KML objekta je širi (≤ 440 px, max 72vh, `touch-action: pan-y`); poligon NEMA „Obriši”
+  (brisanje samo linija/tačaka; projekat Sjekačkih linija ima svoj „Izbriši”). „🖼 Sačuvaj sliku” → `_odjelSlika` → `USFSlika.sacuvaj`;
+  susjedi na slici = svi poligoni slojeva koji su na karti (`x.sloj._map`). Stil sloja/objekta „Providno (samo dodir)” = `stil.providno`
+  (`_kmlLeafletStil`: opacity 0, fillOpacity 0.001 — geometrija ostaje za klik; objekt: ExtendedData `usf_providno`). Test `tests/js/kml-providno.test.js`.

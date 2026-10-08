@@ -295,12 +295,13 @@ function _odjelSlika(stamp, gj, ime) {
   const prsteni = gg => { const geo = gg.geometry || gg; return (geo.type === 'MultiPolygon' ? geo.coordinates : [geo.coordinates]).map(p => p[0].map(([lo, la]) => [la, lo])); };
   const glavni = prsteni(g).map((ring, i) => ({ ring, boja: '#b91c1c', sirina: 5, ispuna: 'rgba(239,68,68,.10)', glavni: true, natpis: i ? '' : naziv }));
   const b = turf.bbox(g), m = Math.max(b[2] - b[0], b[3] - b[1]) * 0.6, susj = [];
-  if (o) _odjeliSvi().filter(x => x !== o && x.izvor === o.izvor && x.bbox[0] < b[2] + m && x.bbox[2] > b[0] - m && x.bbox[1] < b[3] + m && x.bbox[3] > b[1] - m).slice(0, 400)
+  // granice iz karte: svi poligoni slojeva koji su trenutno na karti (i providni), ne samo isti sloj
+  if (o) _odjeliSvi().filter(x => x !== o && x.sloj._map && x.bbox[0] < b[2] + m && x.bbox[2] > b[0] - m && x.bbox[1] < b[3] + m && x.bbox[3] > b[1] - m).slice(0, 400)
     .forEach(x => prsteni(x.gj).forEach((ring, i) => susj.push({ ring, boja: '#475569', sirina: 1.6, natpis: i ? '' : x.ime })));
   const ha = _r1(turf.area(g) / 1e4);
   let obim = null; try { obim = Math.round(turf.length(turf.polygonToLine(g), { units: 'kilometers' }) * 100) / 100; } catch (e) {}
-  USFSlika.podijeli({ naslov: '📊 ' + (/^odjel/i.test(naziv) ? naziv : 'Odjel ' + naziv), ime: 'odjel_' + naziv, podnaslov: o ? o.izvor : '', poligoni: susj.concat(glavni),
-    legenda: [{ boja: '#b91c1c', t: 'odjel', tip: 'linija' }].concat(susj.length ? [{ boja: '#475569', t: 'susjedni odjeli/odsjeci', tip: 'linija' }] : []),
+  USFSlika.sacuvaj({ naslov: '📊 ' + (/^odjel/i.test(naziv) ? naziv : 'Odjel ' + naziv), ime: 'odjel_' + naziv, podnaslov: o ? o.izvor : '', poligoni: susj.concat(glavni),
+    legenda: [{ boja: '#b91c1c', t: 'odjel', tip: 'linija' }].concat(susj.length ? [{ boja: '#475569', t: 'granice iz karte (susjedni odjeli/odsjeci)', tip: 'linija' }] : []),
     info: ['Površina ' + String(ha).replace('.', ',') + ' ha' + (obim != null ? ' · obim ' + String(obim).replace('.', ',') + ' km' : '')] });
 }
 async function _odjelIzvjestaj(stamp) {
@@ -367,7 +368,7 @@ function _odjelRender() {
     : red('Alarma (30 dana)', al.length) + red('Zadnji', String(al[0].dt).slice(0, 10));
   el.innerHTML = `<div class="om-head"><div><div class="om-ime">📊 ${_escHtml(r.ime)}</div><div class="om-pod">${_escHtml(r.izvor)}${r.centar ? ' · centar ' + r.centar : ''}</div></div><button class="om-x" onclick="_odjelZatvori()">✕</button></div>
     ${kpis}${kartica('⛰ Teren', teren)}${kartica('🪵 Poremećaji šume (Landsat)', por)}${kartica('🔥 Požari — zadnjih 12 mjeseci', poz)}${kartica('🟨 Sušenje', sus)}${kartica('🔔 Nove promjene (GFW alarmi)', alarmi)}
-    <div class="om-akcije"><button class="om-btn" onclick="_odjelSlikaAkt()">🖼 Slika (A4)</button><button class="om-btn ${_odjelPracen(_odjelAkt) ? 'on' : ''}" onclick="_odjelPratiToggle()">${_odjelPracen(_odjelAkt) ? '🔔 Praćen — isključi' : '🔔 Prati odjel'}</button></div>
+    <div class="om-akcije"><button class="om-btn" onclick="_odjelSlikaAkt()">🖼 Sačuvaj sliku</button><button class="om-btn ${_odjelPracen(_odjelAkt) ? 'on' : ''}" onclick="_odjelPratiToggle()">${_odjelPracen(_odjelAkt) ? '🔔 Praćen — isključi' : '🔔 Prati odjel'}</button></div>
     ${_izvozDugmad('odjel', ['kml', 'csv'])}`;
 }
 function _odjelSlikaAkt() { const o = _odjelAkt; if (o) _odjelSlika(o.sloj ? L.stamp(o.sloj) : null, o.gj, o.ime); }

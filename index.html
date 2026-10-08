@@ -1083,7 +1083,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #poz-sim-box #poz-sim-play { background: linear-gradient(135deg, #c2410c, #9a3412) !important; border-color: #fb923c !important; color: #fff !important; }
 
 /* ═══ Kartica u popupu na karti (tragovi, KML/SHP, mjerenja, nagibi) ═══ */
-.pk-pop .leaflet-popup-content { margin: 12px 12px 12px; width: auto !important; min-width: 220px; max-height: min(58vh, 540px); overflow-y: auto; overscroll-behavior: contain; }
+.pk-pop .leaflet-popup-content { margin: 12px 12px 12px; width: auto !important; min-width: 220px; max-height: min(72vh, 640px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !important; }
 .pk-pop .leaflet-popup-content-wrapper { padding: 0; border-radius: 16px; }
 .pk-pop a.leaflet-popup-close-button { top: 8px !important; right: 8px !important; width: 30px !important; height: 30px !important; border-radius: 10px; background: var(--pn-bg-3); border: 1px solid var(--pn-line); color: #cfe3d8 !important; font: 18px/28px Arial, sans-serif !important; text-align: center; }
@@ -4584,6 +4584,8 @@ function _kmlLeafletStil(tip, col, stil, op) {
   if (tip === 'Point') return { radius: 4 + (stil.w || 2), color: col, fillColor: col, opacity: op, fillOpacity: op };
   const o = { color: col, weight: stil.w || 2, opacity: op, dashArray: _KML_CRTA[stil.crta || (tip === 'LineString' ? 'isprek' : 'puna')] };
   if (tip === 'Polygon') { o.fillColor = col; o.fillOpacity = stil.ispuna ? stil.ispuna / 100 : 0.001; }
+  // providno: ništa se ne crta (opacity 0), ali geometrija ostaje za dodir; fill 0.001 zbog hit-testa unutar poligona
+  if (stil.providno) { o.opacity = 0; if (tip === 'Polygon') o.fillOpacity = 0.001; }
   return o;
 }
 // Vlastiti stil objekta (upisan iz app-a): samo uz ExtendedData usf_stil=1, da tuđi KML
@@ -4594,7 +4596,7 @@ function _kmlStilPlacemarka(pm, ext) {
   const dio = (ime, pod) => { const e = [...st.children].find(c => c.localName === ime); return e ? [...e.children].find(c => c.localName === pod)?.textContent : null; };
   const boja = _kmlBojaIzKml(dio('LineStyle', 'color')) || _kmlBojaIzKml(dio('IconStyle', 'color')), poly = _kmlBojaIzKml(dio('PolyStyle', 'color'));
   const fill = dio('PolyStyle', 'fill'), w = parseFloat(dio('LineStyle', 'width'));
-  return { col: boja ? boja.hex : null, w: Number.isFinite(w) ? w : null, crta: ext.usf_crta || null, ispuna: fill === '0' || !poly ? 0 : Math.round(poly.a * 100) };
+  return { col: boja ? boja.hex : null, w: Number.isFinite(w) ? w : null, crta: ext.usf_crta || null, providno: ext.usf_providno === '1', ispuna: fill === '0' || !poly ? 0 : Math.round(poly.a * 100) };
 }
 function pkml(doc, col, op, stilSloja) {
   op = op ?? 0.9;
@@ -4683,13 +4685,15 @@ function _kmlPopupHtml(layer) {
   if (layer._kmlIsPolygon && window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('k:${id}')` });
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
   if (layer._kmlIsPolygon) dugmad.push({ t: '☑ Više odsjeka', on: `_odsPocni(${id})` });
-  if (layer._kmlIsPolygon && typeof _odjelSlika === 'function') dugmad.push({ t: '🖼 Slika (A4)', on: `_odjelSlika(${id})` });
+  if (layer._kmlIsPolygon && typeof _odjelSlika === 'function') dugmad.push({ t: '🖼 Sačuvaj sliku', on: `_odjelSlika(${id})` });
   if (layer._kmlIsPoint) { const ll = layer.getLatLng(); dugmad.push({ t: '🎯 Centriraj', on: `map.setView([${ll.lat},${ll.lng}],Math.max(map.getZoom(),16))` }); }
-  if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi', on: `_kmlUrediMeni(${id})` }, { t: '🗑 Obriši', on: `_kmlObrisiObjekat(${id})`, v: 'opasno' });
+  if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi', on: `_kmlUrediMeni(${id})` });
+  // poligon (odjel/odsjek) se ne briše iz kartice — brisanje ostaje za linije/tačke (i projekat Sjekačkih linija)
+  if (sloj && !sloj._ugradjeno && !layer._kmlIsPolygon) dugmad.push({ t: '🗑 Obriši', on: `_kmlObrisiObjekat(${id})`, v: 'opasno' });
   return _popKartica({ ikona, boja: layer.options && layer.options.color, naslov: layer._kmlName, tip, meta: sloj ? sloj.name : '', redovi, opis: _kmlOpisHtml(layer._kmlDesc, sloj && sloj.name), dugmad });
 }
 function _kmlOpenPopup(layer, latlng) {
-  const pop = L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng(layer._kmlIsPoint ? layer.getLatLng() : latlng).setContent(_kmlPopupHtml(layer)).openOn(map);
+  const pop = L.popup({ maxWidth: Math.min(440, window.innerWidth - 40), minWidth: Math.min(300, window.innerWidth - 40), className: 'pk-pop' }).setLatLng(layer._kmlIsPoint ? layer.getLatLng() : latlng).setContent(_kmlPopupHtml(layer)).openOn(map);
   _popPopuniSlike(pop.getElement());
 }
 // Zašto proximity fallback: karta radi u canvas modu (preferCanvas:true).
@@ -5150,6 +5154,7 @@ function _kmlStilOtvori({ naslov, col, stil, imaPol, imaLin = true, vratiStil = 
       <div class="ks-red ks-boje">${_KML_PALETA.map(c => `<button data-g="col" data-v="${c}" style="--c:${c}" class="ks-b${c === col ? ' on' : ''}" aria-label="Boja ${c}"></button>`).join('')}<label class="ks-b ks-druga" title="Druga boja"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(col) ? col : '#ef4444'}">＋</label></div>
       ${imaLin ? `<div class="ks-nasl">Debljina linije <span id="ks-w">${stil.w}</span></div><input type="range" min="1" max="8" step="1" value="${stil.w}" id="ks-wr">
       <div class="ks-nasl">Linija</div><div class="ks-red">${dug('crta', 'puna', '━ Puna', stil.crta === 'puna')}${dug('crta', 'isprek', '╍ Isprekidana', stil.crta === 'isprek')}${dug('crta', 'tack', '┈ Tačkasta', stil.crta === 'tack')}</div>` : ''}
+      ${imaPol || imaLin ? `<div class="ks-nasl">Prikaz</div><div class="ks-red">${dug('prov', 0, 'Vidljivo', !stil.providno)}${dug('prov', 1, 'Providno (samo dodir)', !!stil.providno)}</div>` : ''}
       ${imaPol ? `<div class="ks-nasl">Ispuna poligona</div><div class="ks-red">${[0, 15, 35, 60].map(v => dug('isp', v, v ? v + ' %' : 'Bez', +stil.ispuna === v)).join('')}</div>` : ''}
       <div class="ks-akc">${vratiStil ? '<button data-x="vrati">↺ Stil sloja</button>' : ''}<button data-x="1">Odustani</button><button data-x="ok" class="glavno">✓ Primijeni</button></div></div>`;
     document.body.appendChild(el);
@@ -5160,7 +5165,7 @@ function _kmlStilOtvori({ naslov, col, stil, imaPol, imaLin = true, vratiStil = 
       if (b.dataset.x === 'vrati') return kraj('vrati');
       if (b.dataset.x === 'ok') return kraj({ col, stil });
       const g = b.dataset.g, v = b.dataset.v;
-      if (g === 'col') col = v; else if (g === 'crta') stil.crta = v; else if (g === 'isp') stil.ispuna = +v;
+      if (g === 'col') col = v; else if (g === 'crta') stil.crta = v; else if (g === 'isp') stil.ispuna = +v; else if (g === 'prov') stil.providno = v === '1';
       el.querySelectorAll(`[data-g="${g}"]`).forEach(x => x.classList.toggle('on', x === b));
     });
     el.querySelector('input[type=color]').addEventListener('input', e => { col = e.target.value; el.querySelectorAll('[data-g="col"]').forEach(x => x.classList.remove('on')); });
@@ -5289,6 +5294,7 @@ function _kmlUpisiStil(doc, pm, tip, col, stil) {
   [...pm.children].filter(c => c.localName === 'Style').forEach(c => c.remove());
   _kmlPostaviExt(doc, pm, 'usf_stil', col ? '1' : null);
   _kmlPostaviExt(doc, pm, 'usf_crta', col && stil.crta ? stil.crta : null);
+  _kmlPostaviExt(doc, pm, 'usf_providno', col && stil.providno ? '1' : null);
   if (!col) return;
   const ns = pm.namespaceURI, el = (tag, ...djeca) => { const e = doc.createElementNS(ns, tag); djeca.forEach(d => typeof d === 'string' ? e.textContent = d : e.appendChild(d)); return e; };
   const st = el('Style', el(tip === 'Point' ? 'IconStyle' : 'LineStyle', el('color', _kmlBojaUKml(col)), ...(tip === 'Point' ? [] : [el('width', String(stil.w || 2))])));
@@ -5302,7 +5308,7 @@ async function _kmlUrediStil(id) {
   const tip = _kmlTipSloja(r.l), o = r.l.options || {};
   const crta = Object.keys(_KML_CRTA).find(c => _KML_CRTA[c] === (o.dashArray || null)) || null;
   const v = await _kmlStilOtvori({ naslov: '🎨 ' + (r.l._kmlName || 'Objekat'), col: o.color || r.k.col, imaPol: tip === 'Polygon', imaLin: tip !== 'Point', vratiStil: !!r.l._kmlVlastiti,
-    stil: { w: o.weight || 2, crta, ispuna: tip === 'Polygon' && o.fillOpacity > 0.01 ? Math.round(o.fillOpacity * 100) : 0 } });
+    stil: { w: o.weight || 2, crta, providno: o.opacity === 0, ispuna: tip === 'Polygon' && o.fillOpacity > 0.01 ? Math.round(o.fillOpacity * 100) : 0 } });
   if (!v) return;
   if (_kmlPrimijeni(r.k, r.l, (doc, pm) => v === 'vrati' ? _kmlUpisiStil(doc, pm, tip, null) : _kmlUpisiStil(doc, pm, tip, v.col, v.stil))) showToast(v === 'vrati' ? '↺ Stil sloja vraćen' : '🎨 Stil sačuvan');
 }
