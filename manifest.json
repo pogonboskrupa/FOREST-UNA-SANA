@@ -2,7 +2,7 @@
   "name": "Grmeč Navigator",
   "short_name": "Grmeč Navigator",
   "description": "Požari i projektovanje šumskog puta — offline GIS alat za šumare",
-  "id": "/",
+  "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

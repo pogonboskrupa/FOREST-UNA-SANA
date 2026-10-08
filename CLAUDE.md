@@ -172,6 +172,17 @@
   crtanje granice, slika A4 preko `USFIkPath` + Path2D u naslovu); `_okoDugme`/`_okoIkona` i emoji u kartici poligona,
   Terenskim tačkama i obavijestima su namjerno netaknuti. Statični HTML: `<span data-ik="pila" data-ikv="22">`
   (hidrira se pri učitavanju). Toast poruke i natpisi na karti ostaju tekst. Test `tests/js/sjekacke-ikone.test.js`.
+- **Desktop (PWA, GitHub Pages)**: `.github/workflows/pages.yml` na push u `codex-forest` pokreće `android/copy-assets.sh`
+  (ISTI paket kao u APK-u, pada ako fali offline fajl) i objavljuje `android/app/src/main/assets` na Pages
+  (`https://pogonboskrupa.github.io/FOREST-UNA-SANA/`; jednokratno Settings → Pages → Source = GitHub Actions). APK i njegov
+  updater (`build-apk.yml`) su netaknuti. `manifest.json` `id: "./"` (na podputanji `/` bi bio korijen github.io). Instalacija:
+  Chrome/Edge ikona „Instaliraj” u adresnoj traci (Safari: Dodaj u Dock); ažurira se samim otvaranjem (`APP_VERSION` u sw.js).
+  Veliki ekran: tijelo panela je centrirano od ranije (`.usf-panel .up-body`, 680 px, @media 700px), zaglavlje panela i
+  `#main-tabs` se poravnavaju s njim — blok MORA biti poslije osnovnih `.up-hdr`/`#main-tabs` pravila (ista specifičnost).
+  Bez Android mosta Drive „⬇ Preuzmi” (`_dkPreuzmi`/`_dkmlPreuzmi`) otvara direktan link u novom tabu (`_dkRacunar`, navigacija, ne
+  fetch — Drive nema CORS); fajl se dodaje uobičajenim uvozom. Offline karte od ~1,5 GB ne staju u sql.js (RAM) — na računaru online
+  podloge. Podaci (localStorage/IndexedDB) NISU zajednički telefonu i računaru: Postavke → Rezervna kopija / Vrati iz kopije.
+  Test `tests/js/desktop.test.js`.
 - **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
   `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`. Sve
   NEPROVIDNO do ruba (providni uglovi ⇒ Xiaomi/HyperOS crta bijeli okvir i smanjuje ikonu);

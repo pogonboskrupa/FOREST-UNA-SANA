@@ -501,6 +501,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 .usf-panel .up-body { flex:1; overflow-y:auto; padding:14px 14px calc(86px + env(safe-area-inset-bottom, 0px)); }
 
+/* === Veliki ekran (računar / PWA): tijelo panela je već centrirano (@media 700px dolje, 680 px); ovdje se
+   zaglavlje panela i donja navigacija poravnavaju s njim, pozadina ostaje preko cijelog prozora === */
+@media (min-width: 700px) {
+  .usf-panel .up-hdr { padding-left: max(16px, calc((100% - 680px) / 2)); padding-right: max(16px, calc((100% - 680px) / 2)); }
+  #main-tabs { padding-left: max(8px, calc((100% - 680px) / 2)); padding-right: max(8px, calc((100% - 680px) / 2)); }
+}
+
 #profil-modal, #tem-table-modal, #poz-sim-modal {
   display:none; position:fixed;
   inset:0 0 calc(74px + env(safe-area-inset-bottom,0px)) 0;
@@ -6868,12 +6875,20 @@ async function _dkOtkljucaj() {
   showToast('🔓 Karte otključane');
   _pinPostavkeUi(); _driveKarteRender();
 }
+// Računar / PWA (nema Android mosta): direktan link za preuzimanje u novom tabu — navigacija, ne fetch,
+// pa nema CORS-a; fajl ide u Downloads, a korisnik ga doda kroz uobičajeni uvoz.
+function _dkRacunar(fileId, poruka) {
+  const a = document.createElement('a');
+  a.href = USFDriveKarte.urlPreuzimanja(fileId); a.target = '_blank'; a.rel = 'noopener noreferrer';
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast('⬇ Preuzimanje s Drive-a pokrenuto. ' + poruka);
+}
 async function _dkPreuzmi(id) {
   const k = (_dkLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
   if (!kljuc) { _dkOtkljucaj(); return; }
   const o = await USFDriveKarte.desifruj(kljuc, k.enc);
   if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
-  if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmi) { showToast('⬇ Preuzimanje karata radi u aplikaciji (APK)'); return; }
+  if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmi) { _dkRacunar(o.fileId, 'U Downloads je fajl karte — dodaj ga kroz Karte → Offline karte (velike karte ne staju u preglednik, koristi online podloge).'); return; }
   _dkNapredak[id] = { p: 0 }; _driveKarteRender();
   try { AndroidKarta.preuzmi(id, USFDriveKarte.urlPreuzimanja(o.fileId), k.naziv); }
   catch(e) { delete _dkNapredak[id]; _driveKarteRender(); showToast('⚠ Preuzimanje nije pokrenuto: ' + e.message); }
@@ -6922,7 +6937,7 @@ async function _dkmlPreuzmi(id) {
   if (!kljuc) { _dkOtkljucaj(); return; }
   const o = await USFDriveKarte.desifruj(kljuc, k.enc);
   if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
-  if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmiKml) { showToast('⬇ Preuzimanje radi u aplikaciji (APK)'); return; }
+  if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmiKml) { _dkRacunar(o.fileId, 'U Downloads je fajl — dodaj ga dugmetom „Dodaj KML / KMZ / SHP”.'); return; }
   _dkNapredak[id] = { p: 0 }; _driveKmlRender();
   try { AndroidKarta.preuzmiKml(id, USFDriveKarte.urlPreuzimanja(o.fileId)); }
   catch(e) { delete _dkNapredak[id]; _driveKmlRender(); showToast('⚠ Preuzimanje nije pokrenuto: ' + e.message); }

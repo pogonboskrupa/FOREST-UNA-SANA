@@ -1,0 +1,37 @@
+# Desktop verzija: isti web paket kao u APK-u (android/copy-assets.sh) objavljen na GitHub Pages.
+# Chrome/Edge je instalira kao program (PWA); APK i njegov updater ostaju netaknuti (build-apk.yml).
+# Jednokratno: Settings → Pages → Source = "GitHub Actions".
+name: Pages (desktop)
+
+on:
+  push:
+    branches: [codex-forest]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Web paket (isti kao u APK-u; pada ako fali offline fajl)
+        run: bash android/copy-assets.sh
+      - name: Bez Jekyll obrade
+        run: touch android/app/src/main/assets/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: android/app/src/main/assets
+      - id: deployment
+        uses: actions/deploy-pages@v4
