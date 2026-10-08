@@ -3,6 +3,8 @@
 - **Glavna grana je `codex-forest`** — s nje se gradi APK koji je na telefonima
   i s nje CI objavljuje GitHub Release (updater u app-u čita najnoviji release).
   Push na drugu granu koja objavljuje release sa nižom verzijom zbunjuje updater.
+- **Šema verzija (od 2.0.0)**: x.y.z, svaka cifra ide 0–9 — poslije `z`=9 raste `y` (2.0.9 → 2.1.0), poslije `y`=9 raste `x`
+  (2.9.9 → 3.0.0). versionCode = x·10000 + y·100 + z (CI), pa je poredak ispravan.
 - **Verzija se podiže na 4 mjesta**: `.github/workflows/build-apk.yml`
   (`# APK_RELEASE_VERSION=`), `sw.js` (`APP_VERSION`), `static/js/terrain-layers.js`
   (dva stringa `v1.x.y`). `index.html` `APP_VER` je zasebna web oznaka.
