@@ -29,7 +29,7 @@ t('sjekačke linije: nema više sjekire ni emoji dugmadi, ikone iz ikone.js; ost
   // dugmad i zaglavlja bez emojija; ostaju samo toast poruke, natpisi na karti i naslov dijaloga (tekst, ne HTML)
   sj.split('\n').filter(l => /<button|t: ik\(|class="sl-v-nasl"|<h2|sl-proj-zag/.test(l) && !/showToast/.test(l))
     .forEach(l => { for (const e of ['🧭', '📤', '🗑', '🖼', '🔗', '⛰', '🔀', '✂', '✏', '🙈', '📍', '🎯']) assert.ok(!l.includes(e), e + ' u: ' + l.trim().slice(0, 80)); });
-  for (const n of ['pila', 'vodi', 'ok', 'lom', 'ponisti', 'razdvoji', 'salji', 'smece', 'slika', 'oko', 'oko-off', 'planina', 'spoj', 'lepeza', 'upozorenje', 'lokacija'])
+  for (const n of ['pila', 'vodi', 'ok', 'lom', 'ponisti', 'razdvoji', 'salji', 'smece', 'preuzmi', 'oko', 'oko-off', 'planina', 'spoj', 'lepeza', 'upozorenje', 'lokacija'])
     assert.ok(sj.includes("ik('" + n + "'"), 'koristi ' + n);
   assert.ok(H.includes('<span data-ik="pila" data-ikv="22"></span> Sjekačke linije') && !H.includes('<h2>🪓 Sjekačke linije</h2>'));
   // izvan sekcije sjekira ostaje (dugmad u karticama poligona, terenske tačke, obavijesti)
