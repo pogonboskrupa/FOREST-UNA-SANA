@@ -260,12 +260,29 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
 
     return await new Promise((res, rej) => cv.toBlob(b => (b ? res(b) : rej(new Error('slika nije napravljena'))), 'image/png'));
   }
+  const imeFajla = opis => (opis.ime || opis.naslov || 'karta').replace(/[^\w\-čćžšđČĆŽŠĐ]+/g, '_').slice(0, 60) + '.png';
   async function podijeli(opis) {
     try {
       showToast('🖼 Pravim sliku…');
-      const b = await napravi(opis), ime = (opis.ime || opis.naslov || 'karta').replace(/[^\w\-čćžšđČĆŽŠĐ]+/g, '_').slice(0, 60) + '.png';
-      _izvozFajl(ime, b, 'image/png', opis.naslov || 'Karta');
+      const b = await napravi(opis);
+      _izvozFajl(imeFajla(opis), b, 'image/png', opis.naslov || 'Karta');
     } catch (e) { showToast('⚠ Slika: ' + e.message); }
   }
-  window.USFSlika = { napravi, podijeli };
+  // Sprema odmah u Downloads: APK preko AndroidDownload (MediaStore), desktop/PWA preko <a download>.
+  async function sacuvaj(opis) {
+    try {
+      showToast('🖼 Pravim sliku…');
+      const b = await napravi(opis), ime = imeFajla(opis);
+      if (window.AndroidDownload && AndroidDownload.save) {
+        const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+        AndroidDownload.save(ime, url);
+        return;
+      }
+      const u = URL.createObjectURL(b), a = document.createElement('a');
+      a.href = u; a.download = ime; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 10000);
+      showToast('✅ Sačuvano u Downloads: ' + ime);
+    } catch (e) { showToast('⚠ Slika: ' + e.message); }
+  }
+  window.USFSlika = { napravi, podijeli, sacuvaj };
 })();

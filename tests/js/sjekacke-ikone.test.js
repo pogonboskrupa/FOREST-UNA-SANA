@@ -37,7 +37,7 @@ t('sjekačke linije: nema više sjekire ni emoji dugmadi, ikone iz ikone.js; ost
   assert.ok(H.includes('<span data-ik="poligon" data-ikv="19"></span> Nacrtaj granicu odjela') && !H.includes('✏ Nacrtaj granicu'));
   assert.ok(H.includes('<script src="static/js/ikone.js"></script>\n<script src="static/js/sjekacke.js"></script>'), 'ikone.js prije sjekacke.js');
   assert.ok(R('sw.js').includes("'./static/js/ikone.js'") && R('android/copy-assets.sh').includes('static/js/ikone.js'));
-  assert.ok(R('static/js/slika-karte.js').includes('new Path2D(USFIkPath(opis.ikona))') && sj.includes("USFSlika.podijeli({ ikona: 'pila', naslov: p.naziv"));
+  assert.ok(R('static/js/slika-karte.js').includes('new Path2D(USFIkPath(opis.ikona))') && sj.includes("USFSlika[sacuvaj ? 'sacuvaj' : 'podijeli']({ ikona: 'pila', naslov: p.naziv"));
 });
 
 t('globalna imena ikone.js se ne sudaraju s index.html', () => {

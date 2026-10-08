@@ -45,7 +45,7 @@ t('podloga: zoom pločica prema razmjeri, ograničen slojem i brojem pločica', 
 
 t('UI: dugmad u sjekačkim linijama, kartici poligona i izvještaju odjela; PNG u APK dijeljenju', () => {
   const H = R('index.html'), sj = R('static/js/sjekacke.js'), od = R('static/js/odjeli.js'), J = R('android/app/src/main/java/ba/spd/usf/forest/MainActivity.java');
-  assert.ok(sj.includes('data-a="slika"') && sj.includes('USFSlika.podijeli({'));
+  assert.ok(sj.includes('data-a="slika"') && sj.includes("USFSlika[sacuvaj ? 'sacuvaj' : 'podijeli']({"));
   assert.ok(H.includes("_odjelSlika(${id})") && od.includes('onclick="_odjelSlikaAkt()"') && od.includes('function _odjelSlika('));
   assert.ok(H.includes('<script src="static/js/slika-karte.js"></script>') && R('sw.js').includes("'./static/js/slika-karte.js'") && R('android/copy-assets.sh').includes('static/js/slika-karte.js'));
   assert.strictEqual((J.match(/endsWith\(".png"\)\) return "image\/png"/g) || []).length, 2, 'PNG mime u oba mosta');

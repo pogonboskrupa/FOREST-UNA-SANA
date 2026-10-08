@@ -240,3 +240,5 @@
   naziv + atributi bez dijakritika, ≤ 100 rezultata), red objekta `_kmlObjekatRed`.
 - JS `alert/confirm/prompt` u APK-u: MainActivity `onJs*` s naslovom `app_name`
   ("Grmeč Navigator") — bez override-a WebView piše appassets.androidplatform.net.
+- **Sačuvaj sliku (A4)** (Sjekačke linije, dugme `slika-sac`): `USFSlika.sacuvaj` — APK `AndroidDownload.save` (Downloads, MediaStore),
+  desktop `<a download>`; „Slika (A4)” i dalje otvara share sheet.
