@@ -11,5 +11,12 @@ assert(H.includes("usf_providno") && H.includes("dug('prov', 1, 'Providno (samo 
 // kartica poligona: bez Obriši za poligon, Sačuvaj sliku umjesto Slika (A4)
 assert(/!layer\._kmlIsPolygon\) dugmad\.push\(\{ t: '🗑 Obriši'/.test(H));
 assert(H.includes("t: '🖼 Sačuvaj sliku', on: `_odjelSlika") && !H.includes("'🖼 Slika (A4)'"));
-assert(O.includes('USFSlika.sacuvaj({ naslov') && O.includes('x.sloj._map'));
+assert(O.includes('USFSlika.sacuvaj({ cista: true, natpisGore') && O.includes('x.sloj._map'));
 console.log('kml-providno ok');
+const K = fs.readFileSync('static/js/slika-karte.js', 'utf8');
+// slika odjela: samo karta u jednakom okviru, bez teksta; natpis gore po želji; granica odjela s bijelim rubom
+assert(/cista \? 36 : 70/.test(K) && /zag = cista \? 36 : 150/.test(K) && /pod = cista \? 36 : 300/.test(K));
+assert(K.includes('if (!cista) {\n      // zaglavlje') && K.includes('p.natpis && !cista') && K.includes('opis.natpisGore'));
+assert(K.includes("if (p.glavni) { g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.9)'"));
+assert(O.includes("prompt('Natpis na vrhu slike"));
+console.log('slika cista ok');

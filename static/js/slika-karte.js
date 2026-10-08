@@ -139,7 +139,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
     const ky = 111320, kx = ky * Math.cos(c[0] * Math.PI / 180);
     const sirM = (Math.max(...lo) - Math.min(...lo)) * kx, visM = (Math.max(...la) - Math.min(...la)) * ky;
     const polozeno = sirM > visM * 1.15, W = polozeno ? 2339 : 1654, H = polozeno ? 1654 : 2339;
-    const M = 70, zag = 150, pod = 300, mapX = M, mapY = zag, mapW = W - 2 * M, mapH = H - zag - pod;
+    // cista: samo karta u jednakom bijelom okviru, bez teksta (natpis gore po želji korisnika)
+    const cista = !!opis.cista, M = cista ? 36 : 70, zag = cista ? 36 : 150, pod = cista ? 36 : 300, mapX = M, mapY = zag, mapW = W - 2 * M, mapH = H - zag - pod;
     const R = slkRazmjera(sirM, visM, mapW, mapH), mPoPx = R * 0.0254 / SLK_DPI;
     const px = (lat, lon) => [mapX + mapW / 2 + (lon - c[1]) * kx / mPoPx, mapY + mapH / 2 - (lat - c[0]) * ky / mPoPx];
     const ll = (x, y) => [c[0] - (y - mapY - mapH / 2) * mPoPx / ky, c[1] + (x - mapX - mapW / 2) * mPoPx / kx];
@@ -184,6 +185,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
     for (const p of opis.poligoni.slice().sort((a, b) => (a.glavni ? 1 : 0) - (b.glavni ? 1 : 0))) {
       put(p.ring); g.closePath();
       if (p.ispuna) { g.fillStyle = p.ispuna; g.fill('evenodd'); }
+      // granica glavnog poligona dobija bijeli rub — ne gubi se na tamnoj/šarenoj podlozi
+      if (p.glavni) { g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = (p.sirina || 2) + 6; g.lineJoin = 'round'; g.stroke(); }
       g.setLineDash(p.crta || []); g.strokeStyle = p.boja || '#334155'; g.lineWidth = p.sirina || 2; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
     }
     // linije s tamnim rubom
@@ -209,7 +212,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
         for (const r of [26, 46, 66]) if (natpis(t, x + (x - sx) / d * r, y + (y - sy) / d * r, 22, l.boja || '#f59e0b')) break;
       }
     }
-    for (const p of opis.poligoni) if (p.natpis) {
+    for (const p of opis.poligoni) if (p.natpis && !cista) {
       const xs = p.ring.map(q => px(q[0], q[1])), cx = xs.reduce((a, q) => a + q[0], 0) / xs.length, cy = xs.reduce((a, q) => a + q[1], 0) / xs.length;
       natpis(p.natpis, cx, cy, p.glavni ? 26 : 19, p.boja || '#334155', p.glavni ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.7)');
     }
@@ -220,43 +223,51 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
     const nx0 = mapX + mapW - 60, ny0 = mapY + 70;
     g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(nx0, ny0, 44, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#0f172a'; g.beginPath(); g.moveTo(nx0, ny0 - 34); g.lineTo(nx0 + 16, ny0 + 18); g.lineTo(nx0, ny0 + 8); g.lineTo(nx0 - 16, ny0 + 18); g.closePath(); g.fill();
-    g.font = `800 22px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('S', nx0, ny0 + 32);
-
-    // zaglavlje
-    g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#0f172a';
-    let nx = M;
-    if (opis.ikona && typeof USFIkPath === 'function' && USFIkPath(opis.ikona)) { // ikona iz ikone.js (Path2D), ne emoji
-      g.save(); g.translate(M, 36); g.scale(2.1, 2.1); g.lineWidth = 2; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#b45309';
-      g.stroke(new Path2D(USFIkPath(opis.ikona))); g.restore(); nx = M + 62;
+    if (!cista) { g.font = `800 22px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('S', nx0, ny0 + 32); }
+    if (cista && opis.natpisGore) {
+      g.font = `800 56px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const w = g.measureText(opis.natpisGore).width + 56, x0 = mapX + mapW / 2 - w / 2, y0 = mapY + 22;
+      g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); if (g.roundRect) g.roundRect(x0, y0, w, 84, 14); else g.rect(x0, y0, w, 84); g.fill();
+      g.fillStyle = '#0f172a'; g.fillText(opis.natpisGore, mapX + mapW / 2, y0 + 44);
     }
-    g.font = `800 44px ${FONT}`; g.fillText(opis.naslov || 'Karta', nx, 78);
-    g.font = `500 24px ${FONT}`; g.fillStyle = '#475569'; g.fillText(opis.podnaslov || '', M, 118);
-    g.textAlign = 'right'; g.fillStyle = '#0f172a'; g.font = `800 40px ${FONT}`; g.fillText('R 1:' + fmt(R), W - M, 78);
-    g.font = `500 20px ${FONT}`; g.fillStyle = '#475569'; g.fillText('razmjera pri štampi A4' + (polozeno ? ' (položeno)' : ''), W - M, 112);
 
-    // podnožje: mjerilo, legenda, podaci
-    const fy = mapY + mapH + 46, duz = slkMjerilo(mPoPx, mapW * 0.3), dpx = duz / mPoPx;
-    g.textAlign = 'left';
-    for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#0f172a'; g.fillRect(M + i * dpx / 4, fy, dpx / 4, 14); }
-    g.strokeStyle = '#0f172a'; g.lineWidth = 2; g.strokeRect(M, fy, dpx, 14);
-    g.fillStyle = '#0f172a'; g.font = `600 20px ${FONT}`; g.textBaseline = 'top';
-    g.fillText('0', M - 6, fy + 22); g.textAlign = 'right'; g.fillText(duz >= 1000 ? fmt(duz / 1000, duz % 1000 ? 1 : 0) + ' km' : fmt(duz) + ' m', M + dpx + 12, fy + 22);
-    g.textAlign = 'left';
-    let ly = fy + 64, lx = M;
-    const leg = (opis.legenda || []).slice();
-    if (relj) leg.push({ boja: 'rgba(146,84,30,.8)', t: 'izohipse ' + relj.iv + ' m (' + relj.mn + '–' + relj.mx + ' m)', tip: 'linija' });
-    g.font = `500 21px ${FONT}`; g.textBaseline = 'middle';
-    for (const s of leg) {
-      const w = g.measureText(s.t).width + 70;
-      if (lx + w > W - M) { lx = M; ly += 36; }
-      if (s.tip === 'ploha') { g.fillStyle = s.boja; g.fillRect(lx, ly - 10, 34, 20); g.strokeStyle = '#334155'; g.lineWidth = 1; g.strokeRect(lx, ly - 10, 34, 20); }
-      else { g.strokeStyle = s.boja; g.lineWidth = 5; g.setLineDash(s.tip === 'isprek' ? [10, 6] : []); g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 34, ly); g.stroke(); g.setLineDash([]); }
-      g.fillStyle = '#0f172a'; g.fillText(s.t, lx + 44, ly); lx += w;
+    if (!cista) {
+      // zaglavlje
+      g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#0f172a';
+      let nx = M;
+      if (opis.ikona && typeof USFIkPath === 'function' && USFIkPath(opis.ikona)) { // ikona iz ikone.js (Path2D), ne emoji
+        g.save(); g.translate(M, 36); g.scale(2.1, 2.1); g.lineWidth = 2; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#b45309';
+        g.stroke(new Path2D(USFIkPath(opis.ikona))); g.restore(); nx = M + 62;
+      }
+      g.font = `800 44px ${FONT}`; g.fillText(opis.naslov || 'Karta', nx, 78);
+      g.font = `500 24px ${FONT}`; g.fillStyle = '#475569'; g.fillText(opis.podnaslov || '', M, 118);
+      g.textAlign = 'right'; g.fillStyle = '#0f172a'; g.font = `800 40px ${FONT}`; g.fillText('R 1:' + fmt(R), W - M, 78);
+      g.font = `500 20px ${FONT}`; g.fillStyle = '#475569'; g.fillText('razmjera pri štampi A4' + (polozeno ? ' (položeno)' : ''), W - M, 112);
+
+      // podnožje: mjerilo, legenda, podaci
+      const fy = mapY + mapH + 46, duz = slkMjerilo(mPoPx, mapW * 0.3), dpx = duz / mPoPx;
+      g.textAlign = 'left';
+      for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#0f172a'; g.fillRect(M + i * dpx / 4, fy, dpx / 4, 14); }
+      g.strokeStyle = '#0f172a'; g.lineWidth = 2; g.strokeRect(M, fy, dpx, 14);
+      g.fillStyle = '#0f172a'; g.font = `600 20px ${FONT}`; g.textBaseline = 'top';
+      g.fillText('0', M - 6, fy + 22); g.textAlign = 'right'; g.fillText(duz >= 1000 ? fmt(duz / 1000, duz % 1000 ? 1 : 0) + ' km' : fmt(duz) + ' m', M + dpx + 12, fy + 22);
+      g.textAlign = 'left';
+      let ly = fy + 64, lx = M;
+      const leg = (opis.legenda || []).slice();
+      if (relj) leg.push({ boja: 'rgba(146,84,30,.8)', t: 'izohipse ' + relj.iv + ' m (' + relj.mn + '–' + relj.mx + ' m)', tip: 'linija' });
+      g.font = `500 21px ${FONT}`; g.textBaseline = 'middle';
+      for (const s of leg) {
+        const w = g.measureText(s.t).width + 70;
+        if (lx + w > W - M) { lx = M; ly += 36; }
+        if (s.tip === 'ploha') { g.fillStyle = s.boja; g.fillRect(lx, ly - 10, 34, 20); g.strokeStyle = '#334155'; g.lineWidth = 1; g.strokeRect(lx, ly - 10, 34, 20); }
+        else { g.strokeStyle = s.boja; g.lineWidth = 5; g.setLineDash(s.tip === 'isprek' ? [10, 6] : []); g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 34, ly); g.stroke(); g.setLineDash([]); }
+        g.fillStyle = '#0f172a'; g.fillText(s.t, lx + 44, ly); lx += w;
+      }
+      ly += 44; g.fillStyle = '#334155'; g.font = `500 21px ${FONT}`;
+      (opis.info || []).forEach((t, i) => g.fillText(t, M, ly + i * 30));
+      g.textAlign = 'right'; g.fillStyle = '#94a3b8'; g.font = `500 18px ${FONT}`;
+      g.fillText('Grmeč Navigator · ' + new Date().toLocaleDateString('bs-BA') + (podl && podl.imena.length ? ' · podloga: ' + podl.imena.join(', ') : '') + (relj ? ' · DEM Copernicus 30 m' : ''), W - M, H - 30);
     }
-    ly += 44; g.fillStyle = '#334155'; g.font = `500 21px ${FONT}`;
-    (opis.info || []).forEach((t, i) => g.fillText(t, M, ly + i * 30));
-    g.textAlign = 'right'; g.fillStyle = '#94a3b8'; g.font = `500 18px ${FONT}`;
-    g.fillText('Grmeč Navigator · ' + new Date().toLocaleDateString('bs-BA') + (podl && podl.imena.length ? ' · podloga: ' + podl.imena.join(', ') : '') + (relj ? ' · DEM Copernicus 30 m' : ''), W - M, H - 30);
 
     return await new Promise((res, rej) => cv.toBlob(b => (b ? res(b) : rej(new Error('slika nije napravljena'))), 'image/png'));
   }

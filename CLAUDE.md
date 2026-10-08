@@ -248,3 +248,6 @@
   (brisanje samo linija/tačaka; projekat Sjekačkih linija ima svoj „Izbriši”). „🖼 Sačuvaj sliku” → `_odjelSlika` → `USFSlika.sacuvaj`;
   susjedi na slici = svi poligoni slojeva koji su na karti (`x.sloj._map`). Stil sloja/objekta „Providno (samo dodir)” = `stil.providno`
   (`_kmlLeafletStil`: opacity 0, fillOpacity 0.001 — geometrija ostaje za klik; objekt: ExtendedData `usf_providno`). Test `tests/js/kml-providno.test.js`.
+- **Slika odjela bez teksta** (`opis.cista`, samo `_odjelSlika`): jednaki bijeli okvir 36 px sa svih strana, nema zaglavlja/mjerila/legende/podnožja ni natpisa
+  susjeda; „S” ispod strelice izostavljen. Pita se `prompt` za natpis (`opis.natpisGore`, gore u sredini; prazno = bez ičega, Odustani = ne sprema).
+  Glavna granica (`glavni`) ima bijeli rub ispod crte da se ne gubi na podlozi (važi i za sjekačke linije).

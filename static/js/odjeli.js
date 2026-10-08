@@ -300,7 +300,10 @@ function _odjelSlika(stamp, gj, ime) {
     .forEach(x => prsteni(x.gj).forEach((ring, i) => susj.push({ ring, boja: '#475569', sirina: 1.6, natpis: i ? '' : x.ime })));
   const ha = _r1(turf.area(g) / 1e4);
   let obim = null; try { obim = Math.round(turf.length(turf.polygonToLine(g), { units: 'kilometers' }) * 100) / 100; } catch (e) {}
-  USFSlika.sacuvaj({ naslov: '📊 ' + (/^odjel/i.test(naziv) ? naziv : 'Odjel ' + naziv), ime: 'odjel_' + naziv, podnaslov: o ? o.izvor : '', poligoni: susj.concat(glavni),
+  // slika bez teksta: korisnik po želji upiše broj odjela koji ide gore u sredinu (prazno = bez natpisa, Odustani = ništa)
+  const natpisGore = prompt('Natpis na vrhu slike (npr. broj odjela).\nOstavi prazno za sliku bez ikakvog teksta:', '');
+  if (natpisGore === null) return;
+  USFSlika.sacuvaj({ cista: true, natpisGore: natpisGore.trim(), naslov: '📊 ' + (/^odjel/i.test(naziv) ? naziv : 'Odjel ' + naziv), ime: 'odjel_' + naziv, podnaslov: o ? o.izvor : '', poligoni: susj.concat(glavni),
     legenda: [{ boja: '#b91c1c', t: 'odjel', tip: 'linija' }].concat(susj.length ? [{ boja: '#475569', t: 'granice iz karte (susjedni odjeli/odsjeci)', tip: 'linija' }] : []),
     info: ['Površina ' + String(ha).replace('.', ',') + ' ha' + (obim != null ? ' · obim ' + String(obim).replace('.', ',') + ' km' : '')] });
 }
