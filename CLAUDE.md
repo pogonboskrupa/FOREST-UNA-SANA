@@ -155,6 +155,12 @@
   localStorage `usf_otvorenost`, rezultat samo u memoriji. 2000 odsjeka ≈ 3,7 s na 4× sporijem CPU-u.
   Preporuke za otvaranje su uklonjene (to je posao projektovanja A→B). Drive lista
   KML-a (`_driveKmlRender`) se prikazuje i u ovoj sekciji (`#otv-drive`) — tamo je i „Kamionski putevi”.
+- **Slika u razmjeri (A4, PNG)** (`static/js/slika-karte.js`, `USFSlika.podijeli`): sjekačke linije (dugme „🖼 Slika (A4)”
+  u projektu), odjel (kartica poligona i izvještaj odjela → `_odjelSlika`, susjedi istog sloja tanko). Crta se
+  vektorski na vlastiti canvas — NE snimak karte (podloge s interneta prljaju canvas, nema tačne razmjere). 200 dpi,
+  orijentacija po obliku, razmjera = najmanja standardna (`slkRazmjera`, 1:500…1:200 000) u koju objekat stane;
+  reljef + izohipse iz lokalnog DEM-a (`USFDem`, samo 5 općina; `slkIzohipse` marching squares, `slkInterval`),
+  mjerilo, sjever (S), legenda, podaci. Dijeljenje kroz `_izvozFajl` (Blob) → `AndroidShare.shareFile` (`image/png`).
 - **Ikona**: izvor `FOREST_IKONA.png` (Grmeč Navigator); iz njega `icon-192/512`,
   `icon-maskable-512` (80 % sigurna zona), `apple-touch-icon`, mipmap `ic_launcher*`. Sve
   NEPROVIDNO do ruba (providni uglovi ⇒ Xiaomi/HyperOS crta bijeli okvir i smanjuje ikonu);

@@ -1114,6 +1114,8 @@ public class MainActivity extends Activity {
         }
 
         private String guessMime(String filename) {
+            if (filename.endsWith(".png")) return "image/png";
+            if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
             if (filename.endsWith(".kml")) return "application/vnd.google-earth.kml+xml";
             if (filename.endsWith(".gpx")) return "application/gpx+xml";
             if (filename.endsWith(".geojson")) return "application/geo+json";
@@ -1572,6 +1574,8 @@ public class MainActivity extends Activity {
         }
 
         private String guessMime(String filename) {
+            if (filename.endsWith(".png")) return "image/png";
+            if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
             if (filename.endsWith(".kml")) return "application/vnd.google-earth.kml+xml";
             if (filename.endsWith(".gpx")) return "application/gpx+xml";
             if (filename.endsWith(".geojson")) return "application/geo+json";

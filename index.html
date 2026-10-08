@@ -4670,6 +4670,7 @@ function _kmlPopupHtml(layer) {
   if (layer._kmlIsPolygon && window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('k:${id}')` });
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
   if (layer._kmlIsPolygon) dugmad.push({ t: '☑ Više odsjeka', on: `_odsPocni(${id})` });
+  if (layer._kmlIsPolygon && typeof _odjelSlika === 'function') dugmad.push({ t: '🖼 Slika (A4)', on: `_odjelSlika(${id})` });
   if (layer._kmlIsPoint) { const ll = layer.getLatLng(); dugmad.push({ t: '🎯 Centriraj', on: `map.setView([${ll.lat},${ll.lng}],Math.max(map.getZoom(),16))` }); }
   if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi', on: `_kmlUrediMeni(${id})` }, { t: '🗑 Obriši', on: `_kmlObrisiObjekat(${id})`, v: 'opasno' });
   return _popKartica({ ikona, boja: layer.options && layer.options.color, naslov: layer._kmlName, tip, meta: sloj ? sloj.name : '', redovi, opis: _kmlOpisHtml(layer._kmlDesc, sloj && sloj.name), dugmad });
@@ -10563,5 +10564,6 @@ window.addEventListener('load', () => {
 <script src="static/js/vegetacija.js"></script>
 <script src="static/js/sjekacke.js"></script>
 <script src="static/js/otvorenost.js"></script>
+<script src="static/js/slika-karte.js"></script>
 </body>
 </html>

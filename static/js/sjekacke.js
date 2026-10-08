@@ -1438,7 +1438,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
           <button data-a="st" data-id="${p.id}" data-l="${lin.id}" style="--c:${s.c}">${s.t}</button>
           <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">🧭</button></div>`; }).join('')}</div>
-        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">📤 Podijeli projekat</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${typeof _okoDugme === 'function' ? _okoDugme(p.vidljiv !== false) : (p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij')}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
+        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">↺ Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">📤 Podijeli projekat</button><button data-a="slika" data-id="${p.id}">🖼 Slika (A4)</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${typeof _okoDugme === 'function' ? _okoDugme(p.vidljiv !== false) : (p.vidljiv === false ? '👁 Prikaži' : '🙈 Sakrij')}</button><button data-a="brisi" data-id="${p.id}" class="opasno">🗑</button></div>`;
       return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>🪓 ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
     }).join('');
   }
@@ -1535,6 +1535,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     else if (a === 'st') { const lin = p.linije.find(x => x.id === el.dataset.l), red = ['ne', 'rad', 'gotovo']; lin.status = red[(red.indexOf(lin.status) + 1) % 3]; dodirni(lin); }
     else if (a === 'vodi') { switchMainTab('karta'); vodi(p.id, el.dataset.l); return; }
     else if (a === 'kml') { izvozKml(p, false); return; }
+    else if (a === 'slika') { slika(p); return; }
     else if (a === 'kml-gotove') { izvozKml(p, true); return; }
     else if (a === 'zona-strana') { const sm = zonaSmjer(p); p.zona.strana = p.zona.strana === 'L' ? 'D' : 'L'; if (sm) p.zona.smjer = sm === 'prije' ? 'poslije' : 'prije'; p.zona.az = null; p.zona.izbrisane = []; await generisi(p); }
     else if (a === 'zona-az-' || a === 'zona-az+') { p.zona.az = (p.zona.az + (a === 'zona-az+' ? 5 : -5) + 360) % 360; p.zona.izbrisane = []; await generisi(p); }
@@ -1566,6 +1567,24 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   // i spaja ga s postojećim. fokusLid: "Pošalji liniju" — primalac dobija ponudu "Vodi me".
   const uBase64 = t => btoa(unescape(encodeURIComponent(t)));
   const izBase64 = t => decodeURIComponent(escape(atob(t)));
+  // Slika projekta u razmjeri (USFSlika): granica, granice padina, linije po statusu s oznakama, plohe.
+  function slika(p) {
+    if (!window.USFSlika) { showToast('⚠ Izvoz slike nije dostupan'); return; }
+    const gotove = p.linije.filter(x => x.status === 'gotovo').length, ukupno = p.linije.reduce((a, x) => a + (x.ha || 0), 0);
+    const poligoni = [{ ring: p.ring, boja: '#14532d', sirina: 4, glavni: true }];
+    if (p.plohe) (p.izoPlohe || []).forEach(r => poligoni.push({ ring: r, boja: '#dc2626', sirina: 1.5, ispuna: 'rgba(239,68,68,.28)' }));
+    if (altAktivan(p)) p.padine.granice.filter(g => slIma(g.geo)).forEach(g => poligoni.push({ ring: g.geo, boja: g.tip === 'jarak' ? '#0284c7' : '#57534e', sirina: 2.5, crta: [4, 10] }));
+    const linije = p.linije.map(lin => ({ geo: slGeo(lin), boja: (STATUS[lin.status] || STATUS.ne).c, sirina: 4.5, crta: slIma(lin.stvarna) ? [] : [16, 9], oznaka: oznaka(lin), oznakaVrh: lin.dio ? '' : oznaka(lin) + ' ▲' }));
+    // granice padina su otvorene linije — crtaju se kao poligon bez zatvaranja: pretvori u linije bez oznake
+    const otvorene = poligoni.filter(x => x.crta && x.crta[0] === 4); otvorene.forEach(x => poligoni.splice(poligoni.indexOf(x), 1));
+    otvorene.forEach(x => linije.unshift({ geo: x.ring, boja: x.boja, sirina: 3, crta: [4, 10], bezRuba: true }));
+    const leg = [{ boja: '#14532d', t: 'granica odjela', tip: 'linija' }].concat(Object.values(STATUS).filter(s => p.linije.some(l => (STATUS[l.status] || STATUS.ne) === s)).map(s => ({ boja: s.c, t: 'sjekačka linija — ' + s.t, tip: 'isprek' })));
+    if (p.plohe && (p.izoPlohe || []).length) leg.push({ boja: 'rgba(239,68,68,.35)', t: 'linije ne idu uz stranu', tip: 'ploha' });
+    if (otvorene.length) leg.push({ boja: '#57534e', t: 'granica padina (greben/jarak)', tip: 'isprek' });
+    USFSlika.podijeli({ naslov: '🪓 ' + p.naziv, ime: 'sjekacke_' + p.naziv, podnaslov: 'Sjekačke linije · razmak ' + p.razmak + ' m · pad ' + p.az + '°' + (altAktivan(p) ? ' · padine' : ''), poligoni, linije, legenda: leg,
+      info: [`Površina ${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ofarbano ${gotove}/${p.linije.length} · partije uz linije ${fmt(ukupno, 2)} ha${p.ostatakHa != null ? ' · zadnja partija ' + fmt(p.ostatakHa, 2) + ' ha' : ''}`,
+        'Oznaka na dnu linije (L1…), ▲ na vrhu; brojanje ' + (p.brojanje === 'D' ? 's desna nalijevo' : 's lijeva nadesno') + ' gledano uzbrdo.'] });
+  }
   function izvozKml(p, samoGotove, fokusLid) {
     const x = s => typeof _xmlEsc === 'function' ? _xmlEsc(s) : esc(s);
     const k = q => q[1].toFixed(7) + ',' + q[0].toFixed(7);
