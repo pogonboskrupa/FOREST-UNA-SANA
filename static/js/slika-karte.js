@@ -186,7 +186,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
       put(p.ring); g.closePath();
       if (p.ispuna) { g.fillStyle = p.ispuna; g.fill('evenodd'); }
       // granica glavnog poligona dobija bijeli rub — ne gubi se na tamnoj/šarenoj podlozi
-      if (p.glavni) { g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = (p.sirina || 2) + 6; g.lineJoin = 'round'; g.stroke(); }
+      if (p.glavni) { g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = (p.sirina || 2) + (p.sirina >= 10 ? 8 : 6); g.lineJoin = 'round'; g.stroke(); }
       g.setLineDash(p.crta || []); g.strokeStyle = p.boja || '#334155'; g.lineWidth = p.sirina || 2; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
     }
     // linije s tamnim rubom

@@ -293,11 +293,11 @@ function _odjelSlika(stamp, gj, ime) {
   const o = stamp != null ? _odjeliSvi().find(x => x.sloj && L.stamp(x.sloj) === stamp) : null;
   const g = o ? o.gj : gj, naziv = o ? o.ime : ime || 'Odjel'; if (!g) return;
   const prsteni = gg => { const geo = gg.geometry || gg; return (geo.type === 'MultiPolygon' ? geo.coordinates : [geo.coordinates]).map(p => p[0].map(([lo, la]) => [la, lo])); };
-  const glavni = prsteni(g).map((ring, i) => ({ ring, boja: '#b91c1c', sirina: 5, ispuna: 'rgba(239,68,68,.10)', glavni: true, natpis: i ? '' : naziv }));
+  const glavni = prsteni(g).map((ring, i) => ({ ring, boja: '#dc2626', sirina: 13, ispuna: 'rgba(239,68,68,.10)', glavni: true, natpis: i ? '' : naziv }));
   const b = turf.bbox(g), m = Math.max(b[2] - b[0], b[3] - b[1]) * 0.6, susj = [];
   // granice iz karte: svi poligoni slojeva koji su trenutno na karti (i providni), ne samo isti sloj
   if (o) _odjeliSvi().filter(x => x !== o && x.sloj._map && x.bbox[0] < b[2] + m && x.bbox[2] > b[0] - m && x.bbox[1] < b[3] + m && x.bbox[3] > b[1] - m).slice(0, 400)
-    .forEach(x => prsteni(x.gj).forEach((ring, i) => susj.push({ ring, boja: '#475569', sirina: 1.6, natpis: i ? '' : x.ime })));
+    .forEach(x => prsteni(x.gj).forEach((ring, i) => susj.push({ ring, boja: '#475569', sirina: 2.5, natpis: i ? '' : x.ime })));
   const ha = _r1(turf.area(g) / 1e4);
   let obim = null; try { obim = Math.round(turf.length(turf.polygonToLine(g), { units: 'kilometers' }) * 100) / 100; } catch (e) {}
   // slika bez teksta: korisnik po želji upiše broj odjela koji ide gore u sredinu (prazno = bez natpisa, Odustani = ništa)
