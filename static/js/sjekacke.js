@@ -1439,7 +1439,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
           <button data-a="st" data-id="${p.id}" data-l="${lin.id}" style="--c:${s.c}">${s.t}</button>
           <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">${ik('vodi')}</button></div>`; }).join('')}</div>
-        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">${ik('ponisti')} Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">${ik('salji')} Podijeli projekat</button><button data-a="slika" data-id="${p.id}">${ik('slika')} Slika (A4)</button><button data-a="slika-sac" data-id="${p.id}">${ik('preuzmi')} Sačuvaj sliku</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${p.vidljiv !== false ? ik('oko-off', 19) + ' Sakrij' : ik('oko', 19) + ' Prikaži'}</button><button data-a="brisi" data-id="${p.id}" class="opasno">${ik('smece')}</button></div>`;
+        <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">${ik('ponisti')} Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">${ik('salji')} Podijeli projekat</button><button data-a="linije-brisi" data-id="${p.id}" class="opasno">${ik('smece')} Izbriši</button><button data-a="slika-sac" data-id="${p.id}">${ik('preuzmi')} Sačuvaj sliku</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${p.vidljiv !== false ? ik('oko-off', 19) + ' Sakrij' : ik('oko', 19) + ' Prikaži'}</button><button data-a="brisi" data-id="${p.id}" class="opasno" title="Obriši cijeli projekat">${ik('smece')}</button></div>`;
       return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>${ik('pila', 19)} ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
     }).join('');
   }
@@ -1497,6 +1497,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   const altAktivan = p => p.prikaz === 'padine' && p.padine && p.padine.dijelovi.length > 1;
   const imeP = (d, i) => 'P' + (i + 1) + ' · ' + strana(d.azDem != null ? d.azDem : d.az);
   const brojIzbrisanih = p => (p.izbrisane || []).length + (p.padine ? p.padine.dijelovi.reduce((a, d) => a + (d.izbrisane || []).length, 0) : 0);
+  // Linija se briše upisom ključa u listu izbrisanih svog izvora (osnovni plan, padina ili drugi pad) — "Vrati obrisane" je vraća.
+  function oznaciIzbrisanu(p, lin) {
+    if (lin.komp && p.padine) lin.komp.forEach(c => { const d = p.padine.dijelovi[c.padina]; if (d) d.izbrisane = (d.izbrisane || []).concat([c.k]); });
+    else if (lin.padina != null && p.padine) { const d = p.padine.dijelovi[lin.padina]; d.izbrisane = (d.izbrisane || []).concat([lin.k]); }
+    else if (lin.zona) p.zona.izbrisane = (p.zona.izbrisane || []).concat([lin.k]);
+    else p.izbrisane = (p.izbrisane || []).concat([lin.k]);
+  }
   function ocistiIzbrisane(p) { p.izbrisane = []; if (p.padine) p.padine.dijelovi.forEach(d => { d.izbrisane = []; }); }
   const SPOJ_IZBOR = [[0, 'Ne'], [0.3, 'Blizu'], [0.5, 'Srednje'], [0.75, 'Šire']];
   function spojHtml(p) {
@@ -1536,7 +1543,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     else if (a === 'st') { const lin = p.linije.find(x => x.id === el.dataset.l), red = ['ne', 'rad', 'gotovo']; lin.status = red[(red.indexOf(lin.status) + 1) % 3]; dodirni(lin); }
     else if (a === 'vodi') { switchMainTab('karta'); vodi(p.id, el.dataset.l); return; }
     else if (a === 'kml') { izvozKml(p, false); return; }
-    else if (a === 'slika') { slika(p); return; }
+    else if (a === 'linije-brisi') {
+      if (!p.linije.length) { showToast('Nema linija za brisanje'); return; }
+      if (!confirm('Izbrisati svih ' + p.linije.length + ' linija u poligonu "' + p.naziv + '"?\n\nPoligon ostaje, a "Vrati obrisane" vraća linije.')) return;
+      p.linije.slice().forEach(lin => oznaciIzbrisanu(p, lin));
+      if (vodic && vodic.pid === p.id) vodicKraj();
+      await generisi(p); sacuvaj(p); crtaj(); render();
+      showToast('🗑 Linije izbrisane');
+      return;
+    }
     else if (a === 'slika-sac') { slika(p, true); return; }
     else if (a === 'kml-gotove') { izvozKml(p, true); return; }
     else if (a === 'zona-strana') { const sm = zonaSmjer(p); p.zona.strana = p.zona.strana === 'L' ? 'D' : 'L'; if (sm) p.zona.smjer = sm === 'prije' ? 'poslije' : 'prije'; p.zona.az = null; p.zona.izbrisane = []; await generisi(p); }
@@ -1692,10 +1707,7 @@ ${folderi}
       const br = lin.br, n = p.linije.reduce((m, x) => Math.max(m, x.br), 0);
       if (!confirm('Obrisati liniju ' + oznaka(lin) + '?\n\nPartije s obje strane se spajaju' + (br < n ? ', a linije L' + (br + 1) + '–L' + n + ' dobijaju nove brojeve (L' + br + '–L' + (n - 1) + ').' : '.'))) return;
       planIzmjena(p);
-      if (lin.komp && p.padine) lin.komp.forEach(c => { const d = p.padine.dijelovi[c.padina]; if (d) d.izbrisane = (d.izbrisane || []).concat([c.k]); });
-      else if (lin.padina != null && p.padine) { const d = p.padine.dijelovi[lin.padina]; d.izbrisane = (d.izbrisane || []).concat([lin.k]); }
-      else if (lin.zona) p.zona.izbrisane = (p.zona.izbrisane || []).concat([lin.k]);
-      else p.izbrisane = (p.izbrisane || []).concat([lin.k]);
+      oznaciIzbrisanu(p, lin);
       if (vodic && vodic.pid === pid && vodic.lid === lid) vodicKraj();
       await generisi(p); sacuvaj(p); crtaj(); render();
       showToast('🗑 ' + oznaka(lin) + ' obrisana — linije prenumerisane');
