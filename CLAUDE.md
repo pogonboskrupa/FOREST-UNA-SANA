@@ -252,3 +252,5 @@
   susjeda; „S” ispod strelice izostavljen. Pita se `prompt` za natpis (`opis.natpisGore`, gore u sredini; prazno = bez ičega, Odustani = ne sprema).
   Glavna granica (`glavni`) ima bijeli rub ispod crte da se ne gubi na podlozi (važi i za sjekačke linije).
 - **Slika odjela — linije poligona**: SVE crno isprekidano, ISTO (odjel i susjedi 9 px `[30,14]` s bijelim rubom, `rub`), bez crvene; natpisi odjela i susjeda ostaju na slici (`_odjelOznaka`: atribut ODJEL · ODSJEK, inače naziv) — kao štampana granica na podlozi.
+- **Korisnik** (Postavke → „👤 Korisnik”): ime upisuje sam korisnik, localStorage `usf_korisnik` {ime, datum} (`_korisnikSpremi`/`_korisnikCitaj`); prazno briše.
+  `usf_` ključ ide u rezervnu kopiju automatski. Test `tests/js/korisnik.test.js`.

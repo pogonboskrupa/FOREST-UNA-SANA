@@ -593,6 +593,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-mem-bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,#16a34a,#4ade80); transition:width .3s; }
 .set-mem small { display:block; color:#80958a; font-size:11px; margin-top:4px; }
 .set-red { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; padding:10px 0; border-top:1px solid #1f3b2d; }
+.set-hint { display:block; color:#80958a; font-size:11.5px; line-height:1.4; margin-top:8px; }
+.set-korisnik { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; }
+.set-korisnik input { min-height:44px; padding:0 12px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:var(--text); font:inherit; font-size:15px; min-width:0; }
+.set-korisnik button { min-height:44px; padding:0 16px; border-radius:10px; border:1px solid #22c55e; background:#0f2a1b; color:#86efac; font:inherit; font-weight:800; cursor:pointer; }
 .set-red b { display:block; color:var(--text); font-size:13px; }
 .set-red small { display:block; color:#80958a; font-size:11px; line-height:1.4; margin-top:2px; }
 .set-red button, .set-uid button { padding:8px 14px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
@@ -1720,6 +1724,11 @@ body.sl-uredi #sl-ured { display: block; }
       <img src="icon-192.png" alt="" class="set-ikona">
       <div class="set-app-txt"><h3>Grmeč Navigator</h3><small>Verzija <b id="set-ver-txt"></b></small></div>
       <span id="set-mreza-txt" class="set-veza" role="status"></span>
+    </section>
+    <section class="ng-card">
+      <h3>👤 Korisnik</h3>
+      <div class="set-korisnik"><input id="set-korisnik-ime" type="text" maxlength="60" autocomplete="name" placeholder="Upiši ime i prezime" onkeydown="if(event.key==='Enter')_korisnikSpremi()"><button onclick="_korisnikSpremi()">Sačuvaj</button></div>
+      <small id="set-korisnik-info" class="set-hint"></small>
     </section>
     <section class="update-card" id="set-update-card" data-phase="idle">
       <div class="update-card-head">
@@ -10405,8 +10414,28 @@ function openUcitajKartuSection() { _openStubPanel('ucitajkartu-panel', 'karte')
 function openUcitajKmlSection()   { _openStubPanel('ucitajkml-panel', 'karte'); }
 function openNagibSection()       { _openStubPanel('nagib-panel', 'karte'); if (typeof npRenderLista === 'function') npRenderLista(); }
 
+// Korisnik aplikacije: ime koje upiše sam korisnik, u localStorage `usf_korisnik` {ime, datum} (ulazi u rezervnu kopiju).
+const _KORISNIK_KEY = 'usf_korisnik';
+function _korisnikCitaj() {
+  try { const k = JSON.parse(localStorage.getItem(_KORISNIK_KEY) || 'null'); return k && typeof k.ime === 'string' && k.ime ? k : null; } catch (e) { return null; }
+}
+function _korisnikUi() {
+  const k = _korisnikCitaj(), inp = document.getElementById('set-korisnik-ime'), info = document.getElementById('set-korisnik-info');
+  if (inp && document.activeElement !== inp) inp.value = k ? k.ime : '';
+  if (info) info.textContent = k ? 'Zapisano: ' + k.ime + ' · ' + new Date(k.datum).toLocaleString('bs-BA') : 'Nije upisano. Ime ostaje na ovom uređaju i ide u rezervnu kopiju.';
+}
+function _korisnikSpremi() {
+  const inp = document.getElementById('set-korisnik-ime'); if (!inp) return;
+  const ime = inp.value.replace(/\s+/g, ' ').trim().slice(0, 60);
+  try {
+    if (ime) localStorage.setItem(_KORISNIK_KEY, JSON.stringify({ ime, datum: new Date().toISOString() })); else localStorage.removeItem(_KORISNIK_KEY);
+  } catch (e) { showToast('⚠ Ime nije sačuvano (memorija puna)'); return; }
+  inp.blur(); _korisnikUi();
+  showToast(ime ? '👤 Korisnik sačuvan: ' + ime : 'Korisnik obrisan');
+}
 function _renderPostavke() {
   _updOfflineBanner();
+  _korisnikUi();
   const el = document.getElementById('set-ver-txt');
   if (el) el.textContent = APP_VER;
   const uidEl = document.getElementById('set-uid-txt');
