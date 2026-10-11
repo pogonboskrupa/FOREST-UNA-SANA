@@ -1420,7 +1420,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     const l = citaj();
     const st = document.getElementById('mc-stat-sjekacke'); if (st) st.textContent = l.length ? String(l.length) : '';
     if (!l.length) { el.innerHTML = '<div class="treg-empty">Nema projekata. Izaberi poligon iznad.</div>'; return; }
-    el.innerHTML = l.map(p => {
+    // zajedničke radnje nad svim projektima: Sakrij/Prikaži sve (lična postavka prikaza), Obriši sve
+    const sviSkriveni = l.every(x => x.vidljiv === false);
+    const traka = `<div class="sl-dug sl-sve"><button data-a="sve-vid">${sviSkriveni ? ik('oko', 19) + ' Prikaži sve' : ik('oko-off', 19) + ' Sakrij sve'}</button><button data-a="sve-brisi" class="opasno">${ik('smece')} Obriši sve (${l.length})</button></div>`;
+    el.innerHTML = traka + l.map(p => {
       const otv = p.id === aktivni, gotovo = p.linije.filter(x => x.status === 'gotovo').length;
       const dos = p.dosljednost != null && p.dosljednost < 0.6 ? `<div class="sl-upoz">${ik('upozorenje', 16)} Pad u poligonu nije jednoličan (${Math.round(p.dosljednost * 100)} %) — greben ili vrtača; Alternativni prikaz ispod dijeli ga na padine.</div>` : '';
       const tijelo = !otv ? '' : `
@@ -1523,7 +1526,22 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   function zoom(id) { const p = nadji(id); if (p) try { map.fitBounds(L.latLngBounds(p.ring), { padding: [30, 30], maxZoom: 17 }); } catch (e) {} }
 
   async function akcija(el) {
-    const a = el.dataset.a, p = nadji(el.dataset.id); if (!p) return;
+    const a = el.dataset.a;
+    if (a === 'sve-vid') {
+      const l = citaj(), sakrij = !l.every(x => x.vidljiv === false);
+      l.forEach(x => { x.vidljiv = !sakrij; }); pisi(l); crtaj(); render();
+      showToast(sakrij ? 'Svi projekti sakriveni' : 'Svi projekti prikazani');
+      return;
+    }
+    if (a === 'sve-brisi') {
+      const n = citaj().length; if (!n) return;
+      if (!confirm('Obrisati SVE projekte sjekačkih linija (' + n + ')?\n\nOvo se ne može poništiti.')) return;
+      if (vodic) vodicKraj();
+      pisi([]); aktivni = null; crtaj(); render();
+      showToast('🗑 Obrisano projekata: ' + n);
+      return;
+    }
+    const p = nadji(el.dataset.id); if (!p) return;
     if (!['otvori', 'st', 'vodi', 'kml', 'kml-gotove', 'vid', 'brisi'].includes(a)) planIzmjena(p);
     if (a === 'otvori') { aktivni = aktivni === p.id ? null : p.id; crtaj(); render(); if (aktivni) zoom(p.id); return; }
     if (a === 'az-' || a === 'az+') { p.az = (p.az + (a === 'az+' ? 5 : -5) + 360) % 360; p.izbrisane = []; await generisi(p); }
