@@ -260,3 +260,5 @@
   `…/releases/download/<tag>/<fajl>`, bez PIN-a i `enc`; NE u karte_drive.json jer stariji APK-ovi zapis bez `enc` dešifruju i brišu ključ). Isti nativni tok `AndroidKarta.preuzmi`
   (`skiniDrive`: redirekti, Range, `.part`); Java dozvoljava samo drive.usercontent i taj GitHub prefiks (`jeDozvoljenaKarta`). DRAFT release se ne može skinuti — mora biti objavljen.
   Novu kartu: upload u release, pa dodati zapis u listu (nova lista na `codex-forest` radi bez APK-a). Test `tests/js/karte-github.test.js`.
+- **Tab Karte — Pregled** (`#kh-pregled`, `_khStat`): 4 pločice (podloga / offline karte / KML slojeva·poligona / uključeni slojevi teren+praćenje šume) vode u sekcije; zeleno = aktivno.
+  Značke `kh-bedz` (offline „✓ aktivna”, KML „x/y na karti”). „Isključi slojeve praćenja šume” samo kad `_tematskiUkljuceni()` nije prazno. Test `tests/js/karte-pregled.test.js`.

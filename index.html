@@ -918,6 +918,18 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .ko-red .ko-ime small { margin-left:auto; color:#86a397; font-weight:500; font-size:11px; padding-left:8px; }
 .ko-trazi { max-height:none; margin-bottom:12px; }
 .karta-hub-grid { display:grid; gap:10px; }
+.karta-hub-card h3 { display:flex; align-items:center; gap:8px; }
+.kh-bedz { margin-left:auto; padding:3px 9px; border-radius:999px; background:#14532d; border:1px solid #22c55e; color:#bbf7d0; font-size:10.5px; font-weight:800; letter-spacing:.02em; white-space:nowrap; max-width:55%; overflow:hidden; text-overflow:ellipsis; }
+.kh-pregled { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.kh-pl { display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:10px; align-items:center; text-align:left; padding:11px 12px; border-radius:14px; border:1px solid var(--line); background:#0d1a14; color:var(--text); font:inherit; cursor:pointer; min-height:56px; }
+.kh-pl i { grid-row:1 / 3; width:36px; height:36px; display:grid; place-items:center; border-radius:11px; background:#102019; font-style:normal; font-size:18px; }
+.kh-pl b { font-size:13px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.kh-pl small { color:#80958a; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; }
+.kh-pl.on { border-color:#22c55e; background:linear-gradient(145deg,#12402a,#0d1a14); }
+.kh-pl.on i { background:#166534; }
+.kh-pl.on small { color:#86efac; }
+.kh-iskljuci { grid-column:1 / -1; padding:10px; border-radius:12px; border:1px dashed #475569; background:transparent; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+@media (min-width:700px) { .kh-pregled { grid-template-columns:repeat(4,1fr); } }
 .karta-hub-card {
   background:linear-gradient(145deg,rgba(30,55,43,.95),rgba(16,32,25,.95));
   border:1px solid var(--line); border-radius:16px; padding:14px;
@@ -1679,6 +1691,8 @@ body.sl-uredi #sl-ured { display: block; }
   <div class="up-hdr"><h2>🗺 Karte i slojevi</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
     <div class="karta-hub-grid">
+      <div class="kh-grupa">Pregled</div>
+      <div id="kh-pregled" class="kh-pregled" role="status"></div>
       <div class="kh-grupa">Podloga</div>
       <section class="karta-hub-card">
         <h3>🌍 Bazna karta</h3>
@@ -1686,13 +1700,13 @@ body.sl-uredi #sl-ured { display: block; }
         <p id="protomaps-status">Protomaps ključ podešava se u Postavkama.</p>
       </section>
       <section class="karta-hub-card">
-        <h3>🗂 Offline karte</h3>
+        <h3>🗂 Offline karte <span class="kh-bedz" id="kh-b-off" hidden></span></h3>
         <p id="kh-offline" class="kh-stat">.sqlitedb / .mbtiles — rad bez signala</p>
         <button class="karta-hub-action" onclick="openUcitajKartuSection()">Upravljaj offline kartama</button>
       </section>
       <div class="kh-grupa">Moji podaci</div>
       <section class="karta-hub-card">
-        <h3>🗺 KML — preglednik poligona</h3>
+        <h3>🗺 KML — preglednik poligona <span class="kh-bedz" id="kh-b-kml" hidden></span></h3>
         <p id="kh-kml" class="kh-stat">Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp</p>
         <input id="kh-kml-trazi" class="kh-trazi" type="search" placeholder="🔎 Traži odjel, odsjek ili atribut…" enterkeyhint="search" onkeydown="if(event.key==='Enter')_khKmlTrazi()">
         <button class="karta-hub-action" onclick="_khKmlTrazi()">Otvori preglednik poligona</button>
@@ -5512,9 +5526,27 @@ function _kmlTraziHtml(upit) {
 // Karte tab: stanje offline karata i KML-a na karticama.
 function _khStat() {
   const off = document.getElementById('kh-offline'), kml = document.getElementById('kh-kml');
+  const bedz = (id, t) => { const e = document.getElementById(id); if (e) { e.hidden = !t; e.textContent = t || ''; } };
   try {
-    if (off) { const n = (typeof _sqlLayers !== 'undefined' ? _sqlLayers : []).length, a = n && _sqlLayers.find(r => r.active); off.textContent = n ? (a ? 'Aktivna: ' + a.name + ' · ' : '') + n + (n === 1 ? ' karta' : ' karata') + ' na telefonu' : 'Još nema offline karata — .sqlitedb / .mbtiles za rad bez signala'; }
-    if (kml) { const st = kmlLs.reduce((a, k) => { const s = _kmlStat(k); a.pol += s.pol; a.ha += s.ha; return a; }, { pol: 0, ha: 0 }); kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp'; }
+    const sql = typeof _sqlLayers !== 'undefined' ? _sqlLayers : [], aktivna = sql.find(r => r.active);
+    if (off) { const n = sql.length; off.textContent = n ? (aktivna ? 'Aktivna: ' + aktivna.name + ' · ' : '') + n + (n === 1 ? ' karta' : ' karata') + ' na telefonu' : 'Još nema offline karata — .sqlitedb / .mbtiles za rad bez signala'; }
+    bedz('kh-b-off', aktivna ? '✓ aktivna' : '');
+    const st = kmlLs.reduce((a, k) => { const s = _kmlStat(k); a.pol += s.pol; a.ha += s.ha; return a; }, { pol: 0, ha: 0 });
+    if (kml) kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp';
+    const vidljivi = kmlLs.filter(k => k.vis !== false).length;
+    bedz('kh-b-kml', kmlLs.length ? vidljivi + '/' + kmlLs.length + ' na karti' : '');
+    // Pregled: podloga, offline, KML, uključeni slojevi (teren + praćenje šume) — dodir vodi u odgovarajuću sekciju
+    const tem = typeof _tematskiUkljuceni === 'function' ? _tematskiUkljuceni().length : 0;
+    const teren = ['terrain-aspect', 'terrain-shade'].filter(id => document.getElementById(id)?.checked).length;
+    const slojeva = tem + teren;
+    const podloga = aktivna ? aktivna.name : (typeof _currentBaseName !== 'undefined' && _currentBaseName) || 'Nema';
+    const pl = (ico, vr, lab, on, klik) => `<button class="kh-pl${on ? ' on' : ''}" onclick="${klik}"><i>${ico}</i><b>${_escHtml(String(vr))}</b><small>${lab}</small></button>`;
+    const pr = document.getElementById('kh-pregled');
+    if (pr) pr.innerHTML = pl('🌍', podloga, aktivna ? 'offline podloga' : 'podloga', true, "document.getElementById('karta-base-list').scrollIntoView({behavior:'smooth',block:'center'})")
+      + pl('🗂', sql.length, sql.length === 1 ? 'offline karta' : 'offline karata', !!sql.length, 'openUcitajKartuSection()')
+      + pl('🗺', kmlLs.length ? kmlLs.length + ' · ' + st.pol : 0, 'KML slojeva · poligona', !!kmlLs.length, '_khKmlTrazi()')
+      + pl('🧩', slojeva, slojeva === 1 ? 'uključen sloj' : 'uključenih slojeva', !!slojeva, "document.getElementById('terrain-aspect').scrollIntoView({behavior:'smooth',block:'center'})")
+      + (tem ? '<button class="kh-iskljuci" onclick="_tematskiIskljuci();_khStat()">✕ Isključi slojeve praćenja šume</button>' : '');
   } catch(e) {}
 }
 function _khKmlTrazi() {
