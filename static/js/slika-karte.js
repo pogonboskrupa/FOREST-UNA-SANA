@@ -213,7 +213,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slkZoom,
       }
     }
     for (const p of opis.poligoni) if (p.natpis) {
-      const xs = p.ring.map(q => px(q[0], q[1])), cx = xs.reduce((a, q) => a + q[0], 0) / xs.length, cy = xs.reduce((a, q) => a + q[1], 0) / xs.length;
+      const xs = p.ring.map(q => px(q[0], q[1])), u = ([x, y]) => x > mapX + 40 && x < mapX + mapW - 40 && y > mapY + 40 && y < mapY + mapH - 40;
+      let cx = xs.reduce((a, q) => a + q[0], 0) / xs.length, cy = xs.reduce((a, q) => a + q[1], 0) / xs.length;
+      if (!u([cx, cy])) { const unutra = xs.filter(u); if (!unutra.length) continue; cx = unutra.reduce((a, q) => a + q[0], 0) / unutra.length; cy = unutra.reduce((a, q) => a + q[1], 0) / unutra.length; } // susjed koji viri u sliku: natpis uz vidljivi dio
       natpis(p.natpis, cx, cy, p.glavni ? 26 : 19, p.boja || '#334155', p.glavni ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.7)');
     }
     g.restore();

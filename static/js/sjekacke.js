@@ -1542,7 +1542,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
       return;
     }
     const p = nadji(el.dataset.id); if (!p) return;
-    if (!['otvori', 'st', 'vodi', 'kml', 'kml-gotove', 'vid', 'brisi'].includes(a)) planIzmjena(p);
+    if (!['otvori', 'st', 'vodi', 'kml', 'kml-gotove', 'vid', 'brisi', 'slika-sac'].includes(a)) planIzmjena(p);
     if (a === 'otvori') { aktivni = aktivni === p.id ? null : p.id; crtaj(); render(); if (aktivni) zoom(p.id); return; }
     if (a === 'az-' || a === 'az+') { p.az = (p.az + (a === 'az+' ? 5 : -5) + 360) % 360; p.izbrisane = []; await generisi(p); }
     else if (a === 'raz') { p.razmak = Number(el.dataset.v); ocistiIzbrisane(p); await generisi(p); }

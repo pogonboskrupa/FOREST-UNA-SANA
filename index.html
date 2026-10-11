@@ -6893,8 +6893,9 @@ const _DK_URL = 'https://raw.githubusercontent.com/pogonboskrupa/FOREST-UNA-SANA
 // Karte iz GitHub releasea (pogonboskrupa/KARTE): javni URL, bez PIN-a; ZASEBNA lista jer stariji APK-ovi bi zapis bez `enc`
 // pokušali dešifrovati (i obrisali ključ). Isti nativni tok skidanja (AndroidKarta.preuzmi) kao Drive.
 const _DKG_URL = _DK_URL.replace('karte_drive.json', 'karte_github.json');
-let _dkLista = null, _dkNapredak = {}, _dkGh = [];
+let _dkLista = null, _dkNapredak = {}, _dkGh = [], _dkGhPokusano = false;
 async function _dkGhUcitaj() {
+  _dkGhPokusano = true;
   for (const u of [_DKG_URL + '?t=' + Math.floor(Date.now() / 36e5), 'static/data/karte_github.json']) {
     const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
     try { const r = await fetch(u, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(tm)); if (r.ok) { const l = await r.json(); if (Array.isArray(l)) { _dkGh = l.filter(k => k && k.id && /^https:\/\/github\.com\/pogonboskrupa\/KARTE\/releases\/download\//.test(k.url || '')); try { localStorage.setItem('usf_karte_gh', JSON.stringify(_dkGh)); } catch(e) {} return _dkGh; } } } catch(e) {}
@@ -6915,7 +6916,7 @@ const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc')
 const _dkNaTelefonu = k => (typeof _sqlLayers !== 'undefined') && _sqlLayers.some(x => x.name === k.naziv + '.sqlitedb' || x.name === k.naziv);
 async function _driveKarteRender() {
   const el = document.getElementById('drive-karte'); if (!el || !window.USFDriveKarte) return;
-  const l = (_dkLista || await _dkUcitaj()).concat(_dkGh.length ? _dkGh : await _dkGhUcitaj());
+  const l = (_dkLista || await _dkUcitaj()).concat(_dkGhPokusano ? _dkGh : await _dkGhUcitaj());
   if (!l.length) { el.innerHTML = '<div class="ul-status">Trenutno nema karata za preuzimanje.</div>'; return; }
   const kljuc = _dkKljuc();
   el.innerHTML = l.map(k => {
@@ -10484,7 +10485,7 @@ function _korisnikUi() {
   const box = document.getElementById('set-korisnik-box'); if (!box) return;
   const k = _korisnikCitaj();
   if (k && !_korisnikEdit) {
-    const inic = k.ime.split(' ').filter(Boolean).slice(0, 2).map(r => r[0].toUpperCase()).join('');
+    const inic = k.ime.split(' ').map(r => (r.match(/\p{L}/u) || [''])[0].toUpperCase()).filter(Boolean).slice(0, 2).join('') || '👤';
     box.innerHTML = `<div class="set-kor-kartica"><span class="set-kor-av">${_escHtml(inic)}</span><div><b>${_escHtml(k.ime)}</b><small>✓ Zapisano · ${new Date(k.datum).toLocaleString('bs-BA')}</small></div><button onclick="_korisnikUredi(true)">✏ Uredi</button></div>`;
     return;
   }
