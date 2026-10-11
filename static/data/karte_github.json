@@ -2,15 +2,13 @@
  {
   "id": "gh_spd",
   "naziv": "Karta ŠPD",
-  "opis": "offline karta (GitHub, pogonboskrupa/KARTE v1.0.0)",
-  "mb": 1891,
+  "opis": "server · ŠPD UNSKO SANSKE ŠUME",
   "url": "https://github.com/pogonboskrupa/KARTE/releases/download/v1.0.0/KARTA_spd_GitHub.mbtiles"
  },
  {
   "id": "gh_stara",
   "naziv": "Karta 2010:2020",
-  "opis": "offline karta, starija verzija (GitHub, pogonboskrupa/KARTE)",
-  "mb": 1653,
+  "opis": "server · ŠPD UNSKO SANSKE ŠUME (starija verzija 2010:2020)",
   "url": "https://github.com/pogonboskrupa/KARTE/releases/download/stara_verzija/SPD.UNSKO.SANSKE.SUME.KARTA.sqlitedb"
  }
 ]
