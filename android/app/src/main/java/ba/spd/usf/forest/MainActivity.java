@@ -917,12 +917,18 @@ public class MainActivity extends Activity {
     // (PIN), ovdje se samo skida: <id>.part u offline_maps (nastavak preko Range), provjera
     // SQLite zaglavlja (Drive vraća HTML za kvotu/nejavno dijeljenje), pa uvoz kao
     // importOfflineMap → _nativeSqlmapImported. Napredak: _driveNapredak / _driveKraj. ──
+    // Karte se skidaju samo s Drive-a ili iz GitHub releasea naše biblioteke karata (pogonboskrupa/KARTE).
+    static boolean jeDozvoljenaKarta(String url) {
+        return url.startsWith("https://drive.usercontent.google.com/")
+            || url.startsWith("https://github.com/pogonboskrupa/KARTE/releases/download/");
+    }
+
     private final Map<String, Thread> karteUToku = new ConcurrentHashMap<>();
 
     class KartaBridge {
         @JavascriptInterface
         public void preuzmi(String kid, String url, String naziv) {
-            if (kid == null || url == null || !url.startsWith("https://drive.usercontent.google.com/") || karteUToku.containsKey(kid)) return;
+            if (kid == null || url == null || !jeDozvoljenaKarta(url) || karteUToku.containsKey(kid)) return;
             Thread t = new Thread(() -> preuzmiKartu(kid, url, naziv), "karta-" + kid);
             karteUToku.put(kid, t);
             t.start();
@@ -1016,7 +1022,7 @@ public class MainActivity extends Activity {
                 break;
             }
             if (status == 416 && imam > 0) return; // već skinuto do kraja
-            if (status != 200 && status != 206) throw new IOException("Drive HTTP " + status);
+            if (status != 200 && status != 206) throw new IOException("Preuzimanje HTTP " + status);
             String tip = con.getContentType();
             if (tip != null && tip.toLowerCase().startsWith("text/html"))
                 throw new IOException("Drive ne daje fajl (provjeri dijeljenje \"Svako s linkom\" ili dnevnu kvotu preuzimanja)");

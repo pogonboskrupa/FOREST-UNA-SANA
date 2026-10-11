@@ -256,3 +256,7 @@
   `usf_` ključ ide u rezervnu kopiju automatski. Test `tests/js/korisnik.test.js`.
 - **Sjekačke linije — sve projekte odjednom**: traka na vrhu liste (`sl-sve`): „Sakrij sve / Prikaži sve” (`p.vidljiv` svih, prekidač po stanju) i „Obriši sve (N)” (confirm, `pisi([])`, gasi vodič).
   Obrađuje se u `akcija` PRIJE `nadji(id)` (dugmad nemaju data-id). Test `tests/js/sjekacke-sve.test.js`.
+- **Karte iz GitHub releasea** (`pogonboskrupa/KARTE`, Učitaj kartu → „☁ Karte za preuzimanje”): ZASEBNA lista `static/data/karte_github.json` (`id, naziv, opis, mb, url` — javni
+  `…/releases/download/<tag>/<fajl>`, bez PIN-a i `enc`; NE u karte_drive.json jer stariji APK-ovi zapis bez `enc` dešifruju i brišu ključ). Isti nativni tok `AndroidKarta.preuzmi`
+  (`skiniDrive`: redirekti, Range, `.part`); Java dozvoljava samo drive.usercontent i taj GitHub prefiks (`jeDozvoljenaKarta`). DRAFT release se ne može skinuti — mora biti objavljen.
+  Novu kartu: upload u release, pa dodati zapis u listu (nova lista na `codex-forest` radi bez APK-a). Test `tests/js/karte-github.test.js`.

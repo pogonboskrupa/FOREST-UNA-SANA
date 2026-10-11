@@ -6858,7 +6858,18 @@ function _pinPostavkeUi() { const b = document.getElementById('set-pin-zakljucaj
 // šifrovan PIN-om; preuzima nativno MainActivity (AndroidKarta) u offline_maps i uvozi isto
 // kao "Izaberi kartu" (_nativeSqlmapImported). Link se nigdje ne prikazuje.
 const _DK_URL = 'https://raw.githubusercontent.com/pogonboskrupa/FOREST-UNA-SANA/codex-forest/static/data/karte_drive.json';
-let _dkLista = null, _dkNapredak = {};
+// Karte iz GitHub releasea (pogonboskrupa/KARTE): javni URL, bez PIN-a; ZASEBNA lista jer stariji APK-ovi bi zapis bez `enc`
+// pokušali dešifrovati (i obrisali ključ). Isti nativni tok skidanja (AndroidKarta.preuzmi) kao Drive.
+const _DKG_URL = _DK_URL.replace('karte_drive.json', 'karte_github.json');
+let _dkLista = null, _dkNapredak = {}, _dkGh = [];
+async function _dkGhUcitaj() {
+  for (const u of [_DKG_URL + '?t=' + Math.floor(Date.now() / 36e5), 'static/data/karte_github.json']) {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(u, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(tm)); if (r.ok) { const l = await r.json(); if (Array.isArray(l)) { _dkGh = l.filter(k => k && k.id && /^https:\/\/github\.com\/pogonboskrupa\/KARTE\/releases\/download\//.test(k.url || '')); try { localStorage.setItem('usf_karte_gh', JSON.stringify(_dkGh)); } catch(e) {} return _dkGh; } } } catch(e) {}
+  }
+  try { _dkGh = JSON.parse(localStorage.getItem('usf_karte_gh') || '[]'); } catch(e) { _dkGh = []; }
+  return _dkGh;
+}
 async function _dkUcitaj() {
   for (const u of [_DK_URL + '?t=' + Math.floor(Date.now() / 36e5), 'static/data/karte_drive.json']) {
     // slab signal: GitHub ne smije držati listu u nedogled — poslije 8 s ugrađena/zapamćena
@@ -6872,14 +6883,14 @@ const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc')
 const _dkNaTelefonu = k => (typeof _sqlLayers !== 'undefined') && _sqlLayers.some(x => x.name === k.naziv + '.sqlitedb' || x.name === k.naziv);
 async function _driveKarteRender() {
   const el = document.getElementById('drive-karte'); if (!el || !window.USFDriveKarte) return;
-  const l = _dkLista || await _dkUcitaj();
+  const l = (_dkLista || await _dkUcitaj()).concat(_dkGh.length ? _dkGh : await _dkGhUcitaj());
   if (!l.length) { el.innerHTML = '<div class="ul-status">Trenutno nema karata za preuzimanje.</div>'; return; }
   const kljuc = _dkKljuc();
   el.innerHTML = l.map(k => {
     const n = _dkNapredak[k.id];
     const desno = _dkNaTelefonu(k) ? '<b class="dk-ok">✓ Na telefonu</b>'
       : n ? `<div class="dk-traka"><u style="width:${n.p || 0}%"></u></div><small>${n.p != null ? n.p + ' %' : '…'}${n.mb ? ' · ' + n.mb + ' MB' : ''}</small><button onclick="_dkPrekini('${k.id}')">Prekini</button>`
-      : kljuc ? `<button class="glavno" onclick="_dkPreuzmi('${k.id}')">⬇ Preuzmi</button>` : `<button onclick="_dkOtkljucaj()">🔒 Otključaj PIN-om</button>`;
+      : kljuc || k.url ? `<button class="glavno" onclick="_dkPreuzmi('${k.id}')">⬇ Preuzmi</button>` : `<button onclick="_dkOtkljucaj()">🔒 Otključaj PIN-om</button>`;
     return `<div class="dk-red"><div><b>${_escHtml(k.naziv)}</b><small>${_escHtml(k.opis || '')}${k.mb ? ' · ' + k.mb + ' MB' : ''}</small></div><div class="dk-akc">${desno}</div></div>`;
   }).join('') + '<p class="set-nap">Karta se skida jednom i ostaje na telefonu za rad bez interneta. Za velike karte koristi WiFi.</p>';
 }
@@ -6903,8 +6914,19 @@ function _dkRacunar(fileId, poruka) {
   document.body.appendChild(a); a.click(); a.remove();
   showToast('⬇ Preuzimanje s Drive-a pokrenuto. ' + poruka);
 }
+// GitHub release: javni link (bez PIN-a); APK skida nativno, na računaru link u novom tabu.
+function _dkGhPreuzmi(k) {
+  if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmi) {
+    const a = document.createElement('a'); a.href = k.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.appendChild(a); a.click(); a.remove();
+    showToast('⬇ Preuzimanje pokrenuto. Velike karte ne staju u preglednik — koristi online podloge.'); return;
+  }
+  _dkNapredak[k.id] = { p: 0 }; _driveKarteRender();
+  try { AndroidKarta.preuzmi(k.id, k.url, k.naziv); }
+  catch(e) { delete _dkNapredak[k.id]; _driveKarteRender(); showToast('⚠ Preuzimanje nije pokrenuto: ' + e.message); }
+}
 async function _dkPreuzmi(id) {
-  const k = (_dkLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
+  const k = (_dkLista || []).concat(_dkGh).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
+  if (k.url) return _dkGhPreuzmi(k); // GitHub release: javni link, bez PIN-a
   if (!kljuc) { _dkOtkljucaj(); return; }
   const o = await USFDriveKarte.desifruj(kljuc, k.enc);
   if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
