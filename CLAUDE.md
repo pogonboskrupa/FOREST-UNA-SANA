@@ -256,7 +256,7 @@
   Glavna granica (`glavni`) ima bijeli rub ispod crte da se ne gubi na podlozi (važi i za sjekačke linije).
 - **Slika odjela — linije poligona**: SVE crno isprekidano, ISTO (odjel i susjedi 9 px `[30,14]` s bijelim rubom, `rub`), bez crvene; natpisi odjela i susjeda ostaju na slici (`_odjelOznaka`: atribut ODJEL · ODSJEK, inače naziv) — kao štampana granica na podlozi.
 - **Korisnik** (localStorage `usf_korisnik` {ime, datum prvog upisa}; `_korisnikUi`, `_korisnikSpremi/Uredi/Ukloni`): bez imena gore u Postavkama kartica s poljem za unos (`#set-profil`);
-  s imenom gore profil (avatar s inicijalima, ime, „od datuma”), u Meniju chip `#meni-korisnik`, a uređivanje (✏ Uredi / Odustani / 🗑 Ukloni) je u kartici NA DNU Postavki (`#set-korisnik-dno`).
+  s imenom gore SAMO ime i prezime centrirano preko cijele kartice, pismom Dancing Script 700 (`.kor-ime`; font lokalno u `static/fonts/` — SIL OFL, latin + latin-ext za č ć š đ ž, radi offline; u sw.js i copy-assets.sh), isto u Meniju `#meni-korisnik`, a uređivanje (✏ Uredi / Odustani / 🗑 Ukloni) je u kartici NA DNU Postavki (`#set-korisnik-dno`).
   Prazno ime ne briše (samo Ukloni). `usf_` ključ ide u rezervnu kopiju. Test `tests/js/korisnik.test.js`.
 - **Sjekačke linije — sve projekte odjednom**: traka na vrhu liste (`sl-sve`): „Sakrij sve / Prikaži sve” (`p.vidljiv` svih, prekidač po stanju) i „Obriši sve (N)” (confirm, `pisi([])`, gasi vodič).
   Obrađuje se u `akcija` PRIJE `nadji(id)` (dugmad nemaju data-id). Test `tests/js/sjekacke-sve.test.js`.

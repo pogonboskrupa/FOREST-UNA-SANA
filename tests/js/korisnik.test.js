@@ -14,7 +14,9 @@ els['set-korisnik-ime'].value = '  Nedim   Čehić ';
 api._korisnikSpremi();
 const k = api._korisnikCitaj(); assert.strictEqual(k.ime, 'Nedim Čehić');
 // s imenom: profil gore (inicijali NČ), chip u Meniju, uređivanje samo u kartici na dnu
-assert(els['set-profil'].innerHTML.includes('Nedim Čehić') && els['set-profil'].innerHTML.includes('>NČ<') && !els['set-profil'].innerHTML.includes('<input'));
+assert(els['set-profil'].innerHTML.includes('class="kor-ime">Nedim Čehić<') && !els['set-profil'].innerHTML.includes('<input'));
+// samo ime i prezime preko cijele širine: bez „Korisnik aplikacije”, datuma i inicijala
+for (const h of [els['set-profil'].innerHTML, els['meni-korisnik'].innerHTML]) assert(!/Korisnik aplikacije|\d{1,2}\.\d{1,2}\.\d{4}|kor-av|set-hero-av/.test(h), h);
 assert(!els['meni-korisnik'].hidden && els['meni-korisnik'].innerHTML.includes('Nedim Čehić'));
 assert(!els['set-korisnik-dno'].hidden && els['set-korisnik-box'].innerHTML.includes('✏ Uredi') && !els['set-korisnik-box'].innerHTML.includes('<input'));
 api._korisnikUredi(true); assert(els['set-korisnik-box'].innerHTML.includes('value="Nedim Čehić"') && els['set-korisnik-box'].innerHTML.includes('Ukloni korisnika'));

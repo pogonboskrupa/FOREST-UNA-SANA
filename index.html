@@ -596,6 +596,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-mem-bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,#16a34a,#4ade80); transition:width .3s; }
 .set-mem small { display:block; color:#80958a; font-size:11px; margin-top:4px; }
 .set-red { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; padding:10px 0; border-top:1px solid #1f3b2d; }
+/* Dancing Script 700 (SIL OFL, static/fonts) — lokalno, radi bez interneta; latin-ext nosi č ć š đ ž */
+@font-face { font-family:'Dancing Script'; font-style:normal; font-weight:700; font-display:swap; src:url(static/fonts/dancing-script-latin-ext-700-normal.woff2) format('woff2'); unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family:'Dancing Script'; font-style:normal; font-weight:700; font-display:swap; src:url(static/fonts/dancing-script-latin-700-normal.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+.kor-ime { display:block; width:100%; text-align:center; font-family:'Dancing Script', cursive; font-weight:700; line-height:1.15; color:#f0fdf4; text-wrap:balance; overflow-wrap:anywhere; text-shadow:0 2px 12px rgba(34,197,94,.35); }
+.set-hero.ime { display:block; padding:20px 14px; } .set-hero.ime .kor-ime { font-size:38px; }
 .set-hero { margin-bottom:12px; display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:center; padding:16px; border-radius:18px; background:linear-gradient(135deg,#14532d,#0b2a1c 70%); border:1px solid #1f6b3f; box-shadow:0 6px 22px rgba(0,0,0,.28); }
 .set-hero-av, .kor-av { display:grid; place-items:center; border-radius:50%; background:linear-gradient(145deg,#22c55e,#15803d); color:#fff; font-weight:800; letter-spacing:.02em; box-shadow:0 0 0 3px rgba(134,239,172,.25); }
 .set-hero-av { width:64px; height:64px; font-size:24px; }
@@ -610,7 +615,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-dno-red button, .set-kor-odustani { min-height:40px; padding:0 14px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
 .set-kor-odustani { margin-top:8px; margin-right:8px; }
 .set-kor-ukloni { margin-top:8px; min-height:40px; padding:0 14px; border-radius:10px; border:1px solid #7f1d1d; background:#2a0f0f; color:#fca5a5; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
-.kor-chip { display:flex; align-items:center; gap:12px; padding:10px 14px; margin-bottom:16px; border-radius:16px; background:linear-gradient(135deg,#14532d,#0b2a1c 75%); border:1px solid #1f6b3f; }
+.kor-chip .kor-ime { font-size:30px; }
+.kor-chip { display:block; padding:12px 14px; margin-bottom:16px; border-radius:16px; background:linear-gradient(135deg,#14532d,#0b2a1c 75%); border:1px solid #1f6b3f; }
 .kor-chip[hidden] { display:none; }
 .kor-av { width:40px; height:40px; font-size:15px; flex:none; }
 .kor-chip b { display:block; color:#f0fdf4; font-size:15px; font-weight:800; line-height:1.2; overflow-wrap:anywhere; }
@@ -10512,13 +10518,11 @@ function _korisnikCitaj() {
 }
 // Bez imena: gore u Postavkama polje za unos. Sa imenom: gore lijep profil, Meni dobija „chip”, a uređivanje
 // (Uredi / Ukloni) je u posebnoj kartici na dnu Postavki.
-const _korisnikInic = ime => ime.split(' ').map(r => (r.match(/\p{L}/u) || [''])[0].toUpperCase()).filter(Boolean).slice(0, 2).join('') || '👤';
 function _korisnikUi() {
   const k = _korisnikCitaj(), gore = document.getElementById('set-profil'), dno = document.getElementById('set-korisnik-dno'), box = document.getElementById('set-korisnik-box'), meni = document.getElementById('meni-korisnik');
-  const inic = k ? _korisnikInic(k.ime) : '';
-  if (meni) { meni.hidden = !k; meni.innerHTML = k ? `<span class="kor-av">${_escHtml(inic)}</span><div><b>${_escHtml(k.ime)}</b><small>Korisnik aplikacije</small></div>` : ''; }
+  if (meni) { meni.hidden = !k; meni.innerHTML = k ? `<span class="kor-ime">${_escHtml(k.ime)}</span>` : ''; }
   if (gore) gore.innerHTML = k
-    ? `<div class="set-hero"><span class="set-hero-av">${_escHtml(inic)}</span><div class="set-hero-in"><b>${_escHtml(k.ime)}</b><small>Korisnik aplikacije · od ${new Date(k.datum).toLocaleDateString('bs-BA')}</small></div></div>`
+    ? `<div class="set-hero ime"><span class="kor-ime">${_escHtml(k.ime)}</span></div>`
     : `<div class="set-hero prazno"><span class="set-hero-av">👤</span><div class="set-hero-in"><b>Ko koristi aplikaciju?</b><small>Upiši ime i prezime — ostaje na ovom uređaju</small><div class="set-korisnik"><input id="set-korisnik-ime" type="text" maxlength="60" autocomplete="name" placeholder="Ime i prezime" onkeydown="if(event.key==='Enter')_korisnikSpremi()"><button onclick="_korisnikSpremi()">Sačuvaj</button></div></div></div>`;
   if (dno) dno.hidden = !k;
   if (box && k) box.innerHTML = _korisnikEdit
