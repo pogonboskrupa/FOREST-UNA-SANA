@@ -29,20 +29,37 @@ t('lista karata: samo šifrovani zapisi, bez linka i PIN-a u čistom tekstu', ()
   const l = JSON.parse(R('static/data/karte_drive.json')).concat(JSON.parse(R('static/data/kml_drive.json')));
   assert.ok(Array.isArray(l) && l.length >= 1);
   for (const k of l) {
-    assert.deepStrictEqual(Object.keys(k).filter(x => x !== 'vrsta').sort(), ['enc', 'id', 'mb', 'naziv', 'opis']);
+    assert.deepStrictEqual(Object.keys(k).filter(x => x !== 'vrsta').sort(), ['encm', 'id', 'mb', 'naziv', 'opis']);
     assert.ok(k.vrsta === undefined || k.vrsta === 'kml');
-    assert.ok(/^[A-Za-z0-9+/=]{40,}$/.test(k.enc) && D.izB64(k.enc).length > 28, 'iv + šifrat + GCM tag');
+    const mj = Object.keys(k.encm);
+    assert.ok(mj.length >= 36 && mj.every(m => /^m\d{4}-\d{2}$/.test(m)), 'šifrati za najmanje 3 godine; ključevi su mjeseci, ne PIN');
+    assert.ok(Object.values(k.encm).every(e => /^[A-Za-z0-9+/=]{40,}$/.test(e) && D.izB64(e).length > 28), 'iv + šifrat + GCM tag');
   }
   for (const f of ['index.html', 'static/data/karte_drive.json', 'static/data/kml_drive.json', 'static/js/drive-karte.js', 'CLAUDE.md'])
     assert.ok(!/drive\.google\.com\/file\/d\/[\w-]{20,}|[?&]id=[\w-]{25,}/.test(R(f)), f + ' bez Drive linka');
 });
 
+t('PIN po mjesecu: šifrat tekućeg mjeseca otvara samo PIN tog mjeseca; stari/idući PIN ne', async () => {
+  // SINTETIČKI format (ne stvarni): test provjerava mehanizam, a pravilo i PIN-ovi nikad nisu u repou
+  const id = 'ABCdefGHIjklMNOpqrSTUvwxYZ012345', fmt = 'test-YYYY/MM', d1 = new Date(2026, 9, 15), d2 = new Date(2026, 10, 3);
+  assert.strictEqual(D.mjesecKljuc(d1), 'm2026-10'); assert.strictEqual(D.pinIzFormata(fmt, d1), 'test-2026/10'); assert.strictEqual(D.pinIzFormata(fmt, d2), 'test-2026/11');
+  assert.strictEqual(D.pinIzFormata('YY.MM', new Date(2027, 0, 1)), '27.01', 'prelaz godine');
+  const pin = d => D.pinIzFormata(fmt, d), z = { encm: await D.sifrujMjesecno({ fileId: id }, fmt, d1, 3) };
+  assert.deepStrictEqual(Object.keys(z.encm), ['m2026-10', 'm2026-11', 'm2026-12']);
+  assert.deepStrictEqual(await D.desifruj(await D.kljucIzPina(pin(d1)), D.encZaMjesec(z, d1)), { fileId: id });
+  assert.strictEqual(await D.desifruj(await D.kljucIzPina(pin(d1)), D.encZaMjesec(z, d2)), null, 'PIN iz prošlog mjeseca ne otključava idući');
+  assert.deepStrictEqual(await D.desifruj(await D.kljucIzPina(pin(d2)), D.encZaMjesec(z, d2)), { fileId: id });
+  assert.strictEqual(D.encZaMjesec(z, new Date(2030, 0, 1)), null, 'izvan raspona nema šifrata');
+  for (const f of ['tools/karta_drive_dodaj.mjs', 'tools/karte_pin_migriraj.mjs', 'tools/karte_pin_produzi.mjs', 'static/js/drive-karte.js', 'index.html', 'CLAUDE.md']) assert.ok(!/USF_PIN_(FORMAT|STARI)\s*=\s*['"]?[\dYM]{2,}/.test(R(f)), f + ' bez formata/PIN-a');
+});
+
 t('app: zaseban PIN karata (provjera dešifrovanjem), nativno preuzimanje, provjera SQLite zaglavlja', () => {
   const H = R('index.html'), J = R('android/app/src/main/java/ba/spd/usf/forest/MainActivity.java');
   const fn = ime => { const i = H.indexOf('async function ' + ime + '('); return H.slice(i, H.indexOf('\n}', i)); };
-  assert.ok(fn('_dkOtkljucaj').includes("'usf_karte_greske'") && fn('_dkOtkljucaj').includes('USFDriveKarte.desifruj(k, l[0].enc)'), 'PIN karata se provjerava dešifrovanjem');
+  assert.ok(fn('_dkOtkljucaj').includes("'usf_karte_greske'") && fn('_dkOtkljucaj').includes('_dkProvjeri(k, l)') && R('index.html').includes('USFDriveKarte.encZaMjesec(z)'), 'PIN karata se provjerava dešifrovanjem šifrata tekućeg mjeseca');
   assert.ok(!fn('_pinTrazi').includes('usf_karte') && !fn('_pinTrazi').includes('USFDriveKarte'), 'PIN sekcija ne otključava karte');
   assert.ok(H.includes('const kljuc = _dkKljuc();') && H.includes("localStorage.removeItem('usf_karte_kljuc')"));
+  assert.ok(H.includes('usf_karte_mjesec') && H.includes('localStorage.getItem(\'usf_karte_mjesec\') === USFDriveKarte.mjesecKljuc()'), 'ključ važi samo u mjesecu unosa');
   assert.ok(H.includes('AndroidKarta.preuzmi(id, USFDriveKarte.urlPreuzimanja(o.fileId), k.naziv)') && H.includes('id="drive-karte"'));
   assert.ok(J.includes('new KartaBridge(), "AndroidKarta"') && J.includes('equals("SQLite format 3")') && J.includes('"Range", "bytes=" + imam + "-"'));
   assert.ok(J.includes('url.startsWith("https://drive.usercontent.google.com/")'), 'most skida samo s Drive-a');

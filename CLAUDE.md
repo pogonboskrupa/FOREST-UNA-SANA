@@ -199,14 +199,17 @@
   Zajednički unos `_pinUnos(poruka, ključGrešaka, provjeri)`. Karte imaju DRUGI PIN (vidi ispod).
 - **Drive karte za preuzimanje** (Učitaj kartu → „☁ Karte za preuzimanje”): lista
   `static/data/karte_drive.json` (app je čita s raw.githubusercontent codex-forest → nove karte
-  bez APK-a). Drive fajl ID šifrovan: PBKDF2-SHA256(PIN, `usf-karte-v1`, 250k) → AES-GCM
-  (`static/js/drive-karte.js`, isti kod app/alat/test). Dodavanje: `USF_PIN=xxxx node
-  tools/karta_drive_dodaj.mjs "<link>" "Naziv" ["opis"] [MB]` — PIN i link NIKAD u repo/commit.
-  PIN karata je odvojen od PIN-a sekcija i nema heš: `_dkOtkljucaj` ga provjerava dešifrovanjem
-  prvog zapisa liste (greške `usf_karte_greske`); čuva se samo ključ u `usf_karte_kljuc`. APK: `AndroidKarta.preuzmi`
+  bez APK-a). **PIN karata se mijenja svaki mjesec** (isti za Drive karte, Drive KML i GitHub karte): svaki zapis nosi `encm`
+  `{ 'm2026-10': šifrat, … }` (60 mjeseci), Drive ID šifrovan AES-GCM ključem iz PIN-a tog mjeseca
+  (PBKDF2-SHA256, `static/js/drive-karte.js`, isti kod app/alat/test). App uzima šifrat TEKUĆEG mjeseca
+  (`encZaMjesec`); sačuvani ključ `usf_karte_kljuc` važi samo uz `usf_karte_mjesec` = tekući mjesec (`_dkKljuc`). Već preuzete karte
+  („✓ Na telefonu”, „✓ Učitan”) NE traže PIN — treba samo za novo preuzimanje. FORMAT PIN-a (pravilo) NIKAD u repo: alati ga uzimaju iz
+  `USF_PIN_FORMAT` (tokeni YY/YYYY/MM), kao i sam PIN i link. Dodavanje: `USF_PIN_FORMAT=… node tools/karta_drive_dodaj.mjs "<link>" "Naziv" ["opis"] [MB]`;
+  produženje šifrata prije isteka 60 mjeseci: `USF_PIN_FORMAT=… node tools/karte_pin_produzi.mjs`. Stariji APK-ovi (< 2.1.6) čitaju `enc` i više ne mogu otključati.
+  PIN karata je odvojen od PIN-a sekcija; `_dkOtkljucaj` ga provjerava dešifrovanjem prvog zapisa (greške `usf_karte_greske`). APK: `AndroidKarta.preuzmi`
   → `drive.usercontent.google.com/download?…&confirm=t`, `.part` + Range nastavak, provjera
   „SQLite format 3”, pa uvoz kao `importOfflineMap`. Drive fajl mora biti „Svako s linkom”.
-  **KML poligoni s Drive-a** (KML preglednik → „☁ Poligoni za preuzimanje”): isti PIN, ZASEBNA lista
+  **KML poligoni s Drive-a** (KML preglednik → „☁ Poligoni za preuzimanje”): isti (mjesečni) PIN, ZASEBNA lista
   `static/data/kml_drive.json` (`karta_drive_dodaj.mjs --kml …`, zapis `vrsta:'kml'`) — stariji APK-ovi čitaju
   karte_drive.json i KML bi prikazali kao offline kartu. APK `AndroidKarta.preuzmiKml` (zajednički `skiniDrive`)
   → cache `kml_drive/<id>.dat` (provjera `<?xml`/`<kml`/PK), JS `_driveKmlKraj` uzme bajtove (`uzmiKml`, briše fajl)
@@ -258,7 +261,7 @@
 - **Sjekačke linije — sve projekte odjednom**: traka na vrhu liste (`sl-sve`): „Sakrij sve / Prikaži sve” (`p.vidljiv` svih, prekidač po stanju) i „Obriši sve (N)” (confirm, `pisi([])`, gasi vodič).
   Obrađuje se u `akcija` PRIJE `nadji(id)` (dugmad nemaju data-id). Test `tests/js/sjekacke-sve.test.js`.
 - **Karte iz GitHub releasea** (`pogonboskrupa/KARTE`, Učitaj kartu → „☁ Karte za preuzimanje”): ZASEBNA lista `static/data/karte_github.json` (`id, naziv, opis, mb, url` — javni
-  `…/releases/download/<tag>/<fajl>`, bez PIN-a i `enc`; NE u karte_drive.json jer stariji APK-ovi zapis bez `enc` dešifruju i brišu ključ). Isti nativni tok `AndroidKarta.preuzmi`
+  `…/releases/download/<tag>/<fajl>`, bez `enc`/`encm` (URL je javan, ali dugme je iza istog mjesečnog PIN-a — samo zaštita izbora); NE u karte_drive.json jer stariji APK-ovi zapis bez `enc` dešifruju i brišu ključ). Isti nativni tok `AndroidKarta.preuzmi`
   (`skiniDrive`: redirekti, Range, `.part`); Java dozvoljava samo drive.usercontent i taj GitHub prefiks (`jeDozvoljenaKarta`). DRAFT release se ne može skinuti — mora biti objavljen.
   Novu kartu: upload u release, pa dodati zapis u listu (nova lista na `codex-forest` radi bez APK-a). Test `tests/js/karte-github.test.js`.
 - **Tab Karte — Pregled** (`#kh-pregled`, `_khStat`): 4 pločice (podloga / offline karte / KML slojeva·poligona / uključeni slojevi teren+praćenje šume) vode u sekcije; zeleno = aktivno.

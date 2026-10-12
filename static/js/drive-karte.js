@@ -36,7 +36,25 @@
   // confirm=t preskače Drive stranicu "fajl je prevelik za provjeru virusa"
   const urlPreuzimanja = id => 'https://drive.usercontent.google.com/download?id=' + encodeURIComponent(id) + '&export=download&confirm=t';
 
-  const api = { SOL, ITER, KLJUC_LS, kljucIzPina, sifruj, desifruj, driveId, urlPreuzimanja, uB64, izB64 };
+  // ── PIN koji se mijenja svaki mjesec ──
+  // Svaki zapis nosi `encm`: { 'm2026-10': šifrat, 'm2026-11': … } — isti Drive ID šifrovan PIN-om za taj mjesec.
+  // App uzima šifrat tekućeg mjeseca, pa PIN iz prošlog mjeseca ne otključava ništa novo, a već preuzete karte
+  // ostaju na telefonu (ne traže PIN). Ključevi mjeseci NISU PIN. Format PIN-a (npr. tokeni YY/MM) zna samo vlasnik
+  // i daje ga alatu preko USF_PIN_FORMAT — nikad se ne commituje.
+  const mjesecKljuc = (d = new Date()) => 'm' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const pinIzFormata = (format, d = new Date()) => String(format).replace(/YYYY/g, String(d.getFullYear())).replace(/YY/g, String(d.getFullYear()).slice(-2)).replace(/MM/g, String(d.getMonth() + 1).padStart(2, '0'));
+  // n mjeseci od datuma `od`: { mjesecKljuc: šifrat(PIN tog mjeseca) }
+  async function sifrujMjesecno(obj, format, od = new Date(), n = 60) {
+    const out = {};
+    for (let i = 0; i < n; i++) {
+      const d = new Date(od.getFullYear(), od.getMonth() + i, 1);
+      out[mjesecKljuc(d)] = await sifruj(await kljucIzPina(pinIzFormata(format, d)), obj);
+    }
+    return out;
+  }
+  const encZaMjesec = (zapis, d = new Date()) => (zapis && zapis.encm && zapis.encm[mjesecKljuc(d)]) || null;
+
+  const api = { SOL, ITER, KLJUC_LS, mjesecKljuc, pinIzFormata, sifrujMjesecno, encZaMjesec, kljucIzPina, sifruj, desifruj, driveId, urlPreuzimanja, uB64, izB64 };
   root.USFDriveKarte = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
