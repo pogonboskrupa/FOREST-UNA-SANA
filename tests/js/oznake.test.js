@@ -15,4 +15,10 @@ assert(H.includes("await _pinUnos('', 'usf_karte_greske',") && !H.includes('Kart
 const f = new Function('_odjelOznaka', H.match(/function _oznTekst\(l, cfg\) \{[\s\S]*?\n\}\n/)[0] + '; return _oznTekst;')((l, r) => (l._kmlExtData.ODJEL + ' · ' + l._kmlExtData.ODSJEK));
 const l = { _kmlName: 'Odsjek A', _kmlExtData: { ODJEL: '88/1', ODSJEK: '00', GAZ: ' 4111 ' } };
 assert.strictEqual(f(l, { polje: '__naziv' }), 'Odsjek A'); assert.strictEqual(f(l, { polje: '__odjel' }), '88/1 · 00'); assert.strictEqual(f(l, { polje: 'GAZ' }), '4111'); assert.strictEqual(f(l, { polje: 'NEMA' }), '');
+// kartica u tabu Karte NE nabraja slojeve (samo dugme → lista u editoru); natpisi zadano isključeni; novi fajl = linija + blaga ispuna
+assert(grid.includes('onclick="_kedListaOtvori()"') && !grid.includes('ked-hub-red'), 'slojevi tek u editoru');
+assert(H.includes("const _oznCfg = k => ({ on: false,"), 'natpisi zadano isključeni');
+assert(/const _KML_STIL_NOVI = \{ w: 2, crta: 'puna', op: 90, ispuna: (\d+) \}/.test(H) && +H.match(/_KML_STIL_NOVI = \{[^}]*ispuna: (\d+)/)[1] > 0 && +H.match(/_KML_STIL_NOVI = \{[^}]*ispuna: (\d+)/)[1] <= 20, 'blaga ispuna');
+assert(H.includes('const grp = pkml(doc, col, undefined, stil);') && H.includes('_kmlSaveContent(file.name, usedText, col, stil);'), 'novi KML dobija i pamti zadani stil');
+for (const t of ['data-a="stil"', 'data-a="vid"', 'data-a="zoom"', 'data-a="obj"', "await _kmlPromijeniBoju(id); _kedListaOtvori();"]) assert(H.includes(t), t);
 console.log('oznake ok');

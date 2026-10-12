@@ -30,7 +30,7 @@ t('KML sadržaj u IndexedDB (ne nestaje pri ažuriranju), SHP se čuva, kopija n
   assert.ok(sp.includes("st.put(txt, ime)") && sp.includes('idb: 1') && sp.includes('content: txt'), 'IDB, rezerva localStorage');
   const rs = tijelo(H, 'async function _kmlRestore(');
   assert.ok(rs.includes("st.get(name)") && rs.includes('_kmlSpremi(name, txt, data)'), 'čitanje iz IDB + seoba starih zapisa');
-  assert.ok(tijelo(H, 'async function _shpLoadFiles(').includes('_kmlSaveContent(k.name, _kmlIzGrupe(k), col)'), 'SHP se čuva kao KML');
+  assert.ok(tijelo(H, 'async function _shpLoadFiles(').includes('_kmlSaveContent(k.name, _kmlIzGrupe(k), col, k.stil)'), 'SHP se čuva kao KML');
   assert.ok(tijelo(H, 'async function _setBackup(').includes('d.content = t') && tijelo(H, 'function _setRestore(').includes('st.put(d.content, ime)'));
 });
 

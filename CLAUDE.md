@@ -268,9 +268,11 @@
   Značke `kh-bedz` (offline „✓ aktivna”, KML „x/y na karti”). „Isključi slojeve praćenja šume” samo kad `_tematskiUkljuceni()` nije prazno. Test `tests/js/karte-pregled.test.js`.
 - **Izbornik 🗂 (gore desno, `#layer-switch`)**: mrežne podloge, pa ispod njih okvir `.ls-offline` (zadebljan border, naslov „🗂 Offline karte”, ≤ 34vh uz skrol) sa SVIM offline kartama
   (`_sqlmapSyncLayerSwitch`, jedan dodir = `_sqlmapSelect`; ime bez .sqlitedb/.mbtiles).
-- **Editor slojeva** (tab Karte → „🎨 Editor slojeva”: lista slojeva s mini pregledom `_kedHubRender` → `_oznOtvori(id)` → `_kmlPromijeniBoju`; isto dugme boje u KML pregledniku
+- **Editor slojeva** (tab Karte → kartica „🎨 Editor slojeva” s dugmetom — kartica NE nabraja slojeve; `_kedListaOtvori` = list sa svim fajlovima (mini pregled,
+  pretraga > 6; dodir = stil, 👁 vidljivost, 🔍 Na karti, ✏ Objekti → KML preglednik s otvorenim objektima; poslije editora vraća se u listu); isto dugme boje u KML pregledniku
   i „🎨 Boja, linija i ispuna” za objekat): `_kmlStilOtvori` = list s kartama **Linija** (boja, debljina 0,5–10, providnost linije, puna/isprek/tačk/crta-tačka, „Samo dodir”),
   **Ispuna** (providnost ispune 0–100 % + brzi izbor, boja ispune odvojena od linije ili „Ista kao linija”), **Oznake** (samo za sloj: natpisi). Šabloni (Granica odjela, Odjel, Put…),
   SVG pregled `_kedSvg`, ŽIVA primjena na karti (`uzivo`); Odustani vraća stil (objekat iz snimka `o0` — Leaflet setStyle mijenja options) i natpise (`ozn0`).
   Model `stil`: { w, crta, op (neprovidnost linije %), ispuna (%), ispunaBoja, providno } → `_kmlLeafletStil`; objekat u KML: LineStyle alfa = op, PolyStyle boja = ispunaBoja.
   Natpisi: localStorage `usf_oznake` po imenu sloja {on, polje, vel, boja, pozadina} (`_oznOsvjezi`: ne-interaktivni divIcon, zoom ≥ 12, ≤ 250). Testovi `oznake.test.js`, `kml-providno.test.js`.
+- **Zadani stil novog fajla** (`_KML_STIL_NOVI`: puna linija 2 px, 90 %, ispuna 12 %) — KML/KMZ (i preuzet sa servera) i SHP; čuva se u meti sloja. Natpisi zadano isključeni.
