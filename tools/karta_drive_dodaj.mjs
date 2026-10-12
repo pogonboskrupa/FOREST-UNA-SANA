@@ -1,6 +1,6 @@
 // Dodaje Drive kartu u static/data/karte_drive.json (PIN po mjesecu, vidi static/js/drive-karte.js). PIN, format PIN-a i link se NE commituju.
 //   USF_PIN_FORMAT=<format> node tools/karta_drive_dodaj.mjs [--kml] "<drive link>" "Naziv karte" ["opis"] [MB]
-// Format se piše tokenima YY / YYYY / MM; zapis dobija šifrate za 60 mjeseci od tekućeg.
+// Format se piše tokenima YY / YYYY / MM; zapis dobija šifrate za 13 mjeseci od tekućeg (poslije zadnjeg važi zadnji PIN).
 // --kml: KML/KMZ poligoni (odjeli/odsjeci) — prikaz u KML pregledniku, ne među kartama.
 // Drive fajl mora biti dijeljen "Svako s linkom — pregledač".
 import { readFileSync, writeFileSync } from 'node:fs';

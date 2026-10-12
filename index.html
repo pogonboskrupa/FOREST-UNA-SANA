@@ -6938,7 +6938,9 @@ async function _dkUcitaj() {
 }
 // PIN karata se mijenja svaki mjesec: sačuvani ključ važi samo u mjesecu u kojem je PIN unesen. Već preuzete karte
 // ("✓ Na telefonu" / "✓ Učitan") ne traže ništa; PIN treba tek za novo preuzimanje.
-const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc'); return k && localStorage.getItem('usf_karte_mjesec') === USFDriveKarte.mjesecKljuc() ? USFDriveKarte.izB64(k) : null; } catch(e) { return null; } };
+// Važeći šifrat = tekući mjesec, a poslije zadnjeg pripremljenog mjeseca ostaje zadnji (`kljucZa`) — tada PIN više ne ističe.
+const _dkVazeci = () => { const z = (_dkLista || []).concat(_dkmlLista || [], _dkGh || []).find(x => x.encm); return z ? USFDriveKarte.kljucZa(z) : null; };
+const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc'), v = _dkVazeci(); return k && v && localStorage.getItem('usf_karte_mjesec') === v ? USFDriveKarte.izB64(k) : null; } catch(e) { return null; } };
 const _dkProvjeri = async (kljuc, zapisi) => { const z = zapisi.find(x => USFDriveKarte.encZaMjesec(x)); return !!z && !!await USFDriveKarte.desifruj(kljuc, USFDriveKarte.encZaMjesec(z)); };
 const _dkNaTelefonu = k => (typeof _sqlLayers !== 'undefined') && _sqlLayers.some(x => x.name === k.naziv + '.sqlitedb' || x.name === k.naziv);
 async function _driveKarteRender() {
@@ -6962,7 +6964,7 @@ async function _dkOtkljucaj() {
   const pin = await _pinUnos('Karte za preuzimanje su zaštićene. Unesi PIN za karte — mijenja se svaki mjesec; važi do kraja mjeseca, a već preuzete karte ne traže PIN.', 'usf_karte_greske',
     async t => { const k = await USFDriveKarte.kljucIzPina(t); if (!await _dkProvjeri(k, l)) return false; kljuc = k; return true; });
   if (pin == null || !kljuc) return;
-  try { localStorage.setItem(USFDriveKarte.KLJUC_LS, USFDriveKarte.uB64(kljuc)); localStorage.setItem('usf_karte_mjesec', USFDriveKarte.mjesecKljuc()); } catch(e) {}
+  try { localStorage.setItem(USFDriveKarte.KLJUC_LS, USFDriveKarte.uB64(kljuc)); localStorage.setItem('usf_karte_mjesec', _dkVazeci() || USFDriveKarte.mjesecKljuc()); } catch(e) {}
   showToast('🔓 Karte otključane');
   _pinPostavkeUi(); _driveKarteRender();
 }

@@ -200,12 +200,12 @@
 - **Drive karte za preuzimanje** (Učitaj kartu → „☁ Karte za preuzimanje”): lista
   `static/data/karte_drive.json` (app je čita s raw.githubusercontent codex-forest → nove karte
   bez APK-a). **PIN karata se mijenja svaki mjesec** (isti za Drive karte, Drive KML i GitHub karte): svaki zapis nosi `encm`
-  `{ 'm2026-10': šifrat, … }` (60 mjeseci), Drive ID šifrovan AES-GCM ključem iz PIN-a tog mjeseca
+  `{ 'm2026-10': šifrat, … }` (13 mjeseci = tekući + 12; poslije zadnjeg mjeseca ZADNJI PIN ostaje važeći — `kljucZa`), Drive ID šifrovan AES-GCM ključem iz PIN-a tog mjeseca
   (PBKDF2-SHA256, `static/js/drive-karte.js`, isti kod app/alat/test). App uzima šifrat TEKUĆEG mjeseca
   (`encZaMjesec`); sačuvani ključ `usf_karte_kljuc` važi samo uz `usf_karte_mjesec` = tekući mjesec (`_dkKljuc`). Već preuzete karte
   („✓ Na telefonu”, „✓ Učitan”) NE traže PIN — treba samo za novo preuzimanje. FORMAT PIN-a (pravilo) NIKAD u repo: alati ga uzimaju iz
   `USF_PIN_FORMAT` (tokeni YY/YYYY/MM), kao i sam PIN i link. Dodavanje: `USF_PIN_FORMAT=… node tools/karta_drive_dodaj.mjs "<link>" "Naziv" ["opis"] [MB]`;
-  produženje šifrata prije isteka 60 mjeseci: `USF_PIN_FORMAT=… node tools/karte_pin_produzi.mjs`. Stariji APK-ovi (< 2.1.6) čitaju `enc` i više ne mogu otključati.
+  novi niz mjeseci (npr. kad se želi nastaviti rotacija): `USF_PIN_FORMAT=… [USF_PIN_MJESECI=13] node tools/karte_pin_produzi.mjs`. Stariji APK-ovi (< 2.1.6) čitaju `enc` i više ne mogu otključati.
   PIN karata je odvojen od PIN-a sekcija; `_dkOtkljucaj` ga provjerava dešifrovanjem prvog zapisa (greške `usf_karte_greske`). APK: `AndroidKarta.preuzmi`
   → `drive.usercontent.google.com/download?…&confirm=t`, `.part` + Range nastavak, provjera
   „SQLite format 3”, pa uvoz kao `importOfflineMap`. Drive fajl mora biti „Svako s linkom”.

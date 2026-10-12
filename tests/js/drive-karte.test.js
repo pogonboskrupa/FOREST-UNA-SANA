@@ -32,7 +32,7 @@ t('lista karata: samo šifrovani zapisi, bez linka i PIN-a u čistom tekstu', ()
     assert.deepStrictEqual(Object.keys(k).filter(x => x !== 'vrsta').sort(), ['encm', 'id', 'mb', 'naziv', 'opis']);
     assert.ok(k.vrsta === undefined || k.vrsta === 'kml');
     const mj = Object.keys(k.encm);
-    assert.ok(mj.length >= 36 && mj.every(m => /^m\d{4}-\d{2}$/.test(m)), 'šifrati za najmanje 3 godine; ključevi su mjeseci, ne PIN');
+    assert.ok(mj.length === 13 && mj.every(m => /^m\d{4}-\d{2}$/.test(m)), '13 mjesečnih šifrata (tekući + 12); ključevi su mjeseci, ne PIN');
     assert.ok(Object.values(k.encm).every(e => /^[A-Za-z0-9+/=]{40,}$/.test(e) && D.izB64(e).length > 28), 'iv + šifrat + GCM tag');
   }
   for (const f of ['index.html', 'static/data/karte_drive.json', 'static/data/kml_drive.json', 'static/js/drive-karte.js', 'CLAUDE.md'])
@@ -49,7 +49,10 @@ t('PIN po mjesecu: šifrat tekućeg mjeseca otvara samo PIN tog mjeseca; stari/i
   assert.deepStrictEqual(await D.desifruj(await D.kljucIzPina(pin(d1)), D.encZaMjesec(z, d1)), { fileId: id });
   assert.strictEqual(await D.desifruj(await D.kljucIzPina(pin(d1)), D.encZaMjesec(z, d2)), null, 'PIN iz prošlog mjeseca ne otključava idući');
   assert.deepStrictEqual(await D.desifruj(await D.kljucIzPina(pin(d2)), D.encZaMjesec(z, d2)), { fileId: id });
-  assert.strictEqual(D.encZaMjesec(z, new Date(2030, 0, 1)), null, 'izvan raspona nema šifrata');
+  assert.strictEqual(D.encZaMjesec(z, new Date(2026, 8, 1)), null, 'prije prvog mjeseca nema šifrata');
+  // poslije zadnjeg pripremljenog mjeseca važi ZADNJI PIN (ne ističe)
+  assert.strictEqual(D.kljucZa(z, new Date(2030, 0, 1)), 'm2026-12');
+  assert.deepStrictEqual(await D.desifruj(await D.kljucIzPina(pin(new Date(2026, 11, 1))), D.encZaMjesec(z, new Date(2030, 0, 1))), { fileId: id });
   for (const f of ['tools/karta_drive_dodaj.mjs', 'tools/karte_pin_migriraj.mjs', 'tools/karte_pin_produzi.mjs', 'static/js/drive-karte.js', 'index.html', 'CLAUDE.md']) assert.ok(!/USF_PIN_(FORMAT|STARI)\s*=\s*['"]?[\dYM]{2,}/.test(R(f)), f + ' bez formata/PIN-a');
 });
 
@@ -59,7 +62,7 @@ t('app: zaseban PIN karata (provjera dešifrovanjem), nativno preuzimanje, provj
   assert.ok(fn('_dkOtkljucaj').includes("'usf_karte_greske'") && fn('_dkOtkljucaj').includes('_dkProvjeri(k, l)') && R('index.html').includes('USFDriveKarte.encZaMjesec(z)'), 'PIN karata se provjerava dešifrovanjem šifrata tekućeg mjeseca');
   assert.ok(!fn('_pinTrazi').includes('usf_karte') && !fn('_pinTrazi').includes('USFDriveKarte'), 'PIN sekcija ne otključava karte');
   assert.ok(H.includes('const kljuc = _dkKljuc();') && H.includes("localStorage.removeItem('usf_karte_kljuc')"));
-  assert.ok(H.includes('usf_karte_mjesec') && H.includes('localStorage.getItem(\'usf_karte_mjesec\') === USFDriveKarte.mjesecKljuc()'), 'ključ važi samo u mjesecu unosa');
+  assert.ok(H.includes('usf_karte_mjesec') && H.includes("localStorage.getItem('usf_karte_mjesec') === v") && H.includes('USFDriveKarte.kljucZa(z)'), 'ključ važi u mjesecu unosa; poslije zadnjeg mjeseca ostaje važeći');
   assert.ok(H.includes('AndroidKarta.preuzmi(id, USFDriveKarte.urlPreuzimanja(o.fileId), k.naziv)') && H.includes('id="drive-karte"'));
   assert.ok(J.includes('new KartaBridge(), "AndroidKarta"') && J.includes('equals("SQLite format 3")') && J.includes('"Range", "bytes=" + imam + "-"'));
   assert.ok(J.includes('url.startsWith("https://drive.usercontent.google.com/")'), 'most skida samo s Drive-a');

@@ -37,14 +37,14 @@
   const urlPreuzimanja = id => 'https://drive.usercontent.google.com/download?id=' + encodeURIComponent(id) + '&export=download&confirm=t';
 
   // ── PIN koji se mijenja svaki mjesec ──
-  // Svaki zapis nosi `encm`: { 'm2026-10': šifrat, 'm2026-11': … } — isti Drive ID šifrovan PIN-om za taj mjesec.
+  // Svaki zapis nosi `encm`: { 'm2026-10': šifrat, 'm2026-11': … } — isti Drive ID šifrovan PIN-om za taj mjesec; poslije zadnjeg mjeseca važi zadnji PIN.
   // App uzima šifrat tekućeg mjeseca, pa PIN iz prošlog mjeseca ne otključava ništa novo, a već preuzete karte
   // ostaju na telefonu (ne traže PIN). Ključevi mjeseci NISU PIN. Format PIN-a (npr. tokeni YY/MM) zna samo vlasnik
   // i daje ga alatu preko USF_PIN_FORMAT — nikad se ne commituje.
   const mjesecKljuc = (d = new Date()) => 'm' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   const pinIzFormata = (format, d = new Date()) => String(format).replace(/YYYY/g, String(d.getFullYear())).replace(/YY/g, String(d.getFullYear()).slice(-2)).replace(/MM/g, String(d.getMonth() + 1).padStart(2, '0'));
   // n mjeseci od datuma `od`: { mjesecKljuc: šifrat(PIN tog mjeseca) }
-  async function sifrujMjesecno(obj, format, od = new Date(), n = 60) {
+  async function sifrujMjesecno(obj, format, od = new Date(), n = 13) {
     const out = {};
     for (let i = 0; i < n; i++) {
       const d = new Date(od.getFullYear(), od.getMonth() + i, 1);
@@ -52,9 +52,17 @@
     }
     return out;
   }
-  const encZaMjesec = (zapis, d = new Date()) => (zapis && zapis.encm && zapis.encm[mjesecKljuc(d)]) || null;
+  // Poslije zadnjeg unaprijed pripremljenog mjeseca PIN ostaje onaj zadnji (ne ističe): kljucZa vraća ključ šifrata koji važi za datum d.
+  function kljucZa(zapis, d = new Date()) {
+    const mj = zapis && zapis.encm ? Object.keys(zapis.encm).sort() : [];
+    if (!mj.length) return null;
+    const k = mjesecKljuc(d);
+    if (zapis.encm[k]) return k;
+    return k > mj[mj.length - 1] ? mj[mj.length - 1] : null; // 'mGGGG-MM' se poredi leksikografski
+  }
+  const encZaMjesec = (zapis, d = new Date()) => { const k = kljucZa(zapis, d); return k ? zapis.encm[k] : null; };
 
-  const api = { SOL, ITER, KLJUC_LS, mjesecKljuc, pinIzFormata, sifrujMjesecno, encZaMjesec, kljucIzPina, sifruj, desifruj, driveId, urlPreuzimanja, uB64, izB64 };
+  const api = { SOL, ITER, KLJUC_LS, mjesecKljuc, pinIzFormata, sifrujMjesecno, kljucZa, encZaMjesec, kljucIzPina, sifruj, desifruj, driveId, urlPreuzimanja, uB64, izB64 };
   root.USFDriveKarte = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
