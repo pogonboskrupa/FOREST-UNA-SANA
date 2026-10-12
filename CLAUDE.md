@@ -276,3 +276,4 @@
   Model `stil`: { w, crta, op (neprovidnost linije %), ispuna (%), ispunaBoja, providno } → `_kmlLeafletStil`; objekat u KML: LineStyle alfa = op, PolyStyle boja = ispunaBoja.
   Natpisi: localStorage `usf_oznake` po imenu sloja {on, polje, vel, boja, pozadina} (`_oznOsvjezi`: ne-interaktivni divIcon, zoom ≥ 12, ≤ 250). Testovi `oznake.test.js`, `kml-providno.test.js`.
 - **Zadani stil novog fajla** (`_KML_STIL_NOVI`: puna linija 2 px, 90 %, ispuna 12 %) — KML/KMZ (i preuzet sa servera) i SHP; čuva se u meti sloja. Natpisi zadano isključeni.
+  „↻ Osvježi” sloja sa servera ZADRŽAVA boju i stil (`_kmlZadrziStil` u `_driveKmlKraj` → `_vectorFileChosen`). Stil ugrađenog sloja: localStorage `usf_stil_ugradjeno` (odjeli.js).

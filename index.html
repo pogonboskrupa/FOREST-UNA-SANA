@@ -4689,6 +4689,7 @@ const _kmlBojaIzKml = t => { t = String(t || '').trim(); if (!/^[0-9a-f]{8}$/i.t
 const _KML_CRTA = { puna: null, isprek: '6,4', tack: '1,6', crtatack: '10,4,2,4' };
 // Zadani stil NOVOG fajla (KML/KMZ/SHP, i preuzetog sa servera): puna linija i blago ispunjen poligon; natpisi isključeni.
 const _KML_STIL_NOVI = { w: 2, crta: 'puna', op: 90, ispuna: 12 };
+let _kmlZadrziStil = null; // { ime, col, stil } — za zamjenu sloja istog imena (osvježavanje sa servera)
 // Leaflet stil objekta iz boje i stila (sloja ili vlastitog): debljina, vrsta linije, ispuna.
 function _kmlLeafletStil(tip, col, stil, op) {
   stil = stil || {}; op = op ?? 0.9;
@@ -5144,8 +5145,9 @@ function _kmlLoadFile(file) {
     // KML s ugrađenim projektom sjekačkih linija (dijeljen s drugog telefona) → živi projekat
     try { if (window.USFSjek && USFSjek.izKml && await USFSjek.izKml(doc)) return; } catch(e) { showToast('⚠ Projekat iz KML-a: ' + e.message); }
     try {
-      const col = KCOLS[kmlCI % KCOLS.length]; kmlCI++;
-      const stil = { ..._KML_STIL_NOVI };
+      const z = _kmlZadrziStil && _kmlZadrziStil.ime === file.name ? _kmlZadrziStil : null; _kmlZadrziStil = null;
+      const col = z ? z.col : KCOLS[kmlCI % KCOLS.length]; kmlCI++;
+      const stil = z && z.stil ? { ...z.stil } : { ..._KML_STIL_NOVI };
       const grp = pkml(doc, col, undefined, stil);
       const cnt = grp.getLayers().length;
       if (!cnt) { showToast('⚠ KML nema prepoznatih geometrija: ' + file.name); return; }
@@ -5254,7 +5256,8 @@ async function _kmlPromijeniBoju(id) {
   k.col = r.col; k.stil = r.stil;
   // objekti s vlastitim stilom zadržavaju svoj
   k.grp.eachLayer(l => { if (l._kmlName !== undefined && !l._kmlVlastiti && l.setStyle) l.setStyle(_kmlLeafletStil(_kmlTipSloja(l), k.col, k.stil)); });
-  _kmlMetaPisi(st => { if (st[k.name]) { st[k.name].col = k.col; st[k.name].stil = k.stil; } });
+  if (k._ugradjeno) { try { localStorage.setItem('usf_stil_ugradjeno', JSON.stringify({ col: k.col, stil: k.stil })); } catch (e) {} }
+  else _kmlMetaPisi(st => { if (st[k.name]) { st[k.name].col = k.col; st[k.name].stil = k.stil; } });
   _kmlRegRender();
 }
 // List za stil (sloja ili objekta): paleta + vlastita boja, debljina, vrsta linije, ispuna.
@@ -5311,7 +5314,7 @@ function _kmlStilOtvori({ naslov, podnaslov = '', col, stil, imaPol, imaLin = tr
         <label class="ked-prek mali"><span><b>Tamna pozadina natpisa</b></span><input type="checkbox" data-g="opoz" ${oc.pozadina ? 'checked' : ''}></label>
         <div class="ked-ozn-pr"><span class="ozn${oc.pozadina ? ' pozadina' : ''}" style="--c:${oc.boja};--s:${_OZN_VEL[oc.vel]}px;transform:none">${_escHtml(prim)}</span></div>` : ''}`;
     };
-    const tabovi = [['lin', '〰 Linija', imaLin || imaPol]].concat(imaPol ? [['isp', '▨ Ispuna', true]] : [], sloj ? [['ozn', '🏷 Oznake', true]] : []).filter(x => x[2]);
+    const tabovi = [['lin', imaLin || imaPol ? '〰 Linija' : '● Boja', true]].concat(imaPol ? [['isp', '▨ Ispuna', true]] : [], sloj ? [['ozn', '🏷 Oznake', true]] : []).filter(x => x[2]);
     const crtaj = () => {
       const skrol = el.querySelector('.ked-tijelo')?.scrollTop || 0;
       el.innerHTML = `<div class="ks-ov" data-x="1"></div><div class="ked-list" role="dialog" aria-label="Stil">
@@ -7293,6 +7296,8 @@ function _driveKmlKraj(id, ok, poruka, kmz) {
   const bin = atob(b64), u8 = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   const ime = k.naziv + (kmz ? '.kmz' : '.kml');
+  const stari = kmlLs.find(x => _dkmlImena(k).includes(x.name));
+  if (stari) _kmlZadrziStil = { ime, col: stari.col, stil: stari.stil }; // osvježeni sloj zadržava boju i stil
   kmlLs.filter(x => _dkmlImena(k).includes(x.name)).forEach(x => _kmlDelete(x.id));
   _vectorFileChosen({ target: { files: [new File([u8], ime)], value: '' } }); // KMZ: raspakivanje i slike kao ručni uvoz
   setTimeout(() => { _driveKmlRender(); if (window.USFOtv) USFOtv.render(); }, 1500);

@@ -153,9 +153,10 @@ async function _odjeliUcitajUgradjene() {
     const r = await fetch('geo/odjeli.kml');
     if (!r.ok) return;
     const doc = new DOMParser().parseFromString(await r.text(), 'text/xml');
-    const grp = pkml(doc, '#e2e8f0');
+    let s = null; try { s = JSON.parse(localStorage.getItem('usf_stil_ugradjeno') || 'null'); } catch (e) {} // stil iz Editora slojeva
+    const col = (s && s.col) || '#e2e8f0', grp = pkml(doc, col, undefined, s && s.stil);
     grp.addTo(map);
-    kmlLs.push({ id: 'kml_odjeli_ugradjeno', name: 'Odjeli (ugrađeno)', grp, col: '#e2e8f0', vis: true, _ugradjeno: true });
+    kmlLs.push({ id: 'kml_odjeli_ugradjeno', name: 'Odjeli (ugrađeno)', grp, col, stil: s && s.stil, vis: true, _ugradjeno: true });
     _kmlRegRender();
   } catch (e) {}
 }
