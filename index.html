@@ -1166,6 +1166,16 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 #kml-stil .ks-red { display: flex; gap: 6px; flex-wrap: wrap; }
 #kml-stil .ks-red button { flex: 1; min-height: 38px; border-radius: 10px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #e2e8f0; font: 700 12px 'DM Sans', Arial, sans-serif; }
 #kml-stil .ks-red button.on { border-color: #4ade80; background: rgba(74,222,128,.16); color: #bbf7d0; }
+#kml-stil .ozn-list { max-height: 82vh; overflow-y: auto; overscroll-behavior: contain; }
+#kml-stil .ozn-sloj { border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin: 8px 0; background: rgba(148,163,184,.05); }
+#kml-stil .ozn-sloj.on { border-color: #22c55e; background: rgba(34,197,94,.08); }
+#kml-stil .ozn-gl { display: flex; align-items: center; gap: 10px; }
+#kml-stil .ozn-gl b { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+#kml-stil .ozn-gl small { color: #86a397; font-size: 11px; }
+#kml-stil .ozn-sel { width: 100%; box-sizing: border-box; min-height: 40px; margin-top: 4px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: #0b1a13; color: #e2e8f0; font: inherit; font-size: 13px; }
+#kml-stil .ozn-pregled { margin-top: 8px; padding: 8px; border-radius: 10px; background: #152a20; text-align: center; min-height: 26px; }
+.ozn { display: inline-block; transform: translate(-50%, -50%); white-space: nowrap; font: 800 var(--s, 13px)/1.15 'DM Sans', Arial, sans-serif; color: var(--c, #fff); text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px rgba(0,0,0,.6); pointer-events: none; }
+.ozn.pozadina { padding: 2px 7px; border-radius: 7px; background: rgba(15,23,42,.78); text-shadow: none; border: 1px solid rgba(255,255,255,.25); }
 #kml-stil .ks-boje { display: grid; grid-template-columns: repeat(7, 1fr); }
 #kml-stil .ks-boje .ks-b { aspect-ratio: 1; min-height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); background: var(--c); padding: 0; flex: none; }
 #kml-stil .ks-boje .ks-b.on { background: var(--c); outline: 3px solid #4ade80; outline-offset: 2px; }
@@ -1732,6 +1742,11 @@ body.sl-uredi #sl-ured { display: block; }
         <p id="kh-kml" class="kh-stat">Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp</p>
         <input id="kh-kml-trazi" class="kh-trazi" type="search" placeholder="🔎 Traži odjel, odsjek ili atribut…" enterkeyhint="search" onkeydown="if(event.key==='Enter')_khKmlTrazi()">
         <button class="karta-hub-action" onclick="_khKmlTrazi()">Otvori preglednik poligona</button>
+      </section>
+      <section class="karta-hub-card">
+        <h3>🏷 Editor oznaka <span class="kh-bedz" id="kh-b-ozn" hidden></span></h3>
+        <p>Natpisi na karti za svaki KML sloj — i za one preuzete sa servera: izaberi polje (naziv, odjel · odsjek, bilo koji atribut), veličinu i boju.</p>
+        <button class="karta-hub-action" onclick="_oznOtvori()">Uredi oznake</button>
       </section>
       <section class="karta-hub-card">
         <h3>📊 Tematska GeoPackage karta</h3>
@@ -5223,7 +5238,86 @@ function _kmlStilOtvori({ naslov, col, stil, imaPol, imaLin = true, vratiStil = 
     const wr = el.querySelector('#ks-wr'); if (wr) wr.addEventListener('input', () => { stil.w = +wr.value; el.querySelector('#ks-w').textContent = wr.value; });
   });
 }
+// ── Editor oznaka: stalni natpisi na karti za bilo koji KML sloj (i preuzete s servera) ──
+// Po sloju (ključ = ime sloja) u localStorage `usf_oznake`: { on, polje, vel, boja, pozadina }. Natpisi se crtaju samo za objekte u
+// prikazu (≤ 250, zoom ≥ 12) kao ne-interaktivni divIcon markeri — ne diraju klik/popup objekata.
+const _OZN_KEY = 'usf_oznake', _OZN_MAX = 250, _OZN_MINZ = 12, _OZN_VEL = { S: 11, M: 14, L: 18 };
+let _oznSt = (() => { try { return JSON.parse(localStorage.getItem(_OZN_KEY) || '{}') || {}; } catch (e) { return {}; } })(), _oznGrp = null, _oznT = 0;
+const _oznCfg = k => ({ on: false, polje: '__naziv', vel: 'M', boja: '#ffffff', pozadina: false, ...(_oznSt[k.name] || {}) });
+function _oznSpremi() { try { localStorage.setItem(_OZN_KEY, JSON.stringify(_oznSt)); } catch (e) {} }
+function _oznPolja(k) {
+  const kljucevi = new Set();
+  _kmlObjekti(k).slice(0, 400).forEach(l => Object.keys(l._kmlExtData || {}).forEach(a => { if (!/^usf_/.test(a)) kljucevi.add(a); }));
+  const ima = [...kljucevi].some(a => a.toUpperCase() === 'ODJEL');
+  return [['__naziv', 'Naziv objekta']].concat(ima ? [['__odjel', 'Odjel · odsjek']] : [], [...kljucevi].sort().map(a => [a, a]));
+}
+function _oznTekst(l, cfg) {
+  if (cfg.polje === '__naziv') return l._kmlName || '';
+  if (cfg.polje === '__odjel') return typeof _odjelOznaka === 'function' ? _odjelOznaka(l, l._kmlName || '') : (l._kmlName || '');
+  const e = l._kmlExtData || {}; return e[cfg.polje] != null ? String(e[cfg.polje]).trim() : '';
+}
+function _oznTacka(l) {
+  try {
+    if (l._kmlIsPoint) return l.getLatLng();
+    if (l._kmlIsPolygon) return l._oznC || (l._oznC = l.getCenter ? l.getCenter() : l.getBounds().getCenter());
+    const ll = l.getLatLngs().flat(3); return ll[Math.floor(ll.length / 2)];
+  } catch (e) { return null; }
+}
+function _oznOsvjezi() {
+  clearTimeout(_oznT);
+  _oznT = setTimeout(() => {
+    if (typeof map === 'undefined' || typeof kmlLs === 'undefined') return;
+    if (!_oznGrp) _oznGrp = L.layerGroup();
+    _oznGrp.clearLayers();
+    const aktivni = kmlLs.filter(k => k.vis !== false && map.hasLayer(k.grp) && _oznCfg(k).on);
+    if (!aktivni.length || map.getZoom() < _OZN_MINZ) { if (map.hasLayer(_oznGrp)) map.removeLayer(_oznGrp); return; }
+    if (!map.hasLayer(_oznGrp)) _oznGrp.addTo(map);
+    const gr = map.getBounds().pad(0.05); let n = 0;
+    for (const k of aktivni) {
+      const c = _oznCfg(k);
+      for (const l of _kmlObjekti(k)) {
+        if (n >= _OZN_MAX) return;
+        const t = _oznTekst(l, c); if (!t) continue;
+        const ll = _oznTacka(l); if (!ll || !gr.contains(ll)) continue;
+        L.marker(ll, { interactive: false, keyboard: false, pane: 'tragMsrLines', icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="ozn${c.pozadina ? ' pozadina' : ''}" style="--c:${/^#[0-9a-f]{6}$/i.test(c.boja) ? c.boja : '#fff'};--s:${_OZN_VEL[c.vel] || 14}px">${_escHtml(t)}</span>` }) }).addTo(_oznGrp);
+        n++;
+      }
+    }
+  }, 120);
+}
+function _oznOtvori() {
+  let el = document.getElementById('kml-stil'); if (el) el.remove();
+  if (!kmlLs.length) { showToast('Nema učitanih KML slojeva — preuzmi ih u KML pregledniku'); return; }
+  el = document.createElement('div'); el.id = 'kml-stil';
+  const crtaj = () => {
+    el.innerHTML = `<div class="ks-ov" data-x="1"></div><div class="ks-list ozn-list" role="dialog"><b>🏷 Editor oznaka</b><small style="color:#86a397">Natpisi se vide od zooma ${_OZN_MINZ}, najviše ${_OZN_MAX} u prikazu.</small>${kmlLs.map((k, i) => {
+      const c = _oznCfg(k), polja = _oznPolja(k), uz = (typeof _kmlObjekti === 'function' ? _kmlObjekti(k).length : 0);
+      const primjer = (_kmlObjekti(k).map(l => _oznTekst(l, c)).find(Boolean)) || '—';
+      return `<div class="ozn-sloj${c.on ? ' on' : ''}"><div class="ozn-gl"><div style="flex:1;min-width:0"><b>${_escHtml(k.name)}</b><br><small>${uz} objekata${k._ugradjeno ? ' · ugrađeno' : ''}</small></div><label class="ng-switch"><input type="checkbox" data-i="${i}" data-g="on" ${c.on ? 'checked' : ''}><span></span></label></div>
+        ${c.on ? `<div class="ks-nasl" style="margin-top:8px">Šta piše na oznaci</div><select class="ozn-sel" data-i="${i}" data-g="polje">${polja.map(([v, t]) => `<option value="${_escHtml(v)}"${v === c.polje ? ' selected' : ''}>${_escHtml(t)}</option>`).join('')}</select>
+        <div class="ks-nasl" style="margin-top:8px">Veličina</div><div class="ks-red">${['S', 'M', 'L'].map(v => `<button data-i="${i}" data-g="vel" data-v="${v}" class="${c.vel === v ? 'on' : ''}">${{ S: 'Mala', M: 'Srednja', L: 'Velika' }[v]}</button>`).join('')}</div>
+        <div class="ks-nasl" style="margin-top:8px">Boja</div><div class="ks-red ks-boje">${_KML_PALETA.map(b => `<button data-i="${i}" data-g="boja" data-v="${b}" style="--c:${b}" class="ks-b${b === c.boja ? ' on' : ''}" aria-label="Boja ${b}"></button>`).join('')}</div>
+        <div class="ks-red" style="margin-top:8px"><button data-i="${i}" data-g="pozadina" class="${c.pozadina ? 'on' : ''}">▭ Tamna pozadina natpisa</button></div>
+        <div class="ozn-pregled"><span class="ozn${c.pozadina ? ' pozadina' : ''}" style="--c:${c.boja};--s:${_OZN_VEL[c.vel]}px;transform:none">${_escHtml(primjer)}</span></div>` : ''}</div>`; }).join('')}
+      <div class="ks-akc"><button data-x="ok" class="glavno">✓ Gotovo</button></div></div>`;
+  };
+  crtaj(); document.body.appendChild(el);
+  const prom = (i, izm) => { const k = kmlLs[i]; _oznSt[k.name] = { ..._oznCfg(k), ...izm }; _oznSpremi(); _oznOsvjezi(); crtaj(); };
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-g],[data-x]'); if (!b) return;
+    if (b.dataset.x) { el.remove(); _khStat(); return; }
+    const i = +b.dataset.i, g = b.dataset.g;
+    if (g === 'vel' || g === 'boja') prom(i, { [g]: b.dataset.v });
+    else if (g === 'pozadina') prom(i, { pozadina: !_oznCfg(kmlLs[i]).pozadina });
+  });
+  el.addEventListener('change', e => {
+    const b = e.target.closest('[data-g]'); if (!b) return; const i = +b.dataset.i;
+    if (b.dataset.g === 'on') prom(i, { on: b.checked }); else if (b.dataset.g === 'polje') prom(i, { polje: b.value });
+  });
+}
+if (typeof document !== 'undefined') setTimeout(() => { try { map.on('moveend zoomend', _oznOsvjezi); _oznOsvjezi(); } catch (e) {} }, 0);
 function _kmlRegRender() {
+  _oznOsvjezi();
   const el = document.getElementById('kml-list');
   const cnt = document.getElementById('kml-count');
   if (!el) return;
@@ -5558,6 +5652,7 @@ function _khStat() {
     if (kml) kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp';
     const vidljivi = kmlLs.filter(k => k.vis !== false).length;
     bedz('kh-b-kml', kmlLs.length ? vidljivi + '/' + kmlLs.length + ' na karti' : '');
+    const oznN = kmlLs.filter(k => _oznCfg(k).on).length; bedz('kh-b-ozn', oznN ? oznN + (oznN === 1 ? ' sloj' : ' sloja') : '');
     // Pregled: podloga, offline, KML, uključeni slojevi (teren + praćenje šume) — dodir vodi u odgovarajuću sekciju
     const tem = typeof _tematskiUkljuceni === 'function' ? _tematskiUkljuceni().length : 0;
     const teren = ['terrain-aspect', 'terrain-shade'].filter(id => document.getElementById(id)?.checked).length;
@@ -6967,7 +7062,7 @@ async function _driveKarteRender() {
 async function _dkOtkljucaj() {
   const l = (_dkLista || await _dkUcitaj()).concat(_dkmlLista || await (_dkmlP = _dkmlP || _dkmlUcitaj())); if (!l.length) return;
   let kljuc = null;
-  const pin = await _pinUnos('Karte za preuzimanje su zaštićene. Unesi PIN za karte — mijenja se svaki mjesec; važi do kraja mjeseca, a već preuzete karte ne traže PIN.', 'usf_karte_greske',
+  const pin = await _pinUnos('', 'usf_karte_greske',
     async t => { const k = await USFDriveKarte.kljucIzPina(t); if (!await _dkProvjeri(k, l)) return false; kljuc = k; return true; });
   if (pin == null || !kljuc) return;
   try { localStorage.setItem(USFDriveKarte.KLJUC_LS, USFDriveKarte.uB64(kljuc)); localStorage.setItem('usf_karte_mjesec', _dkVazeci() || USFDriveKarte.mjesecKljuc()); } catch(e) {}
