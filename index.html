@@ -1166,6 +1166,43 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 #kml-stil .ks-red { display: flex; gap: 6px; flex-wrap: wrap; }
 #kml-stil .ks-red button { flex: 1; min-height: 38px; border-radius: 10px; border: 1px solid var(--line); background: rgba(148,163,184,.08); color: #e2e8f0; font: 700 12px 'DM Sans', Arial, sans-serif; }
 #kml-stil .ks-red button.on { border-color: #4ade80; background: rgba(74,222,128,.16); color: #bbf7d0; }
+#kml-stil.ked .ked-list { position:absolute; left:0; right:0; bottom:0; max-width:520px; max-height:92vh; margin:0 auto; display:flex; flex-direction:column; background:linear-gradient(180deg,#10241b,#0b1712); border:1px solid rgba(134,239,172,.22); border-radius:22px 22px 0 0; box-shadow:0 -12px 40px rgba(0,0,0,.55); color:#e2e8f0; padding:14px 14px calc(12px + env(safe-area-inset-bottom,0px)); gap:10px; }
+#kml-stil.ked .ked-zag { display:flex; align-items:center; gap:10px; }
+#kml-stil.ked .ked-zag > div { flex:1; min-width:0; } #kml-stil.ked .ked-zag b { display:block; font-size:16px; font-weight:800; overflow-wrap:anywhere; } #kml-stil.ked .ked-zag small { color:#86a397; font-size:12px; }
+#kml-stil.ked .ked-x { width:38px; height:38px; border-radius:12px; border:1px solid var(--line); background:#0b1a13; color:#cbd5e1; font-size:16px; cursor:pointer; }
+#kml-stil.ked .ked-pregled { border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.12); height:118px; flex:none; } #kml-stil.ked .ked-pregled svg { width:100%; height:100%; display:block; }
+#kml-stil.ked .ked-saz { text-align:center; color:#a7c4b5; font-size:12px; margin-top:-4px; }
+#kml-stil.ked .ked-sabl { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; flex:none; scrollbar-width:none; }
+#kml-stil.ked .ked-sabl button { flex:none; display:flex; align-items:center; gap:6px; padding:7px 11px; border-radius:999px; border:1px solid var(--line); background:#0d1d16; color:#d1e7dc; font:700 12px 'DM Sans',Arial,sans-serif; cursor:pointer; white-space:nowrap; }
+#kml-stil.ked .ked-sabl i { width:12px; height:12px; border-radius:50%; background:var(--c); border:1px solid rgba(255,255,255,.4); }
+#kml-stil.ked .ked-tabs { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; padding:4px; border-radius:14px; background:#08130e; border:1px solid var(--line); flex:none; }
+#kml-stil.ked .ked-tabs button { min-height:40px; border-radius:10px; border:0; background:transparent; color:#9fb3aa; font:800 13px 'DM Sans',Arial,sans-serif; cursor:pointer; }
+#kml-stil.ked .ked-tabs button.on { background:linear-gradient(135deg,#166534,#14532d); color:#fff; box-shadow:0 2px 8px rgba(0,0,0,.35); }
+#kml-stil.ked .ked-tijelo { overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:12px; padding:2px 2px 4px; min-height:0; }
+#kml-stil.ked .ked-sek { display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:14px; background:rgba(148,163,184,.06); border:1px solid rgba(148,163,184,.12); }
+#kml-stil.ked .ked-nasl { font-size:11.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#86efac; }
+#kml-stil.ked .ked-boje { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+#kml-stil.ked .ked-b { position:relative; aspect-ratio:1; min-height:34px; border-radius:50%; border:2px solid rgba(255,255,255,.22); background:var(--c); padding:0; cursor:pointer; }
+#kml-stil.ked .ked-b.on { outline:3px solid #4ade80; outline-offset:2px; }
+#kml-stil.ked .ked-druga { display:grid; place-items:center; background:conic-gradient(#ef4444,#eab308,#22c55e,#06b6d4,#8b5cf6,#ec4899,#ef4444); color:#fff; font-weight:800; overflow:hidden; } #kml-stil.ked .ked-druga input { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
+#kml-stil.ked .ked-kl-gl { display:flex; justify-content:space-between; font-size:13px; } #kml-stil.ked .ked-kl-gl b { color:#bbf7d0; font-variant-numeric:tabular-nums; }
+#kml-stil.ked .ked-kl input { width:100%; accent-color:#22c55e; height:28px; } #kml-stil.ked .ked-kl small { color:#80958a; font-size:11px; }
+#kml-stil.ked .ked-crte, #kml-stil.ked .ked-brzo { display:grid; grid-template-columns:repeat(auto-fit,minmax(70px,1fr)); gap:6px; }
+#kml-stil.ked .ked-crte button, #kml-stil.ked .ked-brzo button { display:flex; flex-direction:column; align-items:center; gap:4px; min-height:42px; padding:6px; border-radius:11px; border:1px solid var(--line); background:#0d1d16; color:#d1e7dc; font:700 11.5px 'DM Sans',Arial,sans-serif; cursor:pointer; }
+#kml-stil.ked .ked-crte svg { width:52px; height:10px; } #kml-stil.ked .ked-crte button.on, #kml-stil.ked .ked-brzo button.on { border-color:#4ade80; background:rgba(74,222,128,.16); color:#dcfce7; }
+#kml-stil.ked .ked-prek { display:flex; align-items:center; gap:12px; padding:12px; border-radius:14px; background:rgba(148,163,184,.06); border:1px solid rgba(148,163,184,.12); cursor:pointer; }
+#kml-stil.ked .ked-prek.mali { padding:6px 0; background:none; border:0; } #kml-stil.ked .ked-prek span { flex:1; } #kml-stil.ked .ked-prek b { display:block; font-size:13.5px; } #kml-stil.ked .ked-prek small { color:#80958a; font-size:11.5px; }
+#kml-stil.ked .ked-prek input { width:22px; height:22px; accent-color:#22c55e; }
+#kml-stil.ked .ked-sel { width:100%; min-height:42px; padding:0 10px; border-radius:11px; border:1px solid var(--line); background:#0b1a13; color:#e2e8f0; font:inherit; font-size:13px; }
+#kml-stil.ked .ked-ozn-pr { padding:16px; border-radius:14px; background:#5b6b5f; text-align:center; }
+#kml-stil.ked .ked-akc { display:flex; gap:8px; flex:none; } #kml-stil.ked .ked-akc button { flex:1; min-height:46px; border-radius:13px; border:1px solid var(--line); background:#0d1d16; color:#e2e8f0; font:800 14px 'DM Sans',Arial,sans-serif; cursor:pointer; }
+#kml-stil.ked .ked-akc button.glavno { background:linear-gradient(135deg,var(--ok-a),var(--ok-b)); border-color:#22c55e; color:#fff; }
+.ked-hub { display:flex; flex-direction:column; gap:8px; }
+.ked-hub-red { display:grid; grid-template-columns:88px 1fr auto; gap:10px; align-items:center; padding:8px; border-radius:14px; border:1px solid var(--line); background:#0d1a14; color:var(--text); text-align:left; cursor:pointer; font:inherit; }
+.ked-hub-pr { height:48px; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,.1); } .ked-hub-pr svg { width:100%; height:100%; display:block; }
+.ked-hub-t { min-width:0; } .ked-hub-t b { display:block; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .ked-hub-t small { color:#80958a; font-size:11px; }
+.ked-hub-go { color:#86efac; font-weight:800; font-size:12px; padding-right:4px; }
+.ked-prazno { color:#80958a; font-size:12px; padding:6px 2px; }
 #kml-stil .ozn-list { max-height: 82vh; overflow-y: auto; overscroll-behavior: contain; }
 #kml-stil .ozn-sloj { border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin: 8px 0; background: rgba(148,163,184,.05); }
 #kml-stil .ozn-sloj.on { border-color: #22c55e; background: rgba(34,197,94,.08); }
@@ -1744,9 +1781,9 @@ body.sl-uredi #sl-ured { display: block; }
         <button class="karta-hub-action" onclick="_khKmlTrazi()">Otvori preglednik poligona</button>
       </section>
       <section class="karta-hub-card">
-        <h3>🏷 Editor oznaka <span class="kh-bedz" id="kh-b-ozn" hidden></span></h3>
-        <p>Natpisi na karti za svaki KML sloj — i za one preuzete sa servera: izaberi polje (naziv, odjel · odsjek, bilo koji atribut), veličinu i boju.</p>
-        <button class="karta-hub-action" onclick="_oznOtvori()">Uredi oznake</button>
+        <h3>🎨 Editor slojeva <span class="kh-bedz" id="kh-b-ozn" hidden></span></h3>
+        <p>Linija, ispuna i natpisi za svaki KML sloj — i za one preuzete sa servera.</p>
+        <div id="kh-slojevi" class="ked-hub"></div>
       </section>
       <section class="karta-hub-card">
         <h3>📊 Tematska GeoPackage karta</h3>
@@ -4643,13 +4680,14 @@ function _parseKmlExtData(pm) {
 // Boje KML-a su aabbggrr; Leaflet traži #rrggbb + prozirnost posebno.
 const _kmlBojaUKml = (hex, a = 1) => { const h = String(hex || '#ffffff').replace('#', '').padEnd(6, '0'); return Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0') + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2); };
 const _kmlBojaIzKml = t => { t = String(t || '').trim(); if (!/^[0-9a-f]{8}$/i.test(t)) return null; return { hex: ('#' + t.slice(6, 8) + t.slice(4, 6) + t.slice(2, 4)).toLowerCase(), a: parseInt(t.slice(0, 2), 16) / 255 }; };
-const _KML_CRTA = { puna: null, isprek: '6,4', tack: '1,6' };
+const _KML_CRTA = { puna: null, isprek: '6,4', tack: '1,6', crtatack: '10,4,2,4' };
 // Leaflet stil objekta iz boje i stila (sloja ili vlastitog): debljina, vrsta linije, ispuna.
 function _kmlLeafletStil(tip, col, stil, op) {
   stil = stil || {}; op = op ?? 0.9;
   if (tip === 'Point') return { radius: 4 + (stil.w || 2), color: col, fillColor: col, opacity: op, fillOpacity: op };
-  const o = { color: col, weight: stil.w || 2, opacity: op, dashArray: _KML_CRTA[stil.crta || (tip === 'LineString' ? 'isprek' : 'puna')] };
-  if (tip === 'Polygon') { o.fillColor = col; o.fillOpacity = stil.ispuna ? stil.ispuna / 100 : 0.001; }
+  // stil.op = neprovidnost linije 0–100 (bez nje važi op sloja); stil.ispunaBoja = boja ispune (bez nje = boja linije)
+  const o = { color: col, weight: stil.w || 2, opacity: stil.op != null ? stil.op / 100 : op, dashArray: _KML_CRTA[stil.crta || (tip === 'LineString' ? 'isprek' : 'puna')] };
+  if (tip === 'Polygon') { o.fillColor = stil.ispunaBoja || col; o.fillOpacity = stil.ispuna ? stil.ispuna / 100 : 0.001; }
   // providno: ništa se ne crta (opacity 0), ali geometrija ostaje za dodir; fill 0.001 zbog hit-testa unutar poligona
   if (stil.providno) { o.opacity = 0; if (tip === 'Polygon') o.fillOpacity = 0.001; }
   return o;
@@ -4662,7 +4700,8 @@ function _kmlStilPlacemarka(pm, ext) {
   const dio = (ime, pod) => { const e = [...st.children].find(c => c.localName === ime); return e ? [...e.children].find(c => c.localName === pod)?.textContent : null; };
   const boja = _kmlBojaIzKml(dio('LineStyle', 'color')) || _kmlBojaIzKml(dio('IconStyle', 'color')), poly = _kmlBojaIzKml(dio('PolyStyle', 'color'));
   const fill = dio('PolyStyle', 'fill'), w = parseFloat(dio('LineStyle', 'width'));
-  return { col: boja ? boja.hex : null, w: Number.isFinite(w) ? w : null, crta: ext.usf_crta || null, providno: ext.usf_providno === '1', ispuna: fill === '0' || !poly ? 0 : Math.round(poly.a * 100) };
+  return { col: boja ? boja.hex : null, w: Number.isFinite(w) ? w : null, crta: ext.usf_crta || null, providno: ext.usf_providno === '1', ispuna: fill === '0' || !poly ? 0 : Math.round(poly.a * 100),
+    op: boja && dio('LineStyle', 'color') ? Math.round(boja.a * 100) : null, ispunaBoja: poly && boja && poly.hex !== boja.hex ? poly.hex : null };
 }
 function pkml(doc, col, op, stilSloja) {
   op = op ?? 0.9;
@@ -5199,8 +5238,9 @@ async function _kmlPromijeniBoju(id) {
   const k = kmlLs.find(x => x.id === id);
   if (!k) return;
   const imaPol = _kmlStat(k).pol > 0;
-  const r = await _kmlStilOtvori({ naslov: '🎨 Stil sloja — ' + k.name, col: k.col, stil: k.stil, imaPol });
-  if (!r) return;
+  const primijeni = (c, st) => k.grp.eachLayer(l => { if (l._kmlName !== undefined && !l._kmlVlastiti && l.setStyle) l.setStyle(_kmlLeafletStil(_kmlTipSloja(l), c, st)); });
+  const r = await _kmlStilOtvori({ naslov: k.name, podnaslov: 'Stil sloja · ' + _kmlObjekti(k).length + ' objekata', col: k.col, stil: k.stil, imaPol, imaLin: _kmlStat(k).pol + _kmlStat(k).lin > 0, uzivo: primijeni, sloj: k });
+  if (!r) { primijeni(k.col, k.stil); return; }
   k.col = r.col; k.stil = r.stil;
   // objekti s vlastitim stilom zadržavaju svoj
   k.grp.eachLayer(l => { if (l._kmlName !== undefined && !l._kmlVlastiti && l.setStyle) l.setStyle(_kmlLeafletStil(_kmlTipSloja(l), k.col, k.stil)); });
@@ -5210,32 +5250,105 @@ async function _kmlPromijeniBoju(id) {
 // List za stil (sloja ili objekta): paleta + vlastita boja, debljina, vrsta linije, ispuna.
 // Vraća {col, stil} | 'vrati' (objekat: nazad na stil sloja) | null.
 const _KML_PALETA = ['#ef4444','#f97316','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#ffffff','#111827'];
-function _kmlStilOtvori({ naslov, col, stil, imaPol, imaLin = true, vratiStil = false }) {
+// Editor stila (sloj ili objekat): kartice Linija / Ispuna / Oznake, živi pregled (SVG) i živa primjena na karti (`uzivo`).
+// Vraća { col, stil } | 'vrati' (stil sloja) | null. stil: { w, crta, op (neprovidnost linije %), ispuna (%), ispunaBoja, providno }.
+const _KED_CRTE = [['puna', 'Puna', ''], ['isprek', 'Isprekidana', '12 7'], ['tack', 'Tačkasta', '1 7'], ['crtatack', 'Crta-tačka', '14 5 2 5']];
+const _KED_SABLONI = [
+  ['Granica odjela', '#111827', { w: 3, crta: 'isprek', op: 100, ispuna: 0 }],
+  ['Odjel', '#ef4444', { w: 2, crta: 'puna', op: 90, ispuna: 15 }],
+  ['Put (ŠKP)', '#f97316', { w: 4, crta: 'puna', op: 95, ispuna: 0 }],
+  ['Sječina', '#eab308', { w: 2, crta: 'puna', op: 90, ispuna: 35 }],
+  ['Voda', '#3b82f6', { w: 2, crta: 'puna', op: 85, ispuna: 30 }],
+  ['Samo dodir', '#ffffff', { providno: true }]];
+function _kedSvg(c, st, imaPol, imaLin) {
+  const d = (_KED_CRTE.find(x => x[0] === (st.crta || 'puna')) || _KED_CRTE[0])[2], w = Math.max(0.5, st.w || 2) * 1.6;
+  const lin = st.providno ? 0 : (st.op != null ? st.op : 90) / 100, isp = st.providno ? 0 : (st.ispuna || 0) / 100, fb = st.ispunaBoja || c;
+  const crt = `stroke="${c}" stroke-width="${w}" stroke-opacity="${lin}" stroke-dasharray="${d}" stroke-linejoin="round" stroke-linecap="round" fill="none"`;
+  return `<svg viewBox="0 0 320 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><pattern id="ked-sah" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#dfe8d8"/><path d="M0 0h6v6H0zM6 6h6v6H6z" fill="#d2ddca"/></pattern></defs>
+    <rect width="320" height="120" fill="url(#ked-sah)"/><g fill="none" stroke="#b9925a" stroke-opacity=".45"><path d="M-10 92 C60 70 120 108 190 84 S300 60 340 76"/><path d="M-10 56 C70 34 130 74 200 50 S300 26 340 40"/><path d="M-10 20 C80 4 140 36 210 16 S300 -4 340 8"/></g>
+    ${imaPol ? `<path d="M34 96 L62 24 L164 14 L204 58 L156 106 Z" fill="${fb}" fill-opacity="${isp}"/><path d="M34 96 L62 24 L164 14 L204 58 L156 106 Z" ${crt}/>` : ''}
+    ${imaLin || !imaPol ? `<path d="M222 104 C246 42 282 88 306 16" ${crt}/>` : ''}
+    ${st.providno ? '<text x="160" y="66" text-anchor="middle" font-size="15" font-weight="800" fill="#334155">samo dodir — nevidljivo</text>' : ''}</svg>`;
+}
+function _kmlStilOtvori({ naslov, podnaslov = '', col, stil, imaPol, imaLin = true, vratiStil = false, uzivo = null, sloj = null }) {
   return new Promise(res => {
-    stil = { w: 2, crta: null, ispuna: 0, ...(stil || {}) };
+    const s0 = { w: 2, crta: imaPol ? 'puna' : 'isprek', op: 90, ispuna: 0, ispunaBoja: null, providno: false, ...(stil || {}) };
+    let c = col || '#ef4444', st = { ...s0 };
+    if (st.op == null) st.op = 90;
+    let tab = 'lin';
+    const ozn0 = sloj ? JSON.parse(JSON.stringify(_oznSt[sloj.name] || null)) : null;
     let el = document.getElementById('kml-stil'); if (el) el.remove();
-    el = document.createElement('div'); el.id = 'kml-stil';
-    const dug = (grupa, vr, txt, akt) => `<button data-g="${grupa}" data-v="${vr}" class="${akt ? 'on' : ''}">${txt}</button>`;
-    el.innerHTML = `<div class="ks-ov" data-x="1"></div><div class="ks-list" role="dialog"><b>${_escHtml(naslov)}</b>
-      <div class="ks-red ks-boje">${_KML_PALETA.map(c => `<button data-g="col" data-v="${c}" style="--c:${c}" class="ks-b${c === col ? ' on' : ''}" aria-label="Boja ${c}"></button>`).join('')}<label class="ks-b ks-druga" title="Druga boja"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(col) ? col : '#ef4444'}">＋</label></div>
-      ${imaLin ? `<div class="ks-nasl">Debljina linije <span id="ks-w">${stil.w}</span></div><input type="range" min="1" max="8" step="1" value="${stil.w}" id="ks-wr">
-      <div class="ks-nasl">Linija</div><div class="ks-red">${dug('crta', 'puna', '━ Puna', stil.crta === 'puna')}${dug('crta', 'isprek', '╍ Isprekidana', stil.crta === 'isprek')}${dug('crta', 'tack', '┈ Tačkasta', stil.crta === 'tack')}</div>` : ''}
-      ${imaPol || imaLin ? `<div class="ks-nasl">Prikaz</div><div class="ks-red">${dug('prov', 0, 'Vidljivo', !stil.providno)}${dug('prov', 1, 'Providno (samo dodir)', !!stil.providno)}</div>` : ''}
-      ${imaPol ? `<div class="ks-nasl">Ispuna poligona</div><div class="ks-red">${[0, 15, 35, 60].map(v => dug('isp', v, v ? v + ' %' : 'Bez', +stil.ispuna === v)).join('')}</div>` : ''}
-      <div class="ks-akc">${vratiStil ? '<button data-x="vrati">↺ Stil sloja</button>' : ''}<button data-x="1">Odustani</button><button data-x="ok" class="glavno">✓ Primijeni</button></div></div>`;
-    document.body.appendChild(el);
-    const kraj = v => { el.remove(); res(v); };
+    el = document.createElement('div'); el.id = 'kml-stil'; el.className = 'ked';
+    const boje = (g, akt) => `<div class="ked-boje">${_KML_PALETA.map(b => `<button data-g="${g}" data-v="${b}" style="--c:${b}" class="ked-b${b === akt ? ' on' : ''}" aria-label="Boja ${b}"></button>`).join('')}<label class="ked-b ked-druga" title="Druga boja">＋<input type="color" data-g="${g}" value="${/^#[0-9a-f]{6}$/i.test(akt || '') ? akt : '#ffffff'}"></label></div>`;
+    const klizac = (g, v, min, max, korak, nas, jed, opis) => `<div class="ked-kl"><div class="ked-kl-gl"><span>${nas}</span><b data-out="${g}">${v}${jed}</b></div><input type="range" data-g="${g}" min="${min}" max="${max}" step="${korak}" value="${v}" aria-label="${nas}">${opis ? `<small>${opis}</small>` : ''}</div>`;
+    const sazetak = () => st.providno ? 'Nevidljivo — objekat ostaje dostupan za dodir' :
+      `${st.w} px · ${(_KED_CRTE.find(x => x[0] === st.crta) || _KED_CRTE[0])[1].toLowerCase()} · linija ${100 - st.op} % providna` + (imaPol ? ` · ispuna ${st.ispuna ? (100 - st.ispuna) + ' % providna' : 'isključena'}` : '');
+    const tijelo = () => {
+      if (tab === 'lin') return `
+        <div class="ked-sek"><div class="ked-nasl">Boja linije</div>${boje('col', c)}</div>
+        <div class="ked-sek">${klizac('w', st.w, 0.5, 10, 0.5, 'Debljina', ' px')}${klizac('lprov', 100 - st.op, 0, 95, 5, 'Providnost linije', ' %', '0 % = puna boja')}</div>
+        <div class="ked-sek"><div class="ked-nasl">Vrsta linije</div><div class="ked-crte">${_KED_CRTE.map(([k, t, d]) => `<button data-g="crta" data-v="${k}" class="${st.crta === k ? 'on' : ''}"><svg viewBox="0 0 60 10"><path d="M2 5H58" stroke="currentColor" stroke-width="3" stroke-dasharray="${d}" stroke-linecap="round"/></svg><span>${t}</span></button>`).join('')}</div></div>
+        <label class="ked-prek"><span><b>Samo dodir</b><small>Linija i ispuna nevidljive, klik na objekat i dalje radi</small></span><input type="checkbox" data-g="providno" ${st.providno ? 'checked' : ''}></label>`;
+      if (tab === 'isp') return `
+        <div class="ked-sek">${klizac('fprov', st.ispuna ? 100 - st.ispuna : 100, 0, 100, 5, 'Providnost ispune', ' %', '100 % = bez ispune · 0 % = puna boja')}
+          <div class="ked-brzo">${[[100, 'Bez'], [85, 'Blago'], [65, 'Srednje'], [40, 'Jako']].map(([v, t]) => `<button data-g="fbrzo" data-v="${v}" class="${(st.ispuna ? 100 - st.ispuna : 100) === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+        <div class="ked-sek"><div class="ked-nasl">Boja ispune</div><label class="ked-prek mali"><span><b>Ista kao linija</b></span><input type="checkbox" data-g="istaboja" ${st.ispunaBoja ? '' : 'checked'}></label>${st.ispunaBoja ? boje('fcol', st.ispunaBoja) : ''}</div>`;
+      const oc = _oznCfg(sloj), polja = _oznPolja(sloj), prim = (_kmlObjekti(sloj).map(l => _oznTekst(l, oc)).find(Boolean)) || '—';
+      return `<label class="ked-prek"><span><b>Natpisi na karti</b><small>Od zooma ${_OZN_MINZ}, najviše ${_OZN_MAX} u prikazu</small></span><input type="checkbox" data-g="oon" ${oc.on ? 'checked' : ''}></label>
+        ${oc.on ? `<div class="ked-sek"><div class="ked-nasl">Šta piše</div><select class="ked-sel" data-g="opolje">${polja.map(([v, t]) => `<option value="${_escHtml(v)}"${v === oc.polje ? ' selected' : ''}>${_escHtml(t)}</option>`).join('')}</select></div>
+        <div class="ked-sek"><div class="ked-nasl">Veličina</div><div class="ked-brzo">${['S', 'M', 'L'].map(v => `<button data-g="ovel" data-v="${v}" class="${oc.vel === v ? 'on' : ''}">${{ S: 'Mala', M: 'Srednja', L: 'Velika' }[v]}</button>`).join('')}</div></div>
+        <div class="ked-sek"><div class="ked-nasl">Boja natpisa</div>${boje('obj', oc.boja)}</div>
+        <label class="ked-prek mali"><span><b>Tamna pozadina natpisa</b></span><input type="checkbox" data-g="opoz" ${oc.pozadina ? 'checked' : ''}></label>
+        <div class="ked-ozn-pr"><span class="ozn${oc.pozadina ? ' pozadina' : ''}" style="--c:${oc.boja};--s:${_OZN_VEL[oc.vel]}px;transform:none">${_escHtml(prim)}</span></div>` : ''}`;
+    };
+    const tabovi = [['lin', '〰 Linija', imaLin || imaPol]].concat(imaPol ? [['isp', '▨ Ispuna', true]] : [], sloj ? [['ozn', '🏷 Oznake', true]] : []).filter(x => x[2]);
+    const crtaj = () => {
+      const skrol = el.querySelector('.ked-tijelo')?.scrollTop || 0;
+      el.innerHTML = `<div class="ks-ov" data-x="1"></div><div class="ked-list" role="dialog" aria-label="Stil">
+        <div class="ked-zag"><div><b>${_escHtml(naslov)}</b>${podnaslov ? `<small>${_escHtml(podnaslov)}</small>` : ''}</div><button class="ked-x" data-x="1" aria-label="Zatvori">✕</button></div>
+        <div class="ked-pregled">${_kedSvg(c, st, imaPol, imaLin)}</div><div class="ked-saz">${_escHtml(sazetak())}</div>
+        <div class="ked-sabl">${_KED_SABLONI.filter(([, , x]) => imaPol || !x.ispuna).map(([t, b, x], i) => `<button data-g="sabl" data-v="${i}"><i style="--c:${b}"></i>${t}</button>`).join('')}</div>
+        ${tabovi.length > 1 ? `<div class="ked-tabs">${tabovi.map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>` : ''}
+        <div class="ked-tijelo">${tijelo()}</div>
+        <div class="ked-akc">${vratiStil ? '<button data-x="vrati">↺ Stil sloja</button>' : ''}<button data-x="1">Odustani</button><button data-x="ok" class="glavno">✓ Primijeni</button></div></div>`;
+      const t = el.querySelector('.ked-tijelo'); if (t) t.scrollTop = skrol;
+    };
+    const zivo = () => { el.querySelector('.ked-pregled').innerHTML = _kedSvg(c, st, imaPol, imaLin); el.querySelector('.ked-saz').textContent = sazetak(); if (uzivo) uzivo(c, { ...st }); };
+    const kraj = v => { if (!v && sloj) { if (ozn0) _oznSt[sloj.name] = ozn0; else delete _oznSt[sloj.name]; _oznSpremi(); _oznOsvjezi(); } el.remove(); res(v); };
+    const ozn = izm => { _oznSt[sloj.name] = { ..._oznCfg(sloj), ...izm }; _oznSpremi(); _oznOsvjezi(); crtaj(); };
+    crtaj(); document.body.appendChild(el); if (uzivo) uzivo(c, { ...st });
     el.addEventListener('click', e => {
-      const b = e.target.closest('[data-g],[data-x]'); if (!b) return;
+      const tb = e.target.closest('[data-t]'); if (tb) { tab = tb.dataset.t; crtaj(); return; }
+      const b = e.target.closest('[data-g],[data-x]'); if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT') return;
       if (b.dataset.x === '1') return kraj(null);
       if (b.dataset.x === 'vrati') return kraj('vrati');
-      if (b.dataset.x === 'ok') return kraj({ col, stil });
+      if (b.dataset.x === 'ok') { _khStat && _khStat(); return kraj({ col: c, stil: { ...st } }); }
       const g = b.dataset.g, v = b.dataset.v;
-      if (g === 'col') col = v; else if (g === 'crta') stil.crta = v; else if (g === 'isp') stil.ispuna = +v; else if (g === 'prov') stil.providno = v === '1';
-      el.querySelectorAll(`[data-g="${g}"]`).forEach(x => x.classList.toggle('on', x === b));
+      if (g === 'col') c = v; else if (g === 'fcol') st.ispunaBoja = v; else if (g === 'crta') st.crta = v;
+      else if (g === 'fbrzo') st.ispuna = 100 - Number(v);
+      else if (g === 'sabl') { const [, b2, x] = _KED_SABLONI.filter(([, , y]) => imaPol || !y.ispuna)[+v]; c = b2; st = { ...st, providno: false, ispunaBoja: null, ...x }; }
+      else if (g === 'ovel') return ozn({ vel: v }); else if (g === 'obj') return ozn({ boja: v });
+      crtaj(); zivo();
     });
-    el.querySelector('input[type=color]').addEventListener('input', e => { col = e.target.value; el.querySelectorAll('[data-g="col"]').forEach(x => x.classList.remove('on')); });
-    const wr = el.querySelector('#ks-wr'); if (wr) wr.addEventListener('input', () => { stil.w = +wr.value; el.querySelector('#ks-w').textContent = wr.value; });
+    el.addEventListener('input', e => {
+      const g = e.target.dataset.g, v = e.target.value; if (!g) return;
+      if (e.target.type === 'range') {
+        if (g === 'w') st.w = +v; else if (g === 'lprov') st.op = 100 - +v; else if (g === 'fprov') st.ispuna = 100 - +v;
+        const out = el.querySelector(`[data-out="${g}"]`); if (out) out.textContent = v + (g === 'w' ? ' px' : ' %');
+        el.querySelectorAll('[data-g="fbrzo"]').forEach(x => x.classList.toggle('on', +x.dataset.v === (st.ispuna ? 100 - st.ispuna : 100)));
+        zivo();
+      } else if (e.target.type === 'color') {
+        if (g === 'col') c = v; else if (g === 'fcol') st.ispunaBoja = v; else if (g === 'obj') { _oznSt[sloj.name] = { ..._oznCfg(sloj), boja: v }; _oznSpremi(); _oznOsvjezi(); }
+        el.querySelectorAll(`.ked-b[data-g="${g}"]`).forEach(x => x.classList.remove('on')); zivo();
+      }
+    });
+    el.addEventListener('change', e => {
+      const g = e.target.dataset.g; if (!g || e.target.type === 'range' || e.target.type === 'color') return;
+      if (g === 'providno') st.providno = e.target.checked;
+      else if (g === 'istaboja') st.ispunaBoja = e.target.checked ? null : (c === '#ffffff' ? '#22c55e' : c);
+      else if (g === 'oon') return ozn({ on: e.target.checked }); else if (g === 'opolje') return ozn({ polje: e.target.value }); else if (g === 'opoz') return ozn({ pozadina: e.target.checked });
+      crtaj(); zivo();
+    });
   });
 }
 // ── Editor oznaka: stalni natpisi na karti za bilo koji KML sloj (i preuzete s servera) ──
@@ -5285,35 +5398,13 @@ function _oznOsvjezi() {
     }
   }, 120);
 }
-function _oznOtvori() {
-  let el = document.getElementById('kml-stil'); if (el) el.remove();
-  if (!kmlLs.length) { showToast('Nema učitanih KML slojeva — preuzmi ih u KML pregledniku'); return; }
-  el = document.createElement('div'); el.id = 'kml-stil';
-  const crtaj = () => {
-    el.innerHTML = `<div class="ks-ov" data-x="1"></div><div class="ks-list ozn-list" role="dialog"><b>🏷 Editor oznaka</b><small style="color:#86a397">Natpisi se vide od zooma ${_OZN_MINZ}, najviše ${_OZN_MAX} u prikazu.</small>${kmlLs.map((k, i) => {
-      const c = _oznCfg(k), polja = _oznPolja(k), uz = (typeof _kmlObjekti === 'function' ? _kmlObjekti(k).length : 0);
-      const primjer = (_kmlObjekti(k).map(l => _oznTekst(l, c)).find(Boolean)) || '—';
-      return `<div class="ozn-sloj${c.on ? ' on' : ''}"><div class="ozn-gl"><div style="flex:1;min-width:0"><b>${_escHtml(k.name)}</b><br><small>${uz} objekata${k._ugradjeno ? ' · ugrađeno' : ''}</small></div><label class="ng-switch"><input type="checkbox" data-i="${i}" data-g="on" ${c.on ? 'checked' : ''}><span></span></label></div>
-        ${c.on ? `<div class="ks-nasl" style="margin-top:8px">Šta piše na oznaci</div><select class="ozn-sel" data-i="${i}" data-g="polje">${polja.map(([v, t]) => `<option value="${_escHtml(v)}"${v === c.polje ? ' selected' : ''}>${_escHtml(t)}</option>`).join('')}</select>
-        <div class="ks-nasl" style="margin-top:8px">Veličina</div><div class="ks-red">${['S', 'M', 'L'].map(v => `<button data-i="${i}" data-g="vel" data-v="${v}" class="${c.vel === v ? 'on' : ''}">${{ S: 'Mala', M: 'Srednja', L: 'Velika' }[v]}</button>`).join('')}</div>
-        <div class="ks-nasl" style="margin-top:8px">Boja</div><div class="ks-red ks-boje">${_KML_PALETA.map(b => `<button data-i="${i}" data-g="boja" data-v="${b}" style="--c:${b}" class="ks-b${b === c.boja ? ' on' : ''}" aria-label="Boja ${b}"></button>`).join('')}</div>
-        <div class="ks-red" style="margin-top:8px"><button data-i="${i}" data-g="pozadina" class="${c.pozadina ? 'on' : ''}">▭ Tamna pozadina natpisa</button></div>
-        <div class="ozn-pregled"><span class="ozn${c.pozadina ? ' pozadina' : ''}" style="--c:${c.boja};--s:${_OZN_VEL[c.vel]}px;transform:none">${_escHtml(primjer)}</span></div>` : ''}</div>`; }).join('')}
-      <div class="ks-akc"><button data-x="ok" class="glavno">✓ Gotovo</button></div></div>`;
-  };
-  crtaj(); document.body.appendChild(el);
-  const prom = (i, izm) => { const k = kmlLs[i]; _oznSt[k.name] = { ..._oznCfg(k), ...izm }; _oznSpremi(); _oznOsvjezi(); crtaj(); };
-  el.addEventListener('click', e => {
-    const b = e.target.closest('[data-g],[data-x]'); if (!b) return;
-    if (b.dataset.x) { el.remove(); _khStat(); return; }
-    const i = +b.dataset.i, g = b.dataset.g;
-    if (g === 'vel' || g === 'boja') prom(i, { [g]: b.dataset.v });
-    else if (g === 'pozadina') prom(i, { pozadina: !_oznCfg(kmlLs[i]).pozadina });
-  });
-  el.addEventListener('change', e => {
-    const b = e.target.closest('[data-g]'); if (!b) return; const i = +b.dataset.i;
-    if (b.dataset.g === 'on') prom(i, { on: b.checked }); else if (b.dataset.g === 'polje') prom(i, { polje: b.value });
-  });
+function _oznOtvori(id) { const k = id ? kmlLs.find(x => x.id === id) : kmlLs[0]; if (k) _kmlPromijeniBoju(k.id); else showToast('Nema učitanih KML slojeva — preuzmi ih u KML pregledniku'); }
+// Kartica u tabu Karte: svaki sloj s mini pregledom stila → editor (Linija / Ispuna / Oznake)
+function _kedHubRender() {
+  const el = document.getElementById('kh-slojevi'); if (!el) return;
+  if (!kmlLs.length) { el.innerHTML = '<div class="ked-prazno">Još nema KML slojeva. Učitaj ih u KML pregledniku ili preuzmi sa servera.</div>'; return; }
+  el.innerHTML = kmlLs.map(k => { const st = _kmlStat(k), oc = _oznCfg(k);
+    return `<button class="ked-hub-red" onclick="_oznOtvori('${k.id}')"><span class="ked-hub-pr">${_kedSvg(k.col, { w: 2, op: 90, ispuna: 0, ...(k.stil || {}) }, st.pol > 0, st.lin > 0)}</span><span class="ked-hub-t"><b>${_escHtml(k.name)}</b><small>${st.pol ? st.pol + ' pol.' : ''}${st.lin ? ' ' + st.lin + ' lin.' : ''}${oc.on ? ' · 🏷 natpisi' : ''}${k.vis === false ? ' · skriven' : ''}</small></span><span class="ked-hub-go">Uredi ›</span></button>`; }).join('');
 }
 if (typeof document !== 'undefined') setTimeout(() => { try { map.on('moveend zoomend', _oznOsvjezi); _oznOsvjezi(); } catch (e) {} }, 0);
 function _kmlRegRender() {
@@ -5442,8 +5533,8 @@ function _kmlUpisiStil(doc, pm, tip, col, stil) {
   _kmlPostaviExt(doc, pm, 'usf_providno', col && stil.providno ? '1' : null);
   if (!col) return;
   const ns = pm.namespaceURI, el = (tag, ...djeca) => { const e = doc.createElementNS(ns, tag); djeca.forEach(d => typeof d === 'string' ? e.textContent = d : e.appendChild(d)); return e; };
-  const st = el('Style', el(tip === 'Point' ? 'IconStyle' : 'LineStyle', el('color', _kmlBojaUKml(col)), ...(tip === 'Point' ? [] : [el('width', String(stil.w || 2))])));
-  if (tip === 'Polygon') st.appendChild(el('PolyStyle', el('color', _kmlBojaUKml(col, (stil.ispuna || 0) / 100)), el('fill', stil.ispuna ? '1' : '0')));
+  const st = el('Style', el(tip === 'Point' ? 'IconStyle' : 'LineStyle', el('color', _kmlBojaUKml(col, tip === 'Point' || stil.op == null ? 1 : stil.op / 100)), ...(tip === 'Point' ? [] : [el('width', String(stil.w || 2))])));
+  if (tip === 'Polygon') st.appendChild(el('PolyStyle', el('color', _kmlBojaUKml(stil.ispunaBoja || col, (stil.ispuna || 0) / 100)), el('fill', stil.ispuna ? '1' : '0')));
   const posl = [...pm.children].find(c => /^(ExtendedData|Point|LineString|Polygon|MultiGeometry)$/.test(c.localName));
   pm.insertBefore(st, posl || null);
 }
@@ -5451,9 +5542,13 @@ async function _kmlUrediStil(id) {
   const r = _kmlPoStampu(id); if (!r) return;
   map.closePopup();
   const tip = _kmlTipSloja(r.l), o = r.l.options || {};
+  // Leaflet setStyle mijenja options na mjestu — snimak za vraćanje poslije živog pregleda
+  const o0 = { color: o.color, weight: o.weight, opacity: o.opacity, dashArray: o.dashArray, fillColor: o.fillColor, fillOpacity: o.fillOpacity };
   const crta = Object.keys(_KML_CRTA).find(c => _KML_CRTA[c] === (o.dashArray || null)) || null;
   const v = await _kmlStilOtvori({ naslov: '🎨 ' + (r.l._kmlName || 'Objekat'), col: o.color || r.k.col, imaPol: tip === 'Polygon', imaLin: tip !== 'Point', vratiStil: !!r.l._kmlVlastiti,
-    stil: { w: o.weight || 2, crta, providno: o.opacity === 0, ispuna: tip === 'Polygon' && o.fillOpacity > 0.01 ? Math.round(o.fillOpacity * 100) : 0 } });
+    stil: { w: o.weight || 2, crta, providno: o.opacity === 0, op: o.opacity > 0 ? Math.round(o.opacity * 100) : 90, ispuna: tip === 'Polygon' && o.fillOpacity > 0.01 ? Math.round(o.fillOpacity * 100) : 0, ispunaBoja: o.fillColor && o.fillColor !== o.color ? o.fillColor : null },
+    uzivo: (c, st) => { try { r.l.setStyle(_kmlLeafletStil(tip, c, st)); } catch (e) {} } });
+  if (!v || v === 'vrati') { try { r.l.setStyle(o0); } catch (e) {} }
   if (!v) return;
   if (_kmlPrimijeni(r.k, r.l, (doc, pm) => v === 'vrati' ? _kmlUpisiStil(doc, pm, tip, null) : _kmlUpisiStil(doc, pm, tip, v.col, v.stil))) showToast(v === 'vrati' ? '↺ Stil sloja vraćen' : '🎨 Stil sačuvan');
 }
@@ -5652,7 +5747,7 @@ function _khStat() {
     if (kml) kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp';
     const vidljivi = kmlLs.filter(k => k.vis !== false).length;
     bedz('kh-b-kml', kmlLs.length ? vidljivi + '/' + kmlLs.length + ' na karti' : '');
-    const oznN = kmlLs.filter(k => _oznCfg(k).on).length; bedz('kh-b-ozn', oznN ? oznN + (oznN === 1 ? ' sloj' : ' sloja') : '');
+    bedz('kh-b-ozn', kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') : ''); _kedHubRender();
     // Pregled: podloga, offline, KML, uključeni slojevi (teren + praćenje šume) — dodir vodi u odgovarajuću sekciju
     const tem = typeof _tematskiUkljuceni === 'function' ? _tematskiUkljuceni().length : 0;
     const teren = ['terrain-aspect', 'terrain-shade'].filter(id => document.getElementById(id)?.checked).length;

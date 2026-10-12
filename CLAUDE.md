@@ -268,6 +268,9 @@
   Značke `kh-bedz` (offline „✓ aktivna”, KML „x/y na karti”). „Isključi slojeve praćenja šume” samo kad `_tematskiUkljuceni()` nije prazno. Test `tests/js/karte-pregled.test.js`.
 - **Izbornik 🗂 (gore desno, `#layer-switch`)**: mrežne podloge, pa ispod njih okvir `.ls-offline` (zadebljan border, naslov „🗂 Offline karte”, ≤ 34vh uz skrol) sa SVIM offline kartama
   (`_sqlmapSyncLayerSwitch`, jedan dodir = `_sqlmapSelect`; ime bez .sqlitedb/.mbtiles).
-- **Editor oznaka** (tab Karte → kartica „🏷 Editor oznaka” ispod KML preglednika, `_oznOtvori`): po KML sloju (ključ = ime sloja, I za preuzete sa servera) u localStorage `usf_oznake`
-  {on, polje, vel S/M/L, boja, pozadina}; polje = naziv / „Odjel · odsjek” (`_odjelOznaka`) / bilo koji atribut (`_oznPolja`). Natpisi su ne-interaktivni divIcon markeri (`_oznOsvjezi`: zoom ≥ 12,
-  ≤ 250 u prikazu, osvježava se na moveend/zoomend i u `_kmlRegRender`) — ne diraju klik/popup. Test `tests/js/oznake.test.js`.
+- **Editor slojeva** (tab Karte → „🎨 Editor slojeva”: lista slojeva s mini pregledom `_kedHubRender` → `_oznOtvori(id)` → `_kmlPromijeniBoju`; isto dugme boje u KML pregledniku
+  i „🎨 Boja, linija i ispuna” za objekat): `_kmlStilOtvori` = list s kartama **Linija** (boja, debljina 0,5–10, providnost linije, puna/isprek/tačk/crta-tačka, „Samo dodir”),
+  **Ispuna** (providnost ispune 0–100 % + brzi izbor, boja ispune odvojena od linije ili „Ista kao linija”), **Oznake** (samo za sloj: natpisi). Šabloni (Granica odjela, Odjel, Put…),
+  SVG pregled `_kedSvg`, ŽIVA primjena na karti (`uzivo`); Odustani vraća stil (objekat iz snimka `o0` — Leaflet setStyle mijenja options) i natpise (`ozn0`).
+  Model `stil`: { w, crta, op (neprovidnost linije %), ispuna (%), ispunaBoja, providno } → `_kmlLeafletStil`; objekat u KML: LineStyle alfa = op, PolyStyle boja = ispunaBoja.
+  Natpisi: localStorage `usf_oznake` po imenu sloja {on, polje, vel, boja, pozadina} (`_oznOsvjezi`: ne-interaktivni divIcon, zoom ≥ 12, ≤ 250). Testovi `oznake.test.js`, `kml-providno.test.js`.
