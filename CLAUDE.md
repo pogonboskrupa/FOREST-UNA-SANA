@@ -262,3 +262,5 @@
   Novu kartu: upload u release, pa dodati zapis u listu (nova lista na `codex-forest` radi bez APK-a). Test `tests/js/karte-github.test.js`.
 - **Tab Karte — Pregled** (`#kh-pregled`, `_khStat`): 4 pločice (podloga / offline karte / KML slojeva·poligona / uključeni slojevi teren+praćenje šume) vode u sekcije; zeleno = aktivno.
   Značke `kh-bedz` (offline „✓ aktivna”, KML „x/y na karti”). „Isključi slojeve praćenja šume” samo kad `_tematskiUkljuceni()` nije prazno. Test `tests/js/karte-pregled.test.js`.
+- **Izbornik 🗂 (gore desno, `#layer-switch`)**: mrežne podloge, pa ispod njih okvir `.ls-offline` (zadebljan border, naslov „🗂 Offline karte”, ≤ 34vh uz skrol) sa SVIM offline kartama
+  (`_sqlmapSyncLayerSwitch`, jedan dodir = `_sqlmapSelect`; ime bez .sqlitedb/.mbtiles).

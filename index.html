@@ -116,6 +116,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   background:transparent; border:1px solid transparent; color:#d8e8df; min-height:42px;
   border-radius:11px; padding:9px 12px; font-size:13px; text-align:left; cursor:pointer; white-space:nowrap;
 }
+#layer-switch .ls-offline { display:flex; flex-direction:column; gap:4px; margin-top:4px; padding:8px 4px 2px; border-top:2px solid rgba(134,239,172,.38); max-height:34vh; overflow-y:auto; overscroll-behavior:contain; }
+#layer-switch .ls-nasl { color:#6ee7b7; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:0 8px 2px; }
+#layer-switch .ls-offline button { border-color:rgba(134,239,172,.16); }
 #layer-switch button.active { background:rgba(22,101,52,.45); border-color:rgba(74,222,128,.55); color:#bbf7d0; }
 
 
@@ -5703,16 +5706,23 @@ function _baseLoadStatus(txt) {
 function _sqlmapSyncLayerSwitch() {
   const box = document.getElementById('layer-switch');
   if (!box) return;
-  box.querySelectorAll('button[data-sqlmap]').forEach(b => b.remove());
-  const r = _sqlLayers.find(x => x.active) || _sqlLayers[0];
-  if (!r) return;
-  const btn = document.createElement('button');
-  btn.dataset.sqlmap = r.id;
-  btn.classList.toggle('active', !!r.active);
-  btn.textContent = '🗂 ' + r.name;
-  btn.title = 'Offline SQLite/MBTiles: ' + r.name;
-  btn.onclick = () => { _closeLayerSwitch(); _sqlmapSelect(r.id, true); };
-  box.appendChild(btn);
+  box.querySelectorAll('.ls-offline').forEach(e => e.remove());
+  if (!_sqlLayers.length) return;
+  // sve offline karte = brzi izbor, odvojen okvirom od mrežnih (satelitskih) podloga
+  const grp = document.createElement('div');
+  grp.className = 'ls-offline';
+  const nasl = document.createElement('div'); nasl.className = 'ls-nasl'; nasl.textContent = '🗂 Offline karte';
+  grp.appendChild(nasl);
+  _sqlLayers.forEach(r => {
+    const btn = document.createElement('button');
+    btn.dataset.sqlmap = r.id;
+    btn.classList.toggle('active', !!r.active);
+    btn.textContent = r.name.replace(/\.(sqlitedb|mbtiles)$/i, '');
+    btn.title = 'Offline SQLite/MBTiles: ' + r.name;
+    btn.onclick = () => { _closeLayerSwitch(); _sqlmapSelect(r.id, true); };
+    grp.appendChild(btn);
+  });
+  box.appendChild(grp);
 }
 function _sqlmapThumb(db, meta) {
   try {
