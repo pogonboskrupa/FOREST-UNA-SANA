@@ -579,8 +579,12 @@ t('projekcija: plohe iz svih detekcija zajedno, canvas u vlastitom pane-u, bez d
   assert.strictEqual((opoz.match(/L\.geoJSON\(/g) || []).length, 1);
   assert.ok(!opoz.includes('_poziOpozGrupisiPoStarosti'), 'nema više zasebnih poligona po starosti');
   assert.ok(opoz.includes("_poziPlohe(prikazane.flatMap(g => g.pts || []))"), 'zatvaranje nad svim prikazanim detekcijama');
-  const god = HTML.slice(HTML.indexOf('function _povGodRenderSve()'), HTML.indexOf('function _povGodRenderSve()') + 2500);
-  assert.ok(god.includes('_POZ_DUPLIKAT_M') && god.includes('_poziPlohe('), 'godišnji sloj preskače već nacrtane i spaja detekcije');
+  const god = HTML.slice(HTML.indexOf('function _povGodPloheZa('), HTML.indexOf('function _povGodRenderSve()') + 2500);
+  assert.ok(god.includes('_POZ_DUPLIKAT_M') && god.includes('_poziPloheAsync('), 'godišnji sloj preskače već nacrtane i spaja detekcije');
+  const rs = HTML.slice(HTML.indexOf('function _povGodRenderSve()'), HTML.indexOf('function _povGodZoom('));
+  assert.ok(rs.includes('_povGodPloheZa(godina)') && !rs.includes('_poziPlohe('), 'crtanje ne računa plohe sinhrono (blokiralo otvaranje sekcije)');
+  const rp = HTML.slice(HTML.indexOf('function _poziRenderPanel()'), HTML.indexOf('async function openPozariSection'));
+  assert.ok(rp.includes("vidljiv('poz-podtab-historija')") && rp.includes("vidljiv('poz-podtab-simulacija')"), 'historija/simulacija samo kad je podtab otvoren');
 });
 
 t('heatmap normalizuje gustinu (par detekcija nije blijed) i ima izraženu paletu', () => {

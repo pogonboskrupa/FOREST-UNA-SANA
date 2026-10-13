@@ -79,6 +79,10 @@
   najbliže ≤ 15 km); NDVI — Cache `usf-veg` (sloj ima bounds USK); sušenje — COG blokovi 64 KB
   u Cache `usf-susenje` (`kesCitaj` prije mreže, `kesPisi` samo uz Content-Range s ukupnom dužinom,
   centar karte u USK, zaglavlje uvijek, ≤ 4000 blokova). Pregled/brisanje: `_susKesStat`/`_susKesObrisi`.
+- **Požari — performanse otvaranja**: godišnje plohe (`_povGodPloheZa`) se računaju JEDNOM po skupu podataka (ključ = niz
+  `evts` + sadržaj `_poziEvts`), u pozadini (`_poziPloheAsync`, komadi ~25 ms), ne u `_povGodRenderSve` (zvan 3× pri otvaranju —
+  ~15 s blokade na 4× sporijem CPU-u s 1500 detekcija). `_poziUnija` spaja u parovima (stablo), krugovi `steps: 16`.
+  `_poziRenderPanel` crta historiju/simulaciju samo kad je taj podtab otvoren.
 - **Zdravlje šume** (panel Sušenje-potkornjak): `static/js/tlo-potkornjak.js` — Open-Meteo (CORS *,
   bez ključa): ERA5-Land tlo + klimatologija 1991–2020 (kvantili po ćeliji 0,1° u
   localStorage `usf_tlo_klima_*`), IFS prognoza, PHENIPS; zadnji rezultat
@@ -91,7 +95,10 @@
   Indeksi (`INDEKSI`): stanje NDVI, EVI, NDMI, GNDVI, NBR, MSAVI, MNDWI; promjena dNDVI (sada − lani) i dNBR (lani − sada,
   USGS pragovi) — `baza` + `znak`, `evalscriptPromjena`: mosaicking ORBIT, `preProcessScenes` ostavi ≤ 4 snimka po periodu
   (zadnjih n dana i isti datumi lani, `periodPromjene`; 'pg' ⇒ 30), prosjek čistih piksela, MAXCC 40 — više PU po pločici.
+  Tasseled Cap Wetness/Greenness/Brightness (`tcw/tcg/tcb`): koeficijenti Baig 2014 (OLI) na B02 B03 B04 B08 B11 B12 — približno.
   LSWI = NDMI, ARVI (L2A već korigovan), NDBI i BAI namjerno nisu dodani.
+  Legenda na karti `#veg-map-leg` (200 px, zadano dolje lijevo iznad zooma — gore desno je legenda požara): ▾ skupi, ✕ sakrije
+  SAMO legendu i ostavi čip `#veg-leg-chip` „🛰 Legenda …” za vraćanje; sloj ostaje uključen.
 - **Sjekačke linije** (Planiranje, `static/js/sjekacke.js`): poligon (crtanje dodirom/
   GPS-om, mjerenje, KML, odjel) → paralelne linije u smjeru dominantnog pada (DEM preko
   `npVisinaNa` iz nagib-poligon.js); linija = granica sjekačke partije, UVIJEK uz

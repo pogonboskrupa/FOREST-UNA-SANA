@@ -121,7 +121,18 @@ t('promjena (dNDVI/dNBR): prosjek čistih snimaka sada vs isti period lani, ≤ 
   assert.strictEqual(boja(g([izgor, izgor, suma], sc)), V.INDEKSI.dnbr.boje[6], 'dNBR = lani − sada → visoka jačina');
   const u = V.urlPlocice(12, 2200, 1467, { id: '0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0', sloj: 'NDVI', per: '30', ind: 'dnbr' });
   assert.ok(/TIME=\d{4}-\d\d-\d\d%2F\d{4}-\d\d-\d\d/.test(u) && /MAXCC=40/.test(u));
-  ['gndvi', 'nbr', 'msavi', 'mndwi', 'dndvi', 'dnbr'].forEach(k => assert.ok(HTML.includes('<option value="' + k + '">'), 'izbor ' + k));
+  ['gndvi', 'nbr', 'msavi', 'mndwi', 'tcw', 'tcg', 'tcb', 'dndvi', 'dnbr'].forEach(k => assert.ok(HTML.includes('<option value="' + k + '">'), 'izbor ' + k));
+});
+
+t('Tasseled Cap: koeficijenti OLI na S2 kanalima, šuma vlažnija i tamnija od golog tla', () => {
+  const ev = k => new Function(V.evalscript(k) + '\nreturn { setup, evaluatePixel };')();
+  const klasa = (k, px) => { const c = ev(k).evaluatePixel({ ...px, SCL: 4, dataMask: 1 }); return V.INDEKSI[k].boje.indexOf('#' + c.slice(0, 3).map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('')); };
+  const suma = { B02: 0.02, B03: 0.04, B04: 0.02, B08: 0.32, B11: 0.13, B12: 0.06 }, tlo = { B02: 0.08, B03: 0.11, B04: 0.15, B08: 0.24, B11: 0.32, B12: 0.26 };
+  assert.deepStrictEqual(ev('tcw').setup().input[0].bands, ['B02', 'B03', 'B04', 'B08', 'B11', 'B12', 'SCL', 'dataMask']);
+  assert.ok(V.INDEKSI.tcw.v.includes('-0.7117*s.B11') && !V.INDEKSI.tcw.v.includes('+-'));
+  assert.ok(klasa('tcw', suma) > klasa('tcw', tlo), 'Wetness: šuma > golo tlo');
+  assert.ok(klasa('tcg', suma) > klasa('tcg', tlo), 'Greenness: šuma > golo tlo');
+  assert.ok(klasa('tcb', suma) < klasa('tcb', tlo), 'Brightness: šuma tamnija');
 });
 
 t('tlo i potkornjak: pamćenje po ćeliji 0,1° samo u USK, najbliže očitanje offline', () => {
@@ -148,6 +159,8 @@ t('pokretna legenda na karti: opis za svaku klasu svakog indeksa', () => {
   const vj = R('static/js/vegetacija.js');
   assert.ok(vj.includes("box.id = 'veg-map-leg'") && vj.includes("'usf_veg_leg'") && vj.includes('setPointerCapture'), 'prevlačenje i pamćenje položaja');
   assert.ok(HTML.includes('#veg-map-leg {') && HTML.includes('id="veg-leg-karta"'));
+  assert.ok(vj.includes("cip.id = 'veg-leg-chip'") && vj.includes('cip.hidden = !st.on || !leg.skrivena'), '✕ skriva samo legendu, čip je vraća');
+  assert.ok(HTML.includes('#veg-leg-chip {') && /#veg-map-leg \{[^}]*width: 200px/.test(HTML), 'kompaktna legenda');
 });
 
 t('UI, APK i SW: moduli uključeni, pane iznad offline podloge, ključ nije u kodu', () => {
