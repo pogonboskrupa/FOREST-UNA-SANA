@@ -1477,6 +1477,7 @@ body.sl-uredi #sl-ured { display: block; }
 .veg-cdse summary { cursor: pointer; color: var(--pn-txt); font-weight: 700; padding: 6px 0; }
 .veg-cdse ol { margin: 4px 0 8px 18px; padding: 0; line-height: 1.5; }
 .veg-id-red { display: flex; gap: 6px; }
+.veg-cdse .veg-pin { width: 100%; margin: 4px 0 6px; }
 .veg-id-red input { flex: 1; min-width: 0; padding: 8px; border-radius: 8px; border: 1px solid var(--pn-line); background: #0b1220; color: var(--pn-txt); font: 12px ui-monospace, monospace; }
 .veg-id-red .zp-glavno { width: auto; margin: 0; padding: 8px 12px; }
 .uk-opts { padding: 4px 0 10px 2px; }
@@ -2080,6 +2081,8 @@ body.sl-uredi #sl-ured { display: block; }
           <button class="veg-sporedno" onclick="USFVeg.obrisiKes()">🗑 Obriši zapamćene pločice</button>
         </div>
         <details class="veg-cdse"><summary>CDSE konfiguracija <span id="veg-povezano"></span></summary>
+          <button class="zp-glavno veg-pin" onclick="USFVeg.otkljucaj()">🔑 Otključaj konfiguraciju pogona (PIN)</button>
+          <p class="uk-izvor">Ili vlastiti račun:</p>
           <ol><li>Besplatan račun na <b>dataspace.copernicus.eu</b>.</li><li>Sentinel Hub → <b>Configuration Utility</b> → nova konfiguracija (šablon sa Sentinel-2 L2A).</li><li>Kopiraj njen <b>ID</b> ovdje.</li></ol>
           <div class="veg-id-red"><input id="veg-id" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><button class="zp-glavno" onclick="USFVeg.povezi()">Spremi</button></div>
           <p class="uk-izvor">ID ostaje samo na ovom telefonu. Besplatno: 10 000 zahtjeva i 10 000 PU mjesečno po računu — jedna pločica = jedan zahtjev; zapamćene pločice se ne troše ponovo 5 dana.</p>

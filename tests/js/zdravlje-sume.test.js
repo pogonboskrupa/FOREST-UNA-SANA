@@ -135,6 +135,13 @@ t('Tasseled Cap: koeficijenti OLI na S2 kanalima, šuma vlažnija i tamnija od g
   assert.ok(klasa('tcb', suma) < klasa('tcb', tlo), 'Brightness: šuma tamnija');
 });
 
+t('CDSE konfiguracija pogona: samo šifrat u kodu, PIN dijalog', () => {
+  assert.ok(/^[A-Za-z0-9+/]+=*$/.test(V.CDSE_ENC) && V.CDSE_ENC.length > 60, 'šifrat (IV + AES-GCM)');
+  assert.ok(HTML.includes('onclick="USFVeg.otkljucaj()"'));
+  const vj = R('static/js/vegetacija.js');
+  assert.ok(vj.includes("_pinUnos('Unesi PIN za CDSE") && vj.includes("'usf_veg_greske'"), 'zajednički PIN dijalog s pauzom poslije 5 grešaka');
+});
+
 t('tlo i potkornjak: pamćenje po ćeliji 0,1° samo u USK, najbliže očitanje offline', () => {
   const r = (lat, lon, ts) => ({ lat, lon, ts });
   let m = T.zapamtiMjesto({}, r(44.751, 16.297, 1));
@@ -174,4 +181,9 @@ t('UI, APK i SW: moduli uključeni, pane iznad offline podloge, ključ nije u ko
   assert.ok(tj.includes("localStorage.setItem(KLJUC_ZADNJE") && tj.includes('prikaziZadnje('), 'zadnji rezultat offline');
 });
 
+(async () => {
+  const D = require('../../static/js/drive-karte.js');
+  assert.strictEqual(await D.desifruj(await D.kljucIzPina('0000'), V.CDSE_ENC), null, 'pogrešan PIN ne otključava CDSE');
+  console.log('  ✔ CDSE: pogrešan PIN ne dešifruje');
+})().catch(e => { console.error('  ✘ CDSE dešifrovanje\n      ' + e.message); process.exitCode = 1; });
 console.log('\n' + pass + ' prošlo, ' + (process.exitCode ? 'IMA PALIH' : '0 palo') + ' — zdravlje šume');

@@ -99,6 +99,9 @@
   LSWI = NDMI, ARVI (L2A već korigovan), NDBI i BAI namjerno nisu dodani.
   Legenda na karti `#veg-map-leg` (200 px, zadano dolje lijevo iznad zooma — gore desno je legenda požara): ▾ skupi, ✕ sakrije
   SAMO legendu i ostavi čip `#veg-leg-chip` „🛰 Legenda …” za vraćanje; sloj ostaje uključen.
+  CDSE konfiguracija pogona: „🔑 Otključaj konfiguraciju pogona (PIN)” (`USFVeg.otkljucaj`) — `CDSE_ENC` = ID šifrovan AES-GCM
+  ključem iz PIN-a (`USFDriveKarte.kljucIzPina`/`desifruj`), `_pinUnos` s greškama `usf_veg_greske`. ID i PIN NIKAD u repo/commit/test;
+  novi šifrat: `node -e` sa `sifruj(await kljucIzPina(PIN), {id})` iz env varijabli.
 - **Sjekačke linije** (Planiranje, `static/js/sjekacke.js`): poligon (crtanje dodirom/
   GPS-om, mjerenje, KML, odjel) → paralelne linije u smjeru dominantnog pada (DEM preko
   `npVisinaNa` iz nagib-poligon.js); linija = granica sjekačke partije, UVIJEK uz

@@ -82,6 +82,9 @@
   const vezaLosa = () => navigator.onLine === false || (typeof _vezaLoša === 'function' && _vezaLoša());
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const idIspravan = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  // Zajednička CDSE konfiguracija pogona: ID šifrovan AES-GCM ključem iz PIN-a (isti kod kao Drive karte,
+  // USFDriveKarte) — u repozitoriju nema ni ID-a ni PIN-a. 4 cifre su brava za radoznale, ne zaštita od napada.
+  const CDSE_ENC = 'qq7Lk6CI7fvwfOS228D9Av0t0/LCPsNw6rLVUJSIAHrVU4bC52uCsu7eCBBsni5wM4Tg1KsNm6wgBbALTV0XCxOw2Mlg50Zaag==';
   const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 
   // ── Evalscript i URL ─────────────────────────────────────────────────
@@ -221,7 +224,7 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
   // ── UI ───────────────────────────────────────────────────────────────
   function javiStatus(t) {
     const el = document.getElementById('veg-status'); if (!el) return;
-    el.textContent = t || zadnjaGreska || (!st.id ? 'Unesi ID CDSE konfiguracije ispod.' : vezaLosa() ? '📴 Bez veze — prikazane zapamćene pločice.' : 'Ovaj uređaj ovaj mjesec: ' + brojOvajMjesec() + ' zahtjeva (račun: 10 000/mj).');
+    el.textContent = t || zadnjaGreska || (!st.id ? 'Otključaj CDSE konfiguraciju PIN-om ili unesi svoj ID ispod.' : vezaLosa() ? '📴 Bez veze — prikazane zapamćene pločice.' : 'Ovaj uređaj ovaj mjesec: ' + brojOvajMjesec() + ' zahtjeva (račun: 10 000/mj).');
   }
   function legenda() {
     const el = document.getElementById('veg-leg'); if (!el) return;
@@ -297,8 +300,21 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     if (jePromjena(st.ind) && st.per === 'pg') st.per = '30';
     pamti(); uiSync(); crtaj();
   }
-  async function povezi() {
-    const id = (document.getElementById('veg-id')?.value || '').trim();
+  async function otkljucaj() {
+    const D = root.USFDriveKarte;
+    if (!D || typeof _pinUnos !== 'function') { javiStatus('⚠ Otključavanje nije dostupno.'); return; }
+    let id = '';
+    const pin = await _pinUnos('Unesi PIN za CDSE konfiguraciju pogona.', 'usf_veg_greske', async p => {
+      const o = await D.desifruj(await D.kljucIzPina(p), CDSE_ENC);
+      id = o && idIspravan(o.id) ? o.id : '';
+      return !!id;
+    });
+    if (pin == null || !id) return;
+    const el = document.getElementById('veg-id'); if (el) el.value = id;
+    await povezi(id);
+  }
+  async function povezi(dati) {
+    const id = (typeof dati === 'string' ? dati : document.getElementById('veg-id')?.value || '').trim();
     if (!id) { st.id = st.sloj = ''; pamti(); uiSync(); crtaj(); return; }
     if (!idIspravan(id)) { javiStatus('⚠ ID konfiguracije ima oblik xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.'); return; }
     javiStatus('⏳ Provjeravam konfiguraciju…');
@@ -358,7 +374,7 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     });
   }
 
-  root.USFVeg = { legendaPokazi, prekidac, postavi, povezi, preuzmi, obrisiKes, evalscript, period, periodPromjene, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
+  root.USFVeg = { legendaPokazi, prekidac, postavi, povezi, otkljucaj, CDSE_ENC, preuzmi, obrisiKes, evalscript, period, periodPromjene, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.USFVeg;
   if (typeof L !== 'undefined' && typeof map !== 'undefined' && map && map.getContainer) {
     registruj(); uiSync(); legenda(); if (st.on) crtaj();
