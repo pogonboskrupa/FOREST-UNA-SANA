@@ -74,12 +74,15 @@ t('satno → dnevno, null vrijednosti preskočene', () => {
 t('evalscript: izvršiv, maskira oblake/snijeg, diskretne boje po pragovima', () => {
   for (const k of Object.keys(V.INDEKSI)) {
     const I = V.INDEKSI[k];
-    const f = new Function(V.evalscript(k) + '\nreturn { setup, evaluatePixel };')();
-    const s = f.setup(); assert.deepStrictEqual(s.input[0].bands, I.ulazi.concat(['SCL', 'dataMask'])); assert.strictEqual(s.output.bands, 4);
-    assert.deepStrictEqual(f.evaluatePixel({ B02: .05, B04: .05, B08: .4, B11: .2, SCL: 9, dataMask: 1 }), [0, 0, 0, 0], k + ': oblak proziran');
-    assert.deepStrictEqual(f.evaluatePixel({ B02: .05, B04: .05, B08: .4, B11: .2, SCL: 4, dataMask: 0 }), [0, 0, 0, 0], k + ': bez podatka');
     assert.strictEqual(I.boje.length, I.pragovi.length + 1, k + ': boja više od pragova');
     assert.strictEqual(new Set(I.boje).size, I.boje.length, k + ': boje različite (dekodiranje dodira)');
+    if (I.baza) continue;
+    const f = new Function(V.evalscript(k) + '\nreturn { setup, evaluatePixel };')();
+    const s = f.setup(); assert.deepStrictEqual(s.input[0].bands, I.ulazi.concat(['SCL', 'dataMask'])); assert.strictEqual(s.output.bands, 4);
+    const px = { B02: .05, B03: .08, B04: .05, B08: .4, B11: .2, B12: .1 };
+    assert.deepStrictEqual(f.evaluatePixel({ ...px, SCL: 9, dataMask: 1 }), [0, 0, 0, 0], k + ': oblak proziran');
+    assert.deepStrictEqual(f.evaluatePixel({ ...px, SCL: 4, dataMask: 0 }), [0, 0, 0, 0], k + ': bez podatka');
+    assert.strictEqual(f.evaluatePixel({ ...px, SCL: 4, dataMask: 1 })[3], 1, k + ': čist piksel obojen');
   }
   const nd = new Function(V.evalscript('ndvi') + '\nreturn evaluatePixel;')();
   const px = nd({ B04: 0.03, B08: 0.47, SCL: 4, dataMask: 1 }); // NDVI 0,88 → klasa 0,8–0,9
@@ -95,6 +98,30 @@ t('WMS: okvir pločice 512 px u EPSG:3857, TIME, ID provjeren', () => {
   assert.ok(V.idIspravan('0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0') && !V.idIspravan('x"><script>') && !V.idIspravan(''));
   const u = V.urlPlocice(14, 8800, 5870, { id: '0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0', sloj: 'NDVI', per: '30', ind: 'ndmi' });
   assert.ok(u.startsWith('https://sh.dataspace.copernicus.eu/ogc/wms/0b1c2d3e-') && /WIDTH=512&HEIGHT=512/.test(u) && /EVALSCRIPT=/.test(u) && /PRIORITY=leastCC/.test(u));
+});
+
+t('promjena (dNDVI/dNBR): prosjek čistih snimaka sada vs isti period lani, ≤ 4 po periodu', () => {
+  const dan = new Date('2026-09-30T10:00:00Z');
+  assert.deepStrictEqual(V.periodPromjene('30', dan), { novoOd: '2026-08-31', novoDo: '2026-09-30', staroOd: '2025-08-31', staroDo: '2025-09-30' });
+  assert.strictEqual(V.periodPromjene('pg', dan).novoOd, '2026-08-31', "'pg' u promjeni = 30 dana");
+  const f = new Function(V.evalscript('dndvi', '30', dan) + '\nreturn { setup, evaluatePixel, preProcessScenes };')();
+  assert.strictEqual(f.setup().mosaicking, 'ORBIT');
+  assert.deepStrictEqual(f.setup().input[0].bands, ['B04', 'B08', 'SCL', 'dataMask']);
+  const orb = ['2026-09-28', '2026-09-20', '2026-09-15', '2026-09-10', '2026-09-05', '2026-07-01', '2025-09-29', '2025-09-01', '2025-08-31'].map(d => ({ dateFrom: d + 'T09:50:00Z' }));
+  const c = f.preProcessScenes({ scenes: { orbits: orb.slice().reverse() } }).scenes.orbits.map(o => o.dateFrom.slice(0, 10));
+  assert.deepStrictEqual(c, ['2026-09-28', '2026-09-20', '2026-09-15', '2026-09-10', '2025-09-29', '2025-09-01', '2025-08-31'], 'izvan prozora (jul) i 5. novi snimak izbačeni');
+  const sc = { orbits: ['2026-09-20', '2026-09-10', '2025-09-15'].map(d => ({ dateFrom: d + 'T09:50:00Z' })) };
+  const zdrava = { B04: 0.03, B08: 0.47, SCL: 4, dataMask: 1 }, sjeca = { B04: 0.1, B08: 0.2, SCL: 4, dataMask: 1 };
+  const boja = px => '#' + px.slice(0, 3).map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+  assert.strictEqual(boja(f.evaluatePixel([sjeca, { ...zdrava, SCL: 9 }, zdrava], sc)), V.INDEKSI.dndvi.boje[0], 'sječa = jak gubitak (oblak preskočen)');
+  assert.strictEqual(boja(f.evaluatePixel([zdrava, zdrava, zdrava], sc)), V.INDEKSI.dndvi.boje[4], 'bez promjene');
+  assert.deepStrictEqual(f.evaluatePixel([zdrava, zdrava, { ...zdrava, SCL: 8 }], sc), [0, 0, 0, 0], 'nema čistog lani → prozirno');
+  const g = new Function(V.evalscript('dnbr', '30', dan) + '\nreturn evaluatePixel;')();
+  const izgor = { B08: 0.12, B12: 0.25, SCL: 4, dataMask: 1 }, suma = { B08: 0.4, B12: 0.08, SCL: 4, dataMask: 1 };
+  assert.strictEqual(boja(g([izgor, izgor, suma], sc)), V.INDEKSI.dnbr.boje[6], 'dNBR = lani − sada → visoka jačina');
+  const u = V.urlPlocice(12, 2200, 1467, { id: '0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0', sloj: 'NDVI', per: '30', ind: 'dnbr' });
+  assert.ok(/TIME=\d{4}-\d\d-\d\d%2F\d{4}-\d\d-\d\d/.test(u) && /MAXCC=40/.test(u));
+  ['gndvi', 'nbr', 'msavi', 'mndwi', 'dndvi', 'dnbr'].forEach(k => assert.ok(HTML.includes('<option value="' + k + '">'), 'izbor ' + k));
 });
 
 t('tlo i potkornjak: pamćenje po ćeliji 0,1° samo u USK, najbliže očitanje offline', () => {

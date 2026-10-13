@@ -1,8 +1,10 @@
-// Vegetacijski indeksi (NDVI / EVI / NDMI) iz najnovijih Sentinel-2 L2A snimaka
+// Vegetacijski indeksi (NDVI, EVI, NDMI, GNDVI, NBR, MSAVI, MNDWI) i promjene (dNDVI, dNBR) iz Sentinel-2 L2A snimaka
 // preko Copernicus Data Space (Sentinel Hub WMS). Korisnik unosi ID svoje
 // konfiguracije (instance) — čuva se SAMO na uređaju, nikad u repozitoriju.
 // Boje računa naš EVALSCRIPT (diskretna paleta → dodir na kartu vraća raspon
-// vrijednosti), oblaci/sjene/snijeg (SCL) su prozirni. Pločice 512 px se
+// vrijednosti), oblaci/sjene/snijeg (SCL) su prozirni. Promjena = prosjek čistih
+// snimaka zadnjeg perioda prema istom periodu lani (mosaicking ORBIT, ≤ 4 snimka po periodu
+// u preProcessScenes da PU ostane nizak) — isto doba godine, pa sezona ne lažira pad. Pločice 512 px se
 // pamte u Cache Storage i rade bez interneta.
 (function (root) {
   'use strict';
@@ -25,8 +27,35 @@
       boje: ['#7f3b08', '#b35806', '#e08214', '#fdb863', '#d9f0d3', '#a6dba0', '#5aae61', '#2b83ba', '#1a5490'],
       opis: 'Voda u krošnji. Smreka napadnuta potkornjakom gubi vodu (NDMI pada) prije nego što iglice vidno požute.',
       klase: ['golo/suho tlo, suha vegetacija', 'jak vodni stres — sušenje', 'vodni stres', 'umjeren stres (rana faza, provjeriti na terenu)', 'blag stres',
-        'normalna vlažnost krošnje', 'dobra vlažnost', 'visoka vlažnost', 'vrlo visoka (gusti četinari, voda)'] }
+        'normalna vlažnost krošnje', 'dobra vlažnost', 'visoka vlažnost', 'vrlo visoka (gusti četinari, voda)'] },
+    gndvi: { naziv: 'GNDVI', ulazi: ['B03', 'B08'], v: '(s.B08-s.B03)/(s.B08+s.B03)', pragovi: [0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8], boje: ZEMLJA,
+      opis: 'Hlorofil u krošnji (zeleni kanal umjesto crvenog). Osjetljiviji od NDVI na rani stres — blijeđenje krošnje kod potkornjaka i sušenja.',
+      klase: ['voda, stijena, sjena', 'golo tlo, putevi', 'sječina, suha krošnja', 'rijetka vegetacija, jako oslabljena krošnja', 'oslabljena krošnja — provjeriti na terenu',
+        'blag stres, travnjak', 'šuma umjerene vitalnosti', 'vitalna šuma', 'gusta vitalna šuma', 'najviše hlorofila'] },
+    nbr: { naziv: 'NBR', ulazi: ['B08', 'B12'], v: '(s.B08-s.B12)/(s.B08+s.B12)', pragovi: [-0.2, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], boje: ZEMLJA,
+      opis: 'Normalized Burn Ratio: zdrava šuma visoko, opožarena površina i golo tlo nisko. Za jačinu požara koristi „dNBR — promjena”.',
+      klase: ['svježe opožareno, voda', 'opožareno ili golo tlo', 'sječina, teško oštećeno', 'rijetka vegetacija', 'travnjak, oslabljena šuma',
+        'prorijeđena ili mlada šuma', 'šuma umjerene vitalnosti', 'vitalna šuma', 'gusta vitalna šuma', 'vrlo gusta, najveća vitalnost'] },
+    msavi: { naziv: 'MSAVI', ulazi: ['B04', 'B08'], v: '(2*s.B08+1-Math.sqrt(Math.max(0,(2*s.B08+1)*(2*s.B08+1)-8*(s.B08-s.B04))))/2', pragovi: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], boje: ZEMLJA,
+      opis: 'NDVI s korekcijom za golo tlo — tačniji na sječinama, podmlatku i rijetkoj vegetaciji, gdje tlo kod NDVI daje lažno niske vrijednosti.',
+      klase: ['voda, stijena', 'golo tlo, putevi, svježa sječina', 'sječina s prvom vegetacijom', 'rijetka vegetacija, mlad podmladak', 'podmladak, travnjak',
+        'mlada ili prorijeđena šuma', 'šuma umjerene gustoće', 'vitalna šuma', 'gusta šuma', 'najveća gustoća'] },
+    mndwi: { naziv: 'MNDWI', ulazi: ['B03', 'B11'], v: '(s.B03-s.B11)/(s.B03+s.B11)', pragovi: [-0.5, -0.3, -0.1, 0, 0.2, 0.4],
+      boje: ['#5b3a1a', '#8c6d31', '#bfa76a', '#e7dfb8', '#9ecae1', '#4292c6', '#08519c'],
+      opis: 'Voda (zeleni i SWIR kanal): rijeke, poplavljene površine, mokrišta. Vrijednost > 0 je gotovo uvijek voda.',
+      klase: ['gusta vegetacija', 'vegetacija', 'rijetka vegetacija, suho tlo', 'vlažno tlo, rub vode', 'mokrište, plitka ili mutna voda', 'voda', 'čista, duboka voda'] },
+    dndvi: { naziv: 'dNDVI', baza: 'ndvi', znak: 1, pragovi: [-0.3, -0.2, -0.1, -0.05, 0.05, 0.1, 0.2],
+      boje: ['#67001f', '#d6604d', '#f4a582', '#fddbc7', '#f0f0f0', '#d9f0d3', '#7fbf7b', '#1b7837'],
+      opis: 'Promjena NDVI (sada − isti period lani). Jak pad = nova sječa, vjetroizvala, sušenje ili požar; rast = obnova.',
+      klase: ['jak gubitak — sječa, vjetroizvala, požar', 'izražen gubitak — sječa, sušenje', 'umjeren gubitak — prorjeda, sušenje', 'blag pad', 'bez promjene',
+        'blag rast', 'rast — obnova, podmladak', 'jak rast (lani golo tlo ili oblak)'] },
+    dnbr: { naziv: 'dNBR', baza: 'nbr', znak: -1, pragovi: [-0.25, -0.1, 0.1, 0.27, 0.44, 0.66],
+      boje: ['#1a9850', '#91cf60', '#d9d9d9', '#fee08b', '#fdae61', '#f46d43', '#a50026'],
+      opis: 'Jačina požara po USGS (NBR lani − NBR sada). Isti prag važi i za druga teška oštećenja (vjetroizvala, čista sječa).',
+      klase: ['jak oporavak vegetacije', 'blag oporavak', 'bez promjene (neopožareno)', 'niska jačina / blago oštećenje', 'umjereno niska jačina', 'umjereno visoka jačina', 'visoka jačina požara'] }
   };
+  const jePromjena = k => !!(INDEKSI[k] && INDEKSI[k].baza);
+  const ulazi = k => (INDEKSI[INDEKSI[k].baza] || INDEKSI[k]).ulazi;
   const PERIODI = { '15': '15 dana', '30': '30 dana', '60': '60 dana', 'pg': 'isti mjesec prošle godine' };
 
   const st = (() => { const p = { on: false, id: '', sloj: '', ind: 'ndvi', per: '30', op: 80 }; try { Object.assign(p, JSON.parse(localStorage.getItem(KLJUC) || '{}')); } catch (e) {} return p; })();
@@ -38,12 +67,35 @@
   const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 
   // ── Evalscript i URL ─────────────────────────────────────────────────
-  function evalscript(k) {
+  function evalscript(k, per, danas) {
     const I = INDEKSI[k];
+    if (I.baza) return evalscriptPromjena(k, per, danas);
     return `//VERSION=3
 function setup(){return{input:[{bands:${JSON.stringify(I.ulazi.concat(['SCL', 'dataMask']))}}],output:{bands:4}}}
 const T=${JSON.stringify(I.pragovi)},C=${JSON.stringify(I.boje.map(hexRgb))},M=${JSON.stringify(MASKA)};
 function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];const v=${I.v};if(!isFinite(v))return[0,0,0,0];let i=0;while(i<T.length&&v>=T[i])i++;const c=C[i];return[c[0]/255,c[1]/255,c[2]/255,1]}`;
+  }
+  function evalscriptPromjena(k, per, danas) {
+    const I = INDEKSI[k], p = periodPromjene(per, danas);
+    return `//VERSION=3
+function setup(){return{input:[{bands:${JSON.stringify(ulazi(k).concat(['SCL', 'dataMask']))}}],output:{bands:4},mosaicking:'ORBIT'}}
+const T=${JSON.stringify(I.pragovi)},C=${JSON.stringify(I.boje.map(hexRgb))},M=${JSON.stringify(MASKA)},N0=Date.parse('${p.novoOd}'),S1=Date.parse('${p.staroDo}')+864e5,K=4,Z=${I.znak};
+const D=o=>Date.parse(o.dateFrom);
+function preProcessScenes(c){const o=c.scenes.orbits.slice().sort((a,b)=>D(b)-D(a));c.scenes.orbits=o.filter(x=>D(x)>=N0).slice(0,K).concat(o.filter(x=>D(x)<S1).slice(0,K));return c}
+function ix(s){return ${INDEKSI[I.baza].v}}
+function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++){const s=ss[i];if(!s.dataMask||M.indexOf(s.SCL)>=0)continue;const v=ix(s);if(!isFinite(v))continue;if(D(sc.orbits[i])>=N0){a+=v;na++}else{b+=v;nb++}}if(!na||!nb)return[0,0,0,0];const v=Z*(a/na-b/nb);let i=0;while(i<T.length&&v>=T[i])i++;const c=C[i];return[c[0]/255,c[1]/255,c[2]/255,1]}`;
+  }
+  // Novi period = zadnjih n dana, stari = isti datumi godinu ranije (bez 'pg' — to je već poređenje s lani).
+  function periodPromjene(per, danas) {
+    const d = danas || new Date(), n = per === 'pg' || !PERIODI[per] ? 30 : Number(per);
+    const f = t => t.toISOString().slice(0, 10), lani = t => new Date(Date.UTC(t.getUTCFullYear() - 1, t.getUTCMonth(), t.getUTCDate()));
+    const od = new Date(d.getTime() - n * 864e5);
+    return { novoOd: f(od), novoDo: f(d), staroOd: f(lani(od)), staroDo: f(lani(d)) };
+  }
+  function perTekst(o) {
+    if (!jePromjena(o.ind)) return PERIODI[o.per];
+    const p = periodPromjene(o.per);
+    return 'zadnjih ' + (o.per === 'pg' ? 30 : o.per) + ' dana prema istom periodu ' + p.staroOd.slice(0, 4) + '.';
   }
   function period(p, danas) {
     const d = danas || new Date();
@@ -56,15 +108,15 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
     return [-E + x * n, E - (y + 1) * n, -E + (x + 1) * n, E - y * n];
   }
   function urlPlocice(z, x, y, o) {
-    const b = okvir(z, x, y);
+    const b = okvir(z, x, y), pr = jePromjena(o.ind) ? periodPromjene(o.per) : null;
     return WMS + encodeURIComponent(o.id) + '?' + [
       'SERVICE=WMS', 'REQUEST=GetMap', 'VERSION=1.3.0', 'CRS=EPSG:3857', 'BBOX=' + b.map(v => v.toFixed(2)).join(','),
       'WIDTH=' + PL, 'HEIGHT=' + PL, 'FORMAT=image/png', 'TRANSPARENT=TRUE', 'LAYERS=' + encodeURIComponent(o.sloj),
-      'TIME=' + encodeURIComponent(period(o.per)), 'MAXCC=60', 'PRIORITY=leastCC', 'WARNINGS=NO',
-      'EVALSCRIPT=' + encodeURIComponent(btoa(evalscript(o.ind)))
+      'TIME=' + encodeURIComponent(pr ? pr.staroOd + '/' + pr.novoDo : period(o.per)), 'MAXCC=' + (pr ? 40 : 60), 'PRIORITY=leastCC', 'WARNINGS=NO',
+      'EVALSCRIPT=' + encodeURIComponent(btoa(evalscript(o.ind, o.per)))
     ].join('&');
   }
-  const kljuc = (o, z, x, y) => new URL('__veg/' + o.ind + '/' + o.per + '/' + z + '/' + x + '/' + y + '.png', location.href).href;
+  const kljuc = (o, z, x, y) => new URL('__veg/' + o.ind + '/' + (jePromjena(o.ind) && o.per === 'pg' ? '30' : o.per) + '/' + z + '/' + x + '/' + y + '.png', location.href).href;
   function broji() {
     const mj = new Date().toISOString().slice(0, 7);
     let b = { mj, n: 0 }; try { const s = JSON.parse(localStorage.getItem(BROJAC) || 'null'); if (s && s.mj === mj) b = s; } catch (e) {}
@@ -82,7 +134,7 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
       const m = await caches.match(k);
       if (m) {
         const dob = (Date.now() - Number(m.headers.get('x-vrijeme') || 0)) / 864e5;
-        if ((o.per === 'pg' || dob < SVJEZE_DANA || vezaLosa() || !o.id) && !prisili) return await m.blob();
+        if (((o.per === 'pg' && !jePromjena(o.ind)) || dob < SVJEZE_DANA || vezaLosa() || !o.id) && !prisili) return await m.blob();
         stara = m;
       }
     } catch (e) {}
@@ -158,7 +210,7 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
     const I = INDEKSI[st.ind];
     el.innerHTML = `<div class="veg-skala">${I.boje.map(b => `<i style="background:${b}"></i>`).join('')}</div>
       <div class="veg-skala-br"><span>${br(I.pragovi[0])}</span><span>${br(I.pragovi[Math.floor(I.pragovi.length / 2)])}</span><span>${br(I.pragovi[I.pragovi.length - 1])}</span></div>
-      <p class="uk-izvor"><b>${I.naziv}</b> — ${I.opis} Period: ${esc(PERIODI[st.per])}, najmanje oblačan snimak po pločici; oblaci i snijeg prozirni.</p>`;
+      <p class="uk-izvor"><b>${I.naziv}</b> — ${I.opis} Period: ${esc(perTekst(st))}, ${I.baza ? 'prosjek do 4 čista snimka po periodu; troši više PU po pločici (račun: 10 000 PU/mj)' : 'najmanje oblačan snimak po pločici'}; oblaci i snijeg prozirni.</p>`;
   }
   // Pokretna legenda na karti (kao legenda požara): ručka za prevlačenje, ▾ skupi/raširi,
   // ✕ sakrij; položaj i stanje u localStorage `usf_veg_leg`. Vidljiva samo dok je sloj uključen.
@@ -193,12 +245,12 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
     box.hidden = !st.on || leg.skrivena;
     if (box.hidden) return;
     const I = INDEKSI[st.ind], n = I.boje.length;
-    box.querySelector('.vml-nasl').textContent = '⠿ ' + I.naziv + ' · ' + PERIODI[st.per];
+    box.querySelector('.vml-nasl').textContent = '⠿ ' + I.naziv + ' · ' + perTekst(st);
     box.querySelector('.vml-saz').textContent = leg.sazeta ? '▸' : '▾';
     const red = i => { const o = { od: i ? I.pragovi[i - 1] : null, do: i < I.pragovi.length ? I.pragovi[i] : null }; return `<div class="vml-red"><i style="background:${I.boje[i]}"></i><b>${raspon(o)}</b><span>${esc((I.klase || [])[i] || '')}</span></div>`; };
     box.querySelector('.vml-tijelo').innerHTML = leg.sazeta
       ? `<div class="veg-skala">${I.boje.map(b => `<i style="background:${b}"></i>`).join('')}</div><div class="veg-skala-br"><span>${br(I.pragovi[0])}</span><span>${br(I.pragovi[I.pragovi.length - 1])}</span></div>`
-      : Array.from({ length: n }, (_, k) => red(n - 1 - k)).join('') + `<p class="vml-opis">${esc(I.opis)} Oblaci i snijeg su prozirni; dodir na kartu daje vrijednost. Vrijednosti zavise od doba godine — porediti s „isti mjesec lani“.</p>`;
+      : Array.from({ length: n }, (_, k) => red(n - 1 - k)).join('') + `<p class="vml-opis">${esc(I.opis)} Oblaci i snijeg su prozirni; dodir na kartu daje vrijednost. Vrijednosti zavise od doba godine — porediti s „isti mjesec lani“ ili promjenom.</p>`;
     if (leg.x != null && box._smjesti) box._smjesti(leg.x, leg.y);
   }
   function legendaPokazi() { leg.skrivena = false; pamtiLeg(); legendaNaKarti(); uiSync(); }
@@ -206,7 +258,8 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
     document.getElementById('uk-veg-switch')?.classList.toggle('on', !!st.on);
     const o = document.getElementById('uk-veg-opts'); if (o) o.style.display = st.on ? '' : 'none';
     const s = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
-    s('veg-ind', st.ind); s('veg-per', st.per); s('veg-op', st.op); s('veg-id', st.id);
+    s('veg-ind', st.ind); s('veg-per', jePromjena(st.ind) && st.per === 'pg' ? '30' : st.per);
+    const pg = document.querySelector('#veg-per option[value="pg"]'); if (pg) pg.disabled = jePromjena(st.ind); s('veg-op', st.op); s('veg-id', st.id);
     const lb = document.getElementById('veg-leg-karta'); if (lb) lb.hidden = !st.on || !leg.skrivena;
     const p = document.getElementById('veg-povezano'); if (p) p.textContent = st.id ? (st.sloj ? '✓ Povezano · sloj ' + st.sloj : '⚠ Nije provjereno') : '';
   }
@@ -215,7 +268,8 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
     if (k === 'op') { st.op = Number(v); pamti(); if (sloj) sloj.setOpacity(st.op / 100); return; }
     if (k === 'ind' && INDEKSI[v]) st.ind = v;
     if (k === 'per' && PERIODI[v]) st.per = v;
-    pamti(); crtaj();
+    if (jePromjena(st.ind) && st.per === 'pg') st.per = '30';
+    pamti(); uiSync(); crtaj();
   }
   async function povezi() {
     const id = (document.getElementById('veg-id')?.value || '').trim();
@@ -250,7 +304,7 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
     if (!st.id || !st.sloj) { javiStatus('⚠ Prvo poveži CDSE konfiguraciju.'); return; }
     const lista = plociceVidljivo(13);
     if (lista.length > 400) { javiStatus('⚠ ' + lista.length + ' pločica je previše za jedno preuzimanje — približi kartu.'); return; }
-    if (!confirm('Preuzeti ' + lista.length + ' pločica (' + INDEKSI[st.ind].naziv + ', ' + PERIODI[st.per] + ')? Troši ' + lista.length + ' od 10 000 mjesečnih zahtjeva računa.')) return;
+    if (!confirm('Preuzeti ' + lista.length + ' pločica (' + INDEKSI[st.ind].naziv + ', ' + perTekst(st) + ')? Troši ' + lista.length + ' od 10 000 mjesečnih zahtjeva računa' + (jePromjena(st.ind) ? ' i do ~8 PU po pločici (promjena, 10 000 PU/mj).' : '.'))) return;
     posao = { stop: false }; const dug = document.getElementById('veg-preuzmi'); if (dug) dug.textContent = '■ Prekini';
     let ok = 0;
     try {
@@ -273,12 +327,12 @@ function evaluatePixel(s){if(!s.dataMask||M.indexOf(s.SCL)>=0)return[0,0,0,0];co
         const I = INDEKSI[st.ind];
         const redovi = o.nema ? [['', 'Pločica nije učitana za ovaj zoom.']] : o.maska ? [['', 'Oblak, sjena ili snijeg — nema čistog piksela u periodu.']] : [[I.naziv, raspon(o)]];
         L.popup({ maxWidth: 290, minWidth: 210, className: 'pk-pop' }).setLatLng(at).setContent(_popKartica({
-          ikona: '🛰', boja: o.boja || '#64748b', naslov: I.naziv, tip: 'Sentinel-2', meta: PERIODI[st.per], redovi, opis: I.opis })).openOn(map);
+          ikona: '🛰', boja: o.boja || '#64748b', naslov: I.naziv, tip: 'Sentinel-2', meta: perTekst(st), redovi, opis: I.opis })).openOn(map);
       } }];
     });
   }
 
-  root.USFVeg = { legendaPokazi, prekidac, postavi, povezi, preuzmi, obrisiKes, evalscript, period, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
+  root.USFVeg = { legendaPokazi, prekidac, postavi, povezi, preuzmi, obrisiKes, evalscript, period, periodPromjene, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.USFVeg;
   if (typeof L !== 'undefined' && typeof map !== 'undefined' && map && map.getContainer) {
     registruj(); uiSync(); legenda(); if (st.on) crtaj();

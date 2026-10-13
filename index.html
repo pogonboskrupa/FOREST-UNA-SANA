@@ -2063,9 +2063,9 @@ body.sl-uredi #sl-ured { display: block; }
     </section>
     <section class="uk-grupa">
       <h3>Vitalnost krošnje <small>satelitski vegetacijski indeksi · zapamćene pločice rade bez interneta</small></h3>
-      <div class="loc-row"><span>🛰 Vegetacijski indeksi (NDVI / EVI / NDMI)</span><div class="loc-switch" id="uk-veg-switch" onclick="USFVeg.prekidac()"></div></div>
+      <div class="loc-row"><span>🛰 Vegetacijski indeksi i promjene</span><div class="loc-switch" id="uk-veg-switch" onclick="USFVeg.prekidac()"></div></div>
       <div id="uk-veg-opts" class="uk-opts" style="display:none">
-        <div class="zp-izbor"><label>Indeks<select id="veg-ind" onchange="USFVeg.postavi('ind',this.value)"><option value="ndvi">NDVI — vitalnost</option><option value="evi">EVI — gusta šuma</option><option value="ndmi">NDMI — voda u krošnji</option></select></label>
+        <div class="zp-izbor"><label>Indeks<select id="veg-ind" onchange="USFVeg.postavi('ind',this.value)"><optgroup label="Stanje"><option value="ndvi">NDVI — vitalnost</option><option value="evi">EVI — gusta šuma</option><option value="ndmi">NDMI — voda u krošnji</option><option value="gndvi">GNDVI — rani stres (hlorofil)</option><option value="nbr">NBR — opožarenost</option><option value="msavi">MSAVI — sječine, podmladak</option><option value="mndwi">MNDWI — voda, mokrišta</option></optgroup><optgroup label="Promjena prema lani"><option value="dndvi">dNDVI — sječa, sušenje, vjetroizvala</option><option value="dnbr">dNBR — jačina požara</option></optgroup></select></label>
           <label>Period<select id="veg-per" onchange="USFVeg.postavi('per',this.value)"><option value="15">zadnjih 15 dana</option><option value="30">zadnjih 30 dana</option><option value="60">zadnjih 60 dana</option><option value="pg">isti mjesec lani</option></select></label></div>
         <label class="uk-kl">Prozirnost <input type="range" min="20" max="100" id="veg-op" oninput="USFVeg.postavi('op',this.value)"></label>
         <div id="veg-leg"></div>
