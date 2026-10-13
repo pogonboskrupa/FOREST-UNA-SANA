@@ -16,6 +16,8 @@
      stranicu i "ispravlja" je. -->
 <meta name="color-scheme" content="dark">
 <title>Grmeč Navigator</title>
+<script>/* Desktop prikaz prije prvog crtanja (bez treptaja); ista pravila kao _prikazJeDesktop. */
+(function(){try{var v=localStorage.getItem('usf_prikaz');if(v==='desktop'||(v!=='mobilni'&&matchMedia('(min-width: 1100px) and (pointer: fine)').matches))document.documentElement.classList.add('desk');}catch(e){}})();</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -974,6 +976,23 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   .meni-grp h3 { grid-column:1/-1; margin-bottom:0; }
   .meni-grp .meni-card { margin-bottom:0; }
 }
+
+/* === Desktop prikaz (html.desk: Postavke → Prikaz, ili automatski na širokom ekranu s mišem) — paneli su
+   bočni stupac DESNO, karta ostaje vidljiva lijevo; donja navigacija je ispod tog stupca. Lijevo ostaju
+   koordinate, zoom i legende. html.desk ima veću specifičnost od @media 700px pravila iznad. === */
+:root { --desk-w: 460px; }
+@media (min-width: 1600px) { :root { --desk-w: 520px; } }
+html.desk .usf-panel { left: auto; width: var(--desk-w); border-left: 1px solid var(--line); box-shadow: -14px 0 36px rgba(0,0,0,.4); }
+html.desk .usf-panel .up-hdr { padding-left: 16px; padding-right: 16px; }
+html.desk .usf-panel .up-body { width: auto; margin: 0; }
+html.desk .meni-grp { display: block; }
+html.desk .meni-grp .meni-card { margin-bottom: 8px; }
+html.desk #main-tabs { left: auto; width: var(--desk-w); box-sizing: border-box; padding-left: 8px; padding-right: 8px; border-left: 1px solid rgba(74,222,128,.18); }
+html.desk .usf-panel::-webkit-scrollbar, html.desk .usf-panel .up-body::-webkit-scrollbar { width: 10px; }
+html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; border-radius: 6px; }
+.set-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.set-seg button { padding: 9px 4px; border-radius: 10px; border: 1px solid var(--line); background: #102019; color: #9db0a7; font-size: 12px; font-weight: 700; cursor: pointer; }
+.set-seg button.on { border-color: #4ade80; background: #14532d; color: #dcfce7; }
 </style>
 <style>
 #poz-legends { position:fixed; top:calc(112px + env(safe-area-inset-top)); right:8px; z-index:490; width:210px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 150px); overflow:auto; background:#0f172a; border:1px solid #475569; border-radius:12px; }
@@ -1841,6 +1860,12 @@ body.sl-uredi #sl-ured { display: block; }
         <div class="update-progress-track"><div id="set-update-progress"></div></div>
         <div class="update-progress-meta"><span id="set-update-size"></span><span id="set-update-percent"></span></div>
       </div>
+    </section>
+
+    <section class="ng-card">
+      <h3>🖥 Prikaz</h3>
+      <div class="set-seg" id="set-prikaz"><button data-v="auto" onclick="_prikazPostavi('auto')">Automatski</button><button data-v="desktop" onclick="_prikazPostavi('desktop')">Računar</button><button data-v="mobilni" onclick="_prikazPostavi('mobilni')">Telefon</button></div>
+      <small class="set-nap" id="set-prikaz-txt"></small>
     </section>
 
     <section class="ng-card">
@@ -10830,7 +10855,44 @@ function _korisnikSpremi() {
   showToast('👤 Korisnik sačuvan: ' + ime);
 }
 if (typeof document !== 'undefined') setTimeout(_korisnikUi, 0);
+// Desktop prikaz: 'auto' (širok prozor ≥ 1100 px I miš — tablet s dodirom ostaje mobilni), 'desktop', 'mobilni'.
+const _PRIKAZ_KEY = 'usf_prikaz';
+const _PRIKAZ_MQ = '(min-width: 1100px) and (pointer: fine)';
+function _prikazNacin() {
+  try { const v = localStorage.getItem(_PRIKAZ_KEY); return v === 'desktop' || v === 'mobilni' ? v : 'auto'; } catch(e) { return 'auto'; }
+}
+function _prikazJeDesktop(nacin) {
+  const n = nacin || _prikazNacin();
+  if (n !== 'auto') return n === 'desktop';
+  try { return matchMedia(_PRIKAZ_MQ).matches; } catch(e) { return false; }
+}
+function _prikazUi() {
+  const n = _prikazNacin(), d = _prikazJeDesktop(n);
+  document.querySelectorAll('#set-prikaz button').forEach(b => b.classList.toggle('on', b.dataset.v === n));
+  const t = document.getElementById('set-prikaz-txt');
+  if (t) t.textContent = (n === 'auto' ? 'Prepoznato: ' : 'Ručno: ') + (d ? 'računar — paneli su bočni stupac desno, karta ostaje vidljiva (Esc zatvara panel).' : 'telefon — paneli preko cijelog ekrana.');
+}
+function _prikazPrimijeni() {
+  const d = _prikazJeDesktop();
+  if (document.documentElement.classList.contains('desk') !== d) {
+    document.documentElement.classList.toggle('desk', d);
+    try { map.invalidateSize(); } catch(e) {}
+  }
+  _prikazUi();
+}
+function _prikazPostavi(n) {
+  try { if (n === 'auto') localStorage.removeItem(_PRIKAZ_KEY); else localStorage.setItem(_PRIKAZ_KEY, n); } catch(e) {}
+  _prikazPrimijeni();
+}
+try { matchMedia(_PRIKAZ_MQ).addEventListener('change', () => { if (_prikazNacin() === 'auto') _prikazPrimijeni(); }); } catch(e) {}
+// Esc zatvara otvoreni panel (desktop), ali ne dok je otvoren dijalog ili kartica na karti.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !document.documentElement.classList.contains('desk')) return;
+  if (document.querySelector('#dlg-overlay.show, .dlg-overlay.show, .leaflet-popup')) return;
+  if (_ALL_PANELS.some(id => document.getElementById(id)?.classList.contains('show'))) switchMainTab('karta');
+});
 function _renderPostavke() {
+  _prikazUi();
   _updOfflineBanner();
   _korisnikUi();
   const el = document.getElementById('set-ver-txt');

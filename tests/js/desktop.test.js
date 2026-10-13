@@ -46,4 +46,23 @@ t('Drive preuzimanje: APK most ima prednost, na računaru direktan link u novom 
   assert.ok(r.includes("a.target = '_blank'") && r.includes("rel = 'noopener noreferrer'") && r.includes('USFDriveKarte.urlPreuzimanja(fileId)') && !r.includes('fetch('));
 });
 
+t('desktop prikaz: automatski (≥ 1100 px + miš) ili ručno u Postavkama, paneli kao bočni stupac', () => {
+  const H = R('index.html');
+  const glava = H.slice(0, H.indexOf('</head>'));
+  assert.ok(glava.includes("localStorage.getItem('usf_prikaz')") && glava.includes("(min-width: 1100px) and (pointer: fine)") && glava.includes("classList.add('desk')"), 'klasa prije prvog crtanja');
+  assert.ok(H.includes("const _PRIKAZ_MQ = '(min-width: 1100px) and (pointer: fine)'"), 'isto pravilo u glavi i u kodu');
+  ['auto', 'desktop', 'mobilni'].forEach(v => assert.ok(H.includes(`data-v="${v}" onclick="_prikazPostavi('${v}')"`), v));
+  assert.ok(/html\.desk \.usf-panel \{[^}]*left: auto; width: var\(--desk-w\)/.test(H) && /html\.desk #main-tabs \{[^}]*width: var\(--desk-w\)/.test(H));
+  assert.ok(H.includes('html.desk .meni-grp { display: block; }'), 'meni u jednoj koloni u uskom stupcu');
+  const src = H.slice(H.indexOf("const _PRIKAZ_KEY"), H.indexOf('function _prikazUi()'));
+  const ls = {}; let mq = false;
+  const f = new Function('localStorage', 'matchMedia', src + '\nreturn { _prikazNacin, _prikazJeDesktop };')(
+    { getItem: k => ls[k] ?? null }, () => ({ matches: mq }));
+  assert.strictEqual(f._prikazNacin(), 'auto'); assert.strictEqual(f._prikazJeDesktop(), false);
+  mq = true; assert.strictEqual(f._prikazJeDesktop(), true, 'auto prati ekran');
+  ls.usf_prikaz = 'mobilni'; assert.strictEqual(f._prikazJeDesktop(), false, 'ručno Telefon');
+  mq = false; ls.usf_prikaz = 'desktop'; assert.strictEqual(f._prikazJeDesktop(), true, 'ručno Računar');
+  ls.usf_prikaz = 'x'; assert.strictEqual(f._prikazNacin(), 'auto');
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — desktop');
