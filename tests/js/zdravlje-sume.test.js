@@ -140,6 +140,8 @@ t('CDSE konfiguracija pogona: samo šifrat u kodu, PIN dijalog', () => {
   assert.ok(HTML.includes('onclick="USFVeg.otkljucaj()"'));
   const vj = R('static/js/vegetacija.js');
   assert.ok(vj.includes("_pinUnos('Unesi PIN za CDSE") && vj.includes("'usf_veg_greske'"), 'zajednički PIN dijalog s pauzom poslije 5 grešaka');
+  const o = vj.slice(vj.indexOf('async function otkljucaj'), vj.indexOf('async function povezi'));
+  assert.ok(o.indexOf('pamti()') > 0 && o.indexOf('pamti()') < o.indexOf('await povezi(id)'), 'ID se čuva i bez mreže (prije provjere)');
 });
 
 t('tlo i potkornjak: pamćenje po ćeliji 0,1° samo u USK, najbliže očitanje offline', () => {

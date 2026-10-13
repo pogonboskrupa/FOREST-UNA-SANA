@@ -54,6 +54,7 @@ t('desktop prikaz: automatski (≥ 1100 px + miš) ili ručno u Postavkama, pane
   ['auto', 'desktop', 'mobilni'].forEach(v => assert.ok(H.includes(`data-v="${v}" onclick="_prikazPostavi('${v}')"`), v));
   assert.ok(/html\.desk \.usf-panel \{[^}]*left: auto; width: var\(--desk-w\)/.test(H) && /html\.desk #main-tabs \{[^}]*width: var\(--desk-w\)/.test(H));
   assert.ok(H.includes('html.desk .meni-grp { display: block; }'), 'meni u jednoj koloni u uskom stupcu');
+  assert.ok(H.includes("e.target.closest('input, textarea, select, [contenteditable]')"), 'Esc u polju ne zatvara panel');
   const src = H.slice(H.indexOf("const _PRIKAZ_KEY"), H.indexOf('function _prikazUi()'));
   const ls = {}; let mq = false;
   const f = new Function('localStorage', 'matchMedia', src + '\nreturn { _prikazNacin, _prikazJeDesktop };')(

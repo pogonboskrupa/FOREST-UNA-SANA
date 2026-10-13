@@ -10888,6 +10888,7 @@ try { matchMedia(_PRIKAZ_MQ).addEventListener('change', () => { if (_prikazNacin
 // Esc zatvara otvoreni panel (desktop), ali ne dok je otvoren dijalog ili kartica na karti.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || !document.documentElement.classList.contains('desk')) return;
+  if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return; // Esc u polju ne zatvara panel
   if (document.querySelector('#dlg-overlay.show, .dlg-overlay.show, .leaflet-popup')) return;
   if (_ALL_PANELS.some(id => document.getElementById(id)?.classList.contains('show'))) switchMainTab('karta');
 });

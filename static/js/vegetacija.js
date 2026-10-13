@@ -311,6 +311,8 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     });
     if (pin == null || !id) return;
     const el = document.getElementById('veg-id'); if (el) el.value = id;
+    // Sačuvaj odmah: bez mreže provjera ne prolazi, a ID ne smije nestati pri restartu (sloj se dobija prvim „Spremi” online).
+    if (st.id !== id) { st.id = id; st.sloj = ''; pamti(); uiSync(); }
     await povezi(id);
   }
   async function povezi(dati) {
