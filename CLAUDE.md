@@ -170,6 +170,10 @@
   poligona odjela/odsjeka (nagib, sjekačke linije i Primka čitaju `kmlLs` bez obzira na kartu). Zadano UKLJUČENO pri svakom učitavanju i
   pokretanju; checkbox na kartici sloja (`_kmlSamoOdabir`) isključuje samo dok se radi — stanje se NE čuva. `_kmlPoligoniOdabir` ostaje
   izvor i kad je opcija isključena. Test `primka.test.js`.
+- **Granice odjela — prekidač i KML pregled (v2.5.1)**: tab Karte počinje karticom `#kh-gran` (`_khGranice`): veliki prekidač = `_kmlSamoOdabir(id, !on)` nad slojem „Granice taksacije”
+  (prikazano ⇄ samo za odabir; stanje se i dalje NE čuva, pri pokretanju opet skriveno). Pri prikazu `_kmlGranicaIstakni` zadebljava zadani stil (3,5 px, 100 %) samo ako ga korisnik nije mijenjao.
+  `#kh-lista` (`_khSlojevi`) = brzi popis ostalih KML slojeva s prekidačima. KML preglednik (`_kmlRegRender`): pločice sa ikonama, filter čipovi (`_kmlFilt`: svi/na karti/skriveni),
+  „Prikaži/Sakrij sve” (`_kmlSviVid`), redovi s bojom sloja (`--kc`) i pilulama brojeva; `_kmlToggle` na „samo za odabir” sloju ga prikazuje. `_kmlRegRender` osvježava i `_khStat`.
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
   isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”

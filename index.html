@@ -957,6 +957,27 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .kh-pl.on small { color:#86efac; }
 .kh-iskljuci { grid-column:1 / -1; padding:10px; border-radius:12px; border:1px dashed #475569; background:transparent; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 @media (min-width:700px) { .kh-pregled { grid-template-columns:repeat(4,1fr); } }
+.kh-gran { border-color:#334155 !important; }
+.kh-gran.on { border-color:#22c55e !important; background:linear-gradient(145deg,#12402a,#0d1a14) !important; }
+.kg-top { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.kg-top > i { flex:none; width:44px; height:44px; display:grid; place-items:center; border-radius:13px; background:#102019; border:1px solid #1f3b2d; font-style:normal; font-size:24px; color:#fde047; }
+.kh-gran.on .kg-top > i { background:#166534; border-color:#22c55e; }
+.kg-top > div { flex:1; min-width:0; } .kg-top h3 { margin:0 0 2px; } .kg-top p { margin:0; }
+.kg-sw.ng-switch { width:62px; height:34px; } .kg-sw.ng-switch span { border-radius:17px; } .kg-sw.ng-switch span::after { top:4px; left:4px; width:24px; height:24px; } .kg-sw.ng-switch input:checked + span::after { transform:translateX(28px); }
+.kg-akc { display:flex; gap:8px; } .kg-akc button { flex:1; padding:10px 6px; border-radius:11px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; }
+.kh-lista h3 { margin:0 0 8px; }
+.kl-red { display:flex; align-items:center; gap:10px; padding:8px 4px; border-top:1px solid #1a3326; } .kl-red:first-of-type { border-top:0; }
+.kl-red > i { flex:none; width:6px; align-self:stretch; border-radius:3px; background:var(--kc); }
+.kl-red > div { flex:1; min-width:0; cursor:pointer; } .kl-red b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .kl-red small { color:#80958a; font-size:11px; }
+.kl-red.skriven b { opacity:.55; }
+.ul-red { border-left:5px solid var(--kc, #1f3b2d); }
+.ul-pills { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; } .ul-pills em { font-style:normal; padding:1px 7px; border-radius:999px; background:#0b1a13; border:1px solid #1f3b2d; color:#9db0a7; font-size:10.5px; }
+.ul-sw.ng-switch { width:54px; height:30px; } .ul-sw.ng-switch span { border-radius:15px; } .ul-sw.ng-switch span::after { top:4px; left:4px; width:20px; height:20px; } .ul-sw.ng-switch input:checked + span::after { transform:translateX(24px); }
+.ul-sum div i { display:block; font-style:normal; font-size:14px; color:#6ee7b7; }
+.ul-alat { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 10px; }
+.ul-filt { display:flex; gap:6px; flex:1; flex-wrap:wrap; } .ul-filt button, .ul-bulk button { padding:6px 10px; border-radius:999px; border:1px solid #1f3b2d; background:transparent; color:#9db0a7; font:inherit; font-size:12px; font-weight:700; }
+.ul-filt button b { color:var(--text); margin-left:3px; } .ul-filt button.on { background:#14532d; border-color:#22c55e; color:#dcfce7; }
+.ul-bulk { display:flex; gap:6px; } .ul-bulk button { border-radius:10px; background:#0b1220; }
 .karta-hub-card {
   background:linear-gradient(145deg,rgba(30,55,43,.95),rgba(16,32,25,.95));
   border:1px solid var(--line); border-radius:16px; padding:14px;
@@ -1901,6 +1922,7 @@ body.sl-uredi #sl-ured { display: block; }
   <div class="up-hdr"><h2>🗺 Karte i slojevi</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
     <div class="karta-hub-grid">
+      <section class="karta-hub-card kh-gran" id="kh-gran"></section>
       <div class="kh-grupa">Pregled</div>
       <div id="kh-pregled" class="kh-pregled" role="status"></div>
       <div class="kh-grupa">Podloga</div>
@@ -1915,6 +1937,7 @@ body.sl-uredi #sl-ured { display: block; }
         <button class="karta-hub-action" onclick="openUcitajKartuSection()">Upravljaj offline kartama</button>
       </section>
       <div class="kh-grupa">Moji podaci</div>
+      <section class="karta-hub-card kh-lista" id="kh-lista" hidden></section>
       <section class="karta-hub-card">
         <h3>🗺 KML — preglednik poligona <span class="kh-bedz" id="kh-b-kml" hidden></span></h3>
         <p id="kh-kml" class="kh-stat">Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp</p>
@@ -5355,9 +5378,17 @@ const _kmlNaKarti = k => k.vis !== false && !k.samoOdabir;
 function _kmlPrimijeniPrikaz(k) {
   try { if (_kmlNaKarti(k)) { if (!map.hasLayer(k.grp)) k.grp.addTo(map); } else if (map.hasLayer(k.grp)) map.removeLayer(k.grp); } catch(e) {}
 }
+// Granice odjela kad se prikažu na karti: ako stil nije mijenjan (zadani 2 px / 90 %), linija se zadebljava da je lako vidljiva.
+function _kmlGranicaIstakni(k) {
+  const st = k.stil || {};
+  if (k._istaknuto || (k.stil && !(st.w === _KML_STIL_NOVI.w && st.op === _KML_STIL_NOVI.op && st.ispuna === _KML_STIL_NOVI.ispuna))) return;
+  k._istaknuto = true; k.stil = { ...st, w: 3.5, op: 100, ispuna: 6 };
+  try { k.grp.eachLayer(l => { if (l._kmlName !== undefined && !l._kmlVlastiti && l.setStyle) l.setStyle(_kmlLeafletStil(_kmlTipSloja(l), k.col, k.stil)); }); } catch(e) {}
+  _kmlMetaPisi(m => { if (m[k.name]) m[k.name].stil = k.stil; });
+}
 function _kmlSamoOdabir(id, on) {
   const k = kmlLs.find(x => x.id === id); if (!k || !_kmlJePoligonski(k.name)) return;
-  k.samoOdabir = !!on; _kmlPrimijeniPrikaz(k);
+  k.samoOdabir = !!on; if (!on) k.vis = true; _kmlPrimijeniPrikaz(k); if (!on) _kmlGranicaIstakni(k);
   if (typeof _oznOsvjezi === 'function') _oznOsvjezi();
   _kmlRegRender();
   showToast(on ? '▣ „' + k.name + '”: samo za odabir poligona' : '👁 „' + k.name + '”: prikazan kao običan sloj (do izlaska iz aplikacije)');
@@ -5397,6 +5428,7 @@ async function _kmlRestore() {
 function _kmlToggle(id) {
   const k = kmlLs.find(x => x.id === id);
   if (!k) return;
+  if (k.samoOdabir) { _kmlSamoOdabir(id, false); return; }
   k.vis = !k.vis;
   _kmlPrimijeniPrikaz(k);
   _kmlSaveAllFromRegistry();
@@ -5643,8 +5675,14 @@ function _kedListaOtvori() {
   });
 }
 if (typeof document !== 'undefined') setTimeout(() => { try { map.on('moveend zoomend', _oznOsvjezi); _oznOsvjezi(); } catch (e) {} }, 0);
+let _kmlFilt = 'svi';
+function _kmlFiltriraj(f) { _kmlFilt = f; _kmlRegRender(); }
+function _kmlSviVid(on) {
+  kmlLs.forEach(k => { if (k.samoOdabir) return; k.vis = on; _kmlPrimijeniPrikaz(k); });
+  _kmlSaveAllFromRegistry(); _kmlRegRender(); showToast(on ? '👁 Svi slojevi prikazani' : '🙈 Svi slojevi sakriveni');
+}
 function _kmlRegRender() {
-  _oznOsvjezi();
+  _oznOsvjezi(); _khStat();
   const el = document.getElementById('kml-list');
   const cnt = document.getElementById('kml-count');
   if (!el) return;
@@ -5654,24 +5692,28 @@ function _kmlRegRender() {
   const ukupno = kmlLs.reduce((a, k) => { const s = _kmlStat(k); a.pol += s.pol; a.lin += s.lin; a.tac += s.tac; return a; }, { pol: 0, lin: 0, tac: 0 });
   const trazi = _kmlTraziHtml(document.getElementById('kml-trazi')?.value);
   const oblik = (n, j, d, m) => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? j : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? d : m);
-  const plit = (n, j, d, m) => `<div><b>${n}</b><small>${oblik(n, j, d, m).replace(/^\d+ /, '')}</small></div>`;
-  el.innerHTML = trazi + `<div class="ul-sum">${plit(kmlLs.length, 'sloj', 'sloja', 'slojeva')}${plit(ukupno.pol, 'poligon', 'poligona', 'poligona')}${plit(ukupno.lin, 'linija', 'linije', 'linija')}${plit(ukupno.tac, 'tačka', 'tačke', 'tačaka')}</div>
-    <div class="ul-naslov">Učitani slojevi</div>` + kmlLs.map(k => {
-    const s = _kmlStat(k), dijelovi = [];
-    if (s.pol) dijelovi.push(oblik(s.pol, 'poligon', 'poligona', 'poligona'));
-    if (s.lin) dijelovi.push(oblik(s.lin, 'linija', 'linije', 'linija'));
-    if (s.tac) dijelovi.push(oblik(s.tac, 'tačka', 'tačke', 'tačaka'));
-    if (s.ha) dijelovi.push((s.ha >= 100 ? Math.round(s.ha) : s.ha.toFixed(1)).toLocaleString('bs-BA') + ' ha');
-    const tip = k._shp ? 'SHP' : k._ugradjeno ? 'ugrađeno' : 'KML';
-    return `<div class="ul-red${k.vis === false || k.samoOdabir ? ' skriven' : ''}">
+  const plit = (ik, n, j, d, m) => `<div><i>${ik}</i><b>${n}</b><small>${oblik(n, j, d, m).replace(/^\d+ /, '')}</small></div>`;
+  const naKarti = kmlLs.filter(_kmlNaKarti).length, skrivenih = kmlLs.length - naKarti;
+  const chip = (f, t, n) => `<button class="${_kmlFilt === f ? 'on' : ''}" onclick="_kmlFiltriraj('${f}')">${t} <b>${n}</b></button>`;
+  const lista = kmlLs.filter(k => _kmlFilt === 'svi' || (_kmlFilt === 'karta' ? _kmlNaKarti(k) : !_kmlNaKarti(k)));
+  el.innerHTML = trazi + `<div class="ul-sum">${plit('🗂', kmlLs.length, 'sloj', 'sloja', 'slojeva')}${plit('▱', ukupno.pol, 'poligon', 'poligona', 'poligona')}${plit('〰', ukupno.lin, 'linija', 'linije', 'linija')}${plit('●', ukupno.tac, 'tačka', 'tačke', 'tačaka')}</div>
+    <div class="ul-alat"><div class="ul-filt">${chip('svi', 'Svi', kmlLs.length)}${chip('karta', '👁 Na karti', naKarti)}${chip('skriveno', '🙈 Skriveni', skrivenih)}</div>
+    <div class="ul-bulk"><button onclick="_kmlSviVid(true)">👁 Prikaži sve</button><button onclick="_kmlSviVid(false)">🙈 Sakrij sve</button></div></div>` + lista.map(k => {
+    const s = _kmlStat(k), pills = [];
+    if (s.pol) pills.push('▱ ' + oblik(s.pol, 'poligon', 'poligona', 'poligona'));
+    if (s.lin) pills.push('〰 ' + oblik(s.lin, 'linija', 'linije', 'linija'));
+    if (s.tac) pills.push('● ' + oblik(s.tac, 'tačka', 'tačke', 'tačaka'));
+    if (s.ha) pills.push('◰ ' + (s.ha >= 100 ? Math.round(s.ha) : s.ha.toFixed(1)).toLocaleString('bs-BA') + ' ha');
+    const tip = k._shp ? 'SHP' : k._ugradjeno ? 'ugrađeno' : 'KML', pol = _kmlJePoligonski(k.name), vid = _kmlNaKarti(k);
+    return `<div class="ul-red${vid ? '' : ' skriven'}" style="--kc:${k.col}">
     <button class="ul-boja" style="background:${k.col}" onclick="_kmlPromijeniBoju('${k.id}')" title="Promijeni boju" aria-label="Promijeni boju sloja"></button>
-    <div class="ul-info" onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}<span class="ul-oznaka">${tip}</span></b><small>${dijelovi.join(' · ') || 'bez geometrija'}</small></div>
-    <label class="ng-switch${k.samoOdabir ? ' off' : ''}" aria-label="Prikaži sloj"><input type="checkbox" ${k.vis !== false && !k.samoOdabir ? 'checked' : ''} ${k.samoOdabir ? 'disabled' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label>
-    ${_kmlJePoligonski(k.name) ? `<label class="ul-samo"><input type="checkbox" ${k.samoOdabir ? 'checked' : ''} onchange="_kmlSamoOdabir('${k.id}', this.checked)"> <b>Samo za odabir poligona</b><small>${k.samoOdabir ? 'Nije na karti — služi za izbor odjela/odsjeka (nagib, sjekačke linije, Primka). Uvijek uključeno pri pokretanju.' : 'Prikazan kao običan sloj dok radiš; pri sljedećem pokretanju opet „samo za odabir”.'}</small></label>` : ''}
+    <div class="ul-info" onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}<span class="ul-oznaka">${tip}</span></b><div class="ul-pills">${pills.map(p => `<em>${p}</em>`).join('') || '<em>bez geometrija</em>'}</div></div>
+    <label class="ng-switch ul-sw" aria-label="Prikaži sloj na karti"><input type="checkbox" ${vid ? 'checked' : ''} onchange="${pol ? `_kmlSamoOdabir('${k.id}', !this.checked)` : `_kmlToggle('${k.id}')`}"><span></span></label>
+    ${pol ? `<label class="ul-samo"><input type="checkbox" ${k.samoOdabir ? 'checked' : ''} onchange="_kmlSamoOdabir('${k.id}', this.checked)"> <b>Samo za odabir poligona</b><small>${k.samoOdabir ? 'Nije na karti — služi za izbor odjela/odsjeka (nagib, sjekačke linije, Primka). Uključi prekidač desno da se granice vide. Pri pokretanju opet „samo za odabir”.' : 'Granice su prikazane na karti dok radiš; pri sljedećem pokretanju opet „samo za odabir”.'}</small></label>` : ''}
     <div class="ul-akc"><button class="glavno" onclick="_kmlZoom('${k.id}')">🔍 Prikaži na karti</button><button onclick="_kmlObjektiToggle('${k.id}')">${k._otvoren ? '▾' : '▸'} Objekti</button>${k._ugradjeno ? '' : `<button onclick="_kmlIzvoz('${k.id}')" aria-label="Pošalji KML">📤</button><button class="brisi" onclick="_kmlDeleteConfirm('${k.id}')" aria-label="Ukloni sloj">🗑</button>`}</div>
     ${k._otvoren ? _kmlObjektiHtml(k) : ''}
   </div>`;
-  }).join('') + '<p class="ul-savjet">Dodir na boju: stil sloja (boja, debljina, vrsta linije, ispuna). ▸ Objekti: popis s uređivanjem (naziv, opis, oblik) i brisanjem — isto i iz kartice objekta na karti. 📤 šalje izmijenjeni KML.</p>';
+  }).join('') + (lista.length ? '' : '<div class="ul-prazno">Nema slojeva u ovom filteru.</div>') + '<p class="ul-savjet">Dodir na boju: stil sloja (boja, debljina, vrsta linije, ispuna). ▸ Objekti: popis s uređivanjem (naziv, opis, oblik) i brisanjem — isto i iz kartice objekta na karti. 📤 šalje izmijenjeni KML.</p>';
 }
 
 // ── Uređivanje učitanih KML/SHP slojeva ──────────────────────────────────
@@ -5985,6 +6027,7 @@ function _khStat() {
     if (kml) kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp';
     const vidljivi = kmlLs.filter(_kmlNaKarti).length;
     bedz('kh-b-kml', kmlLs.length ? vidljivi + '/' + kmlLs.length + ' na karti' : '');
+    _khGranice(); _khSlojevi();
     bedz('kh-b-ozn', kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') : ''); _kedHubRender();
     // Pregled: podloga, offline, KML, uključeni slojevi (teren + praćenje šume) — dodir vodi u odgovarajuću sekciju
     const tem = typeof _tematskiUkljuceni === 'function' ? _tematskiUkljuceni().length : 0;
@@ -5999,6 +6042,31 @@ function _khStat() {
       + pl('🧩', slojeva, slojeva === 1 ? 'uključen sloj' : 'uključenih slojeva', !!slojeva, "document.getElementById('terrain-aspect').scrollIntoView({behavior:'smooth',block:'center'})")
       + (tem ? '<button class="kh-iskljuci" onclick="_tematskiIskljuci();_khStat()">✕ Isključi slojeve praćenja šume</button>' : '');
   } catch(e) {}
+}
+// Granice odjela (sloj „Granice taksacije”): veliki prekidač prikaza na vrhu taba Karte; podaci za odabir ostaju dostupni i kad je skriveno.
+function _khGranice() {
+  const el = document.getElementById('kh-gran'); if (!el) return;
+  const k = kmlLs.find(x => _kmlJePoligonski(x.name));
+  if (!k) {
+    el.className = 'karta-hub-card kh-gran';
+    el.innerHTML = '<div class="kg-top"><i>▱</i><div><h3>Granice odjela</h3><p>Sloj „Granice taksacije” još nije učitan — preuzmi ga ili dodaj KML.</p></div></div><button class="karta-hub-action" onclick="openUcitajKmlSection()">☁ Učitaj granice odjela</button>';
+    return;
+  }
+  const on = _kmlNaKarti(k), s = _kmlStat(k);
+  el.className = 'karta-hub-card kh-gran' + (on ? ' on' : '');
+  el.innerHTML = `<div class="kg-top"><i>▱</i><div><h3>Granice odjela</h3><p>${s.pol} poligona · ${Math.round(s.ha).toLocaleString('bs-BA')} ha · ${on ? 'prikazane na karti' : 'skrivene (služe za izbor odjela)'}</p></div>
+    <label class="ng-switch kg-sw" aria-label="Prikaži granice odjela na karti"><input type="checkbox" ${on ? 'checked' : ''} onchange="_kmlSamoOdabir('${k.id}', !this.checked)"><span></span></label></div>
+    <div class="kg-akc"><button onclick="_kmlZoom('${k.id}')">🔍 Na karti</button><button onclick="_kmlPromijeniBoju('${k.id}')">🎨 Boja i debljina</button></div>`;
+}
+// Brzi popis svih KML slojeva s prekidačima (bez ulaska u preglednik)
+function _khSlojevi() {
+  const el = document.getElementById('kh-lista'); if (!el) return;
+  const l = kmlLs.filter(k => !_kmlJePoligonski(k.name));
+  if (!l.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = '<h3>🧭 Slojevi na karti</h3>' + l.map(k => { const s = _kmlStat(k), vid = _kmlNaKarti(k);
+    return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${k.col}"><i></i><div onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}</b><small>${[s.pol ? s.pol + ' pol.' : '', s.lin ? s.lin + ' lin.' : '', s.tac ? s.tac + ' tač.' : ''].filter(Boolean).join(' · ') || 'prazno'}</small></div>
+      <label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label></div>`; }).join('');
 }
 function _khKmlTrazi() {
   const q = document.getElementById('kh-kml-trazi')?.value || '';
