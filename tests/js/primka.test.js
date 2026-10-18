@@ -78,7 +78,7 @@ t('zajednički alat za crtanje i zbir po radniku', () => {
   const pr = R('static/js/primka.js');
   assert.ok(pr.includes('nacrtaj(opc) {') && pr.includes('if (cb) { cb(ring); return; }'));
   const z = P._zbir({ ring: kv(44.88, 16.15, 0.01), dijelovi: [{ prst: [], ha: 2, status: 'primljeno', radnik: 'Mujo', m3: 10 }, { prst: [], ha: 1, status: 'neprimljeno', radnik: 'Mujo' }] });
-  assert.deepStrictEqual(z.radnici, { Mujo: { p: 2, n: 1, m3: 10 } });
+  assert.deepStrictEqual(z.radnici, { Mujo: { p: 2, n: 1, s: 0, m3: 10 } });
   assert.ok(!R('static/js/sjekacke.js').includes('posjeceno'), 'Posječeno po radnicima izbačeno iz Sjekačkih linija');
 });
 
@@ -109,9 +109,26 @@ t('poligoni se prikazuju na karti pri pravljenju projekta; liste su sklopive (za
   assert.ok(pr.includes('function izbCrtaj()') && pr.includes("map.on('moveend', izbCrtaj)") && pr.includes('function izbKlik(e)') && HTML.includes('.pr-izb-lab'), 'pregled poligona na karti + odabir dodirom');
   assert.ok(pr.includes('data-a="izb-karta"') && pr.includes('data-a="izb-zoom"') && pr.includes('izbGotovo()') && pr.includes('izbLista()'), 'odabir na karti, zumiranje na odjel, povratak na listu');
   assert.ok(pr.includes('const det = (k, naslov, sadrzaj, klasa)') && /<details class="pr-det"[^`]*\$\{otvoreno\.has\(k\) \? ' open' : ''\}/.test(pr), 'Primka: <details> zadano sklopljen');
-  assert.ok(pr.includes("det(p.id + ':dij'") && pr.includes("det(p.id + ':pol'") && pr.includes("otvoreno.add(pid + ':dij')"), 'dijelovi i poligoni odjela sklopivi');
+  assert.ok(pr.includes("det(p.id + ':pol'") && pr.includes('<details class="pr-dio"') && pr.includes("otvoreno.add(pid + ':d:' + did)"), 'dijelovi i poligoni odjela sklopivi');
   assert.ok(sj.includes('<details class="sl-det" data-det="lin:${p.id}"') && sj.includes("otvoreno.has('lin:' + p.id) ? ' open' : ''"), 'Sjekačke: lista linija sklopiva, zadano sklopljena');
   assert.ok(/addEventListener\('toggle'/.test(pr) && /addEventListener\('toggle'/.test(sj), 'otvoreno stanje se pamti između iscrtavanja');
+});
+
+t('tri klase (primljeno / neprimljeno / šumski red), dock na karti, odabir odmah na mapi', () => {
+  const pr = R('static/js/primka.js');
+  assert.ok(/sumskired: \{ t: 'Popraviti šumski red'/.test(pr) && pr.includes("const REDOSLIJED = ['primljeno', 'neprimljeno', 'sumskired']"), 'tri klase');
+  const d = { poligoni: [{ ring: kv(44.88, 16.15, 0.005) }], dijelovi: [
+    { prst: [kv(44.88, 16.15, 0.001)], ha: 1, status: 'primljeno', m3: 5 }, { prst: [kv(44.88, 16.15, 0.001)], ha: 2, status: 'sumskired', m3: 1, radnik: 'A' },
+    { prst: [kv(44.88, 16.15, 0.001)], ha: 3, status: 'nepoznato' }] };
+  const z = P._zbir(d);
+  assert.strictEqual(z.primljeno, 1); assert.strictEqual(z.sumskired, 2); assert.strictEqual(z.neprimljeno, 3); assert.strictEqual(z.nSr, 1); assert.strictEqual(z.radnici.A.s, 2);
+  assert.ok(Math.abs(z.oznaceno - 6) < 1e-9, 'oznaceno = zbir klasa');
+  assert.ok(pr.includes("window.USFPrimka = {") && ['dockOtvori', 'dockZatvori', 'crtajStatus', 'dockSrGotovo', 'razlog', 'popravljeno', 'izbCijeli'].every(f => pr.includes(f)), 'API docka');
+  assert.ok(pr.includes("if (a === 'izb-novi') { izborOtvori(); izbPocetniPogled(); izbNaKarti(); return; }"), 'novi projekat odmah na mapu');
+  assert.ok(/zoomProjekat\(p\); crtaj\(\); render\(\); dockOtvori\(p\.id\)/.test(pr) && !/function napraviIzPoligona[\s\S]*?otvoriPanel/.test(pr.slice(pr.indexOf('function napraviIzPoligona'), pr.indexOf('// ── KML ──'))), 'poslije pravljenja ostaje na karti uz dock');
+  assert.ok(pr.includes("d.status = 'primljeno'; d.popravljeno = Date.now()"), '„Popravljeno” prebacuje u primljeno i pamti datum');
+  assert.ok(HTML.includes('#pr-dock') && HTML.includes('body.pr-dock #pr-dock') && HTML.includes('html.desk #pr-dock') && HTML.includes('.pr-donut') && HTML.includes('.pr-kpi') && HTML.includes('.pr-badge'), 'stil: dock, donut, KPI, značke');
+  assert.ok(pr.includes('id="pr-dock"') || pr.includes("el.id = 'pr-dock'"), 'dock element');
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — primka');

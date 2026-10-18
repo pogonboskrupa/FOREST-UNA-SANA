@@ -1344,7 +1344,7 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 .uk-grupa h3 small { display: block; font-size: 11px; color: var(--pn-dim); font-weight: 600; margin-top: 2px; }
 #sl-vodic { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid var(--c, #64748b); border-left: 6px solid var(--c, #64748b); border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
 body.sl-vodi #sl-vodic { display: block; }
-#pr-crt { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #38bdf8; border-left: 6px solid #38bdf8; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
+#pr-crt { --c: #38bdf8; display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid var(--c); border-left: 6px solid var(--c); border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
 body.pr-crta #pr-crt { display: block; }
 #pr-crt .sl-v-dug button:nth-child(2), #pr-crt .sl-v-dug button:nth-child(4) { flex: 0 0 48px; }
 #pr-crt .sl-v-dug button:first-child { background: #0f172a; border-color: #334155; }
@@ -1353,6 +1353,37 @@ body.pr-crta #pr-crt { display: block; }
 #pr-crt .sl-v-dug.pr-izbd button:first-child { background: #166534; border-color: #22c55e; }
 #pr-crt .sl-v-dug.pr-izbd button:first-child:disabled { opacity: .45; }
 #pr-crt .sl-v-dug.pr-izbd button:last-child { flex: 0 0 48px; }
+.pr-klase { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.pr-klase span { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 6px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); background: color-mix(in srgb, var(--c) 14%, transparent); font-size: 12px; font-weight: 700; color: var(--pn-txt); }
+.pr-klase i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--c); color: #0b1220; font-style: normal; font-size: 12px; font-weight: 900; }
+#pr-dock { display: none; position: fixed; left: 8px; right: 8px; bottom: 74px; z-index: 640; background: rgba(8,20,15,.96); border: 1px solid #34d399; border-radius: 16px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.55); color: #e2e8f0; backdrop-filter: blur(6px); max-height: 46vh; overflow-y: auto; }
+body.pr-dock #pr-dock { display: block; }
+.prd-zag { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; } .prd-zag b { font-size: 14px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .prd-zag span { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.prd-zag button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: #e2e8f0; }
+.prd-gumbi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.prd-gumbi button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; min-height: 64px; border-radius: 12px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 18%, #0b1220); color: #f8fafc; font-weight: 800; font-size: 12px; }
+.prd-gumbi button i { font-style: normal; font-size: 20px; line-height: 1; color: var(--c); } .prd-gumbi button small { font-weight: 500; color: #cbd5e1; font-size: 10px; }
+.prd-gumbi button:active { transform: scale(.97); }
+.prd-sr { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; align-items: center; } .prd-sr small { width: 100%; color: #94a3b8; font-size: 11px; }
+.prd-sr button { padding: 4px 8px; border-radius: 999px; border: 1px solid #475569; background: transparent; color: #cbd5e1; font-size: 11px; }
+.prd-sr button.on { border-color: #f59e0b; background: rgba(245,158,11,.22); color: #fde68a; font-weight: 700; }
+.prd-pod { display: flex; gap: 6px; margin-top: 8px; } .prd-pod button { flex: 1; padding: 7px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 12px; }
+html.desk #pr-dock, html.desk #pr-crt { right: calc(var(--desk-w, 460px) + 10px); }
+.pr-badge span { display: inline-block; padding: 2px 7px; border-radius: 999px; background: rgba(8,20,15,.88); border: 1.5px solid var(--c); color: #f8fafc; font: 700 11px system-ui, sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.pr-hero { display: flex; align-items: center; gap: 14px; margin: 10px 0 8px; }
+.pr-donut { flex: 0 0 128px; width: 128px; height: 128px; } .pr-d-v { font: 800 17px system-ui, sans-serif; fill: var(--pn-txt); } .pr-d-l { font: 500 7px system-ui, sans-serif; fill: var(--pn-dim); }
+.pr-legende { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pr-leg { display: grid; grid-template-columns: 22px 1fr; column-gap: 8px; align-items: center; font-size: 12px; }
+.pr-leg i { grid-row: span 2; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 22%, transparent); border: 1.5px solid var(--c); font-style: normal; font-size: 12px; font-weight: 900; color: var(--pn-txt); }
+.pr-leg b { color: var(--pn-txt); font-size: 12px; } .pr-leg span { color: var(--pn-dim); font-size: 11px; }
+.pr-kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 8px; }
+.pr-kpi div { border: 1px solid var(--pn-line); border-radius: 10px; padding: 6px 4px; text-align: center; background: rgba(255,255,255,.03); display: flex; flex-direction: column; }
+.pr-kpi b { font-size: 16px; color: var(--pn-txt); } .pr-kpi span { font-size: 10px; color: var(--pn-dim); }
+.pr-kpi .sr { border-color: #f59e0b; } .pr-kpi .ne { border-color: #ef4444; } .pr-kpi .pr { border-color: #22c55e; }
+.pr-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.pr-chips button { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--pn-line); background: transparent; color: var(--pn-dim); font-size: 12px; font-weight: 700; }
+.pr-chips button b { margin-left: 4px; color: var(--pn-txt); }
+.pr-chips button.on { border-color: var(--c, #34d399); background: color-mix(in srgb, var(--c, #34d399) 22%, transparent); color: var(--pn-txt); }
 .pr-akt { margin: 10px 0 8px; padding: 8px 10px; border-radius: 10px; border: 1px dashed var(--pn-line); font-size: 12px; color: var(--pn-dim); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .pr-akt.on { border: 1px solid #34d399; background: rgba(52,211,153,.1); color: #d1fae5; }
 .pr-akt button { margin-left: auto; padding: 5px 10px; border-radius: 8px; border: 1px solid #34d399; background: transparent; color: #d1fae5; font-size: 12px; }
@@ -1373,20 +1404,28 @@ body.pr-crta #pr-crt { display: block; }
 .pr-proj-zag { cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
 .pr-proj-zag b { font-size: 15px; } .pr-proj-zag small { color: var(--pn-dim); font-size: 12px; }
 .pr-proj.akt { border-color: #34d399; }
-.pr-traka { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #334155; margin: 8px 0 4px; }
+.pr-traka { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; background: #334155; margin: 8px 0 4px; }
 .pr-traka i { display: block; height: 100%; }
 .pr-zbir { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--pn-dim); }
 .pr-dijelovi { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-.pr-dio { border: 1px solid var(--pn-line); border-left: 5px solid var(--c); border-radius: 12px; padding: 8px 10px; background: rgba(255,255,255,.02); }
+.pr-dio { border: 1px solid var(--pn-line); border-left: 5px solid var(--c); border-radius: 12px; background: rgba(255,255,255,.02); }
+.pr-dio > summary { display: flex; align-items: center; gap: 8px; padding: 9px 10px; cursor: pointer; list-style: none; min-height: 42px; }
+.pr-dio > summary::-webkit-details-marker { display: none; }
+.pr-ik { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 25%, transparent); border: 1.5px solid var(--c); font-style: normal; font-weight: 900; font-size: 13px; }
+.pr-ime { flex: 1; min-width: 0; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .pr-ha { font-size: 12px; color: var(--pn-dim); white-space: nowrap; }
+.pr-pills { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 8px; } .pr-pills em { font-style: normal; font-size: 10.5px; padding: 2px 8px; border-radius: 999px; background: rgba(245,158,11,.16); border: 1px solid rgba(245,158,11,.5); color: #fde68a; }
+.pr-pills em.ne { background: rgba(239,68,68,.18); border-color: #ef4444; color: #fecaca; } .pr-pills em.pr { background: rgba(34,197,94,.16); border-color: #22c55e; color: #bbf7d0; }
+.pr-dio-tijelo { padding: 0 10px 10px; }
+.pr-razlozi { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; } .pr-razlozi button { padding: 5px 9px; border-radius: 999px; border: 1px solid var(--pn-line); background: transparent; color: var(--pn-dim); font-size: 11.5px; } .pr-razlozi button.on { border-color: #f59e0b; background: rgba(245,158,11,.2); color: #fde68a; font-weight: 700; }
+.pr-popr { align-self: end; min-height: 36px; border-radius: 10px; border: 1px solid #22c55e; background: #14532d; color: #dcfce7; font-weight: 800; font-size: 13px; }
 .pr-dio-zag { display: flex; align-items: center; gap: 6px; }
 .pr-dio-zag input { flex: 1; min-width: 0; font-weight: 700; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--pn-line); background: #0b1220; color: var(--pn-txt); }
 .pr-dio-zag span { font-size: 12px; color: var(--pn-dim); white-space: nowrap; }
 .pr-dio-zag button { flex: none; width: 36px; height: 34px; border-radius: 8px; border: 1px solid var(--pn-line); background: transparent; color: var(--pn-txt); }
 .pr-dio-zag button.opasno { color: #fca5a5; }
-.pr-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
-.pr-seg button { min-height: 38px; border-radius: 10px; border: 1px solid var(--pn-line); background: #102019; color: #9db0a7; font-weight: 800; font-size: 13px; }
-.pr-seg button.on { background: #14532d; border-color: #22c55e; color: #dcfce7; }
-.pr-seg button.on.n { background: #7f1d1d; border-color: #ef4444; color: #fee2e2; }
+.pr-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+.pr-seg button { min-height: 38px; border-radius: 10px; border: 1px solid var(--pn-line); background: transparent; color: var(--pn-dim); font-weight: 800; font-size: 11.5px; padding: 2px; }
+.pr-seg button.on { background: color-mix(in srgb, var(--c) 28%, transparent); border: 2px solid var(--c); color: var(--pn-txt); }
 .pr-polja { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .pr-polja label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--pn-dim); }
 .pr-polja label.pr-sir { grid-column: 1 / -1; }
@@ -2276,13 +2315,16 @@ body.sl-uredi #sl-ured { display: block; }
 <div id="primka-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪵 Primka</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body">
-    <section class="ng-card">
-      <h3>Odjel</h3>
-      <div class="sl-dug"><button class="zp-glavno" data-a="izb-novi">＋ Novi projekat — odaberi odjel / odsjeke</button></div>
+    <section class="ng-card pr-uvod">
+      <h3>Primka drvnih sortimenata</h3>
+      <div class="pr-klase">
+        <span style="--c:#22c55e"><i>✓</i>Primljeno</span><span style="--c:#ef4444"><i>✕</i>Neprimljeno</span><span style="--c:#f59e0b"><i>⚠</i>Popraviti šumski red</span>
+      </div>
+      <div class="sl-dug"><button class="zp-glavno" data-a="izb-novi">＋ Novi projekat — odaberi odjel na karti</button></div>
       <div id="pr-izbor" hidden></div>
       <div id="pr-akt" class="pr-akt"></div>
-      <div class="sl-dug"><button class="zp-glavno" data-a="brzi" id="pr-brzi"><span id="pr-brzi-txt">✏ Nacrtaj dio (odjel se prepoznaje sam)</span></button></div>
-      <p class="uk-izvor">Poligoni odjela/odsjeka dolaze iz sloja „Granice taksacije” (samo za odabir). Dok je projekat aktivan, svaki označeni dio — <b style="color:#22c55e">primljena</b> ili <b style="color:#ef4444">neprimljena</b> roba — pripada njemu. Bez aktivnog odjela dio se veže uz odjel ispod njega ili ide u „Bez odjela”.</p>
+      <div class="sl-dug"><button data-a="brzi" id="pr-brzi"><span id="pr-brzi-txt">✏ Nacrtaj dio (odjel se prepoznaje sam)</span></button></div>
+      <p class="uk-izvor">Odjel/odsjek biraš dodirom na karti (sloj „Granice taksacije”). Dok je projekat aktivan, svaki označeni dio pripada njemu. Bez aktivnog odjela dio se veže uz odjel ispod njega ili ide u „Bez odjela”.</p>
     </section>
     <div id="pr-lista"></div>
   </div>

@@ -171,6 +171,13 @@
   pokretanju; checkbox na kartici sloja (`_kmlSamoOdabir`) isključuje samo dok se radi — stanje se NE čuva. `_kmlPoligoniOdabir` ostaje
   izvor i kad je opcija isključena. Test `primka.test.js`.
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
+- **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
+  isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”
+  (`USFPrimka.popravljeno`) prebacuje u primljeno i pamti datum. „Novi projekat” ODMAH prebacuje na kartu (`izbPocetniPogled` + `izbNaKarti`),
+  poslije pravljenja se ostaje na karti uz DOCK `#pr-dock` (fiksni, `dockRender`): 3 velika dugmeta klase → `crtajStatus` (crtanje obojeno klasom, status
+  ide u `crt.status`, bez dijaloga), čipovi razloga (`dockSr`), „Cijeli odjel…” (`izbCijeli`). Bez docka (brzi dio bez aktivnog odjela) klasu bira `pitajStatus`.
+  Panel: donut `donutHtml` (razmak 2 px, centar % označeno), legenda s ikonom+nazivom (boja nikad sama), KPI pločice, filter čipovi (`filter`, u memoriji),
+  dijelovi su `<details class="pr-dio">` (ključ `pid:d:did`). Značke ikona+ha na karti tek pri zoom ≥ 16 (`.pr-badge`). KML stilovi pr/ne/sr. `zbir().radnici[ime]` = {p, n, s, m3}.
 - **Primka** (`static/js/primka.js`, `USFPrimka`, panel `primka-panel`): po odjelu dijelovi s PRIMLJENOM / NEPRIMLJENOM robom
   (drvni sortimenti): `p.dijelovi` [{id, naziv, prst (prstenovi, par/nepar), ha, status, m3, brPrimke, sortimenti, radnik, napomena, datum, izvor, t}],
   localStorage `usf_primka`. Novi projekat = „＋ odaberi odjel / odsjeke”: poligoni ISKLJUČIVO iz sloja „Granice taksacije”
