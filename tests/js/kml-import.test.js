@@ -65,7 +65,7 @@ t('redizajn: KML i offline karte imaju zaglavlje s formatima, sažetak, prekida�
   const karta = html.slice(html.indexOf('<div id="ucitajkartu-panel"'), html.indexOf('<div id="ucitajkml-panel"'));
   [kml, karta].forEach(x => assert.ok(x.includes('class="ul-chips"') && x.includes('class="ng-glavno"')));
   const rk = html.slice(html.indexOf('function _kmlRegRender()'), html.indexOf('_kmlRestore();\n'));
-  assert.ok(rk.includes('class="ul-sum"') && rk.includes('_kmlPromijeniBoju') && rk.includes('class="ng-switch"'));
+  assert.ok(rk.includes('class="ul-sum"') && rk.includes('_kmlPromijeniBoju') && rk.includes('class="ng-switch'));
   const rs = html.slice(html.indexOf('async function _sqlmapRegRender()'), html.indexOf('async function _sqlmapRestoreManual'));
   assert.ok(rs.includes('✓ AKTIVNA KARTA') && rs.includes('zoom ${r.zmin}–${r.zmax}'));
   assert.ok(!require('node:fs').readFileSync(require('node:path').join(__dirname, '../../static/js/terrain-layers.js'), 'utf8').includes('__usfZoomFix'), 'stari omotač liste karata uklonjen');

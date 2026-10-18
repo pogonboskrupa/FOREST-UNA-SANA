@@ -66,10 +66,12 @@ t('KML: projekat u ExtendedData usf_primka; uvoz prije običnog KML sloja; Sjeka
   assert.ok(/USFSjek = \{[\s\S]*partije,[\s\S]*projekti:/.test(sj), 'USFSjek.partije / projekti');
   assert.ok(sj.includes('function obrisPartije(') && sj.includes('const prst = obrisPartije(p, lin, D, dd);'), 'isti obris kao prikaz partije na klik');
   assert.ok(pr.includes("map.createPane('primkaPane')") && pr.includes("style.pointerEvents = 'none'") && pr.includes('_kartaKlikIzvor'));
-  // izbor iz KML poligona / mjerenja / sjekačkih je u potpunosti uklonjen — ostaje samo opciono crtanje granice
-  assert.ok(!HTML.includes('USFPrimka.izKljuca') && !HTML.includes("_odsAkcija(\\'primka\\')") && !HTML.includes('USFPrimka.izPrstena') && !HTML.includes('id="pr-izvor"') && !HTML.includes('data-a="novi-izvor"'), 'nema izbora iz poligona');
-  assert.ok(!/izvori\(|izIzvora|izKljuca|izPrstena/.test(R('static/js/primka.js')), 'nema koda za izbor iz poligona');
-  assert.ok(HTML.includes('data-a="novi-crtez">✏ Nacrtaj granice odjela</button>') && R('static/js/primka.js').includes("if (a === 'novi-crtez') { crtPocni('odjel'); return; }"), 'opciono crtanje granice');
+  // izbor poligona dolazi ISKLJUČIVO iz sloja granica taksacije (samo za odabir); stari izbori (mjerenja, bilo koji KML, kartica poligona) ne postoje
+  assert.ok(!HTML.includes('USFPrimka.izKljuca') && !HTML.includes("_odsAkcija(\\'primka\\')") && !HTML.includes('USFPrimka.izPrstena') && !HTML.includes('id="pr-izvor"'));
+  const prk = R('static/js/primka.js');
+  assert.ok(!/izvori\(|izIzvora|izKljuca|izPrstena|_msrRegistry/.test(prk), 'nema starog izbora');
+  assert.ok(prk.includes('_kmlPoligoniOdabir()') && HTML.includes('data-a="izb-novi"') && HTML.includes('id="pr-izbor"'), 'izbor poligona iz sloja granica taksacije');
+  assert.ok(HTML.includes('data-a="novi-crtez">✏ Nacrtaj granice odjela <small>opciono</small></button>') && prk.includes("if (a === 'novi-crtez') { crtPocni('odjel'); return; }"), 'opciono crtanje granice');
 });
 
 t('zajednički alat za crtanje i zbir po radniku', () => {
@@ -83,11 +85,23 @@ t('zajednički alat za crtanje i zbir po radniku', () => {
 t('rad bez poligona: dio se veže uz KML odjel ispod njega ili „Bez odjela”; odjel i dio su klikabilni (prednost u pikselima)', () => {
   const pr = R('static/js/primka.js');
   assert.ok(HTML.includes('data-a="brzi"') && pr.includes("if (a === 'brzi') { brziDio(); return; }"));
-  assert.ok(pr.includes("l.find(p => !p.ring) || napravi(null, 'Bez odjela', null, true)") && pr.includes('_odjelOznaka(l'), 'naziv odjela iz atributa ODJEL · ODSJEK');
-  assert.ok(pr.includes('pov: pxPov(d.prst)') && pr.includes('pov: pxPov([p.ring]) * 0.98') && pr.includes('_pxPovrsina(r.map('), 'ista mjera kao KML (pikseli), odjel primke ispred istog KML poligona');
+  assert.ok(pr.includes("l.find(p => !prsteni(p).length) || napravi(null, 'Bez odjela', null, true)") && pr.includes('_odjelOznaka(l'), 'naziv odjela iz atributa ODJEL · ODSJEK');
+  assert.ok(pr.includes('pov: pxPov(d.prst)') && pr.includes('pov: pxPov([r]) * 0.98') && pr.includes('_pxPovrsina(r.map('), 'ista mjera kao KML (pikseli), odjel primke ispred istog KML poligona');
   assert.ok(pr.includes('function popupOdjel(') && pr.includes('USFPrimka.sakrij(') && pr.includes('USFPrimka.obrisi('), 'kartica odjela: označi, otvori, sakrij, obriši');
   const z = P._zbir({ ring: null, dijelovi: [{ prst: [kv(44.88, 16.15, 0.002)], ha: 1.5, status: 'primljeno' }] });
   assert.strictEqual(z.odjel, 0); assert.strictEqual(z.primljeno, 1.5); assert.strictEqual(z.neoznaceno, 0);
+});
+
+t('Granice taksacije: „samo za odabir poligona” (zadano, ne čuva se), izbor odjela s odsjecima, aktivan projekat', () => {
+  const pr = R('static/js/primka.js');
+  assert.ok(HTML.includes('const _KML_POLIGONSKI = /granice\\s+taksacije/i;') && HTML.includes('samoOdabir: _kmlJePoligonski(file.name)') && HTML.includes('samoOdabir: _kmlJePoligonski(name)'), 'zadano uključeno pri svakom učitavanju/pokretanju');
+  assert.ok(!/_kmlMetaPisi[^\n]*samoOdabir|samoOdabir[^\n]*localStorage/.test(HTML), 'isključenje se ne čuva');
+  assert.ok(HTML.includes('function _kmlPrimijeniPrikaz(k)') && HTML.includes('_kmlPrimijeniPrikaz(k);') && !/k\.grp\.addTo\(map\); else map\.removeLayer\(k\.grp\)/.test(HTML), 'sloj na karti samo kad nije „samo za odabir”');
+  assert.ok(HTML.includes('onchange="_kmlSamoOdabir(\'${k.id}\', this.checked)"') && HTML.includes('<b>Samo za odabir poligona</b>'), 'checkbox na kartici sloja');
+  assert.ok(pr.includes('function napraviIzPoligona(') && pr.includes('const prsteni = p =>') && pr.includes("localStorage.getItem(AKT_KLJUC)"), 'projekat iz više poligona, aktivan se pamti');
+  assert.ok(pr.includes("const akt = aktivni && nadji(aktivni);") && pr.includes('rs.flatMap(r => isijeci(ring, r))'), 'dio pripada aktivnom odjelu (siječe se po njegovim poligonima)');
+  const dva = { poligoni: [{ ring: kv(44.88, 16.15, 0.005) }, { ring: kv(44.88, 16.16, 0.005) }], dijelovi: [] };
+  assert.ok(Math.abs(P._zbir(dva).odjel - 2 * P._haDijela([kv(44.88, 16.15, 0.005)])) < 0.05, 'površina odjela = zbir odsjeka');
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — primka');

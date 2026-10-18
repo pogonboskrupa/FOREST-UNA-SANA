@@ -161,11 +161,20 @@
   pri statusu/radniku/lomu/GPS-u). APK prima KML/KMZ iz drugih app-ova (intent VIEW/SEND,
   `launchMode singleTask`, `primiFajl` → `AndroidShare.uzmiDolazni()` → JS `_dolazniFajl`).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
+- **„Samo za odabir poligona”** (KML sloj čije ime odgovara `_KML_POLIGONSKI` = „Granice taksacije…”; `k.samoOdabir`): sloj NIJE na karti
+  (`_kmlPrimijeniPrikaz`/`_kmlNaKarti` — jedino mjesto koje dodaje/uklanja `k.grp` sa karte; nema dodira/kartice/natpisa) i služi samo kao izvor
+  poligona odjela/odsjeka (nagib, sjekačke linije i Primka čitaju `kmlLs` bez obzira na kartu). Zadano UKLJUČENO pri svakom učitavanju i
+  pokretanju; checkbox na kartici sloja (`_kmlSamoOdabir`) isključuje samo dok se radi — stanje se NE čuva. `_kmlPoligoniOdabir` ostaje
+  izvor i kad je opcija isključena. Test `primka.test.js`.
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka** (`static/js/primka.js`, `USFPrimka`, panel `primka-panel`): po odjelu dijelovi s PRIMLJENOM / NEPRIMLJENOM robom
   (drvni sortimenti): `p.dijelovi` [{id, naziv, prst (prstenovi, par/nepar), ha, status, m3, brPrimke, sortimenti, radnik, napomena, datum, izvor, t}],
-  localStorage `usf_primka`. Granica odjela je OPCIONALNA: samo „✏ Nacrtaj granice odjela” — izbor iz KML poligona / mjerenja / sjekačkih
-  (padajuća lista, 🪵 Primka u kartici poligona i u „Više odsjeka”) je UKLONJEN na zahtjev (test to provjerava). Dio: crtanje dodirom/GPS-om (`#pr-crt`, isječeno po odjelu `turf.intersect` v6) ili partije iz
+  localStorage `usf_primka`. Novi projekat = „＋ odaberi odjel / odsjeke”: poligoni ISKLJUČIVO iz sloja „Granice taksacije”
+  (`_kmlPoligoniOdabir()`), grupisano po odjelu (cijeli odjel ili pojedini odsjeci, pretraga) → `p.poligoni` [{ring, odjel, odsjek}]
+  (`prsteni(p)`: poligoni ILI nacrtani `p.ring`), ime „Odjel 12 · a, b”. Projekat postaje AKTIVAN (`usf_primka_aktivni`, banner `#pr-akt`):
+  svaki označeni dio (`brziDio`, „Označi dio odjela”) pripada njemu i siječe se po njegovim poligonima (izvan = odbijen); bez aktivnog
+  odjel se prepoznaje po KML-u ispod dijela. Stari izbori (mjerenja, bilo koji KML, 🪵 u kartici poligona / „Više odsjeka”) su UKLONJENI;
+  granica se još može nacrtati („✏ Nacrtaj granice odjela”, opciono). Dio: crtanje dodirom/GPS-om (`#pr-crt`, isječeno po odjelu `turf.intersect` v6) ili partije iz
   `USFSjek.partije(pid)` (isti obris kao klik na liniju — `obrisPartije`; + zadnja partija; ključ `izvor` = sjekId:lid, ponovni uvoz
   zadržava status/m³). Ručni dio ima PREDNOST: preklop se oduzima (`primijeniPrednost`/`oduzmi`, turf.difference) od partija i starijih
   dijelova — hektari se ne broje dvaput. Pane `primkaPane` z 414, dodir kroz `_kartaKlikIzvor` (popup: status, uredi, obriši).
