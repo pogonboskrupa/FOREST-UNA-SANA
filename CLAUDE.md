@@ -174,7 +174,10 @@
   (`prsteni(p)`: poligoni ILI nacrtani `p.ring`), ime „Odjel 12 · a, b”. Projekat postaje AKTIVAN (`usf_primka_aktivni`, banner `#pr-akt`):
   svaki označeni dio (`brziDio`, „Označi dio odjela”) pripada njemu i siječe se po njegovim poligonima (izvan = odbijen); bez aktivnog
   odjel se prepoznaje po KML-u ispod dijela. Stari izbori (mjerenja, bilo koji KML, 🪵 u kartici poligona / „Više odsjeka”) su UKLONJENI;
-  granica se još može nacrtati („✏ Nacrtaj granice odjela”, opciono). Dio: crtanje dodirom/GPS-om (`#pr-crt`, isječeno po odjelu `turf.intersect` v6) ili partije iz
+  „Nacrtaj granice odjela” je UKLONJENO. Pri pravljenju projekta poligoni se PRIKAZUJU NA KARTI (`izbCrtaj`: konture u pogledu pri zoom ≥ 11,
+  označeni istaknuti, oznake odjel · odsjek pri zoom ≥ 14, ≤ 900 poligona) i biraju se i dodirom (`izbNaKarti`, traka `#pr-crt` .pr-izbd:
+  ✓ Napravi / ☰ Lista / ✕); u listi 🔍 zumira na odjel. Liste u projektu su SKLOPIVE (`<details>`, zadano sklopljene, otvoreno se pamti u
+  memoriji `otvoreno` jer se panel iznova crta): ▣ Poligoni odjela, ▥ Dijelovi; isto u Sjekačkim linijama: „Linije” (`sl-det`). Dio: crtanje dodirom/GPS-om (`#pr-crt`, isječeno po odjelu `turf.intersect` v6) ili partije iz
   `USFSjek.partije(pid)` (isti obris kao klik na liniju — `obrisPartije`; + zadnja partija; ključ `izvor` = sjekId:lid, ponovni uvoz
   zadržava status/m³). Ručni dio ima PREDNOST: preklop se oduzima (`primijeniPrednost`/`oduzmi`, turf.difference) od partija i starijih
   dijelova — hektari se ne broje dvaput. Pane `primkaPane` z 414, dodir kroz `_kartaKlikIzvor` (popup: status, uredi, obriši).

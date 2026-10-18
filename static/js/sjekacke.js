@@ -1435,6 +1435,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     const lista = izvori();
     s.innerHTML = '<option value="">— izaberi poligon —</option>' + lista.map(x => `<option value="${esc(x.k)}">${esc(x.t)}</option>`).join('');
   }
+  // Sklopive liste (<details>): zadano SKLOPLJENE; otvorene se pamte u memoriji jer se panel iznova crta pri svakoj izmjeni.
+  const otvoreno = new Set();
   function render() {
     izvoriUi();
     const el = document.getElementById('sl-lista'); if (!el) return;
@@ -1458,11 +1460,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
         </div>${altAktivan(p) ? '' : dos}${padineHtml(p)}${izoHtml(p)}${ploheHtml(p)}${optHtml(p.optInfo)}
         ${altAktivan(p) ? '' : zonaHtml(p)}
         <div class="sl-sazetak">Partija linije: od ${p.brojanje === 'D' ? 'desne' : 'lijeve'} granice do L1, od L1 do L2 …${p.ostatakHa != null && p.linije.length ? ` · <b>zadnja partija</b> od L${zadnjiBr(p)} do granice <b>${fmt(p.ostatakHa, 2)} ha</b>` : ''}</div>
-        <div class="sl-lin">${p.linije.map(lin => { const s = STATUS[lin.status] || STATUS.ne; return `<div class="sl-lin-red">
+        <details class="sl-det" data-det="lin:${p.id}"${otvoreno.has('lin:' + p.id) ? ' open' : ''}><summary>Linije <b>${p.linije.filter(x => !x.dio).length}</b> · ofarbano ${p.linije.filter(x => x.status === 'gotovo').length}</summary><div class="sl-lin">${p.linije.map(lin => { const s = STATUS[lin.status] || STATUS.ne; return `<div class="sl-lin-red">
           <b style="--c:${s.c}">${oznaka(lin)}${lin.izo ? ' <i title="ide po izohipsi">' + ik('upozorenje', 14) + '</i>' : ''}</b><span>${lin.ha != null ? '<b class="sl-ha">' + fmt(lin.ha, 2) + ' ha</b> · ' : ''}${fmt(lin.duz)} m${slIma(lin.stvarna) ? ' <i class="sl-gps">GPS</i>' : ''}</span>
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
           <button data-a="st" data-id="${p.id}" data-l="${lin.id}" style="--c:${s.c}">${s.t}</button>
-          <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">${ik('vodi')}</button></div>`; }).join('')}</div>
+          <button data-a="vodi" data-id="${p.id}" data-l="${lin.id}">${ik('vodi')}</button></div>`; }).join('')}</div></details>
         <div class="sl-dug">${brojIzbrisanih(p) ? `<button data-a="vrati" data-id="${p.id}">${ik('ponisti')} Vrati obrisane (${brojIzbrisanih(p)})</button>` : ''}<button data-a="kml" data-id="${p.id}">${ik('salji')} Podijeli projekat</button><button data-a="linije-brisi" data-id="${p.id}" class="opasno">${ik('smece')} Izbriši</button><button data-a="slika-sac" data-id="${p.id}">${ik('preuzmi')} Sačuvaj sliku</button>${p.linije.some(x => slIma(x.stvarna)) ? `<button data-a="kml-gotove" data-id="${p.id}">⤓ KML ofarbane</button>` : ''}<button data-a="vid" data-id="${p.id}">${p.vidljiv !== false ? ik('oko-off', 19) + ' Sakrij' : ik('oko', 19) + ' Prikaži'}</button><button data-a="brisi" data-id="${p.id}" class="opasno" title="Obriši cijeli projekat">${ik('smece')}</button></div>`;
       return `<div class="sl-proj${otv ? ' otv' : ''}"><div class="sl-proj-zag" data-a="otvori" data-id="${p.id}"><b>${ik('pila', 19)} ${esc(p.naziv)}</b><small>${fmt(p.ha || 0, 2)} ha · ${p.linije.length} linija · ${p.razmak} m · ofarbano ${gotovo}/${p.linije.length}</small></div>${tijelo}</div>`;
     }).join('');
@@ -1760,6 +1762,7 @@ ${folderi}
   if (panel) {
     panel.addEventListener('click', e => { const el = e.target.closest('[data-a]'); if (el && el.tagName !== 'INPUT' && el.tagName !== 'SELECT') akcija(el); });
     panel.addEventListener('change', e => { const el = e.target.closest('[data-a]'); if (el) promjena(el); });
+    panel.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.det) { if (d.open) otvoreno.add(d.dataset.det); else otvoreno.delete(d.dataset.det); } }, true);
   }
   crtaj(); render();
   // Android je ubio app usred vodiča → nastavi; tačke iz native bafera nakon zadnjeg snimka idu u liniju

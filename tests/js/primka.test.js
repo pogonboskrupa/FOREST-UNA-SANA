@@ -71,7 +71,7 @@ t('KML: projekat u ExtendedData usf_primka; uvoz prije običnog KML sloja; Sjeka
   const prk = R('static/js/primka.js');
   assert.ok(!/izvori\(|izIzvora|izKljuca|izPrstena|_msrRegistry/.test(prk), 'nema starog izbora');
   assert.ok(prk.includes('_kmlPoligoniOdabir()') && HTML.includes('data-a="izb-novi"') && HTML.includes('id="pr-izbor"'), 'izbor poligona iz sloja granica taksacije');
-  assert.ok(HTML.includes('data-a="novi-crtez">✏ Nacrtaj granice odjela <small>opciono</small></button>') && prk.includes("if (a === 'novi-crtez') { crtPocni('odjel'); return; }"), 'opciono crtanje granice');
+  assert.ok(!HTML.includes('novi-crtez') && !prk.includes('novi-crtez') && !prk.includes("svrha === 'odjel'") && !/Nacrtaj granice odjela/.test(HTML + prk), 'dugme „Nacrtaj granice odjela” uklonjeno');
 });
 
 t('zajednički alat za crtanje i zbir po radniku', () => {
@@ -102,6 +102,16 @@ t('Granice taksacije: „samo za odabir poligona” (zadano, ne čuva se), izbor
   assert.ok(pr.includes("const akt = aktivni && nadji(aktivni);") && pr.includes('rs.flatMap(r => isijeci(ring, r))'), 'dio pripada aktivnom odjelu (siječe se po njegovim poligonima)');
   const dva = { poligoni: [{ ring: kv(44.88, 16.15, 0.005) }, { ring: kv(44.88, 16.16, 0.005) }], dijelovi: [] };
   assert.ok(Math.abs(P._zbir(dva).odjel - 2 * P._haDijela([kv(44.88, 16.15, 0.005)])) < 0.05, 'površina odjela = zbir odsjeka');
+});
+
+t('poligoni se prikazuju na karti pri pravljenju projekta; liste su sklopive (zadano sklopljene)', () => {
+  const pr = R('static/js/primka.js'), sj = R('static/js/sjekacke.js');
+  assert.ok(pr.includes('function izbCrtaj()') && pr.includes("map.on('moveend', izbCrtaj)") && pr.includes('function izbKlik(e)') && HTML.includes('.pr-izb-lab'), 'pregled poligona na karti + odabir dodirom');
+  assert.ok(pr.includes('data-a="izb-karta"') && pr.includes('data-a="izb-zoom"') && pr.includes('izbGotovo()') && pr.includes('izbLista()'), 'odabir na karti, zumiranje na odjel, povratak na listu');
+  assert.ok(pr.includes('const det = (k, naslov, sadrzaj, klasa)') && /<details class="pr-det"[^`]*\$\{otvoreno\.has\(k\) \? ' open' : ''\}/.test(pr), 'Primka: <details> zadano sklopljen');
+  assert.ok(pr.includes("det(p.id + ':dij'") && pr.includes("det(p.id + ':pol'") && pr.includes("otvoreno.add(pid + ':dij')"), 'dijelovi i poligoni odjela sklopivi');
+  assert.ok(sj.includes('<details class="sl-det" data-det="lin:${p.id}"') && sj.includes("otvoreno.has('lin:' + p.id) ? ' open' : ''"), 'Sjekačke: lista linija sklopiva, zadano sklopljena');
+  assert.ok(/addEventListener\('toggle'/.test(pr) && /addEventListener\('toggle'/.test(sj), 'otvoreno stanje se pamti između iscrtavanja');
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — primka');
