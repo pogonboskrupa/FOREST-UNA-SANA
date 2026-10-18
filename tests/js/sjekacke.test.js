@@ -224,6 +224,18 @@ t('GPS vodič: bočni otklon i položaj duž linije gledano uzbrdo', () => {
   assert.ok(Math.abs(v.bocno + 7) < 0.01 && v.duz < 0, 'zapadno = lijevo, ispod dna');
 });
 
+t('imenovanje odjela: prijedlog iz ODJEL · ODSJEK, pita se pri pravljenju preko poligona (osim crtanja), preimenovanje u kartici, spajanje po novijem imenu', () => {
+  const sj = R('static/js/sjekacke.js'), H = R('index.html');
+  assert.ok(sj.includes('async function napravi(ring, naziv, pitaj = true)') && sj.includes("'Ime odjela / odsjeka za ove sjekačke linije:'") && sj.includes('if (unos == null) return;'), 'dijalog s prijedlogom, Odustani ne pravi projekat');
+  assert.ok(sj.includes("napravi(ring, naziv.slice(0, 60), false)"), 'crtanje granice već pita ime');
+  assert.ok(sj.includes("return o ? 'Odjel ' + o : naz;") && (sj.match(/napravi\(s\.ring\(\), s\.ime \|\|/g) || []).length === 2, 'izIzvora i izKljuca koriste prijedlog imena');
+  assert.ok(sj.includes('data-a="naziv"') && sj.includes("if (a === 'naziv') {") && H.includes('.sl-naziv input'), 'polje za ime u kartici projekta');
+  const { slSpojiProjekte } = require('../../static/js/sjekacke.js');
+  const a = { id: 'p', naziv: 'Stari', tPlan: 1, tNaziv: 5, linije: [] }, b = { id: 'p', naziv: 'Odjel 68 · 2', tPlan: 1, tNaziv: 9, linije: [] };
+  assert.strictEqual(slSpojiProjekte(a, b).p.naziv, 'Odjel 68 · 2', 'novije ime pobjeđuje');
+  assert.strictEqual(slSpojiProjekte(b, a).p.naziv, 'Odjel 68 · 2');
+});
+
 t('UI: Realizacija izvedbenih projekata (ispod Primke), panel, vodič, dijeljenje KML-om', () => {
   const H = R('index.html');
   const i = H.indexOf('<h3>Realizacija izvedbenih projekata</h3>'), pr = H.indexOf('id="mc-primka"'), j = H.indexOf('id="mc-sjekacke"'), k = H.indexOf('<h3>Planiranje</h3>');

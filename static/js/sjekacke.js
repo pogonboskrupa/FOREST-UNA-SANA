@@ -730,6 +730,7 @@ function slSpojiProjekte(lok, dol) {
     azurirano++;
   }
   if (lok.vidljiv !== undefined) baza.vidljiv = lok.vidljiv; // prikaz je lična postavka
+  if ((dol.tNaziv || 0) !== (lok.tNaziv || 0)) { const nov = (dol.tNaziv || 0) > (lok.tNaziv || 0) ? dol : lok; baza.naziv = nov.naziv; baza.tNaziv = nov.tNaziv; } // ime odjela: novija izmjena
   return { p: baza, azurirano, planDolazni };
 }
 
@@ -751,14 +752,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   let aktivni = null, vodic = null; // vodic: { pid, lid, t }
 
   // ── Izvori poligona ───────────────────────────────────────────────────
+  // Prijedlog imena odjela za projekat: atribut ODJEL · ODSJEK („Odjel 68 · 2”), inače naziv poligona.
+  function imeOdjela(l) {
+    const naz = l._kmlName || 'KML poligon';
+    let o = ''; try { o = typeof _odjelOznaka === 'function' ? _odjelOznaka(l, '') : ''; } catch (e) {}
+    return o ? 'Odjel ' + o : naz;
+  }
   function izvori() {
     const out = [];
     (typeof _msrRegistry !== 'undefined' ? _msrRegistry : []).filter(m => m.mode === 'area' && m.pts && m.pts.length >= 3)
-      .forEach(m => out.push({ k: 'm:' + m.id, t: '📏 ' + (m.name || 'Površina'), ring: () => m.pts.map(p => [p.lat, p.lng]) }));
+      .forEach(m => out.push({ k: 'm:' + m.id, t: '📏 ' + (m.name || 'Površina'), ime: m.name || 'Površina', ring: () => m.pts.map(p => [p.lat, p.lng]) }));
     (typeof kmlLs !== 'undefined' ? kmlLs : []).forEach(k => k && k.grp && k.grp.eachLayer(function walk(l) {
       if (l.eachLayer && !l.getLatLngs) { l.eachLayer(walk); return; }
       if (!l._kmlIsPolygon) return;
-      out.push({ k: 'k:' + L.stamp(l), t: '🗺 ' + (l._kmlName || 'KML poligon'), ring: () => { let ll = l.getLatLngs(); while (Array.isArray(ll[0])) ll = ll[0]; return ll.map(p => [p.lat, p.lng]); } });
+      out.push({ k: 'k:' + L.stamp(l), t: '🗺 ' + (l._kmlName || 'KML poligon'), ime: imeOdjela(l), ring: () => { let ll = l.getLatLngs(); while (Array.isArray(ll[0])) ll = ll[0]; return ll.map(p => [p.lat, p.lng]); } });
     }));
     return out;
   }
@@ -887,8 +894,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   }
 
   // ── Projekat ─────────────────────────────────────────────────────────
-  async function napravi(ring, naziv) {
+  // pitaj=false kad je ime već uneseno (crtanje granice). Ime odjela je prijedlog iz poligona i može se izmijeniti; kasnije i u kartici projekta.
+  async function napravi(ring, naziv, pitaj = true) {
     if (!ring || ring.length < 3) { showToast('⚠ Poligon nije ispravan'); return; }
+    if (pitaj) {
+      const unos = typeof _dlgPrompt === 'function' ? await _dlgPrompt('Ime odjela / odsjeka za ove sjekačke linije:', naziv || 'Sječa', { title: 'Odjel / odsjek', okLabel: 'Napravi linije' }) : prompt('Ime odjela / odsjeka:', naziv || 'Sječa');
+      if (unos == null) return; // Odustani — ništa se ne pravi
+      naziv = String(unos).trim().slice(0, 60) || naziv || 'Sječa';
+    }
     status('⏳ Računam smjer pada iz DEM-a…');
     const pad = await padPoligona(ring);
     const p = { id: 'sl_' + Date.now().toString(36), naziv: naziv || 'Sječa', datum: new Date().toISOString(), ring, razmak: 60,
@@ -1372,7 +1385,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     const ring = crt.pts.slice(), br = citaj().length + 1;
     crtKraj();
     const naziv = (prompt('Naziv sječe (odjel/odsjek):', 'Sječa ' + br) || '').trim() || 'Sječa ' + br;
-    _openStubPanel('sjekacke-panel', 'meni'); napravi(ring, naziv.slice(0, 60));
+    _openStubPanel('sjekacke-panel', 'meni'); napravi(ring, naziv.slice(0, 60), false);
   }
 
   // ── Lomljenje linije: povuci tačku, ＋ na sredini segmenta dodaje lom,
@@ -1450,6 +1463,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
       const otv = p.id === aktivni, gotovo = p.linije.filter(x => x.status === 'gotovo').length;
       const dos = p.dosljednost != null && p.dosljednost < 0.6 ? `<div class="sl-upoz">${ik('upozorenje', 16)} Pad u poligonu nije jednoličan (${Math.round(p.dosljednost * 100)} %) — greben ili vrtača; Alternativni prikaz ispod dijeli ga na padine.</div>` : '';
       const tijelo = !otv ? '' : `
+        <label class="sl-naziv">Odjel / odsjek <input type="text" value="${esc(p.naziv)}" maxlength="60" placeholder="npr. Odjel 68 · 2" data-a="naziv" data-id="${p.id}"></label>
         <div class="sl-param">
           <label>Širina sjekačke linije <span><input type="number" min="10" max="200" step="5" value="${p.razmak}" data-a="razmak" data-id="${p.id}"> m</span><small>pojas jedne sjekačke partije ≈ 2 visine stabla</small></label>
           <div class="sl-cipovi">${[40, 50, 60, 70, 80].map(v => `<button data-a="raz" data-v="${v}" data-id="${p.id}" class="${v === p.razmak ? 'on' : ''}">${v} m</button>`).join('')}</div>
@@ -1604,6 +1618,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   }
   async function promjena(el) {
     const a = el.dataset.a, p = nadji(el.dataset.id); if (!p) return;
+    if (a === 'naziv') { const n = el.value.trim().slice(0, 60); if (n) { p.naziv = n; p.tNaziv = Date.now(); sacuvaj(p); crtaj(); render(); } else el.value = p.naziv; return; } // ime nije izmjena plana linija
     if (!['radnik', 'plohe', 'plohe-op'].includes(a)) planIzmjena(p);
     if (a === 'plohe') { p.plohe = !!el.checked; if (p.plohe && !p.izoPlohe) { await racunajPlohe(p); status(''); } sacuvaj(p); crtaj(); render(); return; }
     if (a === 'plohe-op') { p.plohaOp = Math.max(0.05, Math.min(0.8, Number(el.value) / 100)); sacuvaj(p); crtaj(); render(); return; }
@@ -1702,9 +1717,9 @@ ${folderi}
 
   window.USFSjek = {
     otvori() { _openStubPanel('sjekacke-panel', 'meni'); aktivni = aktivni || (citaj()[0] || {}).id || null; crtaj(); render(); },
-    izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
+    izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.ime || s.t.replace(/^\S+\s/, '')); },
     izPrstena(ring, naziv) { map.closePopup(); if (!Array.isArray(ring) || ring.length < 3) return; _openStubPanel('sjekacke-panel', 'meni'); napravi(ring, naziv || 'Spojeni odsjeci'); },
-    izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { showToast('⚠ Poligon nije pronađen'); return; } _openStubPanel('sjekacke-panel', 'meni'); napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
+    izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { showToast('⚠ Poligon nije pronađen'); return; } _openStubPanel('sjekacke-panel', 'meni'); napravi(s.ring(), s.ime || s.t.replace(/^\S+\s/, '')); },
     vodi, vodicKraj, zavrsiLiniju, crtPocni, izKml, partije,
     projekti: () => citaj().map(p => ({ id: p.id, naziv: p.naziv, ring: p.ring, linija: p.linije.filter(x => !x.dio).length })),
     posaljiLiniju(pid, lid) { const p = nadji(pid); if (!p) return; map.closePopup(); izvozKml(p, false, lid); },

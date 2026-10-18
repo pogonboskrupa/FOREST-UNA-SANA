@@ -161,6 +161,10 @@
   pri statusu/radniku/lomu/GPS-u). APK prima KML/KMZ iz drugih app-ova (intent VIEW/SEND,
   `launchMode singleTask`, `primiFajl` → `AndroidShare.uzmiDolazni()` → JS `_dolazniFajl`).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
+  Ime odjela: `napravi(ring, naziv, pitaj=true)` pita dijalogom (`_dlgPrompt`, Odustani = ništa se ne pravi) s prijedlogom iz poligona
+  (`imeOdjela`: „Odjel ” + ODJEL · ODSJEK iz atributa, inače naziv) — za izbor iz liste, 🪓 u kartici poligona i „Više odsjeka”; crtanje
+  granice već pita ime. Polje „Odjel / odsjek” (`.sl-naziv`, `data-a="naziv"`) preimenuje projekat u kartici (to NIJE izmjena plana — ne zove
+  `planIzmjena`); `p.tNaziv`, a `slSpojiProjekte` uzima novije ime.
 - **„Samo za odabir poligona”** (KML sloj čije ime odgovara `_KML_POLIGONSKI` = „Granice taksacije…”; `k.samoOdabir`): sloj NIJE na karti
   (`_kmlPrimijeniPrikaz`/`_kmlNaKarti` — jedino mjesto koje dodaje/uklanja `k.grp` sa karte; nema dodira/kartice/natpisa) i služi samo kao izvor
   poligona odjela/odsjeka (nagib, sjekačke linije i Primka čitaju `kmlLs` bez obzira na kartu). Zadano UKLJUČENO pri svakom učitavanju i
