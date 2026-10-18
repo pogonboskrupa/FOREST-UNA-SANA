@@ -730,6 +730,10 @@ function slSpojiProjekte(lok, dol) {
     azurirano++;
   }
   if (lok.vidljiv !== undefined) baza.vidljiv = lok.vidljiv; // prikaz je lična postavka
+  // posječeno po radnicima: unija po id-u, novija izmjena pobjeđuje (brisanje putuje kao obrisan:true)
+  const pos = new Map();
+  [lok, dol].forEach(x => (x.posjeceno || []).forEach(d => { const s = pos.get(d.id); if (!s || (d.t || 0) > (s.t || 0)) pos.set(d.id, JSON.parse(JSON.stringify(d))); }));
+  if (pos.size) baza.posjeceno = [...pos.values()];
   return { p: baza, azurirano, planDolazni };
 }
 
@@ -1094,11 +1098,68 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
   // ── Karta ────────────────────────────────────────────────────────────
   const zadnjiBr = p => p.linije.reduce((m, x) => Math.max(m, x.br || 0), 0);
   function oznaka(lin) { return 'L' + lin.br + (lin.dio ? String.fromCharCode(97 + lin.dio) : ''); }
+  // ── Posječeno po radnicima: sjekač na svom telefonu označi dio odjela koji je posjekao ──
+  const BOJE_R = ['#f472b6', '#60a5fa', '#a3e635', '#fb923c', '#c084fc', '#2dd4bf', '#facc15', '#f87171', '#818cf8', '#4ade80'];
+  const bojaRadnika = ime => { let h = 0; for (const c of String(ime)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return BOJE_R[h % BOJE_R.length]; };
+  const posjeceno = p => (p.posjeceno || []).filter(d => !d.obrisan && Array.isArray(d.prst) && d.prst.length);
+  const G = () => (window.USFPrimka && USFPrimka.geo) || null;
+  function poRadniku(p) {
+    const m = new Map();
+    posjeceno(p).forEach(d => { const r = m.get(d.radnik) || { radnik: d.radnik, ha: 0, dijelovi: [] }; r.ha += d.ha || 0; r.dijelovi.push(d); m.set(d.radnik, r); });
+    return [...m.values()].sort((a, b) => a.radnik.localeCompare(b.radnik, 'bs'));
+  }
+  async function oznaciPosjeceno(pid) {
+    const p = nadji(pid), g = G(); if (!p) return;
+    if (!g || !USFPrimka.nacrtaj) { showToast('⚠ Alat za crtanje nije učitan'); return; }
+    let ime = '';
+    try { ime = localStorage.getItem('usf_sjek_radnik') || JSON.parse(localStorage.getItem('usf_korisnik') || 'null')?.ime || ''; } catch (e) {}
+    const unos = prompt('Ime radnika (sjekača) čiji je dio:', ime);
+    if (unos == null) return;
+    ime = unos.trim().slice(0, 30); if (!ime) { showToast('Upiši ime radnika'); return; }
+    try { localStorage.setItem('usf_sjek_radnik', ime); } catch (e) {}
+    aktivni = p.id; crtaj();
+    const ring = await USFPrimka.nacrtaj({ naslov: '👷 Posječeno — ' + ime, boja: bojaRadnika(ime) });
+    if (!ring) return;
+    const q = nadji(pid); if (!q) return;
+    let prst = g.isijeci(ring, q.ring);
+    // već označeno (bilo čije) ostaje: novi dio dobija samo neoznačeni ostatak — površine se ne broje dvaput
+    for (const d of posjeceno(q)) { if (!prst) break; prst = g.oduzmi({ prst }, d.prst); }
+    if (!prst || !prst.length) { showToast('⚠ Taj dio je izvan odjela ili je već označen'); return; }
+    const d = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), radnik: ime, prst, ha: g.ha(prst), datum: Date.now(), t: Date.now() };
+    (q.posjeceno = q.posjeceno || []).push(d); sacuvaj(q); crtaj(); render();
+    showToast('👷 ' + ime + ': +' + fmt(d.ha, 2) + ' ha posječeno');
+  }
+  function obrisiPosjeceno(pid, did) {
+    const p = nadji(pid), d = p && (p.posjeceno || []).find(x => x.id === did); if (!d) return;
+    if (!confirm('Obrisati označeni dio (' + d.radnik + ', ' + fmt(d.ha || 0, 2) + ' ha)?')) return;
+    map.closePopup();
+    Object.keys(d).forEach(k => { if (!['id', 'radnik'].includes(k)) delete d[k]; });
+    d.obrisan = true; d.t = Date.now(); // zapis ostaje da brisanje stigne i na drugi telefon
+    sacuvaj(p); crtaj(); render();
+  }
+  function posjecenoPopup(p, d, at) {
+    const c = bojaRadnika(d.radnik), r = poRadniku(p).find(x => x.radnik === d.radnik);
+    L.popup({ maxWidth: 290, minWidth: 210, className: 'pk-pop' }).setLatLng(at).setContent(_popKartica({
+      ikona: '👷', boja: c, naslov: d.radnik, tip: 'Posječeno', meta: p.naziv,
+      redovi: [['Ovaj dio', fmt(d.ha || 0, 2) + ' ha'], ['Ukupno radnik', fmt(r ? r.ha : 0, 2) + ' ha (' + (r ? r.dijelovi.length : 0) + ' dijel.)'], ['Označeno', new Date(d.datum).toLocaleDateString('bs')]],
+      dugmad: [{ t: ik('poligon') + ' Dodaj dio', on: `USFSjek.oznaciPosjeceno('${p.id}')` }, { t: ik('smece') + ' Obriši', on: `USFSjek.obrisiPosjeceno('${p.id}','${d.id}')`, v: 'opasno' }] })).openOn(map);
+  }
+  function posjecenoHtml(p) {
+    const r = poRadniku(p), uk = r.reduce((s, x) => s + x.ha, 0);
+    return `<div class="sl-posj"><div class="sl-posj-zag"><b>👷 Posječeno po radnicima</b><small>${r.length ? fmt(uk, 2) + ' / ' + fmt(p.ha || 0, 2) + ' ha' : 'radnik sam označi svoj dio'}</small></div>
+      ${r.map(x => `<div class="sl-posj-red"><i style="background:${bojaRadnika(x.radnik)}"></i><b>${esc(x.radnik)}</b><span>${fmt(x.ha, 2)} ha · ${x.dijelovi.length} dijel.</span></div>
+        <div class="sl-posj-dij">${x.dijelovi.map((d, i) => `<span><button data-a="posj-zoom" data-id="${p.id}" data-d="${d.id}">${i + 1}. ${fmt(d.ha || 0, 2)} ha</button><button data-a="posj-brisi" data-id="${p.id}" data-d="${d.id}" class="opasno" title="Obriši dio">${ik('smece', 14)}</button></span>`).join('')}</div>`).join('')}
+      <div class="sl-dug"><button data-a="posj" data-id="${p.id}">${ik('poligon')} Označi svoj posječeni dio</button></div></div>`;
+  }
   function crtaj() {
     grp.clearLayers(); natpisi = [];
     citaj().filter(p => p.vidljiv !== false).forEach(p => {
       const akt = p.id === aktivni;
       L.polygon(p.ring, { pane: 'sjekackePane', color: '#fde68a', weight: akt ? 2.5 : 1.5, dashArray: '6 4', fill: false, interactive: false }).addTo(grp);
+      posjeceno(p).forEach(d => {
+        const c = bojaRadnika(d.radnik);
+        L.polygon(d.prst, { pane: 'sjekackePane', color: c, weight: 1.5, fillColor: c, fillOpacity: akt ? 0.32 : 0.2, fillRule: 'evenodd', interactive: false }).addTo(grp);
+      });
       const vodiOvdje = vodic && vodic.pid === p.id;
       if (altAktivan(p)) {
         p.padine.granice.forEach(g => {
@@ -1174,6 +1235,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     const out = [];
     citaj().filter(p => p.vidljiv !== false).forEach(p => p.linije.forEach(lin => {
       out.push({ vrsta: 'linija', d: _pxDoLinije(kp, slGeo(lin).map(q => L.latLng(q[0], q[1]))), otvori: at => popup(p, lin, at) });
+    }));
+    const g = G();
+    if (g) citaj().filter(p => p.vidljiv !== false).forEach(p => posjeceno(p).forEach(d => {
+      if (g.unutar(ll.lat, ll.lng, d.prst)) out.push({ vrsta: 'poligon', pov: (d.ha || 0) * 1e4, otvori: at => posjecenoPopup(p, d, at) });
     }));
     return out;
   });
@@ -1458,6 +1523,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
         </div>${altAktivan(p) ? '' : dos}${padineHtml(p)}${izoHtml(p)}${ploheHtml(p)}${optHtml(p.optInfo)}
         ${altAktivan(p) ? '' : zonaHtml(p)}
         <div class="sl-sazetak">Partija linije: od ${p.brojanje === 'D' ? 'desne' : 'lijeve'} granice do L1, od L1 do L2 …${p.ostatakHa != null && p.linije.length ? ` · <b>zadnja partija</b> od L${zadnjiBr(p)} do granice <b>${fmt(p.ostatakHa, 2)} ha</b>` : ''}</div>
+        ${posjecenoHtml(p)}
         <div class="sl-lin">${p.linije.map(lin => { const s = STATUS[lin.status] || STATUS.ne; return `<div class="sl-lin-red">
           <b style="--c:${s.c}">${oznaka(lin)}${lin.izo ? ' <i title="ide po izohipsi">' + ik('upozorenje', 14) + '</i>' : ''}</b><span>${lin.ha != null ? '<b class="sl-ha">' + fmt(lin.ha, 2) + ' ha</b> · ' : ''}${fmt(lin.duz)} m${slIma(lin.stvarna) ? ' <i class="sl-gps">GPS</i>' : ''}</span>
           <input placeholder="radnik" value="${esc(lin.radnik)}" data-a="radnik" data-id="${p.id}" data-l="${lin.id}" maxlength="24">
@@ -1548,6 +1614,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
 
   async function akcija(el) {
     const a = el.dataset.a;
+    if (a === 'posj') { oznaciPosjeceno(el.dataset.id); return; }
+    if (a === 'posj-brisi') { obrisiPosjeceno(el.dataset.id, el.dataset.d); return; }
+    if (a === 'posj-zoom') {
+      const q = nadji(el.dataset.id), d = q && posjeceno(q).find(x => x.id === el.dataset.d); if (!d) return;
+      switchMainTab('karta'); try { map.fitBounds(L.latLngBounds(d.prst.flat()), { padding: [40, 40], maxZoom: 18 }); } catch (e) {}
+      return;
+    }
     if (a === 'sve-vid') {
       const l = citaj(), sakrij = !l.every(x => x.vidljiv === false);
       l.forEach(x => { x.vidljiv = !sakrij; }); pisi(l); crtaj(); render();
@@ -1703,7 +1776,9 @@ ${folderi}
     izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
     izPrstena(ring, naziv) { map.closePopup(); if (!Array.isArray(ring) || ring.length < 3) return; _openStubPanel('sjekacke-panel', 'meni'); napravi(ring, naziv || 'Spojeni odsjeci'); },
     izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { showToast('⚠ Poligon nije pronađen'); return; } _openStubPanel('sjekacke-panel', 'meni'); napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
-    vodi, vodicKraj, zavrsiLiniju, crtPocni, izKml, partije,
+    vodi, vodicKraj, zavrsiLiniju, crtPocni, izKml, partije, oznaciPosjeceno, obrisiPosjeceno,
+    // za Primku: [{id, radnik, br (redni dio radnika), prst, ha}]
+    posjeceno(pid) { const p = nadji(pid); if (!p) return []; const n = {}; return posjeceno(p).map(d => ({ id: d.id, radnik: d.radnik, br: (n[d.radnik] = (n[d.radnik] || 0) + 1), prst: d.prst, ha: d.ha })); },
     projekti: () => citaj().map(p => ({ id: p.id, naziv: p.naziv, ring: p.ring, linija: p.linije.filter(x => !x.dio).length })),
     posaljiLiniju(pid, lid) { const p = nadji(pid); if (!p) return; map.closePopup(); izvozKml(p, false, lid); },
     snimanje() { if (vodic) { vodic.snima = !vodic.snima; vodicOsvjezi(); } },

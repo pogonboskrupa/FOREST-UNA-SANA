@@ -97,6 +97,11 @@
       if (d.status === 'primljeno') { s.primljeno += ha; s.m3p += Number(d.m3) || 0; } else { s.neprimljeno += ha; s.m3n += Number(d.m3) || 0; }
     });
     s.neoznaceno = Math.max(0, odjel - s.primljeno - s.neprimljeno);
+    s.radnici = {};
+    (p.dijelovi || []).filter(d => d.radnik).forEach(d => {
+      const r = s.radnici[d.radnik] = s.radnici[d.radnik] || { p: 0, n: 0, m3: 0 }, ha = Number.isFinite(d.ha) ? d.ha : haDijela(d.prst);
+      if (d.status === 'primljeno') r.p += ha; else r.n += ha; r.m3 += Number(d.m3) || 0;
+    });
     return s;
   }
 
@@ -152,9 +157,9 @@
     if (!el) { el = document.createElement('div'); el.id = 'pr-crt'; document.body.appendChild(el); }
     return el;
   }
-  function crtPocni(svrha, pid) {
+  function crtPocni(svrha, pid, opc) {
     if (crt) return;
-    crt = { svrha, pid, pts: [], sloj: L.layerGroup().addTo(map) };
+    crt = { svrha, pid, pts: [], sloj: L.layerGroup().addTo(map), ...(opc || {}) };
     window._npHvataKlik = true; map.on('click', crtKlik);
     document.body.classList.add('pr-crta'); if (typeof switchMainTab === 'function') switchMainTab('karta'); crtOsvjezi();
   }
@@ -164,22 +169,23 @@
     if (!g) { if (typeof gpsOn !== 'undefined' && !gpsOn && typeof startGPS === 'function') startGPS(); toast('📍 Čekam GPS — pokušaj za koju sekundu'); return; }
     crt.pts.push([g.la, g.lo]); crtOsvjezi(); toast('📍 Tačka ' + crt.pts.length + ' (±' + fmt(g.ac || 0) + ' m)');
   }
-  function crtKraj() { if (!crt) return; map.removeLayer(crt.sloj); map.off('click', crtKlik); window._npHvataKlik = false; crt = null; document.body.classList.remove('pr-crta'); }
+  function crtKraj() { if (!crt) return; if (crt.cb) { const cb = crt.cb; crt.cb = null; cb(null); } map.removeLayer(crt.sloj); map.off('click', crtKlik); window._npHvataKlik = false; crt = null; document.body.classList.remove('pr-crta'); }
   function crtOsvjezi() {
     if (!crt) return;
-    const c = crt.svrha === 'odjel' ? '#f8fafc' : '#38bdf8';
+    const c = crt.boja || (crt.svrha === 'odjel' ? '#f8fafc' : '#38bdf8');
     crt.sloj.clearLayers();
     if (crt.pts.length > 1) L.polygon(crt.pts, { pane: 'primkaPane', color: c, weight: 2.5, dashArray: '6 4', fillOpacity: 0.1, interactive: false }).addTo(crt.sloj);
     crt.pts.forEach((q, i) => L.circleMarker(q, { pane: 'primkaPane', radius: i ? 5 : 7, color: '#0b1220', weight: 2, fillColor: c, fillOpacity: 1, interactive: false }).addTo(crt.sloj));
     const ha = crt.pts.length > 2 ? haDijela([crt.pts]) : 0;
-    crtBar().innerHTML = `<div class="sl-v-nasl">🪵 ${crt.svrha === 'odjel' ? 'Granica odjela' : 'Dio odjela'} <small>dodirni kartu ili idi granicom i dodaj tačku</small></div>
+    crtBar().innerHTML = `<div class="sl-v-nasl">${crt.naslov ? esc(crt.naslov) : '🪵 ' + (crt.svrha === 'odjel' ? 'Granica odjela' : 'Dio odjela')} <small>dodirni kartu ili idi granicom i dodaj tačku</small></div>
       <div class="sl-v-sporedno">${crt.pts.length} tačaka${ha ? ' · ' + fmt(ha, 2) + ' ha' : ''}</div>
       <div class="sl-v-dug"><button onclick="USFPrimka.crtGps()">📍 Moja pozicija</button><button onclick="USFPrimka.crtVrati()">↶</button><button onclick="USFPrimka.crtZavrsi()">✓ Gotovo</button><button onclick="USFPrimka.crtOdustani()">✕</button></div>`;
   }
   async function crtZavrsi() {
     if (!crt || crt.pts.length < 3) { toast('Treba bar 3 tačke'); return; }
-    const { svrha, pid } = crt, ring = crt.pts.slice();
-    crtKraj();
+    const { svrha, pid } = crt, ring = crt.pts.slice(), cb = crt.cb;
+    crt.cb = null; crtKraj();
+    if (cb) { cb(ring); return; }
     if (svrha === 'odjel') {
       const naziv = (prompt('Naziv (odjel/odsjek):', 'Odjel ' + (citaj().length + 1)) || '').trim();
       napravi(ring, naziv || 'Odjel ' + (citaj().length + 1));
@@ -239,15 +245,22 @@
       if (!(i >= 0 && i < lista.length)) return;
       sid = lista[i].id;
     }
-    const par = USFSjek.partije(sid);
+    const pos = USFSjek.posjeceno ? USFSjek.posjeceno(sid) : [];
+    let par;
+    if (pos.length) {
+      const i = typeof _dlgActions === 'function' ? await _dlgActions('Šta preuzeti kao dijelove?', [{ label: '👷 Posječeno po radnicima (' + pos.length + ')' }, { label: '🪓 Projektovane partije' }]) : 0;
+      if (i !== 0 && i !== 1) return;
+      par = i === 0 ? pos.map(x => ({ lid: 'pos:' + x.id, oznaka: x.radnik + (x.br > 1 ? ' ' + x.br : ''), prst: x.prst, ha: x.ha, radnik: x.radnik, posj: true })) : USFSjek.partije(sid);
+    } else par = USFSjek.partije(sid);
     if (!par.length) { toast('⚠ Projekat nema partija (napravi linije)'); return; }
     const po = new Map((p.dijelovi || []).filter(d => d.izvor).map(d => [d.izvor, d]));
     let novih = 0;
     par.forEach(x => {
       const kljuc = sid + ':' + x.lid, prst = x.prst, ha = Number.isFinite(x.ha) ? x.ha : haDijela(prst), s = po.get(kljuc);
-      if (s) { s.prst = prst; s.ha = ha; s.naziv = 'Partija ' + x.oznaka; if (x.radnik) s.radnik = x.radnik; s.t = Date.now(); return; }
+      const ime = (x.posj ? 'Posječeno · ' : 'Partija ') + x.oznaka;
+      if (s) { s.prst = prst; s.ha = ha; s.naziv = ime; if (x.radnik) s.radnik = x.radnik; s.t = Date.now(); return; }
       novih++;
-      (p.dijelovi = p.dijelovi || []).push({ id: uid(), izvor: kljuc, naziv: 'Partija ' + x.oznaka, prst, ha, status: 'neprimljeno', m3: null, brPrimke: '', sortimenti: '', radnik: x.radnik || '', napomena: '', datum: null, t: Date.now() });
+      (p.dijelovi = p.dijelovi || []).push({ id: uid(), izvor: kljuc, naziv: ime, prst, ha, status: 'neprimljeno', m3: null, brPrimke: '', sortimenti: '', radnik: x.radnik || '', napomena: '', datum: null, t: Date.now() });
     });
     // ručno nacrtani dijelovi ostaju na snazi i poslije (ponovnog) uvoza partija
     const rucni = (p.dijelovi || []).filter(d => !d.izvor);
@@ -317,7 +330,8 @@ ${dij}
   function trakaHtml(z) {
     const uk = Math.max(z.odjel, z.primljeno + z.neprimljeno) || 1, w = v => (100 * v / uk).toFixed(1) + '%';
     return `<div class="pr-traka"><i style="width:${w(z.primljeno)};background:${STATUS.primljeno.c}"></i><i style="width:${w(z.neprimljeno)};background:${STATUS.neprimljeno.c}"></i></div>
-      <div class="pr-zbir"><span><b style="color:${STATUS.primljeno.c}">✓ ${fmt(z.primljeno, 2)} ha</b>${z.m3p ? ' · ' + fmt(z.m3p, 1) + ' m³' : ''}</span><span><b style="color:${STATUS.neprimljeno.c}">✕ ${fmt(z.neprimljeno, 2)} ha</b>${z.m3n ? ' · ' + fmt(z.m3n, 1) + ' m³' : ''}</span><span>neoznačeno ${fmt(z.neoznaceno, 2)} ha</span></div>`;
+      <div class="pr-zbir"><span><b style="color:${STATUS.primljeno.c}">✓ ${fmt(z.primljeno, 2)} ha</b>${z.m3p ? ' · ' + fmt(z.m3p, 1) + ' m³' : ''}</span><span><b style="color:${STATUS.neprimljeno.c}">✕ ${fmt(z.neprimljeno, 2)} ha</b>${z.m3n ? ' · ' + fmt(z.m3n, 1) + ' m³' : ''}</span><span>neoznačeno ${fmt(z.neoznaceno, 2)} ha</span></div>
+      ${Object.keys(z.radnici || {}).length ? `<div class="pr-radnici">${Object.entries(z.radnici).sort((a, b) => a[0].localeCompare(b[0], 'bs')).map(([r, v]) => `<span>👷 <b>${esc(r)}</b> ✓ ${fmt(v.p, 2)} · ✕ ${fmt(v.n, 2)} ha${v.m3 ? ' · ' + fmt(v.m3, 1) + ' m³' : ''}</span>`).join('')}</div>` : ''}`;
   }
   function dioHtml(p, d) {
     const s = STATUS[d.status] || STATUS.neprimljeno, ha = Number.isFinite(d.ha) ? d.ha : haDijela(d.prst), a = `data-id="${p.id}" data-d="${d.id}"`;
@@ -392,6 +406,9 @@ ${dij}
     crtGps, crtZavrsi, crtVrati() { if (crt) { crt.pts.pop(); crtOsvjezi(); } }, crtOdustani: crtKraj,
     izKml, uvezPartije,
     // za testove
+    // Nacrtaj prsten na karti (dodir/GPS); Promise → [[la, lo]…] ili null (odustao).
+    nacrtaj(opc) { return new Promise(res => { if (crt) { res(null); return; } crtPocni('vanjski', null, { ...(opc || {}), cb: res }); }); },
+    geo: { ha: haDijela, unutar, isijeci, oduzmi },
     _haDijela: haDijela, _unutar: unutar, _zbir: zbir, _isijeci: isijeci, _oduzmi: oduzmi
   };
   const panel = typeof document !== 'undefined' && document.getElementById('primka-panel');

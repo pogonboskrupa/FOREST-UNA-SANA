@@ -170,6 +170,13 @@
   zadržava status/m³). Ručni dio ima PREDNOST: preklop se oduzima (`primijeniPrednost`/`oduzmi`, turf.difference) od partija i starijih
   dijelova — hektari se ne broje dvaput. Pane `primkaPane` z 414, dodir kroz `_kartaKlikIzvor` (popup: status, uredi, obriši).
   KML izvoz nosi projekat (`ExtendedData usf_primka`); „Učitaj KML” → `USFPrimka.izKml` (otvori/spoji, po dijelu novije `t`). Test `primka.test.js`.
+  Zbir po radniku (`zbir().radnici`) u kartici projekta. `USFPrimka.nacrtaj(opc)` = zajednički alat za crtanje (Promise prstena, null = odustao)
+  i `USFPrimka.geo` {ha, unutar, isijeci, oduzmi} — koriste ga i Sjekačke linije.
+- **Posječeno po radnicima** (Sjekačke linije, kartica projekta = odjel, `p.posjeceno` [{id, radnik, prst, ha, datum, t, obrisan?}]): sjekač na SVOM
+  telefonu „Označi svoj posječeni dio” (ime iz `usf_sjek_radnik` / `usf_korisnik`), crta dodirom/GPS-om; dio se siječe po odjelu, a već označeno
+  (bilo čije) ostaje — novi dobija samo ostatak (nema dvostrukih ha). Boja po imenu (`bojaRadnika`), dodir → kartica (linija ima prednost
+  na dodiru, pa su 🔍/brisanje i u panelu). Brisanje = zapis `obrisan:true` (putuje KML-om); `slSpojiProjekte` spaja po id-u, novije `t`
+  pobjeđuje. Primka „Partije iz sjekačkih” nudi „Posječeno po radnicima” (`USFSjek.posjeceno(pid)`) → dijelovi s radnikom.
 - **Otvorenost odjela ŠKP-om** (Projektovanje šumskog puta → sekcija, `static/js/otvorenost.js`): poligoni iz
   KML sloja (odjeli/odsjeci), putevi = KML/SHP linije izabranih slojeva + sačuvane trase (`_rdGetSavedRoutes`).
   `otvRaster`: raster udaljenosti od puteva za cijelo područje (ćelija 15–60 m, ≤ ~2,5 M ćelija, propagacija

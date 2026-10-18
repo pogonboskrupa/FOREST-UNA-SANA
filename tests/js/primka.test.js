@@ -69,4 +69,20 @@ t('KML: projekat u ExtendedData usf_primka; uvoz prije običnog KML sloja; Sjeka
   assert.ok(HTML.includes("USFPrimka.izKljuca('k:${id}')") && HTML.includes("_odsAkcija(\\'primka\\')"), 'iz kartice poligona i više odsjeka');
 });
 
+t('posječeno po radnicima: spajanje telefona po id-u (novije pobjeđuje, brisanje putuje), Primka preuzima po radniku', () => {
+  const { slSpojiProjekte } = require('../../static/js/sjekacke.js');
+  const lok = { id: 'p', tPlan: 1, linije: [], posjeceno: [{ id: 'a', radnik: 'Mujo', prst: [kv(44.88, 16.15, 0.002)], ha: 3, t: 10 }] };
+  const dol = { id: 'p', tPlan: 1, linije: [], posjeceno: [{ id: 'a', radnik: 'Mujo', obrisan: true, t: 20 }, { id: 'b', radnik: 'Haso', prst: [kv(44.882, 16.15, 0.002)], ha: 3, t: 15 }] };
+  const r = slSpojiProjekte(lok, dol).p.posjeceno;
+  assert.deepStrictEqual(r.map(d => d.id + (d.obrisan ? '✗' : '')).sort(), ['a✗', 'b']);
+  assert.ok(slSpojiProjekte(lok, { ...dol, posjeceno: [{ id: 'a', radnik: 'Mujo', obrisan: true, t: 5 }] }).p.posjeceno[0].prst, 'starije brisanje ne gazi noviji dio');
+  const sj = R('static/js/sjekacke.js'), pr = R('static/js/primka.js');
+  assert.ok(sj.includes('for (const d of posjeceno(q)) { if (!prst) break; prst = g.oduzmi({ prst }, d.prst); }'), 'već označeno ostaje, novi dio dobija ostatak');
+  assert.ok(sj.includes("localStorage.getItem('usf_sjek_radnik')") && sj.includes("localStorage.getItem('usf_korisnik')"), 'ime iz Postavki / zadnje upisano');
+  assert.ok(sj.includes('posjeceno(pid) {') && pr.includes('USFSjek.posjeceno(sid)') && pr.includes("'Posječeno · '"), 'Primka preuzima dijelove radnika');
+  assert.ok(pr.includes('nacrtaj(opc) {') && pr.includes('if (cb) { cb(ring); return; }'), 'zajednički alat za crtanje');
+  const z = P._zbir({ ring: kv(44.88, 16.15, 0.01), dijelovi: [{ prst: [], ha: 2, status: 'primljeno', radnik: 'Mujo', m3: 10 }, { prst: [], ha: 1, status: 'neprimljeno', radnik: 'Mujo' }] });
+  assert.deepStrictEqual(z.radnici, { Mujo: { p: 2, n: 1, m3: 10 } });
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — primka');
