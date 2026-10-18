@@ -174,6 +174,11 @@
   (prikazano ⇄ samo za odabir; stanje se i dalje NE čuva, pri pokretanju opet skriveno). Pri prikazu `_kmlGranicaIstakni` zadebljava zadani stil (3,5 px, 100 %) samo ako ga korisnik nije mijenjao.
   `#kh-lista` (`_khSlojevi`) = brzi popis ostalih KML slojeva s prekidačima. KML preglednik (`_kmlRegRender`): pločice sa ikonama, filter čipovi (`_kmlFilt`: svi/na karti/skriveni),
   „Prikaži/Sakrij sve” (`_kmlSviVid`), redovi s bojom sloja (`--kc`) i pilulama brojeva; `_kmlToggle` na „samo za odabir” sloju ga prikazuje. `_kmlRegRender` osvježava i `_khStat`.
+- **Mjerenja — dizajn i visinski profil (v2.6.0)**: panel `#msr-panel` ima pločice umjesto reda teksta (`_msrKpi`: glavna vrijednost veliko — dužina / ha / nagib % u boji klase), natpise segmenata i Σ na karti
+  (`.msr-seg`, ≤ 30 tačaka), ha u težištu poligona. Profil (`static/js/mjerenja-profil.js`, `USFProfil`): za Udaljenost i Nagib (≥ 2 tačke) i iz kartice sačuvanog mjerenja („📈 Profil”, `_msrProfilSaved`)
+  kartica `#pf-sheet` pri vrhu karte: uzorci svakih ≥ 10 m (≤ 160) → visine `npVisinaNa` (lokalni DEM/Terrarium, keš) → `popuni` (rupe), `zagladi`, `statistika` (uspon/silazak s pragom 2 m, nagib zaglađen ~80 m,
+  udio dužine po klasama 0–10…>50 %); SVG grafikon (ispuna, linija obojena po klasi nagiba, mreža, ▲▼ min/maks), povlačenje prsta = kursor + tačka na karti i nagib; „🎨 Nagib” boji liniju na karti po klasi (`slojNagiba`).
+  Preračun je odgođen 650 ms (`odgodi`) pri svakoj izmjeni tačaka. Bez visina (offline van USK) ⇒ poruka. Test `tests/js/mjerenja-profil.test.js`.
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
   isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”

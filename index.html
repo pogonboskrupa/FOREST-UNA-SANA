@@ -490,6 +490,39 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #msr-panel.active .msr-modes,
 #msr-panel.active .msr-swatches,
 #msr-panel.active label.msr-draw-toggle { display:none; }
+#msr-panel .msr-modes button { display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px 7px; font-weight:800; }
+#msr-panel .msr-modes button i { font-style:normal; font-size:18px; line-height:1.1; }
+#msr-panel .msr-swatch { width:26px; height:26px; }
+#msr-panel .msr-stats { padding:0; background:none; border-radius:0; }
+.ms-kpi { display:grid; grid-template-columns:repeat(var(--n,3),1fr); gap:6px; }
+.ms-kpi div { background:var(--pn-bg-2,#1e293b); border:1px solid var(--pn-line,#334155); border-radius:10px; padding:6px 4px; text-align:center; min-width:0; }
+.ms-kpi div.glavno { grid-column:1 / -1; border-color:var(--ms-c,#38bdf8); background:color-mix(in srgb, var(--ms-c,#38bdf8) 14%, transparent); padding:8px 6px; }
+.ms-kpi b { display:block; font-size:15px; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-variant-numeric:tabular-nums; }
+.ms-kpi .glavno b { font-size:24px; line-height:1.1; }
+.ms-kpi span { font-size:10px; color:#94a3b8; letter-spacing:.03em; text-transform:uppercase; }
+.msr-seg { display:inline-block; transform:translate(-50%,-50%); background:rgba(15,23,42,.92); color:#f1f5f9; border:1.5px solid var(--c,#fbbf24); border-radius:999px; padding:1px 7px; font:800 11px/16px system-ui,sans-serif; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.5); pointer-events:none; }
+.msr-seg.uk { background:var(--c,#fbbf24); color:#0b1220; border-color:#0b1220; font-size:12px; }
+/* Visinski profil mjerenja */
+#pf-sheet { display:none; position:fixed; top:calc(96px + env(safe-area-inset-top)); left:8px; right:8px; max-width:640px; margin:0 auto; z-index:645; background:rgba(10,18,30,.96); border:1.5px solid #1e3a5f; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.55); color:#e2e8f0; backdrop-filter:blur(6px); padding:7px 10px 8px; max-height:44vh; overflow-y:auto; }
+.pf-zag { display:flex; align-items:center; gap:6px; } .pf-zag > div { flex:1; min-width:0; }
+.pf-zag b { font-size:14px; display:block; } .pf-zag small { color:#94a3b8; font-size:11px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pf-zag button { min-width:34px; height:32px; padding:0 8px; border-radius:9px; border:1px solid #334155; background:#0f172a; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; }
+.pf-zag button.on { border-color:#4ade80; background:rgba(22,101,52,.5); color:#dcfce7; }
+.pf-por { margin:8px 0 2px; min-height:20px; font-size:12.5px; color:#94a3b8; font-variant-numeric:tabular-nums; } .pf-por b { color:#f1f5f9; }
+.pf-graf { overflow:hidden; border-radius:10px; background:rgba(2,6,23,.45); }
+.pf-svg { display:block; }
+.pf-g { stroke:rgba(148,163,184,.16); stroke-width:1; } .pf-g.v { stroke:rgba(148,163,184,.10); }
+.pf-t { fill:#94a3b8; font:600 10px system-ui,sans-serif; } .pf-mt { fill:#e2e8f0; font:800 10.5px system-ui,sans-serif; paint-order:stroke; stroke:#0a121e; stroke-width:3px; }
+.pf-l { stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; } .pf-m { fill:#fff; stroke:#0a121e; stroke-width:1.5; }
+.pf-kl { stroke:#f8fafc; stroke-width:1.2; stroke-dasharray:3 3; } .pf-kd { fill:#fff; stroke:#0a121e; stroke-width:2; }
+.pf-kpi { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-top:6px; }
+.pf-kpi div { background:#0f172a; border:1px solid #1e293b; border-radius:9px; padding:3px 2px; text-align:center; min-width:0; }
+.pf-kpi b { display:block; font-size:13px; white-space:nowrap; font-variant-numeric:tabular-nums; } .pf-kpi span { font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.03em; }
+.pf-kpi .up b { color:#f87171; } .pf-kpi .dn b { color:#60a5fa; } .pf-kpi .mx b { color:#fbbf24; }
+.pf-dist { display:flex; gap:2px; height:9px; margin:9px 0 5px; border-radius:5px; overflow:hidden; } .pf-dist i { display:block; }
+.pf-leg { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:11px; color:#94a3b8; } .pf-leg i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px; } .pf-leg b { color:#e2e8f0; margin-left:2px; }
+.pf-nap { margin-top:6px; font-size:11px; color:#fbbf24; }
+#pf-sheet.skup .pf-tijelo { display:none; }
 
 /* === Puni-ekran paneli (Meni / Postavke / sekcije) === */
 .usf-panel {
@@ -1738,9 +1771,9 @@ body.sl-uredi #sl-ured { display: block; }
 <!-- Mjerenja — plutajući alatni panel -->
 <div id="msr-panel">
   <div class="msr-modes">
-    <button id="msrm-dist" class="on" onclick="_msrSetMode('dist')">📏 Udaljenost</button>
-    <button id="msrm-area" onclick="_msrSetMode('area')">◻ Površina</button>
-    <button id="msrm-nagib" onclick="_msrSetMode('nagib')">📐 Nagib</button>
+    <button id="msrm-dist" class="on" onclick="_msrSetMode('dist')"><i>📏</i>Udaljenost</button>
+    <button id="msrm-area" onclick="_msrSetMode('area')"><i>◻</i>Površina</button>
+    <button id="msrm-nagib" onclick="_msrSetMode('nagib')"><i>📐</i>Nagib</button>
   </div>
   <div class="msr-swatches" id="msr-swatches"></div>
   <label class="msr-draw-toggle" id="msr-draw-row">
@@ -4446,6 +4479,20 @@ function _msrRedraw() {
       _msrLayer.addLayer(L.polygon(latlngs, { color:'#a78bfa', weight:1.5, dashArray:'4 4', fillColor:'#a78bfa', fillOpacity:0.08, pane:'tragMsrLines' }));
     }
   }
+  // Natpisi: dužina svakog segmenta + ukupno na kraju (udaljenost); površina u težištu (≤ 30 natpisa)
+  if (_msrMode === 'dist' && pts.length <= 30) {
+    let uk = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const d = _msrHaversine(pts[i].lat, pts[i].lng, pts[i+1].lat, pts[i+1].lng); uk += d;
+      const mid = [(pts[i].lat + pts[i+1].lat) / 2, (pts[i].lng + pts[i+1].lng) / 2];
+      if (pts.length > 2) _msrLayer.addLayer(L.marker(mid, { interactive:false, keyboard:false, pane:'tragMsrLines', icon:L.divIcon({ className:'', iconSize:[0,0], html:`<span class="msr-seg" style="--c:${_msrColor}">${_msrFmt(d)}</span>` }) }));
+    }
+    const z = pts[pts.length - 1];
+    _msrLayer.addLayer(L.marker([z.lat, z.lng], { interactive:false, keyboard:false, pane:'tragMsrLines', icon:L.divIcon({ className:'', iconSize:[0,0], iconAnchor:[0,26], html:`<span class="msr-seg uk" style="--c:${_msrColor}">Σ ${_msrFmt(uk)}</span>` }) }));
+  } else if (_msrMode === 'area' && pts.length >= 3) {
+    const c = pts.reduce((a, p) => [a[0] + p.lat / pts.length, a[1] + p.lng / pts.length], [0, 0]);
+    _msrLayer.addLayer(L.marker(c, { interactive:false, keyboard:false, pane:'tragMsrLines', icon:L.divIcon({ className:'', iconSize:[0,0], html:`<span class="msr-seg uk" style="--c:#a78bfa">${(_msrPoligonPovrsina(pts)/10000).toFixed(2)} ha</span>` }) }));
+  }
   // Draggable markeri — SAMO van "Crtaj" moda (inače marker po tački zatrpa liniju).
   if (!_msrDrawOn) {
     pts.forEach((p, idx) => {
@@ -4465,32 +4512,45 @@ function _msrRedraw() {
       _msrLayer.addLayer(mk);
     });
   }
+  if (window.USFProfil) USFProfil.naVrh();
 }
 
+// Pločice umjesto reda teksta: glavna vrijednost veliko, ostalo ispod
+function _msrKpi(boja, n, glavno, ostalo) {
+  return `<div class="ms-kpi" style="--ms-c:${boja};--n:${n}"><div class="glavno"><b>${glavno[0]}</b><span>${glavno[1]}</span></div>${ostalo.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>`;
+}
+const _msrNagibKlase = [[10, '#22c55e'], [20, '#84cc16'], [30, '#facc15'], [40, '#f97316'], [50, '#dc2626'], [Infinity, '#7e22ce']];
+function _msrProfilTrazi() {
+  if (!window.USFProfil) return;
+  if ((_msrMode === 'dist' || _msrMode === 'nagib') && _msrPts.length >= 2) USFProfil.odgodi({ pts: _msrPts, naslov: _msrMode === 'nagib' ? 'Nagib između tačaka' : 'Mjerenje uživo', boja: _msrColor });
+  else if (USFProfil.otvoren() && _msrOn) USFProfil.zatvori();
+}
 function _msrUpdPanel() {
   _msrUpdUndoBtn();
   const box = document.getElementById('msr-stats');
   if (!box) return;
   const pts = _msrPts;
-  if (pts.length < 2) { box.classList.remove('show'); return; }
+  if (pts.length < 2) { box.classList.remove('show'); _msrProfilTrazi(); return; }
   box.classList.add('show');
+  _msrProfilTrazi();
   if (_msrMode === 'nagib' && pts.length >= 2) {
     const a = pts[0], b = pts[pts.length-1];
     const distM = _msrHaversine(a.lat,a.lng,b.lat,b.lng);
     const dh = (b.elev != null && a.elev != null) ? b.elev - a.elev : null;
-    const pct = (dh != null && distM > 0) ? (dh/distM*100).toFixed(1) : null;
-    const ang = (dh != null && distM > 0) ? (Math.atan(dh/distM)*180/Math.PI).toFixed(1) : null;
-    box.innerHTML = `📏 ${_msrFmt(distM)}` + (pct!=null?` &nbsp; 📐 ${pct>0?'+':''}${pct}%`:'') + (ang!=null?` &nbsp; 🧭 ${ang}°`:'');
+    const pct = (dh != null && distM > 0) ? dh/distM*100 : null;
+    const kl = pct == null ? '#38bdf8' : _msrNagibKlase.find(k => Math.abs(pct) < k[0])[1];
+    box.innerHTML = _msrKpi(kl, 3, [pct != null ? (pct > 0 ? '+' : '') + pct.toFixed(1) + ' %' : '… %', 'nagib'],
+      [[pct != null ? (Math.atan(pct/100)*180/Math.PI).toFixed(1) + '°' : '—', 'ugao'], [dh != null ? (dh > 0 ? '+' : '') + Math.round(dh) + ' m' : '—', 'visinska razlika'], [_msrFmt(distM), 'udaljenost']]);
     return;
   }
   let totalDist = 0;
   for (let i = 0; i < pts.length-1; i++) totalDist += _msrHaversine(pts[i].lat,pts[i].lng,pts[i+1].lat,pts[i+1].lng);
-  let html = `📏 ${_msrFmt(totalDist)}`;
   if (_msrMode === 'area' && pts.length >= 3) {
     const areaM2 = _msrPoligonPovrsina(pts);
-    html += ` &nbsp; ◻ ${Math.round(areaM2).toLocaleString('bs')} m² (${(areaM2/10000).toFixed(2)} ha)`;
+    box.innerHTML = _msrKpi('#a78bfa', 3, [(areaM2/10000).toFixed(2) + ' ha', 'površina'], [[Math.round(areaM2).toLocaleString('bs') + ' m²', 'm²'], [_msrFmt(totalDist), 'obim'], [String(pts.length), 'tačaka']]);
+    return;
   }
-  box.innerHTML = html;
+  box.innerHTML = _msrKpi(_msrColor, 2, [_msrFmt(totalDist), 'ukupna dužina'], [[String(pts.length), 'tačaka'], [_msrFmt(totalDist / (pts.length - 1)), 'prosj. segment']]);
 }
 
 async function _msrAddPoint(latlng) {
@@ -4549,6 +4609,7 @@ function msrStop(skipSave) {
   if (!skipSave && _msrPts.length >= 2 && !_mqmId) _msrRegAddFromActive();
 }
 function msrClear() {
+  if (window.USFProfil) USFProfil.zatvori();
   msrStop(true);
   _msrPts = []; _mqmId = null;
   if (_msrLayer) { _msrLayer.clearLayers(); try { map.removeLayer(_msrLayer); } catch(e) {} _msrLayer = null; }
@@ -4654,9 +4715,14 @@ function _msrPopupHtml(m) {
     if (typeof npIzMjerenja === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzMjerenja('${m.id}')`, v: 'glavno' });
     if (window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('m:${m.id}')` });
   } else redovi.push(['Dužina', _msrFmt(d)], ['Tačaka', String(P.length)]);
+  if (mode !== 'area' && P.length >= 2 && window.USFProfil) dugmad.push({ t: '📈 Profil', on: `_msrProfilSaved('${m.id}')`, v: 'glavno' });
   dugmad.push({ t: '✏ Uredi', on: `_msrRegZoom('${m.id}')` }, { t: '✎ Preimenuj', on: `_msrRegRename('${m.id}')` }, { t: '🗑 Briši', on: `_msrRegDeleteConfirm('${m.id}')`, v: 'opasno' });
   const tip = { area: 'Površina', nagib: 'Nagib', dist: 'Udaljenost' }[mode] || 'Mjerenje';
   return _popKartica({ ikona: mode === 'area' ? '◻' : mode === 'nagib' ? '📐' : '📏', boja: m.color || '#fbbf24', naslov: m.name, tip, meta: fmtDateShort(m.date), redovi, vise, dugmad });
+}
+function _msrProfilSaved(id) {
+  const m = _msrRegistry.find(x => x.id === id); if (!m || !window.USFProfil) return;
+  map.closePopup(); USFProfil.otvori({ pts: m.pts, naslov: m.name, boja: m.color });
 }
 function _msrSetFillOpacity(id, val) {
   const m = _msrRegistry.find(x => x.id === id);
@@ -11340,6 +11406,7 @@ window.addEventListener('load', () => {
 <script src="static/js/sjekacke.js"></script>
 <script src="static/js/primka.js"></script>
 <script src="static/js/otvorenost.js"></script>
+<script src="static/js/mjerenja-profil.js"></script>
 <script src="static/js/slika-karte.js"></script>
 </body>
 </html>
