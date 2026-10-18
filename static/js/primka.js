@@ -91,7 +91,7 @@
   const nadji = id => citaj().find(p => p.id === id) || null;
   function sacuvaj(p) { const l = citaj(), i = l.findIndex(x => x.id === p.id); if (i >= 0) l[i] = p; else l.unshift(p); p.t = Date.now(); return pisi(l); }
   function zbir(p) {
-    const odjel = haDijela([p.ring]), s = { odjel, primljeno: 0, neprimljeno: 0, m3p: 0, m3n: 0 };
+    const odjel = p.ring ? haDijela([p.ring]) : 0, s = { odjel, primljeno: 0, neprimljeno: 0, m3p: 0, m3n: 0 };
     (p.dijelovi || []).forEach(d => {
       const ha = Number.isFinite(d.ha) ? d.ha : haDijela(d.prst);
       if (d.status === 'primljeno') { s.primljeno += ha; s.m3p += Number(d.m3) || 0; } else { s.neprimljeno += ha; s.m3n += Number(d.m3) || 0; }
@@ -117,7 +117,7 @@
     grp.clearLayers();
     citaj().filter(p => p.vidljiv !== false).forEach(p => {
       const akt = p.id === aktivni;
-      L.polygon(p.ring, { pane: 'primkaPane', color: '#f8fafc', weight: akt ? 2.5 : 1.6, dashArray: '7 5', fill: false, interactive: false }).addTo(grp);
+      if (p.ring) L.polygon(p.ring, { pane: 'primkaPane', color: '#f8fafc', weight: akt ? 2.5 : 1.6, dashArray: '7 5', fill: false, interactive: false }).addTo(grp);
       (p.dijelovi || []).forEach(d => {
         const c = (STATUS[d.status] || STATUS.neprimljeno).c;
         L.polygon(d.prst, { pane: 'primkaPane', color: c, weight: 1.6, fillColor: c, fillOpacity: akt ? 0.38 : 0.26, fillRule: 'evenodd', interactive: false }).addTo(grp);
@@ -142,13 +142,75 @@
       { t: '🗑', on: `USFPrimka.obrisiDio(${a})`, v: 'opasno' }] }) : esc(d.naziv);
     L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng(at).setContent(html).openOn(map);
   }
+  // Kartica odjela (dodir na odjel van označenih dijelova): zbir i radnje — bez nje nacrtani odjel nije bio klikabilan.
+  function popupOdjel(p, at) {
+    const z = zbir(p), a = `'${p.id}'`;
+    const html = typeof _popKartica === 'function' ? _popKartica({ ikona: '🪵', boja: '#34d399', naslov: p.naziv, tip: 'Primka · odjel', meta: fmt(z.odjel, 2) + ' ha', redovi: [
+      ['✓ Primljeno', fmt(z.primljeno, 2) + ' ha' + (z.m3p ? ' · ' + fmt(z.m3p, 1) + ' m³' : '')],
+      ['✕ Neprimljeno', fmt(z.neprimljeno, 2) + ' ha' + (z.m3n ? ' · ' + fmt(z.m3n, 1) + ' m³' : '')],
+      ['Neoznačeno', fmt(z.neoznaceno, 2) + ' ha'], ['Dijelova', String((p.dijelovi || []).length)]], dugmad: [
+      { t: '✏ Označi dio', on: `USFPrimka.crtajDio(${a})` }, { t: '📋 Otvori', on: `USFPrimka.otvoriProjekat(${a})` },
+      { t: '🙈 Sakrij', on: `USFPrimka.sakrij(${a})` }, { t: '🗑', on: `USFPrimka.obrisi(${a})`, v: 'opasno' }] }) : esc(p.naziv);
+    L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng(at).setContent(html).openOn(map);
+  }
+  // Prednost dodira = površina u PIKSELIMA ekrana, kao kod KML-a/mjerenja (_pxPovrsina) — s m² je KML odjel
+  // uvijek pobjeđivao pa nacrtani dio nije bio klikabilan.
+  const pxPov = prst => typeof _pxPovrsina === 'function' ? prst.reduce((s, r) => s + _pxPovrsina(r.map(q => L.latLng(q[0], q[1]))), 0) : haDijela(prst) * 1e4;
   if (typeof _kartaKlikIzvor === 'function') _kartaKlikIzvor(ll => {
     const out = [];
-    citaj().filter(p => p.vidljiv !== false).forEach(p => (p.dijelovi || []).forEach(d => {
-      if (unutar(ll.lat, ll.lng, d.prst)) out.push({ vrsta: 'poligon', pov: (Number.isFinite(d.ha) ? d.ha : haDijela(d.prst)) * 1e4, otvori: at => popup(p, d, at) });
-    }));
+    citaj().filter(p => p.vidljiv !== false).forEach(p => {
+      (p.dijelovi || []).forEach(d => {
+        if (unutar(ll.lat, ll.lng, d.prst)) out.push({ vrsta: 'poligon', pov: pxPov(d.prst), otvori: at => popup(p, d, at) });
+      });
+      // odjel malo „manji” od istog KML poligona → kartica primke ima prednost nad karticom KML-a
+      if (p.ring && unutarPrstena(ll.lat, ll.lng, p.ring)) out.push({ vrsta: 'poligon', pov: pxPov([p.ring]) * 0.98, otvori: at => popupOdjel(p, at) });
+    });
     return out;
   });
+
+  // ── Bez poligona: dio se nacrta, a odjel se prepozna po KML poligonu (najmanji koji sadrži dio) ──
+  function tackaDijela(prst) {
+    const r = (prst || []).slice().sort((a, b) => Math.abs(m2Prstena(b)) - Math.abs(m2Prstena(a)))[0];
+    if (!r) return null;
+    try { if (typeof turf !== 'undefined' && turf.pointOnFeature) { const c = r.map(q => [q[1], q[0]]); c.push(c[0]); const t = turf.pointOnFeature(turf.polygon([c])).geometry.coordinates; return [t[1], t[0]]; } } catch (e) {}
+    return r.reduce((a, q) => [a[0] + q[0] / r.length, a[1] + q[1] / r.length], [0, 0]);
+  }
+  function odjelPod(prst) {
+    const t = tackaDijela(prst); if (!t || typeof kmlLs === 'undefined') return null;
+    let naj = null;
+    kmlLs.forEach(k => k && k.grp && k.grp.eachLayer(function walk(l) {
+      if (l.eachLayer && !l.getLatLngs) { l.eachLayer(walk); return; }
+      if (!l._kmlIsPolygon) return;
+      let ll = l.getLatLngs(); while (Array.isArray(ll[0]) && Array.isArray(ll[0][0])) ll = ll[0];
+      const ring = (Array.isArray(ll[0]) ? ll[0] : ll).map(q => [q.lat, q.lng]);
+      if (ring.length < 3 || !unutarPrstena(t[0], t[1], ring)) return;
+      const ha = haDijela([ring]);
+      if (!naj || ha < naj.ha) naj = { ring, ha, ime: (typeof _odjelOznaka === 'function' ? _odjelOznaka(l, '') : '') || l._kmlName || 'Odjel', sloj: k.name };
+    }));
+    return naj;
+  }
+  // Projekat za prepoznati odjel: isti naziv i tačka unutar njegove granice; inače novi (ili „Bez odjela”).
+  function projekatZa(odj, t) {
+    const l = citaj();
+    if (!odj) return l.find(p => !p.ring) || napravi(null, 'Bez odjela', null, true);
+    return l.find(p => p.ring && p.naziv === odj.ime && unutarPrstena(t[0], t[1], p.ring)) || napravi(odj.ring, odj.ime, { sloj: odj.sloj }, true);
+  }
+  async function brziDio() {
+    const ring = await window.USFPrimka.nacrtaj({ naslov: '🪵 Dio — odjel se prepoznaje sam' });
+    if (!ring) return;
+    const prst = [ring], odj = odjelPod(prst), t = tackaDijela(prst);
+    const i = typeof _dlgActions === 'function' ? await _dlgActions('Roba u ovom dijelu (' + fmt(haDijela(prst), 2) + ' ha)' + (odj ? ' · ' + odj.ime : ' · odjel nije prepoznat'), [{ label: '✓ Primljena' }, { label: '✕ Neprimljena' }]) : 0;
+    if (i !== 0 && i !== 1) return;
+    const p = projekatZa(odj, t);
+    dodajDio(p, prst, i === 0);
+    toast((i === 0 ? '✓ Primljeno' : '✕ Neprimljeno') + ' · ' + fmt(haDijela(prst), 2) + ' ha → ' + p.naziv);
+  }
+  function dodajDio(p, prst, primljeno) {
+    const d = { id: uid(), naziv: 'Dio ' + ((p.dijelovi || []).length + 1), prst, ha: haDijela(prst), status: primljeno ? 'primljeno' : 'neprimljeno', m3: null, brPrimke: '', sortimenti: '', radnik: '', napomena: '', datum: primljeno ? Date.now() : null, t: Date.now() };
+    primijeniPrednost(p, prst, null);
+    (p.dijelovi = p.dijelovi || []).push(d); aktivni = p.id; sacuvaj(p); crtaj(); render();
+    return d;
+  }
 
   // ── Crtanje (granica odjela ili dio) ──
   let crt = null;
@@ -192,26 +254,28 @@
       return;
     }
     const p = nadji(pid); if (!p) return;
-    const prst = isijeci(ring, p.ring);
+    const prst = p.ring ? isijeci(ring, p.ring) : [ring];
     if (!prst.length) { toast('⚠ Nacrtani dio je izvan granice odjela'); return; }
     const i = typeof _dlgActions === 'function' ? await _dlgActions('Roba u ovom dijelu (' + fmt(haDijela(prst), 2) + ' ha)', [{ label: '✓ Primljena' }, { label: '✕ Neprimljena' }]) : 0;
     if (i !== 0 && i !== 1) return;
-    const d = { id: uid(), naziv: 'Dio ' + ((p.dijelovi || []).length + 1), prst, ha: haDijela(prst), status: i === 0 ? 'primljeno' : 'neprimljeno', m3: null, brPrimke: '', sortimenti: '', radnik: '', napomena: '', datum: i === 0 ? Date.now() : null, t: Date.now() };
-    primijeniPrednost(p, prst, null);
-    (p.dijelovi = p.dijelovi || []).push(d); sacuvaj(p); crtaj(); render();
+    const d = dodajDio(p, prst, i === 0);
     toast((i === 0 ? '✓ Primljeno' : '✕ Neprimljeno') + ' · ' + fmt(d.ha, 2) + ' ha');
   }
 
   // ── Projekti ──
   let aktivni = null;
-  function napravi(ring, naziv, extra) {
-    const p = { id: uid(), naziv: String(naziv || 'Odjel').slice(0, 60), ring, dijelovi: [], vidljiv: true, t: Date.now(), ...(extra || {}) };
+  // tiho = pravi ga brzi dio (karta ostaje, bez panela i zumiranja)
+  function napravi(ring, naziv, extra, tiho) {
+    const p = { id: uid(), naziv: String(naziv || 'Odjel').slice(0, 60), ring: ring || null, dijelovi: [], vidljiv: true, t: Date.now(), ...(extra || {}) };
     sacuvaj(p); aktivni = p.id;
+    if (tiho) return p;
     otvoriPanel(); crtaj(); render();
     try { map.fitBounds(L.latLngBounds(ring), { padding: [30, 30], maxZoom: 17 }); } catch (e) {}
     toast('🪵 Primka „' + p.naziv + '” — ' + fmt(haDijela([ring]), 2) + ' ha');
     return p;
   }
+  const obuhvat = p => p.ring || (p.dijelovi || []).flatMap(d => d.prst.flat());
+  function zoomProjekat(p) { if (typeof switchMainTab === 'function') switchMainTab('karta'); try { map.fitBounds(L.latLngBounds(obuhvat(p)), { padding: [30, 30], maxZoom: 17 }); } catch (e) {} }
   // Izvori kao u Sjekačkim linijama: sačuvane površine, KML poligoni, projekti sjekačkih linija.
   function izvori() {
     const out = [];
@@ -239,25 +303,19 @@
     if (!sid) {
       const lista = USFSjek.projekti().filter(s => s.linija);
       if (!lista.length) { toast('Nema projekata sjekačkih linija'); return; }
-      const sredina = p.ring.reduce((a, q) => [a[0] + q[0] / p.ring.length, a[1] + q[1] / p.ring.length], [0, 0]);
+      const sr = obuhvat(p), sredina = sr.reduce((a, q) => [a[0] + q[0] / sr.length, a[1] + q[1] / sr.length], [0, 0]);
       lista.sort((a, b) => (unutarPrstena(sredina[0], sredina[1], b.ring) ? 1 : 0) - (unutarPrstena(sredina[0], sredina[1], a.ring) ? 1 : 0));
       const i = typeof _dlgActions === 'function' ? await _dlgActions('Partije iz projekta', lista.map(s => ({ label: '🪓 ' + s.naziv + ' · ' + s.linija + ' linija' }))) : 0;
       if (!(i >= 0 && i < lista.length)) return;
       sid = lista[i].id;
     }
-    const pos = USFSjek.posjeceno ? USFSjek.posjeceno(sid) : [];
-    let par;
-    if (pos.length) {
-      const i = typeof _dlgActions === 'function' ? await _dlgActions('Šta preuzeti kao dijelove?', [{ label: '👷 Posječeno po radnicima (' + pos.length + ')' }, { label: '🪓 Projektovane partije' }]) : 0;
-      if (i !== 0 && i !== 1) return;
-      par = i === 0 ? pos.map(x => ({ lid: 'pos:' + x.id, oznaka: x.radnik + (x.br > 1 ? ' ' + x.br : ''), prst: x.prst, ha: x.ha, radnik: x.radnik, posj: true })) : USFSjek.partije(sid);
-    } else par = USFSjek.partije(sid);
+    const par = USFSjek.partije(sid);
     if (!par.length) { toast('⚠ Projekat nema partija (napravi linije)'); return; }
     const po = new Map((p.dijelovi || []).filter(d => d.izvor).map(d => [d.izvor, d]));
     let novih = 0;
     par.forEach(x => {
       const kljuc = sid + ':' + x.lid, prst = x.prst, ha = Number.isFinite(x.ha) ? x.ha : haDijela(prst), s = po.get(kljuc);
-      const ime = (x.posj ? 'Posječeno · ' : 'Partija ') + x.oznaka;
+      const ime = 'Partija ' + x.oznaka;
       if (s) { s.prst = prst; s.ha = ha; s.naziv = ime; if (x.radnik) s.radnik = x.radnik; s.t = Date.now(); return; }
       novih++;
       (p.dijelovi = p.dijelovi || []).push({ id: uid(), izvor: kljuc, naziv: ime, prst, ha, status: 'neprimljeno', m3: null, brPrimke: '', sortimenti: '', radnik: x.radnik || '', napomena: '', datum: null, t: Date.now() });
@@ -295,7 +353,7 @@
 <Style id="odj"><LineStyle><color>fffafaf8</color><width>3</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
 <Style id="pr"><LineStyle><color>${KB.primljeno}</color><width>2</width></LineStyle><PolyStyle><color>665ec522</color></PolyStyle></Style>
 <Style id="ne"><LineStyle><color>${KB.neprimljeno}</color><width>2</width></LineStyle><PolyStyle><color>664444ef</color></PolyStyle></Style>
-<Placemark><name>${x(p.naziv)}</name><description>${x('Primljeno ' + fmt(z.primljeno, 2) + ' ha · neprimljeno ' + fmt(z.neprimljeno, 2) + ' ha · neoznačeno ' + fmt(z.neoznaceno, 2) + ' ha')}</description><styleUrl>#odj</styleUrl><Polygon><outerBoundaryIs>${pr(p.ring)}</outerBoundaryIs></Polygon></Placemark>
+<Placemark><name>${x(p.naziv)}</name><description>${x('Primljeno ' + fmt(z.primljeno, 2) + ' ha · neprimljeno ' + fmt(z.neprimljeno, 2) + ' ha · neoznačeno ' + fmt(z.neoznaceno, 2) + ' ha')}</description><styleUrl>#odj</styleUrl>${p.ring ? `<Polygon><outerBoundaryIs>${pr(p.ring)}</outerBoundaryIs></Polygon>` : ''}</Placemark>
 ${dij}
 </Document></kml>`;
     _izvozFajl('primka_' + p.naziv.normalize('NFKD').replace(/[^\w-]+/g, '_') + '.kml', kml, 'application/vnd.google-earth.kml+xml', 'Primka · ' + p.naziv + ' — otvori u Grmeč Navigator');
@@ -304,7 +362,7 @@ ${dij}
   async function izKml(doc) {
     const el = doc.querySelector('ExtendedData Data[name="usf_primka"] value'); if (!el) return false;
     let dol; try { dol = JSON.parse(izBase64(el.textContent.trim())); } catch (e) { return false; }
-    if (!dol || !dol.id || !Array.isArray(dol.ring) || !Array.isArray(dol.dijelovi)) return false;
+    if (!dol || !dol.id || !(dol.ring === null || Array.isArray(dol.ring)) || !Array.isArray(dol.dijelovi)) return false;
     const lok = nadji(dol.id), prim = dol.dijelovi.filter(d => d.status === 'primljeno').length;
     if (!confirm('„' + dol.naziv + '” — primka (' + dol.dijelovi.length + ' dijelova, primljeno ' + prim + ').\n\n' +
       (lok ? 'Spojiti s tvojim projektom? Novije izmjene pobjeđuju.' : 'Otvoriti kao projekat primke?') + '\n\nOdustani = prikaži samo kao KML sloj.')) return false;
@@ -315,7 +373,7 @@ ${dij}
       p = { ...lok, dijelovi: [...m.values()] };
     }
     sacuvaj(p); aktivni = p.id; otvoriPanel(); crtaj(); render();
-    try { map.fitBounds(L.latLngBounds(p.ring), { padding: [30, 30], maxZoom: 17 }); } catch (e) {}
+    try { map.fitBounds(L.latLngBounds(obuhvat(p)), { padding: [30, 30], maxZoom: 17 }); } catch (e) {}
     return true;
   }
 
@@ -355,7 +413,7 @@ ${dij}
     el.innerHTML = l.map(p => {
       const z = zbir(p), akt = p.id === aktivni, n = (p.dijelovi || []).length;
       return `<section class="ng-card pr-proj${akt ? ' akt' : ''}">
-        <div class="pr-proj-zag" data-a="aktiviraj" data-id="${p.id}"><b>🪵 ${esc(p.naziv)}</b><small>${fmt(z.odjel, 2)} ha · ${n} ${n === 1 ? 'dio' : 'dijelova'}${p.sjekId ? ' · 🪓 partije' : ''}</small></div>
+        <div class="pr-proj-zag" data-a="aktiviraj" data-id="${p.id}"><b>🪵 ${esc(p.naziv)}</b><small>${p.ring ? fmt(z.odjel, 2) + ' ha' : 'bez granice odjela'} · ${n} ${n === 1 ? 'dio' : 'dijelova'}${p.sjekId ? ' · 🪓 partije' : ''}</small></div>
         ${trakaHtml(z)}
         ${akt ? `<div class="sl-dug"><button class="zp-glavno" data-a="crtaj-dio" data-id="${p.id}">✏ Označi dio odjela</button><button data-a="partije" data-id="${p.id}">🪓 Partije iz sjekačkih</button></div>
         <div class="pr-dijelovi">${(p.dijelovi || []).map(d => dioHtml(p, d)).join('') || '<p class="uk-izvor">Označi dijelove gdje je roba primljena ili nije — crtanjem ili iz partija sjekačkih linija. Dodir na dio na karti mijenja status.</p>'}</div>
@@ -381,13 +439,14 @@ ${dij}
   async function akcija(el) {
     const a = el.dataset.a, p = el.dataset.id ? nadji(el.dataset.id) : null;
     if (a === 'novi-crtez') { crtPocni('odjel'); return; }
+    if (a === 'brzi') { brziDio(); return; }
     if (a === 'novi-izvor') { izIzvora(); return; }
     if (!p) return;
     if (a === 'aktiviraj') { aktivni = aktivni === p.id ? null : p.id; crtaj(); render(); return; }
     if (a === 'crtaj-dio') { crtPocni('dio', p.id); return; }
     if (a === 'partije') { uvezPartije(p.id); return; }
     if (a === 'kml') { izvozKml(p); return; }
-    if (a === 'zoom') { if (typeof switchMainTab === 'function') switchMainTab('karta'); try { map.fitBounds(L.latLngBounds(p.ring), { padding: [30, 30], maxZoom: 17 }); } catch (e) {} return; }
+    if (a === 'zoom') { zoomProjekat(p); return; }
     if (a === 'vid') { p.vidljiv = p.vidljiv === false; sacuvaj(p); crtaj(); render(); return; }
     if (a === 'brisi') { if (!confirm('Obrisati primku „' + p.naziv + '” sa svim dijelovima?')) return; pisi(citaj().filter(x => x.id !== p.id)); crtaj(); render(); return; }
     const d = (p.dijelovi || []).find(x => x.id === el.dataset.d); if (!d) return;
@@ -398,6 +457,11 @@ ${dij}
 
   window.USFPrimka = {
     otvori() { otvoriPanel(); aktivni = aktivni || (citaj()[0] || {}).id || null; crtaj(); render(); },
+    brziDio, crtajDio(pid) { map.closePopup(); crtPocni('dio', pid); },
+    otvoriProjekat(pid) { map.closePopup(); aktivni = pid; otvoriPanel(); crtaj(); render(); },
+    sakrij(pid) { map.closePopup(); const p = nadji(pid); if (!p) return; p.vidljiv = false; sacuvaj(p); crtaj(); render(); toast('🙈 „' + p.naziv + '” sakriven — Primka → Prikaži'); },
+    obrisi(pid) { const p = nadji(pid); if (!p || !confirm('Obrisati primku „' + p.naziv + '” sa svim dijelovima?')) return; map.closePopup(); pisi(citaj().filter(x => x.id !== pid)); crtaj(); render(); },
+    _odjelPod: odjelPod,
     izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { toast('⚠ Poligon nije pronađen'); return; } napravi(s.ring(), s.ime); },
     izPrstena(ring, naziv) { if (typeof map !== 'undefined') map.closePopup(); if (Array.isArray(ring) && ring.length >= 3) napravi(ring, naziv || 'Odjel'); },
     status(pid, did, s) { map.closePopup(); postaviStatus(pid, did, s); },

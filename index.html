@@ -1369,16 +1369,6 @@ body.pr-crta #pr-crt { display: block; }
 .pr-polja input { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--pn-line); background: #0b1220; color: var(--pn-txt); font-size: 13px; min-width: 0; }
 .pr-radnici { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 12px; color: var(--pn-dim); }
 .pr-radnici b { color: var(--pn-txt); }
-.sl-posj { margin: 10px 0; padding: 9px 10px; border: 1px solid var(--pn-line); border-radius: 12px; background: rgba(255,255,255,.02); }
-.sl-posj-zag { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.sl-posj-zag small { color: var(--pn-dim); font-size: 12px; }
-.sl-posj-red { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; font-size: 13px; }
-.sl-posj-red i { width: 12px; height: 12px; border-radius: 3px; }
-.sl-posj-red span { color: var(--pn-dim); font-size: 12px; }
-.sl-posj-dij { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px 20px; }
-.sl-posj-dij span { display: inline-flex; border: 1px solid var(--pn-line); border-radius: 8px; overflow: hidden; }
-.sl-posj-dij button { border: 0; background: transparent; color: var(--pn-txt); font-size: 12px; padding: 5px 8px; }
-.sl-posj-dij button.opasno { color: #fca5a5; border-left: 1px solid var(--pn-line); }
 .pr-dat { display: block; margin-top: 6px; color: #86efac; font-size: 11px; }
 #sl-crt { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #fde68a; border-left: 6px solid #fde68a; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
 body.sl-crta #sl-crt { display: block; }
@@ -2252,6 +2242,11 @@ body.sl-uredi #sl-ured { display: block; }
 <div id="primka-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪵 Primka</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body">
+    <section class="ng-card">
+      <h3>Označi dio odmah</h3>
+      <div class="sl-dug"><button class="zp-glavno" data-a="brzi">✏ Nacrtaj dio (odjel se prepoznaje sam)</button></div>
+      <p class="uk-izvor">Bez pravljenja projekta: nacrtaj dio na karti, a app ga veže uz odjel/odsjek KML poligona ispod njega (ugrađeni odjeli ili učitani KML). Bez poligona ide u „Bez odjela”.</p>
+    </section>
     <section class="ng-card">
       <h3>Novi projekat primke</h3>
       <select id="pr-izvor" class="sl-izvor"></select>

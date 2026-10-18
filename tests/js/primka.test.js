@@ -69,20 +69,22 @@ t('KML: projekat u ExtendedData usf_primka; uvoz prije običnog KML sloja; Sjeka
   assert.ok(HTML.includes("USFPrimka.izKljuca('k:${id}')") && HTML.includes("_odsAkcija(\\'primka\\')"), 'iz kartice poligona i više odsjeka');
 });
 
-t('posječeno po radnicima: spajanje telefona po id-u (novije pobjeđuje, brisanje putuje), Primka preuzima po radniku', () => {
-  const { slSpojiProjekte } = require('../../static/js/sjekacke.js');
-  const lok = { id: 'p', tPlan: 1, linije: [], posjeceno: [{ id: 'a', radnik: 'Mujo', prst: [kv(44.88, 16.15, 0.002)], ha: 3, t: 10 }] };
-  const dol = { id: 'p', tPlan: 1, linije: [], posjeceno: [{ id: 'a', radnik: 'Mujo', obrisan: true, t: 20 }, { id: 'b', radnik: 'Haso', prst: [kv(44.882, 16.15, 0.002)], ha: 3, t: 15 }] };
-  const r = slSpojiProjekte(lok, dol).p.posjeceno;
-  assert.deepStrictEqual(r.map(d => d.id + (d.obrisan ? '✗' : '')).sort(), ['a✗', 'b']);
-  assert.ok(slSpojiProjekte(lok, { ...dol, posjeceno: [{ id: 'a', radnik: 'Mujo', obrisan: true, t: 5 }] }).p.posjeceno[0].prst, 'starije brisanje ne gazi noviji dio');
-  const sj = R('static/js/sjekacke.js'), pr = R('static/js/primka.js');
-  assert.ok(sj.includes('for (const d of posjeceno(q)) { if (!prst) break; prst = g.oduzmi({ prst }, d.prst); }'), 'već označeno ostaje, novi dio dobija ostatak');
-  assert.ok(sj.includes("localStorage.getItem('usf_sjek_radnik')") && sj.includes("localStorage.getItem('usf_korisnik')"), 'ime iz Postavki / zadnje upisano');
-  assert.ok(sj.includes('posjeceno(pid) {') && pr.includes('USFSjek.posjeceno(sid)') && pr.includes("'Posječeno · '"), 'Primka preuzima dijelove radnika');
-  assert.ok(pr.includes('nacrtaj(opc) {') && pr.includes('if (cb) { cb(ring); return; }'), 'zajednički alat za crtanje');
+t('zajednički alat za crtanje i zbir po radniku', () => {
+  const pr = R('static/js/primka.js');
+  assert.ok(pr.includes('nacrtaj(opc) {') && pr.includes('if (cb) { cb(ring); return; }'));
   const z = P._zbir({ ring: kv(44.88, 16.15, 0.01), dijelovi: [{ prst: [], ha: 2, status: 'primljeno', radnik: 'Mujo', m3: 10 }, { prst: [], ha: 1, status: 'neprimljeno', radnik: 'Mujo' }] });
   assert.deepStrictEqual(z.radnici, { Mujo: { p: 2, n: 1, m3: 10 } });
+  assert.ok(!R('static/js/sjekacke.js').includes('posjeceno'), 'Posječeno po radnicima izbačeno iz Sjekačkih linija');
+});
+
+t('rad bez poligona: dio se veže uz KML odjel ispod njega ili „Bez odjela”; odjel i dio su klikabilni (prednost u pikselima)', () => {
+  const pr = R('static/js/primka.js');
+  assert.ok(HTML.includes('data-a="brzi"') && pr.includes("if (a === 'brzi') { brziDio(); return; }"));
+  assert.ok(pr.includes("l.find(p => !p.ring) || napravi(null, 'Bez odjela', null, true)") && pr.includes('_odjelOznaka(l'), 'naziv odjela iz atributa ODJEL · ODSJEK');
+  assert.ok(pr.includes('pov: pxPov(d.prst)') && pr.includes('pov: pxPov([p.ring]) * 0.98') && pr.includes('_pxPovrsina(r.map('), 'ista mjera kao KML (pikseli), odjel primke ispred istog KML poligona');
+  assert.ok(pr.includes('function popupOdjel(') && pr.includes('USFPrimka.sakrij(') && pr.includes('USFPrimka.obrisi('), 'kartica odjela: označi, otvori, sakrij, obriši');
+  const z = P._zbir({ ring: null, dijelovi: [{ prst: [kv(44.88, 16.15, 0.002)], ha: 1.5, status: 'primljeno' }] });
+  assert.strictEqual(z.odjel, 0); assert.strictEqual(z.primljeno, 1.5); assert.strictEqual(z.neoznaceno, 0);
 });
 
 console.log('\n' + pass + ' prošlo, 0 palo — primka');
