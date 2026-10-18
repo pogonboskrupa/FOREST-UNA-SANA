@@ -27,7 +27,7 @@ T.setAspectBroj(8);
 assert.ok(html.includes('_terrainAspectBroj(4)') && html.includes('_terrainAspectBroj(8)'), 'izbor 4/8 ekspozicija u UI');
 // Šest šumarskih klasa nagiba u procentima (stepeni samo za prikaz): 0–10, 11–20, 21–30, 31–40, 41–50, >50 %.
 const nag = p => terrainColor('slope', p / 100, 0);
-assert.equal(nag(0), '#22c55e'); assert.equal(nag(9.9), '#22c55e');
+assert.equal(nag(0), null); assert.equal(nag(9.9), null, '0–10 % se ne boji'); assert.equal(nag(10), '#84cc16');
 assert.equal(nag(10.1), '#84cc16'); assert.equal(nag(19.9), '#84cc16');
 assert.equal(nag(20.1), '#facc15'); assert.equal(nag(29.9), '#facc15');
 assert.equal(nag(30.1), '#f97316'); assert.equal(nag(39.9), '#f97316');

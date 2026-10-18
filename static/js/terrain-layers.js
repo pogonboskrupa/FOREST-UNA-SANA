@@ -10,12 +10,12 @@ const terrainAspectColors = ['#3b82f6','#06b6d4','#22c55e','#a3e635','#facc15','
 const terrainPct = deg => Math.tan(deg * Math.PI / 180) * 100;
 const terrainDeg = pct => Math.round(Math.atan(pct / 100) * 180 / Math.PI);
 const terrainSlopeClasses = [
-  { max: 10, color: '#22c55e', label: '0–9,99 %', labelSt: '(0–6°)' },
-  { max: 20, color: '#84cc16', label: '10–19,99 %', labelSt: '(6–11°)' },
-  { max: 30, color: '#facc15', label: '20–29,99 %', labelSt: '(11–17°)' },
-  { max: 40, color: '#f97316', label: '30–39,99 %', labelSt: '(17–22°)' },
-  { max: 50, color: '#dc2626', label: '40–49,99 %', labelSt: '(22–27°)' },
-  { max: Infinity, color: '#7e22ce', label: '>50 %', labelSt: '(>27°)' }
+  { max: 10, color: '#22c55e', on: false, label: '0–9,99 %', kratko: '0–10', labelSt: '(0–6°)' },
+  { max: 20, color: '#84cc16', label: '10–19,99 %', kratko: '10–20', labelSt: '(6–11°)' },
+  { max: 30, color: '#facc15', label: '20–29,99 %', kratko: '20–30', labelSt: '(11–17°)' },
+  { max: 40, color: '#f97316', label: '30–39,99 %', kratko: '30–40', labelSt: '(17–22°)' },
+  { max: 50, color: '#dc2626', label: '40–49,99 %', kratko: '40–50', labelSt: '(22–27°)' },
+  { max: Infinity, color: '#7e22ce', label: '>50 %', kratko: '>50', labelSt: '(>27°)' }
 ];
 const terrainAspectLabels = ['S','SI','I','JI','J','JZ','Z','SZ'];
 // Ekspozicija: 8 strana ili samo 4 glavne (S/I/J/Z, sektori po 90°).
@@ -48,6 +48,7 @@ function terrainSlopeNormalize(list) {
     const dispMax = max === Infinity ? null : (max - 1) + ',99';
     return { max, color: /^#[0-9a-f]{6}$/i.test(k.color || '') ? k.color : boje[i], on: k.on !== false,
       label: max === Infinity ? '>' + od + ' %' : od + '–' + dispMax + ' %',
+      kratko: max === Infinity ? '>' + od : od + '–' + max,
       labelSt: max === Infinity ? '(>' + terrainDeg(od) + '°)' : '(' + terrainDeg(od) + '–' + terrainDeg(max) + '°)' };
   });
 }
@@ -132,13 +133,13 @@ if (typeof window !== 'undefined') {
   try{if(localStorage.getItem('usf_terrain_leg_mini')==='1')mapLegend.classList.add('mini');}catch(e){}
   const legend=()=>{
     let rows=[];
-    if(saved.slope)rows.push(...terrainSlopeAktivne.filter(k=>k.on!==false).map(k=>[k.color,k.label+' '+k.labelSt]));
+    if(saved.slope)rows.push(...terrainSlopeAktivne.map(k=>[k.on===false?'transparent':k.color,k.label+' '+k.labelSt+(k.on===false?' — bez boje':'')]));
     if(saved.aspect){const sm=terrainAspectSema();rows.push(...sm.nazivi.map((t,i)=>[sm.boje[i],t]));}
     document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.aspect?'<div>Ravan teren (nagib do 5 %) nema ekspoziciju i ostaje bez boje.</div>':'')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
-    const stavka=(c,t)=>`<span class="tml-item"><i style="background:${c}"></i>${t}</span>`;
+    const stavka=(c,t,isk)=>`<span class="tml-item"><i class="${isk?'bez':''}" style="background:${isk?'transparent':c}"></i>${t}</span>`;
     let html='';
-    const vidljive=terrainSlopeAktivne.filter(k=>k.on!==false);
-    if(saved.slope)html=`<div class="tml-title">Nagib terena (%)</div><div class="tml-row tml-slope" style="grid-template-columns:repeat(${Math.min(5,Math.max(1,vidljive.length))},minmax(0,1fr))">${vidljive.map(k=>stavka(k.color,k.label.replace(' %',''))).join('')}</div>`;
+
+    if(saved.slope)html=`<div class="tml-title">Nagib terena (%)</div><div class="tml-row tml-slope">${terrainSlopeAktivne.map(k=>stavka(k.color,k.kratko||k.label.replace(' %',''),k.on===false)).join('')}</div>`;
     else if(saved.aspect){const sm=terrainAspectSema();html=`<div class="tml-title">Ekspozicija · ravno ≤5 % bez boje</div><div class="tml-row tml-aspect${terrainAspectBroj===4?' a4':''}">${sm.oznake.map((t,i)=>stavka(sm.boje[i],t)).join('')}</div>`;}
     document.querySelectorAll('[data-asp-broj]').forEach(b=>b.classList.toggle('on',Number(b.dataset.aspBroj)===terrainAspectBroj));
     mapLegend.innerHTML=html;
@@ -178,7 +179,7 @@ if (typeof window !== 'undefined') {
     });
     edEl.addEventListener('click',e=>{
       const f=e.target.dataset?.f;if(f!=='add'&&f!=='del'&&f!=='reset')return;
-      if(f==='reset'){primijeni(terrainSlopeClasses.map(k=>({...k,on:true})));return;}
+      if(f==='reset'){primijeni(terrainSlopeClasses.map(k=>({...k})));return;}
       let list=terrainSlopeAktivne.map(k=>({max:k.max,on:k.on,color:k.color}));
       if(f==='del')list.splice(Number(e.target.dataset.i),1);
       else{const kon=list.filter(k=>k.max!==Infinity).map(k=>k.max),zad=kon.length?kon[kon.length-1]:0;
@@ -224,13 +225,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v2.5.1';
+      if (label) label.textContent = 'v2.5.2';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v2.5.1';
+  if (badge) badge.textContent = 'Grmeč Navigator v2.5.2';
 })();
 
 
