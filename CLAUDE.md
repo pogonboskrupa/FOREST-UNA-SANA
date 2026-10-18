@@ -161,6 +161,15 @@
   pri statusu/radniku/lomu/GPS-u). APK prima KML/KMZ iz drugih app-ova (intent VIEW/SEND,
   `launchMode singleTask`, `primiFajl` → `AndroidShare.uzmiDolazni()` → JS `_dolazniFajl`).
   Sačuvana mjerenja NEMAJU bindPopup (zaustavlja dodir) — popup ide kroz `_kartaKlikIzvor`.
+- **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
+- **Primka** (`static/js/primka.js`, `USFPrimka`, panel `primka-panel`): po odjelu dijelovi s PRIMLJENOM / NEPRIMLJENOM robom
+  (drvni sortimenti): `p.dijelovi` [{id, naziv, prst (prstenovi, par/nepar), ha, status, m3, brPrimke, sortimenti, radnik, napomena, datum, izvor, t}],
+  localStorage `usf_primka`. Odjel: KML poligon / površina / projekat sjekačkih (izvori kao Sjekačke) ili crtež; kartica poligona i
+  „Više odsjeka” imaju 🪵 Primka. Dio: crtanje dodirom/GPS-om (`#pr-crt`, isječeno po odjelu `turf.intersect` v6) ili partije iz
+  `USFSjek.partije(pid)` (isti obris kao klik na liniju — `obrisPartije`; + zadnja partija; ključ `izvor` = sjekId:lid, ponovni uvoz
+  zadržava status/m³). Ručni dio ima PREDNOST: preklop se oduzima (`primijeniPrednost`/`oduzmi`, turf.difference) od partija i starijih
+  dijelova — hektari se ne broje dvaput. Pane `primkaPane` z 414, dodir kroz `_kartaKlikIzvor` (popup: status, uredi, obriši).
+  KML izvoz nosi projekat (`ExtendedData usf_primka`); „Učitaj KML” → `USFPrimka.izKml` (otvori/spoji, po dijelu novije `t`). Test `primka.test.js`.
 - **Otvorenost odjela ŠKP-om** (Projektovanje šumskog puta → sekcija, `static/js/otvorenost.js`): poligoni iz
   KML sloja (odjeli/odsjeci), putevi = KML/SHP linije izabranih slojeva + sačuvane trase (`_rdGetSavedRoutes`).
   `otvRaster`: raster udaljenosti od puteva za cijelo područje (ćelija 15–60 m, ≤ ~2,5 M ćelija, propagacija

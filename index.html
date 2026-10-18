@@ -1340,6 +1340,34 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 .uk-grupa h3 small { display: block; font-size: 11px; color: var(--pn-dim); font-weight: 600; margin-top: 2px; }
 #sl-vodic { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid var(--c, #64748b); border-left: 6px solid var(--c, #64748b); border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
 body.sl-vodi #sl-vodic { display: block; }
+#pr-crt { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #38bdf8; border-left: 6px solid #38bdf8; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
+body.pr-crta #pr-crt { display: block; }
+#pr-crt .sl-v-dug button:nth-child(2), #pr-crt .sl-v-dug button:nth-child(4) { flex: 0 0 48px; }
+#pr-crt .sl-v-dug button:first-child { background: #0f172a; border-color: #334155; }
+#pr-crt .sl-v-dug button:nth-child(3) { background: #166534; border-color: #22c55e; }
+.pr-proj-zag { cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.pr-proj-zag b { font-size: 15px; } .pr-proj-zag small { color: var(--pn-dim); font-size: 12px; }
+.pr-proj.akt { border-color: #34d399; }
+.pr-traka { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #334155; margin: 8px 0 4px; }
+.pr-traka i { display: block; height: 100%; }
+.pr-zbir { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--pn-dim); }
+.pr-dijelovi { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.pr-dio { border: 1px solid var(--pn-line); border-left: 5px solid var(--c); border-radius: 12px; padding: 8px 10px; background: rgba(255,255,255,.02); }
+.pr-dio-zag { display: flex; align-items: center; gap: 6px; }
+.pr-dio-zag input { flex: 1; min-width: 0; font-weight: 700; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--pn-line); background: #0b1220; color: var(--pn-txt); }
+.pr-dio-zag span { font-size: 12px; color: var(--pn-dim); white-space: nowrap; }
+.pr-dio-zag button { flex: none; width: 36px; height: 34px; border-radius: 8px; border: 1px solid var(--pn-line); background: transparent; color: var(--pn-txt); }
+.pr-dio-zag button.opasno { color: #fca5a5; }
+.pr-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.pr-seg button { min-height: 38px; border-radius: 10px; border: 1px solid var(--pn-line); background: #102019; color: #9db0a7; font-weight: 800; font-size: 13px; }
+.pr-seg button.on { background: #14532d; border-color: #22c55e; color: #dcfce7; }
+.pr-seg button.on.n { background: #7f1d1d; border-color: #ef4444; color: #fee2e2; }
+.pr-polja { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pr-polja label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--pn-dim); }
+.pr-polja label.pr-sir { grid-column: 1 / -1; }
+.pr-polja label { min-width: 0; }
+.pr-polja input { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--pn-line); background: #0b1220; color: var(--pn-txt); font-size: 13px; min-width: 0; }
+.pr-dat { display: block; margin-top: 6px; color: #86efac; font-size: 11px; }
 #sl-crt { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #fde68a; border-left: 6px solid #fde68a; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
 body.sl-crta #sl-crt { display: block; }
 #sl-ured { display: none; position: fixed; left: 10px; right: 10px; top: 76px; z-index: 640; background: rgba(10,24,18,.95); border: 1px solid #38bdf8; border-left: 6px solid #38bdf8; border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #e2e8f0; }
@@ -1720,6 +1748,21 @@ body.sl-uredi #sl-ured { display: block; }
       </button>
     </section>
     <section class="meni-grp">
+      <h3>Realizacija izvedbenih projekata</h3>
+      <button type="button" class="meni-card" id="mc-primka" onclick="USFPrimka.otvori()" style="--mc:#34d399">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="15.5" r="3.5"/><circle cx="17.5" cy="15.5" r="3.5"/><circle cx="12" cy="8" r="3.5"/><path d="M6.5 15.5h.01M17.5 15.5h.01M12 8h.01"/></svg></span>
+        <span class="mc-txt"><b>Primka</b><span>Dijelovi odjela s primljenom i neprimljenom robom</span></span>
+        <span class="mc-stat" id="mc-stat-primka"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" class="meni-card" id="mc-sjekacke" onclick="USFSjek.otvori()" style="--mc:#f59e0b">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 9 4M10 20l5-16M16 20l4-12"/><path d="M3 20h18"/></svg></span>
+        <span class="mc-txt"><b>Sjekačke linije</b><span>Linije uz padinu na 2 visine stabla, GPS vodič</span></span>
+        <span class="mc-stat" id="mc-stat-sjekacke"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </section>
+    <section class="meni-grp">
       <h3>Planiranje</h3>
       <button type="button" class="meni-card" id="mc-put" onclick="openPutSection()" style="--mc:#60a5fa">
         <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 5 21M15.5 3 19 21"/><path d="M12 4v2.5M12 10.5v3M12 17.5v3"/></svg></span>
@@ -1731,12 +1774,6 @@ body.sl-uredi #sl-ured { display: block; }
         <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.6 0-1-.9-1.4-.9-2.4 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.7 17 3 12 3z"/><circle cx="7.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.3" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.2" cy="7.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>
         <span class="mc-txt"><b>Tematska karta</b><span>Bojenje odjela/odsjeka po atributu (.gpkg)</span></span>
         <span class="mc-stat" id="mc-stat-tematska"></span>
-        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-      </button>
-      <button type="button" class="meni-card" id="mc-sjekacke" onclick="USFSjek.otvori()" style="--mc:#f59e0b">
-        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 9 4M10 20l5-16M16 20l4-12"/><path d="M3 20h18"/></svg></span>
-        <span class="mc-txt"><b>Sjekačke linije</b><span>Linije uz padinu na 2 visine stabla, GPS vodič</span></span>
-        <span class="mc-stat" id="mc-stat-sjekacke"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
     </section>
@@ -2200,6 +2237,18 @@ body.sl-uredi #sl-ured { display: block; }
 </div>
 
 <!-- Sjekačke linije -->
+<div id="primka-panel" class="usf-panel">
+  <div class="up-hdr"><h2>🪵 Primka</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
+  <div class="up-body">
+    <section class="ng-card">
+      <h3>Novi projekat primke</h3>
+      <select id="pr-izvor" class="sl-izvor"></select>
+      <div class="sl-dug"><button class="zp-glavno" data-a="novi-izvor">Iz izabranog poligona</button><button data-a="novi-crtez">✏ Nacrtaj granicu</button></div>
+      <p class="uk-izvor">Odjel iz KML-a, sačuvane površine ili projekta sjekačkih linija (tada se odmah preuzimaju partije s radnicima). Dijelovi se označavaju kao <b style="color:#22c55e">primljena</b> ili <b style="color:#ef4444">neprimljena</b> roba.</p>
+    </section>
+    <div id="pr-lista"></div>
+  </div>
+</div>
 <div id="sjekacke-panel" class="usf-panel">
   <div class="up-hdr"><h2><span data-ik="pila" data-ikv="22"></span> Sjekačke linije</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body">
@@ -4828,6 +4877,7 @@ function _kmlPopupHtml(layer) {
   const dugmad = [];
   if (layer._kmlIsPolygon && typeof npIzKml === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzKml(${id})`, v: 'glavno' });
   if (layer._kmlIsPolygon && window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('k:${id}')` });
+  if (layer._kmlIsPolygon && window.USFPrimka) dugmad.push({ t: '🪵 Primka', on: `USFPrimka.izKljuca('k:${id}')` });
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
   if (layer._kmlIsPolygon) dugmad.push({ t: '☑ Više odsjeka', on: `_odsPocni(${id})` });
   if (layer._kmlIsPolygon && typeof _odjelSlika === 'function') dugmad.push({ t: '🖼 Sačuvaj sliku', on: `_odjelSlika(${id})` });
@@ -5175,6 +5225,7 @@ function _kmlLoadFile(file) {
     }
     // KML s ugrađenim projektom sjekačkih linija (dijeljen s drugog telefona) → živi projekat
     try { if (window.USFSjek && USFSjek.izKml && await USFSjek.izKml(doc)) return; } catch(e) { showToast('⚠ Projekat iz KML-a: ' + e.message); }
+    try { if (window.USFPrimka && USFPrimka.izKml && await USFPrimka.izKml(doc)) return; } catch(e) { showToast('⚠ Primka iz KML-a: ' + e.message); }
     try {
       const z = _kmlZadrziStil && _kmlZadrziStil.ime === file.name ? _kmlZadrziStil : null; _kmlZadrziStil = null;
       const col = z ? z.col : KCOLS[kmlCI % KCOLS.length]; kmlCI++;
@@ -5879,7 +5930,7 @@ function _odsPocni(id) {
     bar = document.createElement('div'); bar.id = 'ods-bar';
     bar.innerHTML = '<div class="kub-txt"><b id="ods-naslov"></b><small id="ods-info">Dodiruj odsjeke na karti da ih dodaš ili ukloniš</small></div>' +
       '<div class="kub-akc"><button onclick="_odsCijeliOdjel()">☑ Cijeli odjel</button><button onclick="_odsKraj()">✕</button></div>' +
-      '<div class="kub-akc"><button onclick="_odsAkcija(\'nagib\')">📐 Nagib</button><button onclick="_odsAkcija(\'sjek\')">🪓 Sjekačke</button><button class="glavno" onclick="_odsAkcija(\'izvj\')">📊 Izvještaj</button></div>';
+      '<div class="kub-akc"><button onclick="_odsAkcija(\'nagib\')">📐 Nagib</button><button onclick="_odsAkcija(\'sjek\')">🪓 Sjekačke</button><button onclick="_odsAkcija(\'primka\')">🪵 Primka</button><button class="glavno" onclick="_odsAkcija(\'izvj\')">📊 Izvještaj</button></div>';
     document.body.appendChild(bar);
   }
   bar.classList.add('show');
@@ -5944,6 +5995,7 @@ function _odsAkcija(sta) {
   _odsKraj();
   if (sta === 'nagib') { if (typeof npIzPrstena === 'function') npIzPrstena(s.ring, s.ime); }
   else if (sta === 'sjek') { if (window.USFSjek && USFSjek.izPrstena) USFSjek.izPrstena(s.ring, s.ime); }
+  else if (sta === 'primka') { if (window.USFPrimka) USFPrimka.izPrstena(s.ring, s.ime); }
   else if (typeof _odjelIzvjestajGj === 'function') _odjelIzvjestajGj(s.gj, s.ime, s.izvor);
 }
 _kmlRestore();
@@ -10756,7 +10808,7 @@ _temRestore();
 // GLAVNA NAVIGACIJA — Mapa / Karte / Meni / Postavke
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel'];
+const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel','primka-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -11080,6 +11132,7 @@ window.addEventListener('load', () => {
 <script src="static/js/vegetacija.js"></script>
 <script src="static/js/ikone.js"></script>
 <script src="static/js/sjekacke.js"></script>
+<script src="static/js/primka.js"></script>
 <script src="static/js/otvorenost.js"></script>
 <script src="static/js/slika-karte.js"></script>
 </body>

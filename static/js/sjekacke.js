@@ -1192,15 +1192,36 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { slIzoDij
     }
     return { spajaj: true, d: [{ ring: p.ring, linije: sortiraj(p.linije) }] };
   }
+  // Obris partije linije (isti put kao prikaz na klik) — koristi ga i Primka (USFSjek.partije).
+  function obrisPartije(p, lin, D, dd, mreze) {
+    const prst = [];
+    if (D.alt) (lin.partija || []).forEach(([i, t]) => { if (dd[i]) prst.push(...slTrakaObris(dd[i].ring, dd[i].geos, t)); });
+    else D.d.forEach((d, di) => d.linije.forEach((x, j) => { if (x.id === lin.id) prst.push(...slPartija(dd, di, j, p.brojanje === 'D', D.spajaj, mreze)); }));
+    return prst;
+  }
+  // Sve partije projekta: [{lid, oznaka, prst, ha, radnik, status}] + zadnja partija (zadnja linija → granica, samo jedan dio).
+  function partije(pid) {
+    const p = nadji(pid); if (!p) return [];
+    const D = dijeloviProjekta(p), dd = D.d.map(d => ({ ring: d.ring, geos: d.linije.map(slGeo) })), mreze = [];
+    const out = p.linije.filter(x => !x.dio).sort((a, b) => a.br - b.br).map(lin => {
+      let prst = []; try { prst = obrisPartije(p, lin, D, dd, mreze); } catch (e) {}
+      return { lid: lin.id, oznaka: (lin.br > 1 ? 'L' + (lin.br - 1) + '→' : 'granica→') + oznaka(lin), prst, ha: lin.ha, radnik: lin.radnik || '', status: lin.status };
+    }).filter(x => x.prst.length);
+    if (!D.alt && D.d.length === 1 && dd[0].geos.length) try {
+      const prst = slTrakaObris(dd[0].ring, dd[0].geos, p.brojanje === 'D' ? 0 : dd[0].geos.length);
+      const zad = p.linije.filter(x => !x.dio).reduce((m, x) => (x.br > m.br ? x : m), { br: 0 });
+      if (prst.length) out.push({ lid: 'ostatak', oznaka: oznaka(zad) + '→granica', prst, ha: p.ostatakHa, radnik: '', status: 'ne' });
+    } catch (e) {}
+    return out;
+  }
   const partijaGrp = L.layerGroup().addTo(map);
   function prikaziPartiju(p, lin) {
     partijaGrp.clearLayers(); partijaT = Date.now();
     if (lin.dio) return;
     try {
-      const D = dijeloviProjekta(p), c = (STATUS[lin.status] || STATUS.ne).c, dd = D.d.map(d => ({ ring: d.ring, geos: d.linije.map(slGeo) })), prst = [];
+      const D = dijeloviProjekta(p), c = (STATUS[lin.status] || STATUS.ne).c, dd = D.d.map(d => ({ ring: d.ring, geos: d.linije.map(slGeo) }));
       // padine: trake partije izračunate u spojiPadine ([padina, traka]), i preko granice padina
-      if (D.alt) (lin.partija || []).forEach(([i, t]) => { if (dd[i]) prst.push(...slTrakaObris(dd[i].ring, dd[i].geos, t)); });
-      else D.d.forEach((d, di) => d.linije.forEach((x, j) => { if (x.id === lin.id) prst.push(...slPartija(dd, di, j, p.brojanje === 'D', D.spajaj)); }));
+      const prst = obrisPartije(p, lin, D, dd);
       if (prst.length) L.polygon(prst, { pane: 'sjekackePane', color: c, weight: 2, fillColor: c, fillOpacity: 0.28, fillRule: 'evenodd', interactive: false }).addTo(partijaGrp);
     } catch (e) {}
   }
@@ -1682,7 +1703,8 @@ ${folderi}
     izIzvora() { const k = document.getElementById('sl-izvor')?.value, s = izvori().find(x => x.k === k); if (!s) { showToast('Izaberi poligon s liste'); return; } napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
     izPrstena(ring, naziv) { map.closePopup(); if (!Array.isArray(ring) || ring.length < 3) return; _openStubPanel('sjekacke-panel', 'meni'); napravi(ring, naziv || 'Spojeni odsjeci'); },
     izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { showToast('⚠ Poligon nije pronađen'); return; } _openStubPanel('sjekacke-panel', 'meni'); napravi(s.ring(), s.t.replace(/^\S+\s/, '')); },
-    vodi, vodicKraj, zavrsiLiniju, crtPocni, izKml,
+    vodi, vodicKraj, zavrsiLiniju, crtPocni, izKml, partije,
+    projekti: () => citaj().map(p => ({ id: p.id, naziv: p.naziv, ring: p.ring, linija: p.linije.filter(x => !x.dio).length })),
     posaljiLiniju(pid, lid) { const p = nadji(pid); if (!p) return; map.closePopup(); izvozKml(p, false, lid); },
     snimanje() { if (vodic) { vodic.snima = !vodic.snima; vodicOsvjezi(); } },
     prati() { if (vodic) { vodic.prati = !vodic.prati; vodicOsvjezi(); } },

@@ -224,11 +224,11 @@ t('GPS vodič: bočni otklon i položaj duž linije gledano uzbrdo', () => {
   assert.ok(Math.abs(v.bocno + 7) < 0.01 && v.duz < 0, 'zapadno = lijevo, ispod dna');
 });
 
-t('UI: Planiranje ispod Tematske karte, panel, vodič, dijeljenje KML-om', () => {
+t('UI: Realizacija izvedbenih projekata (ispod Primke), panel, vodič, dijeljenje KML-om', () => {
   const H = R('index.html');
-  const i = H.indexOf('id="mc-tematska"'), j = H.indexOf('id="mc-sjekacke"'), k = H.indexOf('<h3>Podaci i karte</h3>');
-  assert.ok(i > 0 && j > i && j < k, 'kartica odmah ispod Tematske karte');
-  ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', '.sl-strel', '.sl-zona', "'sjekacke-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
+  const i = H.indexOf('<h3>Realizacija izvedbenih projekata</h3>'), pr = H.indexOf('id="mc-primka"'), j = H.indexOf('id="mc-sjekacke"'), k = H.indexOf('<h3>Planiranje</h3>');
+  assert.ok(i > 0 && pr > i && j > pr && j < k, 'kartica ispod Primke, prije Planiranja');
+  ['id="sjekacke-panel"', 'id="sl-vodic"', 'id="sl-ured"', '.sl-strel', '.sl-zona', "'sjekacke-panel','primka-panel']", '<script src="static/js/sjekacke.js">', "USFSjek.izKljuca('m:${m.id}')", "USFSjek.izKljuca('k:${id}')"].forEach(x => assert.ok(H.includes(x), x));
   assert.ok(H.indexOf('<script src="static/js/nagib-poligon.js">') < H.indexOf('<script src="static/js/sjekacke.js">'), 'DEM pomoćne funkcije prije');
   const js = R('static/js/sjekacke.js');
   assert.ok(js.includes("style.pointerEvents = 'none'") && js.includes('_kartaKlikIzvor') && js.includes('name="usf_oznaka"'), 'KML s natpisima linija');
