@@ -33,10 +33,11 @@ t('Java: paralelni čitači i zapamćena orijentacija Y', () => {
 
 t('JS: sloj bez sinhronog mosta po pločici, puni se na kraju zumiranja, rezerva samo kad most ima pločicu', () => {
   const sloj = H.slice(H.indexOf('const _NativeSqlTileLayer'), H.indexOf('function _nativeSqlmapAdd('));
-  assert.ok(!sloj.includes('AndroidMbtiles.getTile(') && !/getContext\('2d'/.test(sloj));
-  assert.ok(sloj.includes('img.src = this.getTileUrl(coords)') && sloj.includes("img.decoding = 'async'"));
+  assert.ok(!sloj.includes('AndroidMbtiles.getTile(') && !/getImageData|putImageData/.test(sloj));
+  assert.ok(sloj.includes('const url = this.getTileUrl(coords)') && sloj.includes('img.src = url;') && sloj.includes("img.decoding = 'async'"));
   const most = sloj.slice(sloj.indexOf('const most'), sloj.indexOf('if (this._mostSamo)'));
-  assert.ok(most.indexOf("if (!uri) { done(null, img); return; }") < most.indexOf('this._mostSamo = true'), '204 ne prebacuje na most');
+  assert.ok(most.indexOf("if (!uri) { this._nNadomjesti(img, coords, done); return; }") < most.indexOf('this._mostSamo = true'), '204 ne prebacuje na most');
+  assert.ok(sloj.includes('_nNadomjesti') && sloj.includes('?r='), 'ponovni pokušaj + roditeljska pločica umjesto rupe');
   assert.ok(tijelo(H, 'function _nativeSqlmapAdd(info)').includes('updateWhenZooming:false'));
 });
 console.log(`  ${pass} testova prošlo`);

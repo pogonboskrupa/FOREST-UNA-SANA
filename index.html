@@ -6269,27 +6269,52 @@ function _nativeSqlmapRecords() {
 // base64 po pločici (stari canvas put je pri zumiranju blokirao app). Rezerva: ako URL put ne
 // radi (npr. stari SW na telefonu), sloj prelazi na most AndroidMbtiles.getTileDataUri.
 const _NATIVE_TILE_URL = 'https://appassets.androidplatform.net/mbtiles/';
+// Pločica koje nema ili čitanje nije uspjelo (zauzeta baza pri brzom zumiranju): jedan ponovni pokušaj, pa
+// roditeljska pločica (z−1, z−2) isječena i uvećana — inače pri zumiranju ostane „rupa” u karti.
+const _PRAZNA_PLOCICA = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 const _NativeSqlTileLayer = L.TileLayer.extend({
+  _nUrl(z, x, y) { return _NATIVE_TILE_URL + encodeURIComponent(this.options.nativeId) + '/' + z + '/' + x + '/' + y; },
+  _nRoditelj(c, k) {
+    return new Promise(res => {
+      const a = new Image(); a.onload = () => res(a); a.onerror = () => res(null);
+      a.src = this._nUrl(c.z - k, c.x >> k, c.y >> k);
+    });
+  },
+  async _nNadomjesti(img, c, done) {
+    const mn = Number.isFinite(this.options.minNativeZoom) ? this.options.minNativeZoom : 0;
+    try {
+      for (let k = 1; k <= 3 && c.z - k >= Math.max(0, mn); k++) {
+        const a = await this._nRoditelj(c, k); if (!a) continue;
+        const n = 1 << k, sz = 256 / n, cv = document.createElement('canvas'); cv.width = cv.height = 256;
+        cv.getContext('2d').drawImage(a, (c.x % n) * sz, (c.y % n) * sz, sz, sz, 0, 0, 256, 256);
+        img.onload = img.onerror = null; img.src = cv.toDataURL('image/png'); done(null, img); return;
+      }
+    } catch (e) {}
+    img.onload = img.onerror = null; img.src = _PRAZNA_PLOCICA; done(null, img);
+  },
   createTile(coords, done) {
     const img = document.createElement('img');
     img.alt = ''; img.setAttribute('role', 'presentation'); img.decoding = 'async';
     const most = () => {
       let uri = '';
       try { if (_nativeSqlmapAvailable() && typeof AndroidMbtiles.getTileDataUri === 'function') uri = AndroidMbtiles.getTileDataUri(this.options.nativeId, coords.z, coords.x, coords.y); } catch(e) {}
-      if (!uri) { done(null, img); return; } // pločica ne postoji
+      if (!uri) { this._nNadomjesti(img, coords, done); return; } // pločica ne postoji
       this._mostSamo = true; // most je dao pločicu koju URL nije — URL put ne radi na ovom telefonu
       img.onload = () => done(null, img); img.onerror = () => done(null, img);
       img.src = uri;
     };
     if (this._mostSamo) { setTimeout(most, 0); return img; }
+    const url = this.getTileUrl(coords);
+    let pokusaj = 0;
     img.onload = () => { this._urlRadi = true; done(null, img); };
     img.onerror = () => {
       // 204 (nema pločice) i kvar URL puta izgledaju isto: dok nijedna pločica nije stigla
       // URL-om, pitaj most — ako on ima pločicu, sloj trajno prelazi na most.
-      if (this._urlRadi) { done(null, img); return; }
-      most();
+      if (!this._urlRadi) { most(); return; }
+      if (pokusaj++ < 1) { setTimeout(() => { img.src = url + '?r=' + pokusaj; }, 400); return; }
+      this._nNadomjesti(img, coords, done);
     };
-    img.src = this.getTileUrl(coords);
+    img.src = url;
     return img;
   }
 });
