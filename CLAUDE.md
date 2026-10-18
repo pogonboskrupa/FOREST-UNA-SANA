@@ -164,8 +164,8 @@
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka** (`static/js/primka.js`, `USFPrimka`, panel `primka-panel`): po odjelu dijelovi s PRIMLJENOM / NEPRIMLJENOM robom
   (drvni sortimenti): `p.dijelovi` [{id, naziv, prst (prstenovi, par/nepar), ha, status, m3, brPrimke, sortimenti, radnik, napomena, datum, izvor, t}],
-  localStorage `usf_primka`. Odjel: KML poligon / površina / projekat sjekačkih (izvori kao Sjekačke) ili crtež; kartica poligona i
-  „Više odsjeka” imaju 🪵 Primka. Dio: crtanje dodirom/GPS-om (`#pr-crt`, isječeno po odjelu `turf.intersect` v6) ili partije iz
+  localStorage `usf_primka`. Granica odjela je OPCIONALNA: samo „✏ Nacrtaj granice odjela” — izbor iz KML poligona / mjerenja / sjekačkih
+  (padajuća lista, 🪵 Primka u kartici poligona i u „Više odsjeka”) je UKLONJEN na zahtjev (test to provjerava). Dio: crtanje dodirom/GPS-om (`#pr-crt`, isječeno po odjelu `turf.intersect` v6) ili partije iz
   `USFSjek.partije(pid)` (isti obris kao klik na liniju — `obrisPartije`; + zadnja partija; ključ `izvor` = sjekId:lid, ponovni uvoz
   zadržava status/m³). Ručni dio ima PREDNOST: preklop se oduzima (`primijeniPrednost`/`oduzmi`, turf.difference) od partija i starijih
   dijelova — hektari se ne broje dvaput. Pane `primkaPane` z 414, dodir kroz `_kartaKlikIzvor` (popup: status, uredi, obriši).

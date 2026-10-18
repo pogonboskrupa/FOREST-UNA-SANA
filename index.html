@@ -2248,10 +2248,9 @@ body.sl-uredi #sl-ured { display: block; }
       <p class="uk-izvor">Bez pravljenja projekta: nacrtaj dio na karti, a app ga veže uz odjel/odsjek KML poligona ispod njega (ugrađeni odjeli ili učitani KML). Bez poligona ide u „Bez odjela”.</p>
     </section>
     <section class="ng-card">
-      <h3>Novi projekat primke</h3>
-      <select id="pr-izvor" class="sl-izvor"></select>
-      <div class="sl-dug"><button class="zp-glavno" data-a="novi-izvor">Iz izabranog poligona</button><button data-a="novi-crtez">✏ Nacrtaj granicu</button></div>
-      <p class="uk-izvor">Odjel iz KML-a, sačuvane površine ili projekta sjekačkih linija (tada se odmah preuzimaju partije s radnicima). Dijelovi se označavaju kao <b style="color:#22c55e">primljena</b> ili <b style="color:#ef4444">neprimljena</b> roba.</p>
+      <h3>Granica odjela <small>opciono</small></h3>
+      <div class="sl-dug"><button data-a="novi-crtez">✏ Nacrtaj granice odjela</button></div>
+      <p class="uk-izvor">Nije obavezno — dijelovi se mogu označavati i bez granice. Ako je nacrtaš, dijelovi se sijeku po njoj, a odjel ima zbir i karticu. Dijelovi se označavaju kao <b style="color:#22c55e">primljena</b> ili <b style="color:#ef4444">neprimljena</b> roba.</p>
     </section>
     <div id="pr-lista"></div>
   </div>
@@ -4884,7 +4883,6 @@ function _kmlPopupHtml(layer) {
   const dugmad = [];
   if (layer._kmlIsPolygon && typeof npIzKml === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzKml(${id})`, v: 'glavno' });
   if (layer._kmlIsPolygon && window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('k:${id}')` });
-  if (layer._kmlIsPolygon && window.USFPrimka) dugmad.push({ t: '🪵 Primka', on: `USFPrimka.izKljuca('k:${id}')` });
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
   if (layer._kmlIsPolygon) dugmad.push({ t: '☑ Više odsjeka', on: `_odsPocni(${id})` });
   if (layer._kmlIsPolygon && typeof _odjelSlika === 'function') dugmad.push({ t: '🖼 Sačuvaj sliku', on: `_odjelSlika(${id})` });
@@ -5937,7 +5935,7 @@ function _odsPocni(id) {
     bar = document.createElement('div'); bar.id = 'ods-bar';
     bar.innerHTML = '<div class="kub-txt"><b id="ods-naslov"></b><small id="ods-info">Dodiruj odsjeke na karti da ih dodaš ili ukloniš</small></div>' +
       '<div class="kub-akc"><button onclick="_odsCijeliOdjel()">☑ Cijeli odjel</button><button onclick="_odsKraj()">✕</button></div>' +
-      '<div class="kub-akc"><button onclick="_odsAkcija(\'nagib\')">📐 Nagib</button><button onclick="_odsAkcija(\'sjek\')">🪓 Sjekačke</button><button onclick="_odsAkcija(\'primka\')">🪵 Primka</button><button class="glavno" onclick="_odsAkcija(\'izvj\')">📊 Izvještaj</button></div>';
+      '<div class="kub-akc"><button onclick="_odsAkcija(\'nagib\')">📐 Nagib</button><button onclick="_odsAkcija(\'sjek\')">🪓 Sjekačke</button><button class="glavno" onclick="_odsAkcija(\'izvj\')">📊 Izvještaj</button></div>';
     document.body.appendChild(bar);
   }
   bar.classList.add('show');
@@ -6002,7 +6000,6 @@ function _odsAkcija(sta) {
   _odsKraj();
   if (sta === 'nagib') { if (typeof npIzPrstena === 'function') npIzPrstena(s.ring, s.ime); }
   else if (sta === 'sjek') { if (window.USFSjek && USFSjek.izPrstena) USFSjek.izPrstena(s.ring, s.ime); }
-  else if (sta === 'primka') { if (window.USFPrimka) USFPrimka.izPrstena(s.ring, s.ime); }
   else if (typeof _odjelIzvjestajGj === 'function') _odjelIzvjestajGj(s.gj, s.ime, s.izvor);
 }
 _kmlRestore();

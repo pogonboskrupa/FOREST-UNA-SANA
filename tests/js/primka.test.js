@@ -66,7 +66,10 @@ t('KML: projekat u ExtendedData usf_primka; uvoz prije običnog KML sloja; Sjeka
   assert.ok(/USFSjek = \{[\s\S]*partije,[\s\S]*projekti:/.test(sj), 'USFSjek.partije / projekti');
   assert.ok(sj.includes('function obrisPartije(') && sj.includes('const prst = obrisPartije(p, lin, D, dd);'), 'isti obris kao prikaz partije na klik');
   assert.ok(pr.includes("map.createPane('primkaPane')") && pr.includes("style.pointerEvents = 'none'") && pr.includes('_kartaKlikIzvor'));
-  assert.ok(HTML.includes("USFPrimka.izKljuca('k:${id}')") && HTML.includes("_odsAkcija(\\'primka\\')"), 'iz kartice poligona i više odsjeka');
+  // izbor iz KML poligona / mjerenja / sjekačkih je u potpunosti uklonjen — ostaje samo opciono crtanje granice
+  assert.ok(!HTML.includes('USFPrimka.izKljuca') && !HTML.includes("_odsAkcija(\\'primka\\')") && !HTML.includes('USFPrimka.izPrstena') && !HTML.includes('id="pr-izvor"') && !HTML.includes('data-a="novi-izvor"'), 'nema izbora iz poligona');
+  assert.ok(!/izvori\(|izIzvora|izKljuca|izPrstena/.test(R('static/js/primka.js')), 'nema koda za izbor iz poligona');
+  assert.ok(HTML.includes('data-a="novi-crtez">✏ Nacrtaj granice odjela</button>') && R('static/js/primka.js').includes("if (a === 'novi-crtez') { crtPocni('odjel'); return; }"), 'opciono crtanje granice');
 });
 
 t('zajednički alat za crtanje i zbir po radniku', () => {

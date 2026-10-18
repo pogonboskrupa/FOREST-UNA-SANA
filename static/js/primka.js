@@ -276,25 +276,6 @@
   }
   const obuhvat = p => p.ring || (p.dijelovi || []).flatMap(d => d.prst.flat());
   function zoomProjekat(p) { if (typeof switchMainTab === 'function') switchMainTab('karta'); try { map.fitBounds(L.latLngBounds(obuhvat(p)), { padding: [30, 30], maxZoom: 17 }); } catch (e) {} }
-  // Izvori kao u Sjekačkim linijama: sačuvane površine, KML poligoni, projekti sjekačkih linija.
-  function izvori() {
-    const out = [];
-    (typeof _msrRegistry !== 'undefined' ? _msrRegistry : []).filter(m => m.mode === 'area' && m.pts && m.pts.length >= 3)
-      .forEach(m => out.push({ k: 'm:' + m.id, t: '📏 ' + (m.name || 'Površina'), ime: m.name || 'Površina', ring: () => m.pts.map(q => [q.lat, q.lng]) }));
-    (typeof kmlLs !== 'undefined' ? kmlLs : []).forEach(k => k && k.grp && k.grp.eachLayer(function walk(l) {
-      if (l.eachLayer && !l.getLatLngs) { l.eachLayer(walk); return; }
-      if (!l._kmlIsPolygon) return;
-      out.push({ k: 'k:' + L.stamp(l), t: '🗺 ' + (l._kmlName || 'KML poligon'), ime: l._kmlName || 'KML poligon', ring: () => { let ll = l.getLatLngs(); while (Array.isArray(ll[0])) ll = ll[0]; return ll.map(q => [q.lat, q.lng]); } });
-    }));
-    if (window.USFSjek && USFSjek.projekti) USFSjek.projekti().forEach(s => out.push({ k: 's:' + s.id, t: '🪓 ' + s.naziv + ' (sjekačke)', ime: s.naziv, ring: () => s.ring, sjekId: s.id }));
-    return out;
-  }
-  function izIzvora() {
-    const k = document.getElementById('pr-izvor')?.value, s = izvori().find(x => x.k === k);
-    if (!s) { toast('Izaberi poligon s liste'); return; }
-    const p = napravi(s.ring(), s.ime, s.sjekId ? { sjekId: s.sjekId } : null);
-    if (s.sjekId) uvezPartije(p.id, s.sjekId);
-  }
   // Partije sjekačkih linija postaju dijelovi (zadano neprimljeno). Ponovni uvoz osvježi oblik i
   // radnika, a status, m³ i primka ostaju (ključ = linija).
   async function uvezPartije(pid, sjekId) {
@@ -379,12 +360,6 @@ ${dij}
 
   // ── Panel ──
   function otvoriPanel() { if (typeof _openStubPanel === 'function') _openStubPanel('primka-panel', 'meni'); }
-  function izvoriUi() {
-    const sel = document.getElementById('pr-izvor'); if (!sel) return;
-    const l = izvori(), v = sel.value;
-    sel.innerHTML = l.length ? l.map(s => `<option value="${esc(s.k)}">${esc(s.t)}</option>`).join('') : '<option value="">— nema poligona (učitaj KML ili nacrtaj) —</option>';
-    if (l.some(s => s.k === v)) sel.value = v;
-  }
   function trakaHtml(z) {
     const uk = Math.max(z.odjel, z.primljeno + z.neprimljeno) || 1, w = v => (100 * v / uk).toFixed(1) + '%';
     return `<div class="pr-traka"><i style="width:${w(z.primljeno)};background:${STATUS.primljeno.c}"></i><i style="width:${w(z.neprimljeno)};background:${STATUS.neprimljeno.c}"></i></div>
@@ -406,7 +381,6 @@ ${dij}
     </div>`;
   }
   function render() {
-    izvoriUi();
     const el = document.getElementById('pr-lista'); if (!el) return;
     const l = citaj();
     if (aktivni && !l.some(p => p.id === aktivni)) aktivni = null;
@@ -440,7 +414,6 @@ ${dij}
     const a = el.dataset.a, p = el.dataset.id ? nadji(el.dataset.id) : null;
     if (a === 'novi-crtez') { crtPocni('odjel'); return; }
     if (a === 'brzi') { brziDio(); return; }
-    if (a === 'novi-izvor') { izIzvora(); return; }
     if (!p) return;
     if (a === 'aktiviraj') { aktivni = aktivni === p.id ? null : p.id; crtaj(); render(); return; }
     if (a === 'crtaj-dio') { crtPocni('dio', p.id); return; }
@@ -462,8 +435,6 @@ ${dij}
     sakrij(pid) { map.closePopup(); const p = nadji(pid); if (!p) return; p.vidljiv = false; sacuvaj(p); crtaj(); render(); toast('🙈 „' + p.naziv + '” sakriven — Primka → Prikaži'); },
     obrisi(pid) { const p = nadji(pid); if (!p || !confirm('Obrisati primku „' + p.naziv + '” sa svim dijelovima?')) return; map.closePopup(); pisi(citaj().filter(x => x.id !== pid)); crtaj(); render(); },
     _odjelPod: odjelPod,
-    izKljuca(k) { map.closePopup(); const s = izvori().find(x => x.k === k); if (!s) { toast('⚠ Poligon nije pronađen'); return; } napravi(s.ring(), s.ime); },
-    izPrstena(ring, naziv) { if (typeof map !== 'undefined') map.closePopup(); if (Array.isArray(ring) && ring.length >= 3) napravi(ring, naziv || 'Odjel'); },
     status(pid, did, s) { map.closePopup(); postaviStatus(pid, did, s); },
     uredi(pid, did) { map.closePopup(); aktivni = pid; otvoriPanel(); render(); setTimeout(() => document.getElementById('pr-dio-' + did)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60); },
     obrisiDio(pid, did) { const p = nadji(pid); if (!p || !confirm('Obrisati ovaj dio?')) return; map.closePopup(); p.dijelovi = (p.dijelovi || []).filter(x => x.id !== did); sacuvaj(p); crtaj(); render(); },
