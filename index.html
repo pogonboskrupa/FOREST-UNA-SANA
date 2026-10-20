@@ -623,6 +623,13 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .meni-set svg { grid-row:1/3; width:22px; height:22px; color:#94a3b8; }
 .meni-set span { font-size:13.5px; font-weight:700; color:var(--text); }
 .meni-set small { font-size:11px; color:#7b8f86; }
+.meni-pilule { display:flex; gap:6px; margin:0 0 10px; } .meni-pilule span { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid #1f3b2d; background:#0d1a14; color:#94a3b8; font-size:11.5px; font-weight:700; }
+.meni-pilule i { width:8px; height:8px; border-radius:50%; background:#475569; } .meni-pilule span.on { color:#dcfce7; border-color:#22c55e; } .meni-pilule span.on i { background:#22c55e; box-shadow:0 0 6px #22c55e; }
+.meni-trazi { width:100%; box-sizing:border-box; margin:0 0 12px; padding:11px 13px; border-radius:12px; border:1px solid var(--line,#1f3b2d); background:#0b1a13; color:#e2e8f0; font-size:14px; }
+.meni-nedavno { display:flex; gap:6px; align-items:center; overflow-x:auto; margin:0 0 14px; scrollbar-width:none; } .meni-nedavno::-webkit-scrollbar { display:none; }
+.meni-nedavno small { flex:none; color:#6ee7b7; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.meni-nedavno button { flex:none; display:inline-flex; align-items:center; gap:7px; padding:6px 12px 6px 7px; border-radius:999px; border:1px solid color-mix(in srgb,var(--mc) 50%,transparent); background:color-mix(in srgb,var(--mc) 12%,transparent); color:var(--text); font:inherit; font-size:12.5px; font-weight:700; white-space:nowrap; }
+.meni-nedavno .mc-ico { width:24px; height:24px; border-radius:8px; display:grid; place-items:center; color:var(--mc); } .meni-nedavno .mc-ico svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
 #meni-ver-badge { text-align:center; color:#475569; font-size:11px; padding:14px 0 4px; }
 
 .set-app { display:grid; grid-template-columns:48px 1fr auto; gap:12px; align-items:center; }
@@ -757,6 +764,15 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #ab-loc-popup .loc-toggle-item { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
 #ab-loc-popup .loc-toggle-item span { color:#94a3b8; font-size:11px; }
 #ab-loc-popup .loc-btn-row { display:flex; gap:6px; }
+#ab-loc-popup .loc-live { margin:-2px 0 12px; padding:10px 12px; border-radius:14px; border:1px solid var(--pn-line,#1f3b2d); background:rgba(255,255,255,.03); --lq:#64748b; }
+#loc-live[data-q="dobra"] { --lq:#22c55e; } #loc-live[data-q="srednja"] { --lq:#facc15; } #loc-live[data-q="losa"] { --lq:#ef4444; }
+#loc-live { border-left:5px solid var(--lq) !important; }
+.loc-koord b { display:block; font-size:16px; color:#f1f5f9; font-variant-numeric:tabular-nums; letter-spacing:.2px; } .loc-koord small { display:block; color:#94a3b8; font-size:11.5px; margin-top:2px; font-variant-numeric:tabular-nums; }
+.loc-kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:9px 0; }
+.loc-kpi div { background:rgba(2,6,23,.4); border-radius:9px; padding:5px 2px; text-align:center; } .loc-kpi b { display:block; font-size:13.5px; color:#e2e8f0; } .loc-kpi span { font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; }
+.loc-kpi .loc-ac b { color:var(--lq); }
+.loc-akc2 { display:flex; gap:6px; } .loc-akc2 button { flex:1; padding:8px 4px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; }
+#ab-loc-popup .loc-gps-info::before { content:'●'; margin-right:5px; color:var(--lq,#64748b); }
 .loc-switch {
   width:38px; height:22px; border-radius:11px; background:#334155; position:relative;
   cursor:pointer; transition:background 0.15s; flex-shrink:0;
@@ -1825,6 +1841,11 @@ body.sl-uredi #sl-ured { display: block; }
     <span class="loc-title">📍 Moja lokacija</span>
     <span class="loc-gps-info" id="gps-info">GPS: isključen</span>
   </div>
+  <div class="loc-live" id="loc-live" data-q="off">
+    <div class="loc-koord"><b id="loc-mgi">Nema GPS pozicije</b><small id="loc-wgs">Uključi GPS prekidačem ispod</small></div>
+    <div class="loc-kpi"><div class="loc-ac"><b id="loc-ac">—</b><span>tačnost</span></div><div><b id="loc-al">—</b><span>visina</span></div><div><b id="loc-sp">—</b><span>brzina</span></div></div>
+    <div class="loc-akc2"><button onclick="_locKopiraj()">📋 Kopiraj</button><button onclick="_locPodijeli()">📤 Podijeli</button></div>
+  </div>
   <div class="loc-toggles">
     <div class="loc-toggle-item"><span>GPS</span><div class="loc-switch" id="gps-switch" onclick="toggleGPS()"></div></div>
     <div class="loc-toggle-item"><span>Kompas</span><div class="loc-switch" id="compass-switch" onclick="_togCompassSwitch()"></div></div>
@@ -1863,6 +1884,9 @@ body.sl-uredi #sl-ured { display: block; }
   <div class="up-hdr"><h2>☰ Meni</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
     <div id="meni-korisnik" class="kor-chip" hidden></div>
+    <div id="meni-pilule" class="meni-pilule" role="status"></div>
+    <input id="meni-trazi" class="meni-trazi" type="search" placeholder="🔎 Traži u meniju…" autocomplete="off" oninput="_meniFiltriraj(this.value)">
+    <div id="meni-nedavno" class="meni-nedavno" hidden></div>
     <section class="meni-grp">
       <h3>Praćenje šume</h3>
       <button type="button" class="meni-card" id="mc-sumarstvo" onclick="openSumarstvoSection()" style="--mc:#4ade80">
@@ -1954,6 +1978,7 @@ body.sl-uredi #sl-ured { display: block; }
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       <span>Postavke</span><small>Verzija, ažuriranje, baterija, keš karata</small>
     </button>
+    <div id="meni-prazno" class="ul-prazno" hidden><b>🔎</b>Nema rezultata u meniju.</div>
     <div id="meni-ver-badge"></div>
   </div>
 </div>
@@ -3272,7 +3297,7 @@ function onP(p) {
   // Zabilježi SIROVI fix ODMAH (prije filtriranja) — _drainNativeGpsBuffer po
   // ovome zna koje je tačke iz native bafera glavni watch VEĆ vidio uživo.
   _onPLastFixTs = p.timestamp || Date.now();
-  lastP = { la, lo, al: al ?? 0, ac };
+  lastP = { la, lo, al: al ?? 0, ac, sp: gpsSpeed };
   _lastGpsFixTime = Date.now();
   _gpsRestartCount = 0;
   if (_gpsStabCb) { try { _gpsStabCb(la, lo, ac); } catch(e) {} }
@@ -3307,6 +3332,7 @@ function onP(p) {
     _locCenterUpdateDist();
   }
 
+  if (document.getElementById('ab-loc-popup').style.display === 'block') _locPopupLive();
   // Prati lokaciju dok se snima trag (osim u slobodnom pogledu)
   if (_tragOn && !_tragPaused && !_recFreeView) map.panTo([la, lo], { animate: true, duration: 0.5 });
 }
@@ -3326,7 +3352,30 @@ function _toggleLocPopup() {
   const p = document.getElementById('ab-loc-popup');
   const opening = p.style.display === 'none' || !p.style.display;
   p.style.display = opening ? 'block' : 'none';
-  if (opening) _updGpsSwitch();
+  if (opening) { _updGpsSwitch(); _locPopupLive(); }
+}
+// Uživo podaci u modalu: MGI 5 + WGS84, tačnost (boja), visina, brzina; osvježava se pri svakom fiksu dok je modal otvoren
+function _locPopupLive() {
+  const box = document.getElementById('loc-live'); if (!box) return;
+  const p = lastP, set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+  if (!gpsOn || !p) { box.dataset.q = 'off'; set('loc-mgi', gpsOn ? 'Tražim signal…' : 'Nema GPS pozicije'); set('loc-wgs', gpsOn ? 'Čekam prvi fiks' : 'Uključi GPS prekidačem ispod'); ['loc-ac', 'loc-al', 'loc-sp'].forEach(i => set(i, '—')); return; }
+  let mgi = '—'; try { const m = wgsToMGI5(p.la, p.lo); mgi = 'Y ' + m.y + ' · X ' + m.x; } catch (e) {}
+  box.dataset.q = p.ac <= 10 ? 'dobra' : p.ac <= 30 ? 'srednja' : 'losa';
+  set('loc-mgi', mgi); set('loc-wgs', p.la.toFixed(6) + ', ' + p.lo.toFixed(6));
+  set('loc-ac', '±' + Math.round(p.ac) + ' m'); set('loc-al', p.al > 0 ? Math.round(p.al) + ' m' : '—');
+  set('loc-sp', Number.isFinite(p.sp) && p.sp >= 0 ? (p.sp * 3.6).toFixed(p.sp * 3.6 < 10 ? 1 : 0) + ' km/h' : '—');
+}
+const _locTekst = () => lastP ? 'Moja lokacija: ' + lastP.la.toFixed(6) + ', ' + lastP.lo.toFixed(6) + ' (±' + Math.round(lastP.ac) + ' m)\nhttps://www.google.com/maps?q=' + lastP.la.toFixed(6) + ',' + lastP.lo.toFixed(6) : '';
+async function _locKopiraj() {
+  if (!lastP) { showToast('⚠ Nema GPS pozicije'); return; }
+  try { await navigator.clipboard.writeText(lastP.la.toFixed(6) + ', ' + lastP.lo.toFixed(6)); showToast('📋 Koordinate kopirane'); }
+  catch (e) { showToast(lastP.la.toFixed(6) + ', ' + lastP.lo.toFixed(6)); }
+}
+async function _locPodijeli() {
+  if (!lastP) { showToast('⚠ Nema GPS pozicije'); return; }
+  const t = _locTekst();
+  if (navigator.share) { try { await navigator.share({ text: t }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(t); showToast('📋 Lokacija s Google Maps linkom kopirana — zalijepi u poruku'); } catch (e) { showToast(t); }
 }
 function _locPopupCentriraj() { document.getElementById('ab-loc-popup').style.display = 'none'; fabLokacija(); }
 function _locPopupSnimiTrag() { document.getElementById('ab-loc-popup').style.display = 'none'; fabSnimTrag(); }
@@ -11162,7 +11211,38 @@ function _meniStatusi(st) {
     mjerenja:  n(st.mjerenja, 'mjerenje', 'mjerenja', 'mjerenja')
   };
 }
+// Pilule stanja (GPS / trag / veza), pretraga i „nedavno otvoreno” (zadnja 3 odjeljka, usf_meni_nedavno)
+const _MENI_NED_KEY = 'usf_meni_nedavno';
+const _meniNorm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+function _meniPilule() {
+  const el = document.getElementById('meni-pilule'); if (!el) return;
+  const p = (ok, t) => `<span class="${ok ? 'on' : ''}"><i></i>${t}</span>`;
+  el.innerHTML = p(typeof gpsOn !== 'undefined' && gpsOn, 'GPS') + p(typeof _tragOn !== 'undefined' && _tragOn, 'Snima trag') + p(navigator.onLine, navigator.onLine ? 'Online' : 'Offline');
+}
+function _meniNedavnoRender() {
+  const el = document.getElementById('meni-nedavno'); if (!el) return;
+  let ids = []; try { ids = JSON.parse(localStorage.getItem(_MENI_NED_KEY) || '[]'); } catch (e) {}
+  ids = ids.filter(id => document.getElementById(id));
+  el.hidden = !ids.length || !!document.getElementById('meni-trazi')?.value;
+  el.innerHTML = ids.length ? '<small>Nedavno</small>' + ids.map(id => { const c = document.getElementById(id); return `<button type="button" style="--mc:${c.style.getPropertyValue('--mc') || '#4ade80'}" onclick="document.getElementById('${id}').click()"><span class="mc-ico">${c.querySelector('.mc-ico')?.innerHTML || ''}</span>${c.querySelector('.mc-txt b')?.textContent || ''}</button>`; }).join('') : '';
+}
+function _meniFiltriraj(q) {
+  const n = _meniNorm(q).trim();
+  let vidljivo = 0;
+  document.querySelectorAll('#meni-panel .meni-grp').forEach(g => {
+    let ima = 0;
+    g.querySelectorAll('.meni-card').forEach(c => { const ok = !n || _meniNorm(c.textContent).includes(n); c.style.display = ok ? '' : 'none'; if (ok) ima++; });
+    g.style.display = ima ? '' : 'none'; vidljivo += ima;
+  });
+  const pr = document.getElementById('meni-prazno'); if (pr) pr.hidden = !!vidljivo;
+  _meniNedavnoRender();
+}
+document.getElementById('meni-panel')?.addEventListener('click', e => {
+  const c = e.target.closest('.meni-card'); if (!c || !c.id) return;
+  try { const l = [c.id, ...JSON.parse(localStorage.getItem(_MENI_NED_KEY) || '[]').filter(x => x !== c.id)].slice(0, 3); localStorage.setItem(_MENI_NED_KEY, JSON.stringify(l)); } catch (er) {}
+});
 function _meniStatusRender() {
+  _meniPilule(); _meniNedavnoRender();
   let st;
   try {
     st = {

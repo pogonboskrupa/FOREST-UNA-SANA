@@ -185,6 +185,9 @@
   Fotografije s lokacijom: `jpegSaGps` upisuje EXIF GPS u JPEG (canvas ga nema); `podijeliFoto` → APK `AndroidShare.shareFiles` (ACTION_SEND_MULTIPLE; `dokument` ⇒ tip `*/*` pa WhatsApp/Viber ne rekompresuju i ne skidaju GPS), uz tekst s koordinatama i Google Maps linkom.
 - **Postavke (v2.6.2)**: sticky traka brzih skokova `.set-nav` (`_setSkok`) na sekcije (`set-s-*`, `set-update-card`); sekcija „🥾 Snimanje traga i linije”: debljina/neprovidnost/vrsta crte → `_lineStyle` + `usf_trag_stil`,
   prag GPS tačnosti `_tragAcMax` (20/50/100 m, `usf_trag_acmax`, koristi `_addTragPoint`), „Vrati zadano” (`_setTragZadano`); promjena odmah preiscrta sačuvane tragove. `usf_` ključevi idu u rezervnu kopiju.
+- **Meni i modal Moja lokacija (v2.6.3)**: modal `#ab-loc-popup` ima blok uživo `#loc-live` (`_locPopupLive`: MGI 5 + WGS84, tačnost u boji ≤10/≤30/>30 m, visina, brzina iz `lastP.sp`; osvježava se u `onP` dok je otvoren),
+  „📋 Kopiraj” i „📤 Podijeli” (`navigator.share` ili kopija s Google Maps linkom). Meni: pilule GPS/Snima trag/Online (`_meniPilule`), pretraga bez dijakritika (`_meniFiltriraj`),
+  „Nedavno” zadnja 3 otvorena odjeljka (`usf_meni_nedavno`, `_meniNedavnoRender`).
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
   isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”
