@@ -1024,6 +1024,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .kl-red > i { flex:none; width:6px; align-self:stretch; border-radius:3px; background:var(--kc); }
 .kl-red > div { flex:1; min-width:0; cursor:pointer; } .kl-red b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .kl-red small { color:#80958a; font-size:11px; }
 .kl-red.skriven b { opacity:.55; }
+.kl-podnasl { margin:10px 0 2px; color:#6ee7b7; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; } .kl-podnasl small { color:#94a3b8; margin-left:4px; }
+.kl-stil { flex:none; width:34px; height:34px; border-radius:10px; border:1px solid #334155; background:#0b1220; font-size:15px; } .kl-vise { display:block; margin-top:6px; color:#94a3b8; font-size:11.5px; cursor:pointer; }
 .ul-red { border-left:5px solid var(--kc, #1f3b2d); }
 .ul-pills { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; } .ul-pills em { font-style:normal; padding:1px 7px; border-radius:999px; background:#0b1a13; border:1px solid #1f3b2d; color:#9db0a7; font-size:10.5px; }
 .ul-sw.ng-switch { width:54px; height:30px; } .ul-sw.ng-switch span { border-radius:15px; } .ul-sw.ng-switch span::after { top:4px; left:4px; width:20px; height:20px; } .ul-sw.ng-switch input:checked + span::after { transform:translateX(24px); }
@@ -3808,14 +3810,28 @@ function _tragCalcLen(pts) {
 }
 function _tragFmtLen(m) { return m >= 1000 ? (m/1000).toFixed(2)+' km' : Math.round(m)+' m'; }
 
+// Vrste crte: stari ključevi (solid/dash/dot) i ključevi editora stila (puna/isprek/tack/crtatack)
+const _tragDashArray = k => ({ dash: '8 4', isprek: '8 4', dot: '2 6', tack: '2 6', crtatack: '10 4 2 4' }[k] || null);
+// Uređivanje stila jednog traga (isti editor kao KML slojevi): boja, debljina, providnost, vrsta crte — živo na karti
+async function _tragStilUredi(id) {
+  const t = _tragRegistry.find(x => x.id === id); if (!t) return;
+  map.closePopup();
+  const kljuc = { solid: 'puna', dash: 'isprek', dot: 'tack' };
+  const orig = { col: t.color || '#f97316', stil: { w: t.weight || _lineStyle.tragW, op: t.op ?? _lineStyle.tragOp, crta: kljuc[t.dashStyle || _lineStyle.tragDash] || t.dashStyle || 'puna' } };
+  const primijeni = (c, st) => { const l = _tragLayers[id]; if (l) l.setStyle({ color: c, weight: st.w, opacity: st.op / 100, dashArray: _tragDashArray(st.crta) }); };
+  const r = await _kmlStilOtvori({ naslov: t.name, podnaslov: 'Stil traga', col: orig.col, stil: orig.stil, imaPol: false, imaLin: true, uzivo: primijeni });
+  if (!r) { primijeni(orig.col, orig.stil); return; }
+  if (r === 'vrati') { delete t.weight; delete t.op; delete t.dashStyle; t.color = _TRAG_COLORS[_tragRegistry.indexOf(t) % _TRAG_COLORS.length]; }
+  else { t.color = r.col; t.weight = r.stil.w; t.op = r.stil.op; t.dashStyle = r.stil.crta; }
+  _tragRegSave(); _tragRegAddLayer(t); _tragRegRender(); _khStat();
+}
 function _tragRegAddLayer(t) {
   if (_tragLayers[t.id]) { try { map.removeLayer(_tragLayers[t.id]); } catch(e) {} }
   if (_tragHitLayers[t.id]) { try { map.removeLayer(_tragHitLayers[t.id]); } catch(e) {} }
   if (_tragLenMk[t.id]) { try { map.removeLayer(_tragLenMk[t.id]); } catch(e) {} delete _tragLenMk[t.id]; }
-  const dash = t.dashStyle || _lineStyle.tragDash;
-  const dashArray = dash==='dot' ? '2 6' : (dash==='dash' ? '8 4' : null);
+  const dashArray = _tragDashArray(t.dashStyle || _lineStyle.tragDash);
   const lls = t.pts.map(p => [p[0], p[1]]);
-  const line = L.polyline(lls, { color: t.color || '#f97316', weight: t.weight || _lineStyle.tragW, opacity: (_lineStyle.tragOp||85)/100, dashArray, interactive: false, pane: 'tragMsrLines' });
+  const line = L.polyline(lls, { color: t.color || '#f97316', weight: t.weight || _lineStyle.tragW, opacity: (t.op ?? (_lineStyle.tragOp||85))/100, dashArray, interactive: false, pane: 'tragMsrLines' });
   const hit = L.polyline(lls, { weight: 24, opacity: 0.001, color: '#000', interactive: true, pane: 'tragMsrLines' });
   const lenM = _tragCalcLen(t.pts);
   line.bindPopup(() => _tragPopupHtml(t, lenM), { maxWidth: 300, minWidth: 220, className: 'pk-pop' });
@@ -3840,6 +3856,7 @@ function _tragPopupHtml(t, lenM) {
   const nFoto = _tragFotoBroj(t); if (t.tacke && t.tacke.length) redovi.push(['Na tragu', t.tacke.length + ' tač.' + (nFoto ? ' · ' + nFoto + ' foto' : '')]);
   if (al.length > 1) redovi.push(['Visina', Math.round(Math.min(...al)) + '–' + Math.round(Math.max(...al)) + ' m'], ['Uspon', Math.round(uspon) + ' m']);
   return _popKartica({ ikona: '🥾', boja: t.color || '#f97316', naslov: t.name, tip: 'GPS trag', meta: fmtDateShort(t.date), redovi, dugmad: [
+    { t: '🎨 Stil', on: `_tragStilUredi('${t.id}')`, v: 'glavno' },
     { t: '✏ Preimenuj', on: `_tragRegRename('${t.id}')` },
     { t: '📤 Pošalji', on: `_tragRegShare('${t.id}')` },
     ...(t.tacke && t.tacke.length ? [{ t: '📷 Foto s lokacijom', on: `_tragFotoShare('${t.id}')` }] : []),
@@ -3866,6 +3883,7 @@ function _tragRegAdd(pts, prekidi) {
   return t;
 }
 function _tragRegRender() {
+  try { _khStat(); } catch (e) {}
   const el = document.getElementById('tragovi-list');
   const cnt = document.getElementById('tragovi-count');
   if (!el) return;
@@ -3901,6 +3919,7 @@ function _tragRegRender() {
         <button onclick="_tragRegToggle('${t.id}')">${_okoDugme(vis)}</button>
         <button onclick="_uglTragOtvori('${t.id}')" title="Poravna vraćanje istim putem i mirovanje u mjestu">🔧 Ugladi</button>
         ${_uglMoguciPovratak('trag', t) ? `<button onclick="_uglVrati();_tragRegRender();">↩ Vrati</button>` : ''}
+        <button onclick="_tragStilUredi('${t.id}')">🎨 Stil</button>
         <button onclick="_tragRegRename('${t.id}')">✏ Preimenuj</button>
         <button onclick="_tragRegShare('${t.id}')">📤 Pošalji</button>
         <button class="del-btn" onclick="_tragRegDeleteConfirm('${t.id}')">🗑 Briši</button>
@@ -3921,7 +3940,7 @@ function _tragRegToggle(id) {
   _tragRegAddLayer(t);
   _tragPopupRefresh(id);
   _tragRegSave();
-  _tragRegRender();
+  _tragRegRender(); _khStat();
 }
 async function _tragRegDeleteConfirm(id) {
   const ok = await _dlgConfirm('Obrisati ovaj trag? Ne može se poništiti.', { danger: true, okLabel: 'Obriši' });
@@ -6201,6 +6220,8 @@ function _khStat() {
     if (pr) pr.innerHTML = pl('🌍', podloga, aktivna ? 'offline podloga' : 'podloga', true, "document.getElementById('karta-base-list').scrollIntoView({behavior:'smooth',block:'center'})")
       + pl('🗂', sql.length, sql.length === 1 ? 'offline karta' : 'offline karata', !!sql.length, 'openUcitajKartuSection()')
       + pl('🗺', kmlLs.length ? kmlLs.length + ' · ' + st.pol : 0, 'KML slojeva · poligona', !!kmlLs.length, '_khKmlTrazi()')
+      + pl('🥾', typeof _tragRegistry !== 'undefined' ? _tragRegistry.length : 0, 'sačuvanih tragova', typeof _tragRegistry !== 'undefined' && !!_tragRegistry.length, 'openTragoviPanel()')
+      + pl('📏', typeof _msrRegistry !== 'undefined' ? _msrRegistry.length : 0, 'mjerenja', typeof _msrRegistry !== 'undefined' && !!_msrRegistry.length, 'openMjerenjaPanel()')
       + pl('🧩', slojeva, slojeva === 1 ? 'uključen sloj' : 'uključenih slojeva', !!slojeva, "document.getElementById('terrain-aspect').scrollIntoView({behavior:'smooth',block:'center'})")
       + (tem ? '<button class="kh-iskljuci" onclick="_tematskiIskljuci();_khStat()">✕ Isključi slojeve praćenja šume</button>' : '');
   } catch(e) {}
@@ -6223,10 +6244,13 @@ function _khGranice() {
 // Brzi popis svih KML slojeva s prekidačima (bez ulaska u preglednik)
 function _khSlojevi() {
   const el = document.getElementById('kh-lista'); if (!el) return;
-  const l = kmlLs.filter(k => !_kmlJePoligonski(k.name));
-  if (!l.length) { el.hidden = true; return; }
+  const l = kmlLs.filter(k => !_kmlJePoligonski(k.name)), tr = typeof _tragRegistry !== 'undefined' ? _tragRegistry : [];
+  if (!l.length && !tr.length) { el.hidden = true; return; }
   el.hidden = false;
-  el.innerHTML = '<h3>🧭 Slojevi na karti</h3>' + l.map(k => { const s = _kmlStat(k), vid = _kmlNaKarti(k);
+  const tragovi = tr.length ? `<div class="kl-podnasl">🥾 Tragovi <small>${tr.length}</small></div>` + tr.slice(0, 12).map(t => { const vid = t.visible !== false;
+    return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${t.color || '#f97316'}"><i></i><div onclick="_tragRegZoom('${t.id}')"><b>${_escHtml(t.name)}</b><small>${_tragFmtLen(_tragCalcLen(t.pts))} · ${t.pts.length} tač.</small></div>
+      <button class="kl-stil" onclick="_tragStilUredi('${t.id}')" aria-label="Stil traga">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_tragRegToggle('${t.id}')"><span></span></label></div>`; }).join('') + (tr.length > 12 ? `<small class="kl-vise" onclick="openTragoviPanel()">… još ${tr.length - 12} — otvori sve tragove ›</small>` : '') : '';
+  el.innerHTML = '<h3>🧭 Slojevi na karti</h3>' + tragovi + (l.length && tr.length ? '<div class="kl-podnasl">🗺 KML slojevi</div>' : '') + l.map(k => { const s = _kmlStat(k), vid = _kmlNaKarti(k);
     return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${k.col}"><i></i><div onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}</b><small>${[s.pol ? s.pol + ' pol.' : '', s.lin ? s.lin + ' lin.' : '', s.tac ? s.tac + ' tač.' : ''].filter(Boolean).join(' · ') || 'prazno'}</small></div>
       <label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label></div>`; }).join('');
 }

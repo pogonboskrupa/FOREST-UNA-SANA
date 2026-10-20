@@ -188,6 +188,8 @@
 - **Meni i modal Moja lokacija (v2.6.3)**: modal `#ab-loc-popup` ima blok uživo `#loc-live` (`_locPopupLive`: MGI 5 + WGS84, tačnost u boji ≤10/≤30/>30 m, visina, brzina iz `lastP.sp`; osvježava se u `onP` dok je otvoren),
   „📋 Kopiraj” i „📤 Podijeli” (`navigator.share` ili kopija s Google Maps linkom). Meni: samo „Nedavno” (pilule stanja i pretraga su uklonjeni na zahtjev),
   zadnja 3 otvorena odjeljka (`usf_meni_nedavno`, `_meniNedavnoRender`).
+- **Stil traga (v2.6.5)**: klik na trag (izvor u `_kartaKlikIzvor`) otvara karticu s „🎨 Stil” → `_tragStilUredi` = isti editor kao KML slojevi (`_kmlStilOtvori`, imaPol:false, živo na karti): boja `t.color`, debljina `t.weight`, providnost `t.op`
+  (neprovidnost %), vrsta crte `t.dashStyle` (ključevi editora puna/isprek/tack/crtatack ili stari solid/dash/dot → `_tragDashArray`); bez vrijednosti važe zadane iz Postavki (`_lineStyle`). Tab Karte: „🧭 Slojevi na karti” sadrži i tragove (prekidač + 🎨), pregled ima pločice Tragovi i Mjerenja.
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
   isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”
