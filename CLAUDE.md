@@ -183,6 +183,8 @@
   Vrste tačke (`KATEGORIJE`): suho/prelomljeno/izvala, potkornjak, bespravna sječa (`sjeca`), imela, silazak sa vlake, loš šumski red, granica odjela, ostalo; stari ključevi (`stablo/steta/put/voda`) idu kroz `STARE_VRSTE`.
   Pri spremanju traga (`_tragRegAdd`) tačke s datumom u vremenu snimanja postaju `trag.tacke` (i `tačka.trag`). „📤 Pošalji” trag: KML / KMZ (linija + tačke + fotografije, `izvozKmz(ids, {naziv, kml})`) / samo fotografije.
   Fotografije s lokacijom: `jpegSaGps` upisuje EXIF GPS u JPEG (canvas ga nema); `podijeliFoto` → APK `AndroidShare.shareFiles` (ACTION_SEND_MULTIPLE; `dokument` ⇒ tip `*/*` pa WhatsApp/Viber ne rekompresuju i ne skidaju GPS), uz tekst s koordinatama i Google Maps linkom.
+- **Postavke (v2.6.2)**: sticky traka brzih skokova `.set-nav` (`_setSkok`) na sekcije (`set-s-*`, `set-update-card`); sekcija „🥾 Snimanje traga i linije”: debljina/neprovidnost/vrsta crte → `_lineStyle` + `usf_trag_stil`,
+  prag GPS tačnosti `_tragAcMax` (20/50/100 m, `usf_trag_acmax`, koristi `_addTragPoint`), „Vrati zadano” (`_setTragZadano`); promjena odmah preiscrta sačuvane tragove. `usf_` ključevi idu u rezervnu kopiju.
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
   isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”

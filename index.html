@@ -673,6 +673,12 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-det summary { cursor:pointer; color:var(--text); font-size:13px; font-weight:700; }
 .set-input { width:100%; box-sizing:border-box; padding:11px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; margin:6px 0 8px; }
 .set-dugme { width:100%; padding:10px; border-radius:10px; border:1px solid rgba(74,222,128,.3); background:rgba(22,101,52,.3); color:#bbf7d0; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.set-nav { position:sticky; top:-1px; z-index:5; display:flex; gap:6px; overflow-x:auto; padding:8px 0; margin:0 0 6px; background:linear-gradient(var(--bg,#08140e) 80%, transparent); scrollbar-width:none; }
+.set-nav::-webkit-scrollbar { display:none; }
+.set-nav button { flex:none; padding:7px 12px; border-radius:999px; border:1px solid #1f3b2d; background:#0d1a14; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; white-space:nowrap; }
+[id^='set-s-'], #set-update-card { scroll-margin-top:54px; }
+.set-pregled { width:100%; height:56px; display:block; margin:2px 0 10px; border-radius:10px; background:#0b1a13; border:1px solid #1f3b2d; }
+.set-klizac { display:block; margin:8px 0; } .set-klizac span { display:flex; justify-content:space-between; font-size:12.5px; color:#cbd5e1; margin-bottom:4px; } .set-klizac b { color:#4ade80; } .set-klizac input { width:100%; accent-color:#22c55e; }
 .set-nap { color:#80958a; font-size:11px; line-height:1.45; margin:8px 0 0; }
 .set-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:4px 0 6px; }
 .set-grid div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:8px 4px; text-align:center; }
@@ -2019,6 +2025,9 @@ body.sl-uredi #sl-ured { display: block; }
       <span id="set-mreza-txt" class="set-veza" role="status"></span>
     </section>
     <div id="set-profil"></div>
+    <nav class="set-nav" aria-label="Skok na sekciju">
+      <button onclick="_setSkok('set-update-card')">⇩ Ažuriranje</button><button onclick="_setSkok('set-s-prikaz')">🖥 Prikaz</button><button onclick="_setSkok('set-s-karte')">🗺 Memorija</button><button onclick="_setSkok('set-s-gps')">📍 GPS</button><button onclick="_setSkok('set-s-trag')">🥾 Trag</button><button onclick="_setSkok('set-s-podaci')">💾 Podaci</button>
+    </nav>
     <section class="update-card" id="set-update-card" data-phase="idle">
       <div class="update-card-head">
         <div class="update-card-icon">⇩</div>
@@ -2032,13 +2041,13 @@ body.sl-uredi #sl-ured { display: block; }
       </div>
     </section>
 
-    <section class="ng-card">
+    <section class="ng-card" id="set-s-prikaz">
       <h3>🖥 Prikaz</h3>
       <div class="set-seg" id="set-prikaz"><button data-v="auto" onclick="_prikazPostavi('auto')">Automatski</button><button data-v="desktop" onclick="_prikazPostavi('desktop')">Računar</button><button data-v="mobilni" onclick="_prikazPostavi('mobilni')">Telefon</button></div>
       <small class="set-nap" id="set-prikaz-txt"></small>
     </section>
 
-    <section class="ng-card">
+    <section class="ng-card" id="set-s-karte">
       <h3>🗺 Karte i memorija</h3>
       <div class="set-mem"><div class="set-mem-bar"><i id="set-mem-fill"></i></div><small id="set-mem-txt">Računam zauzeće…</small></div>
       <div class="set-red"><div><b>Pločice karata</b><small id="set-kes-plocice">Topo / Satelit / Karta pregledane online</small></div><button onclick="clearTileCache()">Očisti</button></div>
@@ -2050,13 +2059,24 @@ body.sl-uredi #sl-ured { display: block; }
       </details>
     </section>
 
-    <section class="ng-card">
+    <section class="ng-card" id="set-s-gps">
       <h3>📍 GPS i baterija</h3>
       <div class="set-red"><div><b>Rad bez ograničenja baterije</b><small id="set-bat-txt">Da poziv ili druga aplikacija ne prekine GPS snimanje u pozadini.</small></div><button id="set-bat-btn" onclick="_setBaterija()">Podesi</button></div>
       <div class="set-red" id="set-autostart" hidden><div><b>Autostart (Xiaomi/Redmi)</b><small>Uključi Autostart za Grmeč Navigator — inače HyperOS može ugasiti snimanje traga dok je ekran zaključan.</small></div><button onclick="AndroidGps.otvoriAutostart()">Otvori</button></div>
     </section>
 
-    <section class="ng-card">
+    <section class="ng-card" id="set-s-trag">
+      <h3>🥾 Snimanje traga i linije</h3>
+      <svg id="set-trag-pregled" class="set-pregled" viewBox="0 0 320 64" aria-hidden="true"><path d="M8 48 C60 8 110 60 160 30 S260 8 312 40" fill="none" stroke-linecap="round"/></svg>
+      <label class="set-klizac"><span>Debljina <b id="set-trag-w-v"></b></span><input type="range" id="set-trag-w" min="1" max="10" step="1" oninput="_setTragStil()"></label>
+      <label class="set-klizac"><span>Neprovidnost <b id="set-trag-op-v"></b></span><input type="range" id="set-trag-op" min="30" max="100" step="5" oninput="_setTragStil()"></label>
+      <div class="set-seg" id="set-trag-dash"><button data-v="solid" onclick="_setTragStil('solid')">Puna</button><button data-v="dash" onclick="_setTragStil('dash')">Isprekidana</button><button data-v="dot" onclick="_setTragStil('dot')">Tačkasta</button></div>
+      <div class="set-red"><div><b>Najlošija GPS tačnost za trag</b><small>Tačke s većom greškom od zadane se odbacuju (stroža = čistiji trag, ali rupe u šumi).</small></div></div>
+      <div class="set-seg" id="set-trag-ac"><button data-v="20" onclick="_setTragAc(20)">±20 m</button><button data-v="50" onclick="_setTragAc(50)">±50 m · zadano</button><button data-v="100" onclick="_setTragAc(100)">±100 m</button></div>
+      <button class="set-dugme" style="margin-top:10px" onclick="_setTragZadano()">↺ Vrati zadano</button>
+    </section>
+
+    <section class="ng-card" id="set-s-podaci">
       <h3>💾 Podaci na uređaju</h3>
       <div class="set-grid" id="set-podaci"></div>
       <div class="rd-akc"><button class="glavno" onclick="_setBackup()">⤓ Rezervna kopija</button><button onclick="document.getElementById('set-restore-input').click()">⤒ Vrati iz kopije</button></div>
@@ -3537,10 +3557,18 @@ function _tragDodajSeriju(pts, odT) {
 const _TRAG_AUTOPAUSE_MS = 120000; // 2 min mirovanja → auto-pauza
 
 let _lineStyle = { tragW: 4, tragOp: 85, tragDash: 'solid', tragCol: '', tragLen: false };
+// Postavke → Snimanje traga: izgled linije i prag GPS tačnosti (localStorage, ulaze u rezervnu kopiju kao usf_*)
+const _TRAG_STIL_KEY = 'usf_trag_stil', _TRAG_AC_KEY = 'usf_trag_acmax';
+let _tragAcMax = 50;
+try {
+  const st = JSON.parse(localStorage.getItem(_TRAG_STIL_KEY) || 'null');
+  if (st) { _lineStyle.tragW = Math.min(10, Math.max(1, +st.w || 4)); _lineStyle.tragOp = Math.min(100, Math.max(30, +st.op || 85)); if (['solid', 'dash', 'dot'].includes(st.dash)) _lineStyle.tragDash = st.dash; }
+  const ac = +localStorage.getItem(_TRAG_AC_KEY); if ([20, 50, 100].includes(ac)) _tragAcMax = ac;
+} catch (e) {}
 
 function _addTragPoint(la, lo, ac, al, sp, nowOverride) {
   if (!_tragOn || _tragPaused) return;
-  if (ac > 50) return; // odbaci samo katastrofalno loše fiksove
+  if (ac > _tragAcMax) return; // prag GPS tačnosti (Postavke → Snimanje traga, zadano 50 m)
   const now = nowOverride || Date.now();
   _tragPrekidBiljezi(now);
 
@@ -11240,8 +11268,30 @@ document.addEventListener('keydown', e => {
   if (document.querySelector('#dlg-overlay.show, .dlg-overlay.show, .leaflet-popup')) return;
   if (_ALL_PANELS.some(id => document.getElementById(id)?.classList.contains('show'))) switchMainTab('karta');
 });
+function _setSkok(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function _setTragUi() {
+  const w = document.getElementById('set-trag-w'); if (!w) return;
+  w.value = _lineStyle.tragW; document.getElementById('set-trag-op').value = _lineStyle.tragOp;
+  document.getElementById('set-trag-w-v').textContent = _lineStyle.tragW + ' px'; document.getElementById('set-trag-op-v').textContent = _lineStyle.tragOp + ' %';
+  document.querySelectorAll('#set-trag-dash button').forEach(b => b.classList.toggle('on', b.dataset.v === _lineStyle.tragDash));
+  document.querySelectorAll('#set-trag-ac button').forEach(b => b.classList.toggle('on', +b.dataset.v === _tragAcMax));
+  const p = document.querySelector('#set-trag-pregled path');
+  if (p) { p.setAttribute('stroke', '#f97316'); p.setAttribute('stroke-width', _lineStyle.tragW); p.setAttribute('stroke-opacity', _lineStyle.tragOp / 100); p.setAttribute('stroke-dasharray', _lineStyle.tragDash === 'dot' ? '1 ' + (_lineStyle.tragW * 2) : _lineStyle.tragDash === 'dash' ? (_lineStyle.tragW * 2.5) + ' ' + (_lineStyle.tragW * 1.5) : ''); }
+}
+function _setTragStil(dash) {
+  _lineStyle.tragW = +document.getElementById('set-trag-w').value; _lineStyle.tragOp = +document.getElementById('set-trag-op').value;
+  if (typeof dash === 'string') _lineStyle.tragDash = dash;
+  try { localStorage.setItem(_TRAG_STIL_KEY, JSON.stringify({ w: _lineStyle.tragW, op: _lineStyle.tragOp, dash: _lineStyle.tragDash })); } catch (e) {}
+  _tragRegistry.forEach(_tragRegAddLayer); _setTragUi();
+}
+function _setTragAc(v) { _tragAcMax = v; try { localStorage.setItem(_TRAG_AC_KEY, String(v)); } catch (e) {} _setTragUi(); }
+function _setTragZadano() {
+  _lineStyle.tragW = 4; _lineStyle.tragOp = 85; _lineStyle.tragDash = 'solid'; _tragAcMax = 50;
+  try { localStorage.removeItem(_TRAG_STIL_KEY); localStorage.removeItem(_TRAG_AC_KEY); } catch (e) {}
+  _tragRegistry.forEach(_tragRegAddLayer); _setTragUi(); showToast('↺ Zadane postavke traga');
+}
 function _renderPostavke() {
-  _prikazUi();
+  _prikazUi(); _setTragUi();
   _updOfflineBanner();
   _korisnikUi();
   const el = document.getElementById('set-ver-txt');
