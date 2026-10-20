@@ -1139,8 +1139,8 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 .map-ctl button:active, #ab-loc:active, #layer-btn:active { background: rgba(74,222,128,.16); transform: scale(.94); }
 .map-ctl button:focus-visible, #ab-loc:focus-visible, #layer-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: -3px; }
 #ab-loc.active::after { content:''; position:absolute; inset:-5px; border-radius:calc(var(--btn-r,16px) + 4px); border:2px solid rgba(74,222,128,.35); animation:fabRecPulse 2.2s ease-in-out infinite; pointer-events:none; }
-/* Tokom snimanja traga: Moja lokacija i njen modal (Snimi trag) se sklanjaju — traka snimanja ima 🎯 i 📷 */
-body.rec-on #ab-loc, body.rec-on #ab-loc-popup { display: none !important; }
+/* Tokom snimanja traga: desni stub dugmadi i modal Moja lokacija (Snimi trag) se sklanjaju — traka snimanja ima 🎯 i 📷 */
+body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /* i mjerenja / tragovi / nova tačka — 📷 je u traci snimanja */
 
 /* Zaglavlja i dugme zatvaranja */
 #tragovi-panel .tp-hdr { padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--pn-line); }
