@@ -1131,6 +1131,16 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 #tragovi-panel { max-height: min(62vh, 520px); }
 #ab-loc-popup { bottom: calc(var(--dock-b) + var(--rec-h)); width: min(360px, calc(100vw - 20px)); max-width: none; padding: 14px 16px 16px; }
 #map-fabs, #zoom-grp { bottom: calc(var(--dock-b) + var(--rec-h)); transition: bottom .2s ease; }
+/* Dugmad na karti — jedinstven dizajn: oblik (--btn-r), debljina ikona (--btn-sw), stanje pritiska, fokus */
+.map-ctl, #layer-btn, #ab-loc, #zoom-grp, .fab-pill { border-radius: var(--btn-r, 16px); }
+.map-ctl svg { stroke-width: var(--btn-sw, 2); }
+#map-fabs { gap: 12px; }
+.fab-pill button, #zoom-grp button { width: 48px; height: 48px; }
+.map-ctl button:active, #ab-loc:active, #layer-btn:active { background: rgba(74,222,128,.16); transform: scale(.94); }
+.map-ctl button:focus-visible, #ab-loc:focus-visible, #layer-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: -3px; }
+#ab-loc.active::after { content:''; position:absolute; inset:-5px; border-radius:calc(var(--btn-r,16px) + 4px); border:2px solid rgba(74,222,128,.35); animation:fabRecPulse 2.2s ease-in-out infinite; pointer-events:none; }
+/* Tokom snimanja traga: Moja lokacija i njen modal (Snimi trag) se sklanjaju — traka snimanja ima 🎯 i 📷 */
+body.rec-on #ab-loc, body.rec-on #ab-loc-popup { display: none !important; }
 
 /* Zaglavlja i dugme zatvaranja */
 #tragovi-panel .tp-hdr { padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--pn-line); }
@@ -2101,6 +2111,10 @@ body.sl-uredi #sl-ured { display: block; }
       <div class="set-seg" id="ui-bdgOut"><button data-v="isklj" onclick="_setUi('bdgOut','isklj')">Bez</button><button data-v="tanak" onclick="_setUi('bdgOut','tanak')">Tanak</button><button data-v="jak" onclick="_setUi('bdgOut','jak')">Jak</button></div>
       <div class="set-red"><div><b>Šta se prikazuje</b></div></div>
       <div class="set-seg ui-dijelovi"><button id="ui-bdgElev" onclick="_setUi('bdgElev', !_uiPrikaz.bdgElev)">↕ Visina</button><button id="ui-bdgMgi" onclick="_setUi('bdgMgi', !_uiPrikaz.bdgMgi)">MGI5</button><button id="ui-bdgRz" onclick="_setUi('bdgRz', !_uiPrikaz.bdgRz)">1:razmjera</button></div>
+      <div class="set-red" style="margin-top:8px"><div><b>Oblik dugmadi</b></div></div>
+      <div class="set-seg" id="ui-btnOblik"><button data-v="ostro" onclick="_setUi('btnOblik','ostro')">Oštro</button><button data-v="zaobljeno" onclick="_setUi('btnOblik','zaobljeno')">Zaobljeno</button><button data-v="okruglo" onclick="_setUi('btnOblik','okruglo')">Okruglo</button></div>
+      <div class="set-red"><div><b>Debljina ikona</b></div></div>
+      <div class="set-seg" id="ui-btnIk"><button data-v="tanke" onclick="_setUi('btnIk','tanke')">Tanke</button><button data-v="normalne" onclick="_setUi('btnIk','normalne')">Normalne</button><button data-v="podebljane" onclick="_setUi('btnIk','podebljane')">Podebljane</button></div>
       <label class="set-klizac" style="margin-top:12px"><span>Providnost podloge dugmadi <b id="ui-btnA-v"></b></span><input type="range" id="ui-btnA" min="0" max="100" step="5" oninput="_setUi('btnA', +this.value)"></label>
       <label class="set-klizac"><span>Veličina dugmadi <b id="ui-btnZ-v"></b></span><input type="range" id="ui-btnZ" min="80" max="140" step="5" oninput="_setUi('btnZ', +this.value)"></label>
       <button class="set-dugme" style="margin-top:10px" onclick="_setUiZadano()">↺ Vrati zadano</button>
@@ -3022,7 +3036,8 @@ function _prPrimijeni(sve) {
   });
 }
 // Izgled koordinata i dugmadi na karti (Postavke → 🎛 Koordinate i dugmad, pamti se): providnost podloge, obris teksta, veličina, dijelovi
-const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, bdgRz: true, btnA: 86, btnZ: 100, tema: 'tamna', blur: 0 };
+const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, bdgRz: true, btnA: 86, btnZ: 100, tema: 'tamna', blur: 0, btnOblik: 'zaobljeno', btnIk: 'normalne' };
+const _UI_OBLIK = { okruglo: '26px', zaobljeno: '16px', ostro: '7px' }, _UI_IK = { tanke: '1.5', normalne: '2', podebljane: '2.7' };
 const _UI_TEME = { tamna: { bg: '10,24,18', fg: '#e8f3ec', bd: 'rgba(134,239,172,.22)', sep: 'rgba(134,239,172,.16)', out: '#000', a1: '#4ade80', a2: '#fde68a' }, svijetla: { bg: '255,255,255', fg: '#0f172a', bd: 'rgba(15,23,42,.2)', sep: 'rgba(15,23,42,.16)', out: '#fff', a1: '#15803d', a2: '#b45309' } };
 let _uiPrikaz = { ..._UI_ZAD };
 try { const v = JSON.parse(localStorage.getItem(_UI_KEY) || 'null'); if (v) Object.keys(_UI_ZAD).forEach(k => { if (k in v && typeof v[k] === typeof _UI_ZAD[k]) _uiPrikaz[k] = v[k]; }); } catch (e) {}
@@ -3032,6 +3047,7 @@ function _uiPrimijeni() {
   const t = _UI_TEME[u.tema] || _UI_TEME.tamna;
   r.setProperty('--ui-bg', t.bg); r.setProperty('--ui-fg', t.fg); r.setProperty('--ui-bd', t.bd); r.setProperty('--ui-sep', t.sep); r.setProperty('--ui-a1', t.a1); r.setProperty('--ui-a2', t.a2); r.setProperty('--ui-blur', u.blur + 'px');
   r.setProperty('--bdg-a', (u.bdgA / 100).toFixed(2)); r.setProperty('--bdg-fs', u.bdgFs + 'px'); r.setProperty('--bdg-ts', _uiObris(u.bdgOut, t.out));
+  r.setProperty('--btn-r', _UI_OBLIK[u.btnOblik] || '16px'); r.setProperty('--btn-sw', _UI_IK[u.btnIk] || '2');
   r.setProperty('--btn-a', (u.btnA / 100).toFixed(2)); r.setProperty('--btn-z', (u.btnZ / 100).toFixed(2));
   _geoBadgeRender();
 }
@@ -11481,6 +11497,8 @@ function _setUiUi() {
   if (!document.getElementById('ui-bdgA')) return;
   set('ui-bdgA', u.bdgA, u.bdgA + ' %'); set('ui-blur', u.blur, u.blur ? u.blur + ' px' : 'bez (karta jasno vidljiva)');
   document.querySelectorAll('#ui-tema button').forEach(b => b.classList.toggle('on', b.dataset.v === u.tema));
+  document.querySelectorAll('#ui-btnOblik button').forEach(b => b.classList.toggle('on', b.dataset.v === u.btnOblik));
+  document.querySelectorAll('#ui-btnIk button').forEach(b => b.classList.toggle('on', b.dataset.v === u.btnIk));
   const pb = document.getElementById('ui-pr-badge'); if (pb) pb.innerHTML = _geoBadgeHtml('812 m', 'Y 5591642, X 4971308'); set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
   document.querySelectorAll('#ui-bdgOut button').forEach(b => b.classList.toggle('on', b.dataset.v === u.bdgOut));
   ['bdgElev', 'bdgMgi', 'bdgRz'].forEach(k => document.getElementById('ui-' + k)?.classList.toggle('on', !!u[k]));
