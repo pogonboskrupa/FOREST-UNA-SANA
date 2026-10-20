@@ -89,9 +89,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #top-bar > * { pointer-events:auto; }
 #top-left-stack { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
 #geo-badge {
-  background:rgba(10,24,18,.86); color:#d8e8df; border-radius:12px;
+  background:rgba(10,24,18,var(--bdg-a,.55)); color:#e8f3ec; border-radius:12px; text-shadow:var(--bdg-ts, -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000);
   border:1px solid rgba(134,239,172,.18);
-  padding:6px 11px; font-size:11px; font-family:monospace; line-height:1.5;
+  padding:6px 11px; font-size:var(--bdg-fs,11px); font-family:monospace; line-height:1.5;
   box-shadow:0 6px 18px rgba(0,0,0,.32); white-space:normal; max-width:calc(100vw - 84px);
   -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
 }
@@ -217,7 +217,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
    zaobljeni kvadrati, SVG ikone linijskog stila (currentColor → aktivno stanje
    se vidi, za razliku od emoji). ─────────────────────────────────────────── */
 .map-ctl, #layer-btn {
-  background:rgba(10,24,18,.86); color:#d8e8df;
+  background:rgba(10,24,18,var(--btn-a,.86)); color:#d8e8df;
   border:1px solid rgba(134,239,172,.18);
   box-shadow:0 6px 18px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.05);
   -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
@@ -689,6 +689,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-sel { padding:8px 10px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12.5px; }
 .set-razm-vl { display:flex; align-items:center; gap:8px; padding:0 0 10px; color:#cbd5e1; } .set-razm-vl input { width:110px; padding:8px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; } .set-razm-vl small { color:#80958a; font-size:11px; }
 #geo-badge .rz { color:#fde68a; font-weight:700; display:inline-block; }
+#layer-btn, #zoom-grp, #map-fabs { zoom:var(--btn-z,1); }
+.ui-pregled { position:relative; height:84px; margin:2px 0 12px; border-radius:12px; overflow:hidden; border:1px solid #1f3b2d; background:linear-gradient(135deg,#6b8f71,#c9b48a 55%,#7a8f9a); }
+.ui-pregled #ui-pr-badge { position:absolute; left:10px; top:10px; } .ui-pregled #ui-pr-btn { position:absolute; right:10px; top:10px; width:40px; height:40px; border-radius:13px; display:grid; place-items:center; font-size:19px; }
 .set-nap { color:#80958a; font-size:11px; line-height:1.45; margin:8px 0 0; }
 .set-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:4px 0 6px; }
 .set-grid div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:8px 4px; text-align:center; }
@@ -1017,6 +1020,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .kh-pl.on small { color:#86efac; }
 .kh-iskljuci { grid-column:1 / -1; padding:10px; border-radius:12px; border:1px dashed #475569; background:transparent; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 @media (min-width:700px) { .kh-pregled { grid-template-columns:repeat(4,1fr); } }
+.kh-razm .kg-top > i { color:#fde68a; } .kh-razm.sk { border-color:#f59e0b !important; } .kh-razm h3 .rz { color:#fde68a; margin-left:6px; font-variant-numeric:tabular-nums; }
+#karte-panel .set-nav { margin-bottom:10px; }
 .kh-gran { border-color:#334155 !important; }
 .kh-gran.on { border-color:#22c55e !important; background:linear-gradient(145deg,#12402a,#0d1a14) !important; }
 .kg-top { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
@@ -1989,11 +1994,15 @@ body.sl-uredi #sl-ured { display: block; }
 <div id="karte-panel" class="usf-panel">
   <div class="up-hdr"><h2>🗺 Karte i slojevi</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
+    <nav class="set-nav" aria-label="Skok na sekciju">
+      <button onclick="_khSkok('kh-gran')">▱ Granice</button><button onclick="_khSkok('kh-g-podloga')">🌍 Podloga</button><button onclick="_khSkok('kh-g-podaci')">🗺 Moji podaci</button><button onclick="_khSkok('kh-g-teren')">⛰ Teren</button>
+    </nav>
     <div class="karta-hub-grid">
       <section class="karta-hub-card kh-gran" id="kh-gran"></section>
+      <section class="karta-hub-card" id="kh-razmjera"></section>
       <div class="kh-grupa">Pregled</div>
       <div id="kh-pregled" class="kh-pregled" role="status"></div>
-      <div class="kh-grupa">Podloga</div>
+      <div class="kh-grupa" id="kh-g-podloga">Podloga</div>
       <section class="karta-hub-card">
         <h3>🌍 Bazna karta</h3>
         <div id="karta-base-list"></div>
@@ -2004,7 +2013,7 @@ body.sl-uredi #sl-ured { display: block; }
         <p id="kh-offline" class="kh-stat">.sqlitedb / .mbtiles — rad bez signala</p>
         <button class="karta-hub-action" onclick="openUcitajKartuSection()">Upravljaj offline kartama</button>
       </section>
-      <div class="kh-grupa">Moji podaci</div>
+      <div class="kh-grupa" id="kh-g-podaci">Moji podaci</div>
       <section class="karta-hub-card kh-lista" id="kh-lista" hidden></section>
       <section class="karta-hub-card">
         <h3>🗺 KML — preglednik poligona <span class="kh-bedz" id="kh-b-kml" hidden></span></h3>
@@ -2022,7 +2031,7 @@ body.sl-uredi #sl-ured { display: block; }
         <p>Oboji odjele ili odsjeke prema numeričkim atributima iz .gpkg fajla.</p>
         <button class="karta-hub-action" onclick="openTematskaSection()">Otvori tematske karte</button>
       </section>
-      <div class="kh-grupa">Teren</div>
+      <div class="kh-grupa" id="kh-g-teren">Teren</div>
       <section class="karta-hub-card ng-hub">
         <h3>📐 Nagib terena</h3>
         <p>Karta nagiba po rasponima i mjerenje nagiba poligona linijama niz padinu.</p>
@@ -2053,7 +2062,7 @@ body.sl-uredi #sl-ured { display: block; }
     </section>
     <div id="set-profil"></div>
     <nav class="set-nav" aria-label="Skok na sekciju">
-      <button onclick="_setSkok('set-update-card')">⇩ Ažuriranje</button><button onclick="_setSkok('set-g-karta')">🔭 Razmjera</button><button onclick="_setSkok('set-s-trag')">🥾 Trag</button><button onclick="_setSkok('set-s-gps')">📍 GPS</button><button onclick="_setSkok('set-s-podaci')">💾 Podaci</button><button onclick="_setSkok('set-s-karte')">🗂 Memorija</button>
+      <button onclick="_setSkok('set-update-card')">⇩ Ažuriranje</button><button onclick="_setSkok('set-g-karta')">🔭 Razmjera</button><button onclick="_setSkok('set-s-ui')">🎛 Dugmad</button><button onclick="_setSkok('set-s-trag')">🥾 Trag</button><button onclick="_setSkok('set-s-gps')">📍 GPS</button><button onclick="_setSkok('set-s-podaci')">💾 Podaci</button><button onclick="_setSkok('set-s-karte')">🗂 Memorija</button>
     </nav>
     <h4 class="set-grp" id="set-g-app">Aplikacija<small>verzija i ažuriranje</small></h4>
     <section class="update-card" id="set-update-card" data-phase="idle">
@@ -2068,13 +2077,27 @@ body.sl-uredi #sl-ured { display: block; }
         <div class="update-progress-meta"><span id="set-update-size"></span><span id="set-update-percent"></span></div>
       </div>
     </section>
-    <h4 class="set-grp" id="set-g-karta">Prikaz na karti<small>razmjera i izgled traga</small></h4>
+    <h4 class="set-grp" id="set-g-karta">Prikaz na karti<small>razmjera, koordinate, dugmad, trag</small></h4>
     <section class="ng-card" id="set-s-razmjera">
       <h3>🔭 Prikaz po razmjeri</h3>
       <p class="set-nap" style="margin-top:0">Sloj se sakrije kad zumiraš dalje od odabrane razmjere (npr. 1:50 000 = sitnija od toga). Izbor se pamti.</p>
       <div id="set-razmjera"></div>
       <div class="set-nap" id="set-razmjera-sad"></div>
     </section>
+    <section class="ng-card" id="set-s-ui">
+      <h3>🎛 Koordinate i dugmad</h3>
+      <div class="ui-pregled"><div id="ui-pr-badge" style="background:rgba(10,24,18,var(--bdg-a));color:#e8f3ec;border-radius:12px;border:1px solid rgba(134,239,172,.18);padding:6px 11px;font:var(--bdg-fs) monospace;text-shadow:var(--bdg-ts)">↕ 812 m · MGI5 Y 5591642, X 4971308 · 1:25 000</div><div id="ui-pr-btn" class="map-ctl">🗂</div></div>
+      <label class="set-klizac"><span>Providnost podloge koordinata <b id="ui-bdgA-v"></b></span><input type="range" id="ui-bdgA" min="0" max="100" step="5" oninput="_setUi('bdgA', +this.value)"></label>
+      <label class="set-klizac"><span>Veličina teksta <b id="ui-bdgFs-v"></b></span><input type="range" id="ui-bdgFs" min="9" max="16" step="1" oninput="_setUi('bdgFs', +this.value)"></label>
+      <div class="set-red"><div><b>Obris teksta</b><small>Obris čini koordinate čitljivim na svijetloj podlozi.</small></div></div>
+      <div class="set-seg" id="ui-bdgOut"><button data-v="isklj" onclick="_setUi('bdgOut','isklj')">Bez</button><button data-v="tanak" onclick="_setUi('bdgOut','tanak')">Tanak</button><button data-v="jak" onclick="_setUi('bdgOut','jak')">Jak</button></div>
+      <div class="set-red"><div><b>Šta se prikazuje</b></div></div>
+      <div class="set-seg ui-dijelovi"><button id="ui-bdgElev" onclick="_setUi('bdgElev', !_uiPrikaz.bdgElev)">↕ Visina</button><button id="ui-bdgMgi" onclick="_setUi('bdgMgi', !_uiPrikaz.bdgMgi)">MGI5</button><button id="ui-bdgRz" onclick="_setUi('bdgRz', !_uiPrikaz.bdgRz)">1:razmjera</button></div>
+      <label class="set-klizac" style="margin-top:12px"><span>Providnost podloge dugmadi <b id="ui-btnA-v"></b></span><input type="range" id="ui-btnA" min="0" max="100" step="5" oninput="_setUi('btnA', +this.value)"></label>
+      <label class="set-klizac"><span>Veličina dugmadi <b id="ui-btnZ-v"></b></span><input type="range" id="ui-btnZ" min="80" max="140" step="5" oninput="_setUi('btnZ', +this.value)"></label>
+      <button class="set-dugme" style="margin-top:10px" onclick="_setUiZadano()">↺ Vrati zadano</button>
+    </section>
+
     <section class="ng-card" id="set-s-trag">
       <h3>🥾 Snimanje traga i linije</h3>
       <svg id="set-trag-pregled" class="set-pregled" viewBox="0 0 320 64" aria-hidden="true"><path d="M8 48 C60 8 110 60 160 30 S260 8 312 40" fill="none" stroke-linecap="round"/></svg>
@@ -2967,10 +2990,10 @@ function wgsToMGI5(lat, lon) {
   return { y: Math.round(y), x: Math.round(x) };
 }
 // ── Razmjera: tekst uz koordinate i prikaz slojeva po razmjeri (Postavke → 🔭 Prikaz po razmjeri, pamti se) ──
-const _PR_KEY = 'usf_prikaz_razmjera', _PR_ZAD = { slike: 0, tragovi: 50000, kml: 0 }; // 0 = uvijek vidljivo
+const _PR_KEY = 'usf_prikaz_razmjera', _PR_ZAD = { slike: 0, tragovi: 50000, kml: 0, mjerenja: 25000 }; // 0 = uvijek vidljivo
 let _prRazmjera = { ..._PR_ZAD };
 try { const v = JSON.parse(localStorage.getItem(_PR_KEY) || 'null'); if (v) Object.keys(_PR_ZAD).forEach(k => { if (Number.isFinite(+v[k]) && +v[k] >= 0) _prRazmjera[k] = +v[k]; }); } catch (e) {}
-const _prSkriveno = { slike: false, tragovi: false, kml: false };
+const _prSkriveno = { slike: false, tragovi: false, kml: false, mjerenja: false };
 const _prBroj = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 function _razmjeraTxt() {
   const d = _razmjera(), e = Math.pow(10, Math.max(0, Math.floor(Math.log10(d)) - 1)), r = Math.round(d / e) * e;
@@ -2985,9 +3008,30 @@ function _prPrimijeni(sve) {
     try {
       if (v === 'tragovi') _tragRegistry.forEach(_tragRegAddLayer);
       else if (v === 'kml') kmlLs.forEach(_kmlPrimijeniPrikaz);
+      else if (v === 'mjerenja') _msrDrawAllSaved();
       else if (typeof USFTacke !== 'undefined') USFTacke.crtaj();
     } catch (e) {}
   });
+}
+// Izgled koordinata i dugmadi na karti (Postavke → 🎛 Koordinate i dugmad, pamti se): providnost podloge, obris teksta, veličina, dijelovi
+const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, bdgRz: true, btnA: 86, btnZ: 100 };
+let _uiPrikaz = { ..._UI_ZAD };
+try { const v = JSON.parse(localStorage.getItem(_UI_KEY) || 'null'); if (v) Object.keys(_UI_ZAD).forEach(k => { if (k in v && typeof v[k] === typeof _UI_ZAD[k]) _uiPrikaz[k] = v[k]; }); } catch (e) {}
+const _UI_OBRIS = { isklj: 'none', tanak: '-1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000', jak: '-1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 0 0 5px #000' };
+function _uiPrimijeni() {
+  const r = document.documentElement.style, u = _uiPrikaz;
+  r.setProperty('--bdg-a', (u.bdgA / 100).toFixed(2)); r.setProperty('--bdg-fs', u.bdgFs + 'px'); r.setProperty('--bdg-ts', _UI_OBRIS[u.bdgOut] || 'none');
+  r.setProperty('--btn-a', (u.btnA / 100).toFixed(2)); r.setProperty('--btn-z', (u.btnZ / 100).toFixed(2));
+  _geoBadgeRender();
+}
+const _geoBadgeLast = { elev: '…', mgi: '' };
+function _geoBadgeRender() {
+  const el = document.getElementById('geo-badge'); if (!el) return;
+  const u = _uiPrikaz, d = [];
+  if (u.bdgElev) d.push(`<span class="elev">↕ ${_geoBadgeLast.elev}</span>`);
+  if (u.bdgMgi && _geoBadgeLast.mgi) d.push(`<span class="mgi">MGI5 ${_geoBadgeLast.mgi}</span>`);
+  if (u.bdgRz) d.push(`<span class="rz">${_razmjeraTxt()}</span>`);
+  el.innerHTML = d.join(' · '); el.style.display = d.length ? '' : 'none';
 }
 let _geoBadgeElevSeq = 0;
 async function _geoBadgeUpdate() {
@@ -2996,17 +3040,17 @@ async function _geoBadgeUpdate() {
   const c = map.getCenter();
   const mgi = wgsToMGI5(c.lat, c.lng);
   const mySeq = ++_geoBadgeElevSeq;
-  const rz = ` · <span class="rz">${_razmjeraTxt()}</span>`;
-  el.innerHTML = `<span class="elev">↕ …</span> · MGI5 Y ${mgi.y}, X ${mgi.x}${rz}`;
+  _geoBadgeLast.mgi = `Y ${mgi.y}, X ${mgi.x}`; _geoBadgeLast.elev = '…'; _geoBadgeRender();
   try {
     const elev = await _msrFetchElev(c.lat, c.lng);
     if (mySeq !== _geoBadgeElevSeq) return; // karta se pomjerila u međuvremenu — odbaci zastarjeli odgovor
-    el.innerHTML = `<span class="elev">↕ ${elev != null ? Math.round(elev) + ' m' : '—'}</span> · MGI5 Y ${mgi.y}, X ${mgi.x}${rz}`;
+    _geoBadgeLast.elev = elev != null ? Math.round(elev) + ' m' : '—'; _geoBadgeRender();
   } catch(e) {}
 }
 map.on('moveend', _geoBadgeUpdate);
-map.on('zoomend', () => { _prPrimijeni(false); const r = document.querySelector('#geo-badge .rz'); if (r) r.textContent = _razmjeraTxt(); });
+map.on('zoomend', () => { _prPrimijeni(false); _geoBadgeRender(); if (document.getElementById('karte-panel')?.classList.contains('show')) _khStat(); });
 window.addEventListener('load', () => setTimeout(() => _prPrimijeni(true), 400));
+_uiPrimijeni();
 _geoBadgeUpdate();
 
 // =====================================================================
@@ -4830,6 +4874,7 @@ function _msrDrawAllSaved() {
   if (!_msrPinLayer) _msrPinLayer = _razmjeraOznake(L.layerGroup());
   _msrSavedLayer.clearLayers();
   _msrPinLayer.clearLayers();
+  if (_razmjeraSkriva('mjerenja')) return; // Postavke → Prikaz po razmjeri
   _msrRegistry.forEach(m => {
     if (m.id === _mqmId) return;
     if (!m.pts || m.pts.length < 2) return;
@@ -5029,7 +5074,7 @@ _kartaKlikIzvor((ll, kp) => _tragRegistry.filter(t => t.visible !== false && t.p
   vrsta: 'linija', d: _pxDoLinije(kp, t.pts.map(p => L.latLng(p[0], p[1]))),
   otvori: at => { const line = _tragLayers[t.id]; if (line) line.openPopup(at); }
 })));
-_kartaKlikIzvor((ll, kp) => (_msrRegistry || []).filter(m => m.id !== _mqmId && m.pts && m.pts.length >= 2).map(m => {
+_kartaKlikIzvor((ll, kp) => (_msrRegistry || []).filter(m => m.id !== _mqmId && m.pts && m.pts.length >= 2 && !_razmjeraSkriva('mjerenja')).map(m => {
   const lls = m.pts.map(p => L.latLng(p.lat, p.lng)), pov = (m.mode || 'dist') === 'area' && lls.length >= 3;
   if (pov && _msrTackaUPoligonu(ll, m.pts)) return { vrsta: 'poligon', pov: _pxPovrsina(lls), otvori: at => _msrOpenPopupNa(m, at) };
   return { vrsta: 'linija', d: _pxDoLinije(kp, lls, pov), otvori: at => _msrOpenPopupNa(m, at) };
@@ -6245,7 +6290,7 @@ function _khStat() {
     if (kml) kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp';
     const vidljivi = kmlLs.filter(_kmlNaKarti).length;
     bedz('kh-b-kml', kmlLs.length ? vidljivi + '/' + kmlLs.length + ' na karti' : '');
-    _khGranice(); _khSlojevi();
+    _khGranice(); _khRazmjera(); _khSlojevi();
     bedz('kh-b-ozn', kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') : ''); _kedHubRender();
     // Pregled: podloga, offline, KML, uključeni slojevi (teren + praćenje šume) — dodir vodi u odgovarajuću sekciju
     const tem = typeof _tematskiUkljuceni === 'function' ? _tematskiUkljuceni().length : 0;
@@ -6264,6 +6309,15 @@ function _khStat() {
   } catch(e) {}
 }
 // Granice odjela (sloj „Granice taksacije”): veliki prekidač prikaza na vrhu taba Karte; podaci za odabir ostaju dostupni i kad je skriveno.
+function _khSkok(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+// Kartica „Prikaz po razmjeri”: trenutna razmjera i šta je zbog nje sada sakriveno; dugme vodi u Postavke
+function _khRazmjera() {
+  const el = document.getElementById('kh-razmjera'); if (!el) return;
+  const sk = _PR_VRSTE.filter(([k]) => _razmjeraSkriva(k)).map(([, t]) => t);
+  el.className = 'karta-hub-card kh-razm' + (sk.length ? ' sk' : '');
+  el.innerHTML = `<div class="kg-top"><i>🔭</i><div><h3>Razmjera <b class="rz">${_razmjeraTxt()}</b></h3><p>${sk.length ? 'Zbog razmjere je sakriveno: ' + sk.join(', ') : 'Svi slojevi su vidljivi pri ovoj razmjeri'}</p></div></div>
+    <button class="karta-hub-action" onclick="switchMainTab('postavke');setTimeout(()=>_setSkok('set-g-karta'),150)">Podesi prikaz po razmjeri</button>`;
+}
 function _khGranice() {
   const el = document.getElementById('kh-gran'); if (!el) return;
   const k = kmlLs.find(x => _kmlJePoligonski(x.name));
@@ -11387,7 +11441,7 @@ document.addEventListener('keydown', e => {
   if (_ALL_PANELS.some(id => document.getElementById(id)?.classList.contains('show'))) switchMainTab('karta');
 });
 function _setSkok(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-const _PR_VRSTE = [['slike', '📷 Slike i tačke'], ['tragovi', '🥾 Tragovi'], ['kml', '🗺 KML / SHP slojevi']];
+const _PR_VRSTE = [['slike', '📷 Slike i tačke'], ['tragovi', '🥾 Tragovi'], ['mjerenja', '📏 Mjerenja'], ['kml', '🗺 KML / SHP slojevi']];
 const _PR_PRESETI = [0, 10000, 25000, 50000, 100000, 250000];
 function _setRazmjeraUi() {
   const el = document.getElementById('set-razmjera'); if (!el) return;
@@ -11407,6 +11461,19 @@ function _setRazmjera(k, val, vlastita) {
   try { localStorage.setItem(_PR_KEY, JSON.stringify(_prRazmjera)); } catch (e) {}
   _prPrimijeni(true); _setRazmjeraUi();
 }
+function _setUiUi() {
+  const u = _uiPrikaz, set = (id, v, t) => { const e = document.getElementById(id); if (e) e.value = v; const o = document.getElementById(id + '-v'); if (o) o.textContent = t; };
+  if (!document.getElementById('ui-bdgA')) return;
+  set('ui-bdgA', u.bdgA, u.bdgA + ' %'); set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
+  document.querySelectorAll('#ui-bdgOut button').forEach(b => b.classList.toggle('on', b.dataset.v === u.bdgOut));
+  ['bdgElev', 'bdgMgi', 'bdgRz'].forEach(k => document.getElementById('ui-' + k)?.classList.toggle('on', !!u[k]));
+}
+function _setUi(k, v) {
+  _uiPrikaz[k] = v;
+  try { localStorage.setItem(_UI_KEY, JSON.stringify(_uiPrikaz)); } catch (e) {}
+  _uiPrimijeni(); _setUiUi();
+}
+function _setUiZadano() { _uiPrikaz = { ..._UI_ZAD }; try { localStorage.removeItem(_UI_KEY); } catch (e) {} _uiPrimijeni(); _setUiUi(); showToast('↺ Zadani izgled koordinata i dugmadi'); }
 function _setTragUi() {
   const w = document.getElementById('set-trag-w'); if (!w) return;
   w.value = _lineStyle.tragW; document.getElementById('set-trag-op').value = _lineStyle.tragOp;
@@ -11429,7 +11496,7 @@ function _setTragZadano() {
   _tragRegistry.forEach(_tragRegAddLayer); _setTragUi(); showToast('↺ Zadane postavke traga');
 }
 function _renderPostavke() {
-  _prikazUi(); _setTragUi(); _setRazmjeraUi();
+  _prikazUi(); _setTragUi(); _setRazmjeraUi(); _setUiUi();
   _updOfflineBanner();
   _korisnikUi();
   const el = document.getElementById('set-ver-txt');
