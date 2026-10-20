@@ -92,7 +92,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   background:rgba(10,24,18,.86); color:#d8e8df; border-radius:12px;
   border:1px solid rgba(134,239,172,.18);
   padding:6px 11px; font-size:11px; font-family:monospace; line-height:1.5;
-  box-shadow:0 6px 18px rgba(0,0,0,.32); white-space:nowrap;
+  box-shadow:0 6px 18px rgba(0,0,0,.32); white-space:normal; max-width:calc(100vw - 84px);
   -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
 }
 #geo-badge .elev { color:#4ade80; font-weight:700; }
@@ -677,15 +677,18 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-det summary { cursor:pointer; color:var(--text); font-size:13px; font-weight:700; }
 .set-input { width:100%; box-sizing:border-box; padding:11px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; margin:6px 0 8px; }
 .set-dugme { width:100%; padding:10px; border-radius:10px; border:1px solid rgba(74,222,128,.3); background:rgba(22,101,52,.3); color:#bbf7d0; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.set-grp { display:flex; align-items:baseline; gap:8px; margin:20px 2px 8px; color:#6ee7b7; font-size:11px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+.set-grp small { color:#6b8277; font-size:10.5px; font-weight:500; letter-spacing:0; text-transform:none; }
+#postavke-panel .ng-card { margin-bottom:10px; }
 .set-nav { position:sticky; top:-1px; z-index:5; display:flex; gap:6px; overflow-x:auto; padding:8px 0; margin:0 0 6px; background:linear-gradient(var(--bg,#08140e) 80%, transparent); scrollbar-width:none; }
 .set-nav::-webkit-scrollbar { display:none; }
 .set-nav button { flex:none; padding:7px 12px; border-radius:999px; border:1px solid #1f3b2d; background:#0d1a14; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; white-space:nowrap; }
-[id^='set-s-'], #set-update-card { scroll-margin-top:54px; }
+[id^='set-s-'], [id^='set-g-'], #set-update-card { scroll-margin-top:54px; }
 .set-pregled { width:100%; height:56px; display:block; margin:2px 0 10px; border-radius:10px; background:#0b1a13; border:1px solid #1f3b2d; }
 .set-klizac { display:block; margin:8px 0; } .set-klizac span { display:flex; justify-content:space-between; font-size:12.5px; color:#cbd5e1; margin-bottom:4px; } .set-klizac b { color:#4ade80; } .set-klizac input { width:100%; accent-color:#22c55e; }
 .set-sel { padding:8px 10px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12.5px; }
 .set-razm-vl { display:flex; align-items:center; gap:8px; padding:0 0 10px; color:#cbd5e1; } .set-razm-vl input { width:110px; padding:8px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; } .set-razm-vl small { color:#80958a; font-size:11px; }
-#geo-badge .rz { color:#fde68a; font-weight:700; }
+#geo-badge .rz { color:#fde68a; font-weight:700; display:inline-block; }
 .set-nap { color:#80958a; font-size:11px; line-height:1.45; margin:8px 0 0; }
 .set-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:4px 0 6px; }
 .set-grid div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:8px 4px; text-align:center; }
@@ -2050,8 +2053,9 @@ body.sl-uredi #sl-ured { display: block; }
     </section>
     <div id="set-profil"></div>
     <nav class="set-nav" aria-label="Skok na sekciju">
-      <button onclick="_setSkok('set-update-card')">⇩ Ažuriranje</button><button onclick="_setSkok('set-s-prikaz')">🖥 Prikaz</button><button onclick="_setSkok('set-s-karte')">🗺 Memorija</button><button onclick="_setSkok('set-s-gps')">📍 GPS</button><button onclick="_setSkok('set-s-razmjera')">🔭 Razmjera</button><button onclick="_setSkok('set-s-trag')">🥾 Trag</button><button onclick="_setSkok('set-s-podaci')">💾 Podaci</button>
+      <button onclick="_setSkok('set-update-card')">⇩ Ažuriranje</button><button onclick="_setSkok('set-g-karta')">🔭 Razmjera</button><button onclick="_setSkok('set-s-trag')">🥾 Trag</button><button onclick="_setSkok('set-s-gps')">📍 GPS</button><button onclick="_setSkok('set-s-podaci')">💾 Podaci</button><button onclick="_setSkok('set-s-karte')">🗂 Memorija</button>
     </nav>
+    <h4 class="set-grp" id="set-g-app">Aplikacija<small>verzija i ažuriranje</small></h4>
     <section class="update-card" id="set-update-card" data-phase="idle">
       <div class="update-card-head">
         <div class="update-card-icon">⇩</div>
@@ -2064,13 +2068,39 @@ body.sl-uredi #sl-ured { display: block; }
         <div class="update-progress-meta"><span id="set-update-size"></span><span id="set-update-percent"></span></div>
       </div>
     </section>
-
-    <section class="ng-card" id="set-s-prikaz">
-      <h3>🖥 Prikaz</h3>
-      <div class="set-seg" id="set-prikaz"><button data-v="auto" onclick="_prikazPostavi('auto')">Automatski</button><button data-v="desktop" onclick="_prikazPostavi('desktop')">Računar</button><button data-v="mobilni" onclick="_prikazPostavi('mobilni')">Telefon</button></div>
-      <small class="set-nap" id="set-prikaz-txt"></small>
+    <h4 class="set-grp" id="set-g-karta">Prikaz na karti<small>razmjera i izgled traga</small></h4>
+    <section class="ng-card" id="set-s-razmjera">
+      <h3>🔭 Prikaz po razmjeri</h3>
+      <p class="set-nap" style="margin-top:0">Sloj se sakrije kad zumiraš dalje od odabrane razmjere (npr. 1:50 000 = sitnija od toga). Izbor se pamti.</p>
+      <div id="set-razmjera"></div>
+      <div class="set-nap" id="set-razmjera-sad"></div>
     </section>
-
+    <section class="ng-card" id="set-s-trag">
+      <h3>🥾 Snimanje traga i linije</h3>
+      <svg id="set-trag-pregled" class="set-pregled" viewBox="0 0 320 64" aria-hidden="true"><path d="M8 48 C60 8 110 60 160 30 S260 8 312 40" fill="none" stroke-linecap="round"/></svg>
+      <label class="set-klizac"><span>Debljina <b id="set-trag-w-v"></b></span><input type="range" id="set-trag-w" min="1" max="10" step="1" oninput="_setTragStil()"></label>
+      <label class="set-klizac"><span>Neprovidnost <b id="set-trag-op-v"></b></span><input type="range" id="set-trag-op" min="30" max="100" step="5" oninput="_setTragStil()"></label>
+      <div class="set-seg" id="set-trag-dash"><button data-v="solid" onclick="_setTragStil('solid')">Puna</button><button data-v="dash" onclick="_setTragStil('dash')">Isprekidana</button><button data-v="dot" onclick="_setTragStil('dot')">Tačkasta</button></div>
+      <div class="set-red"><div><b>Najlošija GPS tačnost za trag</b><small>Tačke s većom greškom od zadane se odbacuju (stroža = čistiji trag, ali rupe u šumi).</small></div></div>
+      <div class="set-seg" id="set-trag-ac"><button data-v="20" onclick="_setTragAc(20)">±20 m</button><button data-v="50" onclick="_setTragAc(50)">±50 m · zadano</button><button data-v="100" onclick="_setTragAc(100)">±100 m</button></div>
+      <button class="set-dugme" style="margin-top:10px" onclick="_setTragZadano()">↺ Vrati zadano</button>
+    </section>
+    <h4 class="set-grp" id="set-g-snimanje">GPS<small>baterija i pozadinski rad</small></h4>
+    <section class="ng-card" id="set-s-gps">
+      <h3>📍 GPS i baterija</h3>
+      <div class="set-red"><div><b>Rad bez ograničenja baterije</b><small id="set-bat-txt">Da poziv ili druga aplikacija ne prekine GPS snimanje u pozadini.</small></div><button id="set-bat-btn" onclick="_setBaterija()">Podesi</button></div>
+      <div class="set-red" id="set-autostart" hidden><div><b>Autostart (Xiaomi/Redmi)</b><small>Uključi Autostart za Grmeč Navigator — inače HyperOS može ugasiti snimanje traga dok je ekran zaključan.</small></div><button onclick="AndroidGps.otvoriAutostart()">Otvori</button></div>
+    </section>
+    <h4 class="set-grp" id="set-g-podaci">Podaci<small>rezervna kopija</small></h4>
+    <section class="ng-card" id="set-s-podaci">
+      <h3>💾 Podaci na uređaju</h3>
+      <div class="set-grid" id="set-podaci"></div>
+      <div class="rd-akc"><button class="glavno" onclick="_setBackup()">⤓ Rezervna kopija</button><button onclick="document.getElementById('set-restore-input').click()">⤒ Vrati iz kopije</button></div>
+      <input type="file" id="set-restore-input" accept=".json,application/json" style="display:none" onchange="_setRestore(event)">
+      <div class="rd-akc"><button id="set-pin-zakljucaj" hidden onclick="_pinZakljucaj()">🔒 Zaključaj zaštićene sekcije</button></div>
+      <p class="set-nap">Kopija (.json) sadrži tragove, mjerenja, KML slojeve, trase, mjerenja nagiba, postavke i API ključeve — ne dijeli je. Offline karte (.mbtiles) nisu u kopiji; to su već fajlovi na telefonu. Korisno pri prelasku na novi telefon.</p>
+    </section>
+    <h4 class="set-grp" id="set-g-izgled">Memorija i uređaj<small>keš karata, prikaz, napredno</small></h4>
     <section class="ng-card" id="set-s-karte">
       <h3>🗺 Karte i memorija</h3>
       <div class="set-mem"><div class="set-mem-bar"><i id="set-mem-fill"></i></div><small id="set-mem-txt">Računam zauzeće…</small></div>
@@ -2082,40 +2112,11 @@ body.sl-uredi #sl-ured { display: block; }
         <button class="set-dugme" onclick="_terrainProtomapsSave()">Sačuvaj i koristi Protomaps</button>
       </details>
     </section>
-
-    <section class="ng-card" id="set-s-gps">
-      <h3>📍 GPS i baterija</h3>
-      <div class="set-red"><div><b>Rad bez ograničenja baterije</b><small id="set-bat-txt">Da poziv ili druga aplikacija ne prekine GPS snimanje u pozadini.</small></div><button id="set-bat-btn" onclick="_setBaterija()">Podesi</button></div>
-      <div class="set-red" id="set-autostart" hidden><div><b>Autostart (Xiaomi/Redmi)</b><small>Uključi Autostart za Grmeč Navigator — inače HyperOS može ugasiti snimanje traga dok je ekran zaključan.</small></div><button onclick="AndroidGps.otvoriAutostart()">Otvori</button></div>
+    <section class="ng-card" id="set-s-prikaz">
+      <h3>🖥 Prikaz</h3>
+      <div class="set-seg" id="set-prikaz"><button data-v="auto" onclick="_prikazPostavi('auto')">Automatski</button><button data-v="desktop" onclick="_prikazPostavi('desktop')">Računar</button><button data-v="mobilni" onclick="_prikazPostavi('mobilni')">Telefon</button></div>
+      <small class="set-nap" id="set-prikaz-txt"></small>
     </section>
-
-    <section class="ng-card" id="set-s-razmjera">
-      <h3>🔭 Prikaz po razmjeri</h3>
-      <p class="set-nap" style="margin-top:0">Sloj se sakrije kad zumiraš dalje od odabrane razmjere (npr. 1:50 000 = sitnija od toga). Izbor se pamti.</p>
-      <div id="set-razmjera"></div>
-      <div class="set-nap" id="set-razmjera-sad"></div>
-    </section>
-
-    <section class="ng-card" id="set-s-trag">
-      <h3>🥾 Snimanje traga i linije</h3>
-      <svg id="set-trag-pregled" class="set-pregled" viewBox="0 0 320 64" aria-hidden="true"><path d="M8 48 C60 8 110 60 160 30 S260 8 312 40" fill="none" stroke-linecap="round"/></svg>
-      <label class="set-klizac"><span>Debljina <b id="set-trag-w-v"></b></span><input type="range" id="set-trag-w" min="1" max="10" step="1" oninput="_setTragStil()"></label>
-      <label class="set-klizac"><span>Neprovidnost <b id="set-trag-op-v"></b></span><input type="range" id="set-trag-op" min="30" max="100" step="5" oninput="_setTragStil()"></label>
-      <div class="set-seg" id="set-trag-dash"><button data-v="solid" onclick="_setTragStil('solid')">Puna</button><button data-v="dash" onclick="_setTragStil('dash')">Isprekidana</button><button data-v="dot" onclick="_setTragStil('dot')">Tačkasta</button></div>
-      <div class="set-red"><div><b>Najlošija GPS tačnost za trag</b><small>Tačke s većom greškom od zadane se odbacuju (stroža = čistiji trag, ali rupe u šumi).</small></div></div>
-      <div class="set-seg" id="set-trag-ac"><button data-v="20" onclick="_setTragAc(20)">±20 m</button><button data-v="50" onclick="_setTragAc(50)">±50 m · zadano</button><button data-v="100" onclick="_setTragAc(100)">±100 m</button></div>
-      <button class="set-dugme" style="margin-top:10px" onclick="_setTragZadano()">↺ Vrati zadano</button>
-    </section>
-
-    <section class="ng-card" id="set-s-podaci">
-      <h3>💾 Podaci na uređaju</h3>
-      <div class="set-grid" id="set-podaci"></div>
-      <div class="rd-akc"><button class="glavno" onclick="_setBackup()">⤓ Rezervna kopija</button><button onclick="document.getElementById('set-restore-input').click()">⤒ Vrati iz kopije</button></div>
-      <input type="file" id="set-restore-input" accept=".json,application/json" style="display:none" onchange="_setRestore(event)">
-      <div class="rd-akc"><button id="set-pin-zakljucaj" hidden onclick="_pinZakljucaj()">🔒 Zaključaj zaštićene sekcije</button></div>
-      <p class="set-nap">Kopija (.json) sadrži tragove, mjerenja, KML slojeve, trase, mjerenja nagiba, postavke i API ključeve — ne dijeli je. Offline karte (.mbtiles) nisu u kopiji; to su već fajlovi na telefonu. Korisno pri prelasku na novi telefon.</p>
-    </section>
-
     <section class="ng-card">
       <details class="set-det"><summary>🛠 Napredno</summary>
         <p class="set-nap">Uređaj ID — pošalji administratoru za pristup dijeljenim ključevima.</p>
