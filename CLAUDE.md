@@ -190,6 +190,9 @@
   zadnja 3 otvorena odjeljka (`usf_meni_nedavno`, `_meniNedavnoRender`).
 - **Stil traga (v2.6.5)**: klik na trag (izvor u `_kartaKlikIzvor`) otvara karticu s „🎨 Stil” → `_tragStilUredi` = isti editor kao KML slojevi (`_kmlStilOtvori`, imaPol:false, živo na karti): boja `t.color`, debljina `t.weight`, providnost `t.op`
   (neprovidnost %), vrsta crte `t.dashStyle` (ključevi editora puna/isprek/tack/crtatack ili stari solid/dash/dot → `_tragDashArray`); bez vrijednosti važe zadane iz Postavki (`_lineStyle`). Tab Karte: „🧭 Slojevi na karti” sadrži i tragove (prekidač + 🎨), pregled ima pločice Tragovi i Mjerenja.
+- **Razmjera i prikaz po razmjeri (v2.6.6)**: `#geo-badge` (koordinate gore lijevo) ima i razmjeru `1:25 000` (`_razmjeraTxt`, 2 značajne cifre, osvježava se na zoomend). Postavke → „🔭 Prikaz po razmjeri”: posebna granica za
+  slike/tačke, tragove i KML/SHP slojeve (`_prRazmjera` {slike, tragovi, kml}, `usf_prikaz_razmjera`; 0 = uvijek, zadano tragovi 50000 = sakriveni sitnije od 1:50 000; presetovi + „Vlastita…”). `_razmjeraSkriva(vrsta)` je jedino mjesto odluke;
+  `_prPrimijeni` na zoomend preiscrta samo grupu čije se stanje promijenilo (`_tragRegAddLayer`, `_kmlPrimijeniPrikaz`, `USFTacke.crtaj`; sakrivene tačke/tragovi nisu ni klikabilni). `let` stanje MORA biti prije `_tragRegAddLayer` poziva (TDZ).
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
   isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”

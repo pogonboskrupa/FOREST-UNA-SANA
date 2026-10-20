@@ -84,6 +84,8 @@
   }
 
   // ── Karta ────────────────────────────────────────────────────────────
+  // Postavke → Prikaz po razmjeri: tačke se sakriju kad je razmjera sitnija od zadane granice
+  const slikeSkrivene = () => typeof _razmjeraSkriva === 'function' && _razmjeraSkriva('slike');
   let grp = null;
   function ikona(t) {
     const k = kat(t.kat), n = (t.foto || []).length;
@@ -100,7 +102,7 @@
       grp = L.layerGroup().addTo(map);
     }
     grp.clearLayers();
-    citaj().filter(t => t.vis !== false).forEach(t => L.marker([t.la, t.lo], { pane: 'tackePane', icon: ikona(t), interactive: false, keyboard: false }).addTo(grp));
+    if (!slikeSkrivene()) citaj().filter(t => t.vis !== false).forEach(t => L.marker([t.la, t.lo], { pane: 'tackePane', icon: ikona(t), interactive: false, keyboard: false }).addTo(grp));
     const st = document.getElementById('mc-stat-tacke');
     const n = citaj().length;
     if (st) st.textContent = n ? n + (n === 1 ? ' tačka' : n < 5 ? ' tačke' : ' tačaka') : '';
@@ -428,7 +430,7 @@
   // Klik na kartu: tačke imaju prednost (vrsta 'tacka'); vrh igle je ~24 px iznad koordinate.
   function registruj() {
     if (typeof _kartaKlikIzvor !== 'function') return;
-    _kartaKlikIzvor((ll, kp) => citaj().filter(t => t.vis !== false).map(t => {
+    _kartaKlikIzvor((ll, kp) => citaj().filter(t => t.vis !== false && !slikeSkrivene()).map(t => {
       const p = map.latLngToContainerPoint([t.la, t.lo]);
       const d = Math.min(kp.distanceTo(p), kp.distanceTo(L.point(p.x, p.y - 24)));
       return { vrsta: 'tacka', d: Math.max(0, d - 6), otvori: () => otvoriPopup(t) };
