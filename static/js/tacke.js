@@ -6,19 +6,22 @@
 
   const KLJUC = 'usf_tacke';
   const KATEGORIJE = [
-    { k: 'stablo', t: 'Suho / oštećeno stablo', ik: '🌲', boja: '#f59e0b' },
-    { k: 'steta', t: 'Šteta (vjetar, snijeg, potkornjak)', ik: '⚠️', boja: '#ef4444' },
-    { k: 'sjeca', t: 'Sječa / panj', ik: '🪓', boja: '#a855f7' },
-    { k: 'put', t: 'Put / vlaka / propust', ik: '🛣️', boja: '#94a3b8' },
-    { k: 'voda', t: 'Izvor / voda', ik: '💧', boja: '#38bdf8' },
-    { k: 'granica', t: 'Granica / oznaka', ik: '📍', boja: '#22c55e' },
+    { k: 'suho', t: 'Suho, prelomljeno, izvala', ik: '🌲', boja: '#f59e0b' },
+    { k: 'potkornjak', t: 'Potkornjak', ik: '🪲', boja: '#ef4444' },
+    { k: 'sjeca', t: 'Bespravna sječa', ik: '🪓', boja: '#a855f7' },
+    { k: 'imela', t: 'Imela', ik: '🌿', boja: '#84cc16' },
+    { k: 'vlaka', t: 'Silazak sa vlake', ik: '🛣️', boja: '#94a3b8' },
+    { k: 'red', t: 'Loš šumski red', ik: '⚠️', boja: '#fb923c' },
+    { k: 'granica', t: 'Granica odjela', ik: '📍', boja: '#22c55e' },
     { k: 'ostalo', t: 'Ostalo', ik: '📌', boja: '#e2e8f0' }
   ];
+  // Stari ključevi (prije 2.6.1) ostaju čitljivi: tačke u localStorage se ne mijenjaju
+  const STARE_VRSTE = { stablo: 'suho', steta: 'suho', put: 'vlaka', voda: 'ostalo' };
   // map (const) i lastP (let) su globalni leksički, NE svojstva window-a
   // (window.map je <div id="map">).
   const gp = () => (typeof lastP !== 'undefined' ? lastP : null);
   const imaKartu = () => typeof map !== 'undefined' && !!map && typeof map.getContainer === 'function';
-  const kat = k => KATEGORIJE.find(x => x.k === k) || KATEGORIJE[KATEGORIJE.length - 1];
+  const kat = k => KATEGORIJE.find(x => x.k === (STARE_VRSTE[k] || k)) || KATEGORIJE[KATEGORIJE.length - 1];
   const FOTO_MAX = 1600, MINI_MAX = 360;
 
   // ── Pohrana ──────────────────────────────────────────────────────────
@@ -122,6 +125,7 @@
       dugmad: [
         { t: '✏ Uredi', on: `USFTacke.uredi('${t.id}')`, v: 'glavno' },
         { t: '📷 Dodaj foto', on: `USFTacke.uredi('${t.id}',true)` },
+        { t: '📤 Pošalji s lokacijom', on: `USFTacke.posalji(['${t.id}'])` },
         { t: '⤓ KMZ', on: `USFTacke.izvozKmz(['${t.id}'])` },
         { t: '🗑 Briši', on: `USFTacke.obrisi('${t.id}')`, v: 'opasno' }
       ] });
@@ -239,7 +243,7 @@
     const p = gp();
     // gps/foto su zastavice, ne polja tačke — foto:true bi pregazio listu fotografija
     const { gps, foto: odmahFoto, ...ostalo } = dod || {};
-    const t = { id: 'tk' + Date.now().toString(36), datum: new Date().toISOString(), kat: 'stablo', naziv: '', opis: '', vis: true,
+    const t = { id: 'tk' + Date.now().toString(36), datum: new Date().toISOString(), kat: 'suho', naziv: '', opis: '', vis: true,
       la, lo, ...ostalo, foto: [] };
     if (p && gps) Object.assign(t, { al: p.al, ac: p.ac });
     otvoriUred(t, true, !!odmahFoto);
@@ -329,7 +333,8 @@
   }
   const xml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
   const kmlBoja = hex => { const h = hex.replace('#', ''); return 'ff' + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2); };
-  async function izvozKmz(ids) {
+  // extra = { naziv, kml } — KML fragment (npr. linija traga) koji ide u isti KMZ uz tačke s fotografijama
+  async function izvozKmz(ids, extra) {
     const sve = citaj(), l = ids ? sve.filter(t => ids.includes(t.id)) : sve;
     if (!l.length) { if (typeof showToast === 'function') showToast('Nema tačaka za izvoz'); return; }
     if (typeof showToast === 'function') showToast('⏳ Pakujem KMZ…');
@@ -347,12 +352,78 @@
       const ext = [['vrsta', k.t], ['datum', t.datum], ['biljeska', t.opis], ['gps_tacnost_m', Number.isFinite(t.ac) ? Math.round(t.ac) : ''], ['visina_m', t.al > 0 ? Math.round(t.al) : ''], ['fotografija', (t.foto || []).length]];
       pm.push(`<Placemark><name>${xml(t.naziv)}</name><styleUrl>#${k.k}</styleUrl><description><![CDATA[${opis}]]></description><ExtendedData>${ext.map(([n, v]) => `<Data name="${n}"><value>${xml(v)}</value></Data>`).join('')}</ExtendedData><Point><coordinates>${t.lo},${t.la}${t.al > 0 ? ',' + Math.round(t.al) : ''}</coordinates></Point></Placemark>`);
     }
-    const naziv = l.length === 1 ? l[0].naziv : 'Terenske tačke ' + new Date().toLocaleDateString('bs-BA');
-    const kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xml(naziv)}</name>${stilovi}\n${pm.join('\n')}\n</Document></kml>`;
+    const naziv = (extra && extra.naziv) || (l.length === 1 ? l[0].naziv : 'Terenske tačke ' + new Date().toLocaleDateString('bs-BA'));
+    const kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xml(naziv)}</name>${stilovi}\n${(extra && extra.kml) || ''}\n${pm.join('\n')}\n</Document></kml>`;
     fajlovi.unshift(['doc.kml', new TextEncoder().encode(kml)]);
     const ime = naziv.normalize('NFKD').replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 50) + '.kmz';
     if (typeof _izvozFajl === 'function') _izvozFajl(ime, zip(fajlovi), 'application/vnd.google-earth.kmz', naziv);
   }
+
+  // ── Fotografije s lokacijom: JPEG dobije EXIF GPS (canvas JPEG ga nema), pa se dijeli kao slika ili dokument ──
+  const DMS = v => { v = Math.abs(v); const d = Math.floor(v), m = Math.floor((v - d) * 60), s10k = Math.round(((v - d) * 60 - m) * 60 * 10000); return [d, 1, m, 1, s10k, 10000]; };
+  // bytes: Uint8Array JPEG-a; vraća novi Uint8Array s APP1 (Exif GPS) odmah iza SOI. Bez valjanog JPEG-a vraća ulaz.
+  function jpegSaGps(bytes, g) {
+    if (!bytes || bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || !Number.isFinite(g.la) || !Number.isFinite(g.lo)) return bytes;
+    const datum = (() => { try { return new Date(g.datum).toISOString().slice(0, 10).replace(/-/g, ':'); } catch (e) { return ''; } })();
+    const imaAl = Number.isFinite(g.al) && g.al > 0;
+    const unosi = [[1, 2, 2, 'ref', g.la >= 0 ? 'N' : 'S'], [2, 5, 3, 'rat', DMS(g.la)], [3, 2, 2, 'ref', g.lo >= 0 ? 'E' : 'W'], [4, 5, 3, 'rat', DMS(g.lo)]];
+    if (imaAl) unosi.push([5, 1, 1, 'bajt', 0], [6, 5, 1, 'rat', [Math.round(g.al * 100), 100]]);
+    if (datum) unosi.push([0x1d, 2, 11, 'asc', datum]);
+    const gpsOff = 8 + 2 + 12 + 4, ifdLen = 2 + 12 * unosi.length + 4;
+    let podaci = gpsOff + ifdLen;
+    const buf = new Uint8Array(1024), dv = new DataView(buf.buffer);
+    buf.set([0x4d, 0x4d, 0, 0x2a], 0); dv.setUint32(4, 8);
+    dv.setUint16(8, 1); dv.setUint16(10, 0x8825); dv.setUint16(12, 4); dv.setUint32(14, 1); dv.setUint32(18, gpsOff); dv.setUint32(22, 0);
+    dv.setUint16(gpsOff, unosi.length);
+    unosi.forEach((u, i) => {
+      const o = gpsOff + 2 + 12 * i; dv.setUint16(o, u[0]); dv.setUint16(o + 2, u[1]); dv.setUint32(o + 4, u[2]);
+      if (u[3] === 'ref') { buf[o + 8] = u[4].charCodeAt(0); }
+      else if (u[3] === 'bajt') { buf[o + 8] = u[4]; }
+      else if (u[3] === 'rat') { dv.setUint32(o + 8, podaci); for (let k = 0; k < u[4].length; k++) dv.setUint32(podaci + 4 * k, u[4][k]); podaci += 4 * u[4].length; }
+      else { dv.setUint32(o + 8, podaci); for (let k = 0; k < u[4].length; k++) buf[podaci + k] = u[4].charCodeAt(k); podaci += u[4].length + 1; }
+    });
+    dv.setUint32(gpsOff + 2 + 12 * unosi.length, 0);
+    const tiff = buf.slice(0, podaci), len = 2 + 6 + tiff.length;
+    const out = new Uint8Array(bytes.length + 2 + len);
+    out.set([0xff, 0xd8, 0xff, 0xe1, len >> 8, len & 0xff, 0x45, 0x78, 0x69, 0x66, 0, 0], 0); out.set(tiff, 12); out.set(bytes.subarray(2), 12 + tiff.length);
+    return out;
+  }
+  const mapaLink = t => 'https://www.google.com/maps?q=' + t.la.toFixed(6) + ',' + t.lo.toFixed(6);
+  const imeFajla = (t, i) => (t.naziv || 'foto').normalize('NFKD').replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 40) + '_' + (i + 1) + '.jpg';
+  const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+  // Tekst uz fotografije: vrsta, koordinate i link na kartu (radi i kad aplikacija za chat skine EXIF)
+  function tekstTacaka(l) { return l.map(t => kat(t.kat).ik + ' ' + t.naziv + ' — ' + t.la.toFixed(6) + ', ' + t.lo.toFixed(6) + '\n' + mapaLink(t)).join('\n\n'); }
+  // opc.dokument: šalje se kao fajlovi (WhatsApp/Viber ne rekompresuju, GPS iz slike ostaje); inače kao slike + tekst s lokacijama
+  async function podijeliFoto(ids, opc) {
+    const l = citaj().filter(t => !ids || ids.includes(t.id)), fajlovi = [];
+    for (const t of l) {
+      let i = 0;
+      for (const id of t.foto || []) {
+        const b = await idb('puna', 'readonly', st => st.get(id)).catch(() => null); if (!b) continue;
+        fajlovi.push({ ime: imeFajla(t, i++), bytes: jpegSaGps(new Uint8Array(await b.arrayBuffer()), { la: t.la, lo: t.lo, al: t.al, datum: t.datum }) });
+      }
+    }
+    if (!fajlovi.length) { if (typeof showToast === 'function') showToast('Nema fotografija za slanje'); return false; }
+    const tekst = tekstTacaka(l.filter(t => (t.foto || []).length)), dok = !!(opc && opc.dokument);
+    if (typeof AndroidShare !== 'undefined' && AndroidShare.shareFiles) {
+      try { AndroidShare.shareFiles(JSON.stringify(fajlovi.map(f => ({ name: f.ime, b64: b64(f.bytes) }))), 'Fotografije s lokacijom', tekst, dok); return true; } catch (e) {}
+    }
+    const fs = fajlovi.map(f => new File([f.bytes], f.ime, { type: 'image/jpeg' }));
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: fs })) { try { await navigator.share({ files: fs, title: 'Fotografije s lokacijom', text: tekst }); return true; } catch (e) { if (e && e.name === 'AbortError') return true; } }
+    for (const f of fs) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+    if (typeof showToast === 'function') showToast('📥 Preuzeto ' + fs.length + ' fotografija (s GPS podacima u slici)');
+    return true;
+  }
+  // Izbor načina slanja: WhatsApp/Viber kao „slika” skidaju EXIF lokaciju, kao „dokument” je zadržavaju
+  async function posalji(ids) {
+    if (typeof _dlgActions !== 'function') return podijeliFoto(ids, {});
+    const i = await _dlgActions('Pošalji fotografije s lokacijom', [
+      { label: '📎 Kao dokumenti — GPS ostaje u slici' }, { label: '🖼 Kao slike + tekst s koordinatama' }, { label: '⤓ KMZ (karta + fotografije)' }]);
+    if (i === 0) podijeliFoto(ids, { dokument: true }); else if (i === 1) podijeliFoto(ids, {}); else if (i === 2) izvozKmz(ids);
+  }
+  // Tačke/fotografije snimljene dok je trag snimao (vremenski prozor) — ulaze u trag
+  const zaVrijeme = (od, doo) => citaj().filter(t => { const m = Date.parse(t.datum); return Number.isFinite(m) && m >= od - 60000 && m <= doo + 60000; });
+  function veziZaTrag(ids, tragId) { const l = citaj(); l.forEach(t => { if (ids.includes(t.id)) t.trag = tragId; }); pisi(l); }
 
   // Klik na kartu: tačke imaju prednost (vrsta 'tacka'); vrh igle je ~24 px iznad koordinate.
   function registruj() {
@@ -364,7 +435,7 @@
     }));
   }
 
-  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, otvoriListu, zatvoriListu, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
-  if (typeof module !== 'undefined') module.exports = { zip, crc32, KATEGORIJE };
+  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, podijeliFoto, posalji, zaVrijeme, veziZaTrag, jpegSaGps, tekstTacaka, otvoriListu, zatvoriListu, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
+  if (typeof module !== 'undefined') module.exports = { zip, crc32, KATEGORIJE, jpegSaGps };
   if (typeof L !== 'undefined' && imaKartu()) { registruj(); crtaj(); renderLista(); }
 })(typeof window !== 'undefined' ? window : globalThis);

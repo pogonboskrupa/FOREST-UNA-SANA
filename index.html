@@ -783,6 +783,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 #rec-bar.show { display:flex; }
 #rec-bar button { border:none; border-radius:10px; cursor:pointer; font-size:12px; font-weight:700; padding:8px 10px; }
+#rec-bar.slobodno #rb-go { background:#1d4ed8; color:#fff; width:auto; flex:0 0 auto; padding:8px 12px; }
 #rb-go { flex:1; min-width:0; background:#14233c; color:#e2e8f0; display:flex; align-items:center; gap:6px; text-align:left; }
 #rb-dot { width:10px; height:10px; border-radius:50%; background:#ef4444; animation:rbPuls 1.4s ease-in-out infinite; flex-shrink:0; }
 #rec-bar.paused #rb-dot { background:#fbbf24; animation:none; }
@@ -3488,6 +3489,12 @@ function dst(la1,lo1,la2,lo2){const R=6371000,a=Math.sin((la2-la1)*Math.PI/360)*
 // _zbijPetlje (uzdužno sažimanje) MORA ići prije DP-a, ne umjesto njega.
 // =====================================================================
 let _recFreeView = false;
+// Povlačenje karte tokom snimanja = slobodan pogled (karta ne skače nazad na GPS); „🎯 Prati me” vraća praćenje.
+function _recBarSync() {
+  document.getElementById('rec-bar')?.classList.toggle('slobodno', _recFreeView);
+  const g = document.getElementById('rb-go'); if (g) g.textContent = _recFreeView ? '🎯 Prati me' : '🎯';
+}
+map.on('dragstart', () => { if (_tragOn && !_recFreeView) { _recFreeView = true; _recBarSync(); showToast('🗺 Slobodan pogled — dodirni 🎯 da se karta opet kreće za tobom'); } });
 let _tragOn = false, _tragPaused = false, _tragLine = null, _tragPts = [];
 // Serija iz native bafera (npr. sat pod zaključanim ekranom = ~1800 tačaka): linija i
 // statistika se osvježe jednom na kraju, ne po tački (inače O(n²) i zamrzne app).
@@ -3632,7 +3639,7 @@ async function _tragProvjeriProstor() {
 }
 function _fabSnimTragBegin() {
   if (!gpsOn) startGPS();
-  _recFreeView = false;
+  _recFreeView = false; _recBarSync();
   _tragOn = true; _tragPaused = false; _tragPts = []; _tragBuf = []; _tragLastT = Date.now(); _recT0 = Date.now();
   _tragPrekidi = { n: 0, maxS: 0, zadFix: Date.now() };
   _nativeReplayLast.trag = _tragLastT;
@@ -3705,7 +3712,7 @@ function _recSatOsvjezi() {
   const s = Math.max(0, Math.floor((Date.now() - t0) / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
   el.textContent = (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0');
 }
-function _recBarGo() { /* traka je već na karti — samo fokusiraj trenutnu poziciju */ if (lastP) map.panTo([lastP.la, lastP.lo]); }
+function _recBarGo() { _recFreeView = false; _recBarSync(); if (lastP) map.panTo([lastP.la, lastP.lo]); }
 
 // ── Registar tragova (sačuvani, lokalni, offline-first) ──────────────
 const _TRAG_REG_KEY = 'usf_tragovi';
@@ -3759,10 +3766,12 @@ function _tragPopupHtml(t, lenM) {
   const redovi = [['Dužina', _tragFmtLen(lenM)], ['Tačaka', String(p.length)]];
   if (trajanje !== null) redovi.push(['Trajanje', trajanje >= 60 ? Math.floor(trajanje / 60) + ' h ' + (trajanje % 60) + ' min' : trajanje + ' min']);
   if (t.prekidi) redovi.push(['Prekidi GPS-a', _tragPrekidTxt(t.prekidi)]);
+  const nFoto = _tragFotoBroj(t); if (t.tacke && t.tacke.length) redovi.push(['Na tragu', t.tacke.length + ' tač.' + (nFoto ? ' · ' + nFoto + ' foto' : '')]);
   if (al.length > 1) redovi.push(['Visina', Math.round(Math.min(...al)) + '–' + Math.round(Math.max(...al)) + ' m'], ['Uspon', Math.round(uspon) + ' m']);
   return _popKartica({ ikona: '🥾', boja: t.color || '#f97316', naslov: t.name, tip: 'GPS trag', meta: fmtDateShort(t.date), redovi, dugmad: [
     { t: '✏ Preimenuj', on: `_tragRegRename('${t.id}')` },
     { t: '📤 Pošalji', on: `_tragRegShare('${t.id}')` },
+    ...(t.tacke && t.tacke.length ? [{ t: '📷 Foto s lokacijom', on: `_tragFotoShare('${t.id}')` }] : []),
     { t: _okoDugme(t.visible !== false), on: `_tragRegToggle('${t.id}');map.closePopup()` },
     { t: '🗑 Briši', on: `_tragRegDeleteConfirm('${t.id}')`, v: 'opasno' }
   ] });
@@ -3774,7 +3783,9 @@ function _tragPopupRefresh(id) {
 function _tragRegAdd(pts, prekidi) {
   const id = 'trag_' + Date.now();
   const color = _TRAG_COLORS[_tragRegistry.length % _TRAG_COLORS.length];
-  const t = { id, color, pts, ...(prekidi ? { prekidi } : {}), visible: true, date: new Date().toISOString(), name: 'Trag ' + fmtDateShort(new Date().toISOString()), uuid: _genUUID() };
+  const tacke = (typeof USFTacke !== 'undefined' && pts.length && pts[0][3] > 1e12) ? USFTacke.zaVrijeme(pts[0][3], Date.now()).map(x => x.id) : [];
+  if (tacke.length) USFTacke.veziZaTrag(tacke, id);
+  const t = { id, color, pts, ...(tacke.length ? { tacke } : {}), ...(prekidi ? { prekidi } : {}), visible: true, date: new Date().toISOString(), name: 'Trag ' + fmtDateShort(new Date().toISOString()), uuid: _genUUID() };
   _tragRegistry.unshift(t);
   if (!_tragRegSave()) { _tragRegistry.shift(); return null; }
   _tragRegAddLayer(t);
@@ -3901,11 +3912,24 @@ async function _dijeliKml(fname, kml, naslov, tekst) {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   showToast('📥 KML preuzet (dijeljenje fajlova nije podržano na ovom uređaju)');
 }
+const _tragTacke = t => (typeof USFTacke !== 'undefined' ? USFTacke.citaj().filter(x => (t.tacke || []).includes(x.id)) : []);
+const _tragFotoBroj = t => _tragTacke(t).reduce((a, x) => a + (x.foto || []).length, 0);
+// Trag s tačkama: KMZ (linija + tačke + fotografije u jednom fajlu) ili samo fotografije s lokacijom
 async function _tragRegShare(id) {
   const t = _tragRegistry.find(x => x.id === id);
   if (!t) return;
-  const fname = t.name.replace(/[^a-zA-Z0-9_\-]/g,'_') + '.kml';
+  const fname = t.name.replace(/[^a-zA-Z0-9_\-]/g,'_') + '.kml', n = _tragTacke(t).length;
+  if (n && typeof _dlgActions === 'function') {
+    const i = await _dlgActions('Pošalji trag', [{ label: '📍 Samo trag (KML)' }, { label: '📦 Trag + ' + n + ' tač. s fotografijama (KMZ)' }, { label: '📷 Samo fotografije s lokacijom' }]);
+    if (i === 1) { USFTacke.izvozKmz(_tragTacke(t).map(x => x.id), { naziv: t.name, kml: _tragToKml(t).replace(/^[\s\S]*?<Document>[\s\S]*?<\/name>/, '').replace(/<\/Document><\/kml>\s*$/, '') }); return; }
+    if (i === 2) { _tragFotoShare(id); return; }
+    if (i !== 0) return;
+  }
   await _dijeliKml(fname, _tragToKml(t), t.name, `Trag: ${t.name}`);
+}
+function _tragFotoShare(id) {
+  const t = _tragRegistry.find(x => x.id === id); if (!t) return;
+  map.closePopup(); USFTacke.posalji(_tragTacke(t).filter(x => (x.foto || []).length).map(x => x.id));
 }
 // Plutajući panel (z 800) je ispod panela preko cijelog ekrana (Meni, z 850) — iz Menija prvo na kartu.
 function openTragoviPanel() {

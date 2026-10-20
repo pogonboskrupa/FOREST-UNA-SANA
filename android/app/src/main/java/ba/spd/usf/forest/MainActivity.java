@@ -1119,10 +1119,43 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Više fajlova odjednom (fotografije s GPS EXIF-om). asDocument: tip */* — WhatsApp/Viber ih šalju kao dokumente,
+        // bez rekompresije, pa lokacija u slici ostaje.
+        @JavascriptInterface
+        public void shareFiles(String json, String title, String text, boolean asDocument) {
+            try {
+                JSONArray arr = new JSONArray(json);
+                File dir = new File(getCacheDir(), "shared");
+                if (!dir.exists()) dir.mkdirs();
+                java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject o = arr.getJSONObject(i);
+                    String ime = o.getString("name").replaceAll("[^A-Za-z0-9_.\\-]", "_");
+                    File file = new File(dir, ime);
+                    FileOutputStream fos = new FileOutputStream(file);
+                    fos.write(Base64.decode(o.getString("b64"), Base64.DEFAULT));
+                    fos.close();
+                    uris.add(FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fileprovider", file));
+                }
+                Intent send = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                send.setType(asDocument ? "*/*" : "image/jpeg");
+                send.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                if (text != null) send.putExtra(Intent.EXTRA_TEXT, text);
+                if (title != null) send.putExtra(Intent.EXTRA_SUBJECT, title);
+                send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Intent chooser = Intent.createChooser(send, title != null ? title : "Pošalji");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                runOnUiThread(() -> startActivity(chooser));
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Greška pri dijeljenju: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }
+
         private String guessMime(String filename) {
             if (filename.endsWith(".png")) return "image/png";
             if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
             if (filename.endsWith(".kml")) return "application/vnd.google-earth.kml+xml";
+            if (filename.endsWith(".kmz")) return "application/vnd.google-earth.kmz";
             if (filename.endsWith(".gpx")) return "application/gpx+xml";
             if (filename.endsWith(".geojson")) return "application/geo+json";
             if (filename.endsWith(".json")) return "application/json";

@@ -179,6 +179,10 @@
   kartica `#pf-sheet` pri vrhu karte: uzorci svakih ≥ 10 m (≤ 160) → visine `npVisinaNa` (lokalni DEM/Terrarium, keš) → `popuni` (rupe), `zagladi`, `statistika` (uspon/silazak s pragom 2 m, nagib zaglađen ~80 m,
   udio dužine po klasama 0–10…>50 %); SVG grafikon (ispuna, linija obojena po klasi nagiba, mreža, ▲▼ min/maks), povlačenje prsta = kursor + tačka na karti i nagib; „🎨 Nagib” boji liniju na karti po klasi (`slojNagiba`).
   Preračun je odgođen 650 ms (`odgodi`) pri svakoj izmjeni tačaka. Bez visina (offline van USK) ⇒ poruka. Test `tests/js/mjerenja-profil.test.js`.
+- **Snimanje traga i terenske tačke (v2.6.1)**: povlačenje karte tokom snimanja = slobodan pogled (`_recFreeView`, `map.on('dragstart')`; prije se karta vraćala na GPS pri svakom fiksu); dugme `#rb-go` postaje „🎯 Prati me”.
+  Vrste tačke (`KATEGORIJE`): suho/prelomljeno/izvala, potkornjak, bespravna sječa (`sjeca`), imela, silazak sa vlake, loš šumski red, granica odjela, ostalo; stari ključevi (`stablo/steta/put/voda`) idu kroz `STARE_VRSTE`.
+  Pri spremanju traga (`_tragRegAdd`) tačke s datumom u vremenu snimanja postaju `trag.tacke` (i `tačka.trag`). „📤 Pošalji” trag: KML / KMZ (linija + tačke + fotografije, `izvozKmz(ids, {naziv, kml})`) / samo fotografije.
+  Fotografije s lokacijom: `jpegSaGps` upisuje EXIF GPS u JPEG (canvas ga nema); `podijeliFoto` → APK `AndroidShare.shareFiles` (ACTION_SEND_MULTIPLE; `dokument` ⇒ tip `*/*` pa WhatsApp/Viber ne rekompresuju i ne skidaju GPS), uz tekst s koordinatama i Google Maps linkom.
 - **Meni → Realizacija izvedbenih projekata** (odmah ispod Praćenja šume): Primka i Sjekačke linije (preseljene iz Planiranja).
 - **Primka — klase, dock, vizuelni panel (v2.5.0)**: tri klase `STATUS` = primljeno / neprimljeno / `sumskired` („Popraviti šumski red”, narandžasta,
   isprekidan rub); nepoznat status ⇒ neprimljeno (`kljucStatusa`). Šumski red nosi `razlozi[]` (`RAZLOZI`), `rok`, `popravljeno`; „✓ Popravljeno”
