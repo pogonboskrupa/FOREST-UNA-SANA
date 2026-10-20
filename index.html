@@ -88,14 +88,19 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 }
 #top-bar > * { pointer-events:auto; }
 #top-left-stack { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
-#geo-badge {
-  background:rgba(10,24,18,var(--bdg-a,.55)); color:#e8f3ec; border-radius:12px; text-shadow:var(--bdg-ts, -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000);
-  border:1px solid rgba(134,239,172,.18);
-  padding:6px 11px; font-size:var(--bdg-fs,11px); font-family:monospace; line-height:1.5;
-  box-shadow:0 6px 18px rgba(0,0,0,.32); white-space:normal; max-width:calc(100vw - 84px);
-  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+#geo-badge, .ui-bdg {
+  display:flex; flex-wrap:wrap; align-items:center; max-width:calc(100vw - 84px);
+  background:rgba(var(--ui-bg,10,24,18),var(--bdg-a,.55)); color:var(--ui-fg,#e8f3ec);
+  border:1px solid var(--ui-bd,rgba(134,239,172,.22)); border-radius:14px; padding:3px 2px;
+  font:600 var(--bdg-fs,11px)/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; font-variant-numeric:tabular-nums; letter-spacing:.1px;
+  text-shadow:var(--bdg-ts,none); box-shadow:0 4px 14px rgba(0,0,0,.22);
+  -webkit-backdrop-filter:blur(var(--ui-blur,0px)); backdrop-filter:blur(var(--ui-blur,0px));
 }
-#geo-badge .elev { color:#4ade80; font-weight:700; }
+#geo-badge .bseg, .ui-bdg .bseg { padding:1px 9px; white-space:nowrap; }
+#geo-badge .bseg + .bseg, .ui-bdg .bseg + .bseg { border-left:1px solid var(--ui-sep,rgba(134,239,172,.16)); }
+#geo-badge .elev, .ui-bdg .elev { color:var(--ui-a1,#4ade80); font-weight:800; }
+#geo-badge .mgi, .ui-bdg .mgi { font-weight:600; letter-spacing:.2px; }
+#geo-badge .rz, .ui-bdg .rz { color:var(--ui-a2,#fde68a); font-weight:800; }
 
 /* === Prekidač baznih slojeva — mala ikona gore desno, otvara dropdown === */
 #layer-btn {
@@ -217,11 +222,12 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
    zaobljeni kvadrati, SVG ikone linijskog stila (currentColor → aktivno stanje
    se vidi, za razliku od emoji). ─────────────────────────────────────────── */
 .map-ctl, #layer-btn {
-  background:rgba(10,24,18,var(--btn-a,.86)); color:#d8e8df;
-  border:1px solid rgba(134,239,172,.18);
-  box-shadow:0 6px 18px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.05);
-  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  background:rgba(var(--ui-bg,10,24,18),var(--btn-a,.86)); color:var(--ui-fg,#d8e8df);
+  border:1px solid var(--ui-bd,rgba(134,239,172,.22));
+  box-shadow:0 4px 14px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06);
+  -webkit-backdrop-filter:blur(var(--ui-blur,0px)); backdrop-filter:blur(var(--ui-blur,0px));
 }
+.map-ctl button + button, .fab-pill button + button { border-color:var(--ui-sep,rgba(134,239,172,.14)); }
 .map-ctl svg {
   width:22px; height:22px; display:block; fill:none; stroke:currentColor;
   stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
@@ -240,7 +246,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .fab-pill button {
   width:50px; height:50px; border:none; background:transparent; color:inherit; padding:0;
 }
-.fab-pill button + button { border-top:1px solid rgba(134,239,172,.12); }
+.fab-pill button + button { border-top:1px solid var(--ui-sep,rgba(134,239,172,.12)); }
 #ab-loc { width:52px; height:52px; border-radius:16px; padding:0; }
 #ab-loc svg { width:24px; height:24px; }
 #ab-loc.active {
@@ -452,7 +458,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #zoom-grp button {
   width:46px; height:46px; border:none; background:transparent; color:inherit; padding:0;
 }
-#zoom-grp button + button { border-top:1px solid rgba(134,239,172,.12); }
+#zoom-grp button + button { border-top:1px solid var(--ui-sep,rgba(134,239,172,.12)); }
 
 /* === Mjerenja — plutajući alatni panel dok je aktivno crtanje === */
 #msr-panel {
@@ -688,10 +694,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-klizac { display:block; margin:8px 0; } .set-klizac span { display:flex; justify-content:space-between; font-size:12.5px; color:#cbd5e1; margin-bottom:4px; } .set-klizac b { color:#4ade80; } .set-klizac input { width:100%; accent-color:#22c55e; }
 .set-sel { padding:8px 10px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12.5px; }
 .set-razm-vl { display:flex; align-items:center; gap:8px; padding:0 0 10px; color:#cbd5e1; } .set-razm-vl input { width:110px; padding:8px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; } .set-razm-vl small { color:#80958a; font-size:11px; }
-#geo-badge .rz { color:#fde68a; font-weight:700; display:inline-block; }
 #layer-btn, #zoom-grp, #map-fabs { zoom:var(--btn-z,1); }
 .ui-pregled { position:relative; height:84px; margin:2px 0 12px; border-radius:12px; overflow:hidden; border:1px solid #1f3b2d; background:linear-gradient(135deg,#6b8f71,#c9b48a 55%,#7a8f9a); }
-.ui-pregled #ui-pr-badge { position:absolute; left:10px; top:10px; } .ui-pregled #ui-pr-btn { position:absolute; right:10px; top:10px; width:40px; height:40px; border-radius:13px; display:grid; place-items:center; font-size:19px; }
+.ui-pregled #ui-pr-badge { position:absolute; left:10px; top:10px; max-width:calc(100% - 70px); } .ui-pregled #ui-pr-btn { position:absolute; right:10px; top:10px; width:40px; height:40px; border-radius:13px; display:grid; place-items:center; font-size:19px; }
 .set-nap { color:#80958a; font-size:11px; line-height:1.45; margin:8px 0 0; }
 .set-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:4px 0 6px; }
 .set-grid div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:8px 4px; text-align:center; }
@@ -2086,8 +2091,11 @@ body.sl-uredi #sl-ured { display: block; }
     </section>
     <section class="ng-card" id="set-s-ui">
       <h3>🎛 Koordinate i dugmad</h3>
-      <div class="ui-pregled"><div id="ui-pr-badge" style="background:rgba(10,24,18,var(--bdg-a));color:#e8f3ec;border-radius:12px;border:1px solid rgba(134,239,172,.18);padding:6px 11px;font:var(--bdg-fs) monospace;text-shadow:var(--bdg-ts)">↕ 812 m · MGI5 Y 5591642, X 4971308 · 1:25 000</div><div id="ui-pr-btn" class="map-ctl">🗂</div></div>
+      <div class="ui-pregled"><div id="ui-pr-badge" class="ui-bdg"></div><div id="ui-pr-btn" class="map-ctl">🗂</div></div>
+      <div class="set-red"><div><b>Tema podloge</b><small>Tamna ili svijetla staklena podloga (tekst i ikone se prilagode).</small></div></div>
+      <div class="set-seg" id="ui-tema" style="grid-template-columns:1fr 1fr"><button data-v="tamna" onclick="_setUi('tema','tamna')">🌙 Tamna</button><button data-v="svijetla" onclick="_setUi('tema','svijetla')">☀ Svijetla</button></div>
       <label class="set-klizac"><span>Providnost podloge koordinata <b id="ui-bdgA-v"></b></span><input type="range" id="ui-bdgA" min="0" max="100" step="5" oninput="_setUi('bdgA', +this.value)"></label>
+      <label class="set-klizac"><span>Zamućenje pozadine <b id="ui-blur-v"></b></span><input type="range" id="ui-blur" min="0" max="16" step="1" oninput="_setUi('blur', +this.value)"></label>
       <label class="set-klizac"><span>Veličina teksta <b id="ui-bdgFs-v"></b></span><input type="range" id="ui-bdgFs" min="9" max="16" step="1" oninput="_setUi('bdgFs', +this.value)"></label>
       <div class="set-red"><div><b>Obris teksta</b><small>Obris čini koordinate čitljivim na svijetloj podlozi.</small></div></div>
       <div class="set-seg" id="ui-bdgOut"><button data-v="isklj" onclick="_setUi('bdgOut','isklj')">Bez</button><button data-v="tanak" onclick="_setUi('bdgOut','tanak')">Tanak</button><button data-v="jak" onclick="_setUi('bdgOut','jak')">Jak</button></div>
@@ -3014,24 +3022,31 @@ function _prPrimijeni(sve) {
   });
 }
 // Izgled koordinata i dugmadi na karti (Postavke → 🎛 Koordinate i dugmad, pamti se): providnost podloge, obris teksta, veličina, dijelovi
-const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, bdgRz: true, btnA: 86, btnZ: 100 };
+const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, bdgRz: true, btnA: 86, btnZ: 100, tema: 'tamna', blur: 0 };
+const _UI_TEME = { tamna: { bg: '10,24,18', fg: '#e8f3ec', bd: 'rgba(134,239,172,.22)', sep: 'rgba(134,239,172,.16)', out: '#000', a1: '#4ade80', a2: '#fde68a' }, svijetla: { bg: '255,255,255', fg: '#0f172a', bd: 'rgba(15,23,42,.2)', sep: 'rgba(15,23,42,.16)', out: '#fff', a1: '#15803d', a2: '#b45309' } };
 let _uiPrikaz = { ..._UI_ZAD };
 try { const v = JSON.parse(localStorage.getItem(_UI_KEY) || 'null'); if (v) Object.keys(_UI_ZAD).forEach(k => { if (k in v && typeof v[k] === typeof _UI_ZAD[k]) _uiPrikaz[k] = v[k]; }); } catch (e) {}
-const _UI_OBRIS = { isklj: 'none', tanak: '-1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000', jak: '-1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 0 0 5px #000' };
+const _uiObris = (v, c) => v === 'tanak' ? `-1px 0 ${c}, 1px 0 ${c}, 0 -1px ${c}, 0 1px ${c}` : v === 'jak' ? `-1.5px -1.5px 0 ${c}, 1.5px -1.5px 0 ${c}, -1.5px 1.5px 0 ${c}, 1.5px 1.5px 0 ${c}, 0 0 5px ${c}` : 'none';
 function _uiPrimijeni() {
   const r = document.documentElement.style, u = _uiPrikaz;
-  r.setProperty('--bdg-a', (u.bdgA / 100).toFixed(2)); r.setProperty('--bdg-fs', u.bdgFs + 'px'); r.setProperty('--bdg-ts', _UI_OBRIS[u.bdgOut] || 'none');
+  const t = _UI_TEME[u.tema] || _UI_TEME.tamna;
+  r.setProperty('--ui-bg', t.bg); r.setProperty('--ui-fg', t.fg); r.setProperty('--ui-bd', t.bd); r.setProperty('--ui-sep', t.sep); r.setProperty('--ui-a1', t.a1); r.setProperty('--ui-a2', t.a2); r.setProperty('--ui-blur', u.blur + 'px');
+  r.setProperty('--bdg-a', (u.bdgA / 100).toFixed(2)); r.setProperty('--bdg-fs', u.bdgFs + 'px'); r.setProperty('--bdg-ts', _uiObris(u.bdgOut, t.out));
   r.setProperty('--btn-a', (u.btnA / 100).toFixed(2)); r.setProperty('--btn-z', (u.btnZ / 100).toFixed(2));
   _geoBadgeRender();
 }
 const _geoBadgeLast = { elev: '…', mgi: '' };
+function _geoBadgeHtml(elev, mgi) {
+  const u = _uiPrikaz, d = [];
+  if (u.bdgElev) d.push(`<span class="bseg elev">⛰ ${elev}</span>`);
+  if (u.bdgMgi && mgi) d.push(`<span class="bseg mgi">MGI5 ${mgi}</span>`);
+  if (u.bdgRz) d.push(`<span class="bseg rz">${_razmjeraTxt()}</span>`);
+  return d.join('');
+}
 function _geoBadgeRender() {
   const el = document.getElementById('geo-badge'); if (!el) return;
-  const u = _uiPrikaz, d = [];
-  if (u.bdgElev) d.push(`<span class="elev">↕ ${_geoBadgeLast.elev}</span>`);
-  if (u.bdgMgi && _geoBadgeLast.mgi) d.push(`<span class="mgi">MGI5 ${_geoBadgeLast.mgi}</span>`);
-  if (u.bdgRz) d.push(`<span class="rz">${_razmjeraTxt()}</span>`);
-  el.innerHTML = d.join(' · '); el.style.display = d.length ? '' : 'none';
+  const h = _geoBadgeHtml(_geoBadgeLast.elev, _geoBadgeLast.mgi);
+  el.innerHTML = h; el.style.display = h ? '' : 'none';
 }
 let _geoBadgeElevSeq = 0;
 async function _geoBadgeUpdate() {
@@ -11464,7 +11479,9 @@ function _setRazmjera(k, val, vlastita) {
 function _setUiUi() {
   const u = _uiPrikaz, set = (id, v, t) => { const e = document.getElementById(id); if (e) e.value = v; const o = document.getElementById(id + '-v'); if (o) o.textContent = t; };
   if (!document.getElementById('ui-bdgA')) return;
-  set('ui-bdgA', u.bdgA, u.bdgA + ' %'); set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
+  set('ui-bdgA', u.bdgA, u.bdgA + ' %'); set('ui-blur', u.blur, u.blur ? u.blur + ' px' : 'bez (karta jasno vidljiva)');
+  document.querySelectorAll('#ui-tema button').forEach(b => b.classList.toggle('on', b.dataset.v === u.tema));
+  const pb = document.getElementById('ui-pr-badge'); if (pb) pb.innerHTML = _geoBadgeHtml('812 m', 'Y 5591642, X 4971308'); set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
   document.querySelectorAll('#ui-bdgOut button').forEach(b => b.classList.toggle('on', b.dataset.v === u.bdgOut));
   ['bdgElev', 'bdgMgi', 'bdgRz'].forEach(k => document.getElementById('ui-' + k)?.classList.toggle('on', !!u[k]));
 }
