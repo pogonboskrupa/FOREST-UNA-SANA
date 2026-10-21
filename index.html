@@ -1071,6 +1071,15 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .kl-red > i { flex:none; width:6px; align-self:stretch; border-radius:3px; background:var(--kc); }
 .kl-red > div { flex:1; min-width:0; cursor:pointer; } .kl-red b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .kl-red small { color:#80958a; font-size:11px; }
 .kl-red.skriven b { opacity:.55; }
+.kl-det { margin:8px 0 0; border:1px solid #1f3b2d; border-radius:12px; background:#0d1a14; overflow:hidden; }
+.kl-det > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; min-height:44px; padding:0 12px; font-size:13px; font-weight:800; color:#fef9c3; }
+.kl-det > summary::-webkit-details-marker { display:none; }
+.kl-det > summary small { background:#1f3b2d; color:#bbf7d0; border-radius:999px; padding:1px 8px; font-size:11px; }
+.kl-det > summary em { margin-left:auto; font-style:normal; font-size:11px; color:#80958a; font-weight:600; }
+.kl-det > summary::after { content:'›'; font-size:22px; font-weight:400; color:#facc15; transition:transform .2s; margin-left:6px; }
+.kl-det > summary em + ::after, .kl-det:not(:has(em)) > summary::after { margin-left:auto; }
+.kl-det[open] > summary { border-bottom:1px solid #1f3b2d; } .kl-det[open] > summary::after { transform:rotate(90deg); }
+.kl-det > .kl-red, .kl-det > .kl-vise { margin-left:10px; margin-right:10px; }
 .kl-podnasl { margin:10px 0 2px; color:#6ee7b7; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; } .kl-podnasl small { color:#94a3b8; margin-left:4px; }
 .kl-stil { flex:none; width:34px; height:34px; border-radius:10px; border:1px solid #334155; background:#0b1220; font-size:15px; } .kl-vise { display:block; margin-top:6px; color:#94a3b8; font-size:11.5px; cursor:pointer; }
 .ul-red { border-left:5px solid var(--kc, #1f3b2d); }
@@ -1182,6 +1191,21 @@ body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /
 }
 #ab-loc-popup .loc-hdr { border-bottom-color: var(--pn-line); }
 #ab-loc-popup .loc-title { font-size: 14px; font-weight: 800; }
+/* Moja lokacija — dizajn bez promjene veličine (v2.7.8) */
+#ab-loc-popup .loc-hdr { align-items:center; }
+#ab-loc-popup .loc-gps-info { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; background:rgba(100,116,139,.18); border:1px solid rgba(148,163,184,.3); color:#cbd5e1; font-size:11px; font-weight:700; }
+#ab-loc-popup .loc-gps-info::before { content:''; width:8px; height:8px; border-radius:50%; background:#64748b; }
+#ab-loc-popup:has(#gps-switch.on) .loc-gps-info { background:rgba(34,197,94,.15); border-color:rgba(74,222,128,.45); color:#bbf7d0; }
+#ab-loc-popup:has(#gps-switch.on) .loc-gps-info::before { background:#4ade80; box-shadow:0 0 0 3px rgba(74,222,128,.25); }
+#ab-loc-popup .loc-toggles { gap:6px; }
+#ab-loc-popup .loc-toggle-item { padding:7px 4px 8px; border-radius:13px; background:var(--pn-bg-2, rgba(255,255,255,.04)); border:1px solid var(--pn-line, rgba(134,239,172,.14)); transition:background .15s, border-color .15s; }
+#ab-loc-popup .loc-toggle-item span { color:#cbd5e1; font-weight:700; letter-spacing:.01em; }
+#ab-loc-popup .loc-toggle-item:has(.loc-switch.on) { background:rgba(34,197,94,.13); border-color:rgba(74,222,128,.5); }
+#ab-loc-popup .loc-toggle-item:has(.loc-switch.on) span { color:#bbf7d0; }
+#ab-loc-popup .loc-btn { border-radius:13px; }
+#ab-loc-popup .loc-btn-primary { box-shadow:0 2px 10px rgba(22,101,52,.45); }
+#ab-loc-popup .loc-btn-sek { border-color:var(--pn-line, rgba(134,239,172,.2)); background:var(--pn-bg-3, rgba(255,255,255,.06)); color:#d5e6dc; }
+
 
 /* Lista tragova */
 #tragovi-list { padding: 10px; }
@@ -1923,15 +1947,15 @@ body.sl-uredi #sl-ured { display: block; }
     <span class="loc-gps-info" id="gps-info">GPS: isključen</span>
   </div>
   <div class="loc-toggles">
-    <div class="loc-toggle-item"><span>GPS</span><div class="loc-switch" id="gps-switch" onclick="toggleGPS()"></div></div>
-    <div class="loc-toggle-item"><span>Kompas</span><div class="loc-switch" id="compass-switch" onclick="_togCompassSwitch()"></div></div>
-    <div class="loc-toggle-item"><span>Radijus</span><div class="loc-switch" id="radius-switch" onclick="_togRadiusRings()"></div></div>
+    <div class="loc-toggle-item"><span>🛰 GPS</span><div class="loc-switch" id="gps-switch" onclick="toggleGPS()"></div></div>
+    <div class="loc-toggle-item"><span>🧭 Kompas</span><div class="loc-switch" id="compass-switch" onclick="_togCompassSwitch()"></div></div>
+    <div class="loc-toggle-item"><span>◎ Radijus</span><div class="loc-switch" id="radius-switch" onclick="_togRadiusRings()"></div></div>
   </div>
   <div class="loc-btn-row">
     <button class="loc-btn loc-btn-primary" onclick="_locPopupCentriraj()">🎯 Centriraj</button>
     <button class="loc-btn" id="ab-loc-trag" onclick="_locPopupSnimiTrag()"><span id="ab-loc-trag-txt">Snimi trag</span></button>
   </div>
-  <div class="loc-btn-row" style="margin-top:6px"><button class="loc-btn" onclick="_toggleLocPopup();USFTacke.naGps(true)">📷 Slikaj ovdje</button><button class="loc-btn" onclick="_toggleLocPopup();USFTacke.naGps(false)">📍 Tačka ovdje</button></div>
+  <div class="loc-btn-row" style="margin-top:6px"><button class="loc-btn loc-btn-sek" onclick="_toggleLocPopup();USFTacke.naGps(true)">📷 Slikaj ovdje</button><button class="loc-btn loc-btn-sek" onclick="_toggleLocPopup();USFTacke.naGps(false)">📍 Tačka ovdje</button></div>
 </div>
 
 <!-- Traka aktivnog snimanja traga -->
@@ -6509,16 +6533,22 @@ function _khSrvRed(k, z, kljuc) {
     <i></i><div class="ks-i" ${k ? `onclick="_kmlZoom('${k.id}')"` : ''}><b>${gran ? '★ ' : ''}${_escHtml(naziv)}</b><small>${k ? '✓ na telefonu · ' : 'nije preuzeto · '}${_escHtml(info)}</small></div>
     ${akc}${k ? `<label class="ng-switch" aria-label="Prikaži sloj"><input type="checkbox" ${vid ? 'checked' : ''} onchange="${gran ? `_kmlSamoOdabir('${k.id}', !this.checked)` : `_kmlToggle('${k.id}')`}"><span></span></label>` : ''}</div>`;
 }
+// Moji slojevi (učitani iz fajla) + tragovi — sklopive grupe, stanje se pamti
+const _khOtvoreno = k => { try { return !!JSON.parse(localStorage.getItem('usf_kh_otv') || '{}')[k]; } catch(e) { return false; } };
+document.addEventListener('toggle', e => {
+  const d = e.target; if (!d.matches || !d.matches('details.kl-det')) return;
+  try { const o = JSON.parse(localStorage.getItem('usf_kh_otv') || '{}'); o[d.dataset.k] = d.open; localStorage.setItem('usf_kh_otv', JSON.stringify(o)); } catch(x) {}
+}, true);
 // Moji slojevi (učitani iz fajla) + tragovi
 function _khSlojevi() {
   const el = document.getElementById('kh-lista'); if (!el) return;
   const l = kmlLs.filter(k => !_kmlJeServerski(k)), tr = typeof _tragRegistry !== 'undefined' ? _tragRegistry : [];
-  const tragovi = tr.length ? `<div class="kl-podnasl">🥾 Tragovi <small>${tr.length}</small></div>` + tr.slice(0, 12).map(t => { const vid = t.visible !== false;
+  const tragovi = tr.length ? `<details class="kl-det" data-k="tragovi"${_khOtvoreno('tragovi') ? ' open' : ''}><summary>🥾 Tragovi <small>${tr.length}</small></summary>` + tr.slice(0, 12).map(t => { const vid = t.visible !== false;
     return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${t.color || '#f97316'}"><i></i><div onclick="_tragRegZoom('${t.id}')"><b>${_escHtml(t.name)}</b><small>${_tragFmtLen(_tragCalcLen(t.pts))} · ${t.pts.length} tač.</small></div>
-      <button class="kl-stil" onclick="_tragStilUredi('${t.id}')" aria-label="Stil traga">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_tragRegToggle('${t.id}')"><span></span></label></div>`; }).join('') + (tr.length > 12 ? `<small class="kl-vise" onclick="openTragoviPanel()">… još ${tr.length - 12} — otvori sve tragove ›</small>` : '') : '';
-  const kml = l.length ? '<div class="kl-podnasl">🗺 KML / SHP slojevi <small>' + l.length + '</small></div>' + l.map(k => { const s = _kmlStat(k), vid = _kmlNaKarti(k);
+      <button class="kl-stil" onclick="_tragStilUredi('${t.id}')" aria-label="Stil traga">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_tragRegToggle('${t.id}')"><span></span></label></div>`; }).join('') + (tr.length > 12 ? `<small class="kl-vise" onclick="openTragoviPanel()">… još ${tr.length - 12} — otvori sve tragove ›</small>` : '') + '</details>' : '';
+  const kml = l.length ? `<details class="kl-det" data-k="kml"${_khOtvoreno('kml') ? ' open' : ''}><summary>🗺 KML / SHP slojevi <small>${l.length}</small><em>${l.filter(_kmlNaKarti).length} na karti</em></summary>` + l.map(k => { const s = _kmlStat(k), vid = _kmlNaKarti(k);
     return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${k.col}"><i></i><div onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}</b><small>${[s.pol ? s.pol + ' pol.' : '', s.lin ? s.lin + ' lin.' : '', s.tac ? s.tac + ' tač.' : ''].filter(Boolean).join(' · ') || 'prazno'}</small></div>
-      <button class="kl-stil" onclick="_kmlPromijeniBoju('${k.id}')" aria-label="Stil sloja">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label></div>`; }).join('') : '<p class="kh-prazno">Još nisi učitao svoj KML / KMZ / SHP. Učitani fajlovi ostaju na telefonu.</p>';
+      <button class="kl-stil" onclick="_kmlPromijeniBoju('${k.id}')" aria-label="Stil sloja">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label></div>`; }).join('') + '</details>' : '<p class="kh-prazno">Još nisi učitao svoj KML / KMZ / SHP. Učitani fajlovi ostaju na telefonu.</p>';
   el.hidden = false;
   el.innerHTML = '<h3>📁 Moji slojevi</h3>' + kml + tragovi + '<div class="kg-akc" style="margin-top:10px"><button class="glavno" onclick="document.getElementById(\'kml-file-input\').click()">＋ Dodaj KML / KMZ / SHP</button></div>';
 }
