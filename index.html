@@ -2989,6 +2989,10 @@ map.on('moveend', () => {
 // prvog dana kad se ti slojevi dodaju, ne naknadno).
 map.createPane('offlineBasePane'); map.getPane('offlineBasePane').style.zIndex = 210;
 map.createPane('tragMsrLines'); map.getPane('tragMsrLines').style.zIndex = 410;
+// KML/SHP slojevi crtaju se na VLASTITOM canvasu s velikim paddingom: pri povlačenju karte već je nacrtan i prostor oko ekrana,
+// pa slojevi ne „iskaču” tek kad pustiš prst. Dodaje se odmah (prije tragova) da KML ostane ispod tragova i mjerenja.
+const _kmlRenderer = L.canvas({ pane: 'tragMsrLines', padding: 0.8 });
+map.addLayer(_kmlRenderer);
 map.createPane('demOverlay');   map.getPane('demOverlay').style.zIndex   = 330;
 map.createPane('pozariProjectionPane'); map.getPane('pozariProjectionPane').style.zIndex = 440;
 map.getPane('pozariProjectionPane').style.pointerEvents = 'none';
@@ -5317,7 +5321,7 @@ function pkml(doc, col, op, stilSloja) {
       if (cs.length > 2) {
         // fillOpacity 0.001 (ne 0) — vizuelno nevidljivo, ali fill ostaje
         // "painted" pa klik unutar poligona radi (Leaflet _containsPoint).
-        const l = oznaci(L.polygon(cs, { ..._kmlLeafletStil('Polygon', bojaO, stilO, op), pane: 'tragMsrLines' }));
+        const l = oznaci(L.polygon(cs, { ..._kmlLeafletStil('Polygon', bojaO, stilO, op), pane: 'tragMsrLines', renderer: _kmlRenderer, smoothFactor: 1.6 }));
         l._kmlIsPolygon = true; l._kmlName = name; l._kmlDesc = desc; l._kmlExtData = extData; veza(l, 'Polygon', gi);
         if (name) l.bindTooltip(_escHtml(name), { sticky: true });
         _bindKmlPopup(l);
@@ -5327,7 +5331,7 @@ function pkml(doc, col, op, stilSloja) {
     pm.querySelectorAll('LineString').forEach((ls, gi) => {
       const cs = pcsKml(ls.querySelector('coordinates')?.textContent);
       if (cs.length > 1) {
-        const l = oznaci(L.polyline(cs, { ..._kmlLeafletStil('LineString', bojaO, stilO, op), pane: 'tragMsrLines' }));
+        const l = oznaci(L.polyline(cs, { ..._kmlLeafletStil('LineString', bojaO, stilO, op), pane: 'tragMsrLines', renderer: _kmlRenderer, smoothFactor: 1.6 }));
         l._kmlName = name; l._kmlDesc = desc; l._kmlExtData = extData; veza(l, 'LineString', gi);
         if (name) l.bindTooltip(_escHtml(name), { sticky: true });
         _bindKmlPopup(l);
@@ -5343,7 +5347,7 @@ function pkml(doc, col, op, stilSloja) {
         return;
       }
       if (cs.length > 0) {
-        const m = oznaci(L.circleMarker(cs[0], { ..._kmlLeafletStil('Point', bojaO, stilO, op), pane: 'tragMsrLines' }));
+        const m = oznaci(L.circleMarker(cs[0], { ..._kmlLeafletStil('Point', bojaO, stilO, op), pane: 'tragMsrLines', renderer: _kmlRenderer }));
         m._kmlIsPoint = true; m._kmlName = name; m._kmlDesc = desc; m._kmlExtData = extData; veza(m, 'Point', gi);
         if (name) m.bindTooltip(_escHtml(name));
         _bindKmlPopup(m);
@@ -5360,7 +5364,7 @@ function _bindKmlPopup(layer) {
   // hit-sloj (isti obrazac kao attachPolyClick za trag). Poligoni (fill hit-
   // test radi kroz cijelu unutrašnjost) i tačke (već imaju radius) to ne trebaju.
   if (!layer._kmlIsPolygon && !layer._kmlIsPoint && layer.getLatLngs) {
-    const hit = L.polyline(layer.getLatLngs(), { weight: 20, opacity: 0.001, color: '#000', pane: 'tragMsrLines', interactive: true });
+    const hit = L.polyline(layer.getLatLngs(), { weight: 20, opacity: 0.001, color: '#000', pane: 'tragMsrLines', renderer: _kmlRenderer, smoothFactor: 1.6, interactive: true });
     layer.on('add', () => { try { hit.addTo(map); } catch(e) {} });
     layer.on('remove', () => { try { map.removeLayer(hit); } catch(e) {} });
     if (layer._map) { try { hit.addTo(map); } catch(e) {} }
@@ -5829,10 +5833,11 @@ async function _kmlRestore() {
       if (txt == null && data.idb) txt = await _kmlIdb('readonly', st => st.get(name)).catch(() => null);
       if (!txt) continue;
       const col = data.col || KCOLS[kmlCI % KCOLS.length]; kmlCI++;
+      await new Promise(r => setTimeout(r, 0)); // popusti UI niti između velikih slojeva
       const doc = new DOMParser().parseFromString(txt, 'text/xml');
       const grp = pkml(doc, col, undefined, data.stil);
       const nov = { id: 'kml_' + Date.now() + '_' + kmlCI, name, grp, col, stil: data.stil, vis: data.vis !== false, _content: txt, samoOdabir: _kmlJePoligonski(name) };
-      kmlLs.push(nov); _kmlPrimijeniPrikaz(nov);
+      kmlLs.push(nov); _kmlPrimijeniPrikaz(nov); _kmlRegRender(); // odmah vidljiv i u listi, ne čeka ostale
       if (data.content != null) _kmlSpremi(name, txt, data); // seoba iz localStorage u IDB
     } catch(e) {}
   }
