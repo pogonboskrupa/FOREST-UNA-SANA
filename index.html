@@ -1038,6 +1038,31 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .kg-sw.ng-switch { width:62px; height:34px; } .kg-sw.ng-switch span { border-radius:17px; } .kg-sw.ng-switch span::after { top:4px; left:4px; width:24px; height:24px; } .kg-sw.ng-switch input:checked + span::after { transform:translateX(28px); }
 .kg-akc { display:flex; gap:8px; } .kg-akc button { flex:1; padding:10px 6px; border-radius:11px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; }
 .kh-lista h3 { margin:0 0 8px; }
+/* Karte tab — server / moji / offline (v2.7.6) */
+.kh-grupa { scroll-margin-top:56px; } .kh-grupa.srv { color:#7dd3fc; } .kh-grupa.moj { color:#fcd34d; }
+.kh-grupa { padding:6px 10px; border-radius:9px; background:rgba(74,222,128,.08); margin:12px 0 -2px; }
+.kh-grupa.srv { background:rgba(56,189,248,.1); } .kh-grupa.moj { background:rgba(250,204,21,.09); }
+.kh-bedz.srv { background:rgba(56,189,248,.16); border-color:#38bdf8; color:#bae6fd; }
+.kh-srv { border-left:4px solid #38bdf8 !important; } #kh-lista { border-left:4px solid #facc15 !important; } .kh-off { border-left:4px solid #22c55e !important; }
+.kh-srv h3 { color:#e0f2fe; } #kh-lista h3 { color:#fef9c3; }
+.ko-kar-lista { display:grid; gap:6px; margin-bottom:10px; }
+.ko-kar { display:flex; align-items:center; gap:10px; padding:7px; border-radius:12px; border:1px solid #1f3b2d; background:#0d1a14; }
+.ko-kar.akt { border-color:#22c55e; background:linear-gradient(145deg,#12402a,#0d1a14); }
+.ko-kar img { flex:none; width:46px; height:46px; border-radius:9px; object-fit:cover; background:#0b1a13; }
+.ko-kar-i { flex:1; min-width:0; cursor:pointer; } .ko-kar-i b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .ko-kar-i small { color:#80958a; font-size:11px; }
+.ko-kar-b, .ko-kar-z { flex:none; padding:8px 11px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; }
+.ko-kar-b { border-color:#22c55e; color:#86efac; } .ko-kar .kh-bedz { margin-left:0; }
+.ks-red { display:flex; align-items:center; gap:10px; padding:9px 4px; border-top:1px solid #1a3326; } .ks-red:first-of-type { border-top:0; }
+.ks-red > i { flex:none; width:6px; align-self:stretch; border-radius:3px; background:var(--kc); }
+.ks-i { flex:1; min-width:0; cursor:pointer; } .ks-i b { display:block; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .ks-i small { color:#80958a; font-size:11px; }
+.ks-red.skriven .ks-i b { opacity:.6; }
+.ks-red > button { flex:none; padding:8px 11px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; } .ks-red > button.glavno { border-color:#38bdf8; color:#bae6fd; }
+.ks-red .dk-traka { width:56px; } .kh-prazno { color:#80958a; font-size:12px; margin:4px 0 8px; }
+.kg-akc button.glavno { border-color:#22c55e; color:#86efac; }
+.ul-grupa { margin:14px 0 6px; padding:6px 10px; border-radius:9px; font-size:11.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.ul-grupa small { font-weight:500; text-transform:none; letter-spacing:0; margin-left:6px; opacity:.75; }
+.ul-grupa.srv { background:rgba(56,189,248,.1); color:#7dd3fc; } .ul-grupa.moj { background:rgba(250,204,21,.09); color:#fcd34d; }
+
 .kl-red { display:flex; align-items:center; gap:10px; padding:8px 4px; border-top:1px solid #1a3326; } .kl-red:first-of-type { border-top:0; }
 .kl-red > i { flex:none; width:6px; align-self:stretch; border-radius:3px; background:var(--kc); }
 .kl-red > div { flex:1; min-width:0; cursor:pointer; } .kl-red b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .kl-red small { color:#80958a; font-size:11px; }
@@ -2032,7 +2057,7 @@ body.sl-uredi #sl-ured { display: block; }
   <div class="up-hdr"><h2>🗺 Karte i slojevi</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
     <nav class="set-nav" aria-label="Skok na sekciju">
-      <button onclick="_khSkok('kh-gran')">▱ Granice</button><button onclick="_khSkok('kh-g-podloga')">🌍 Podloga</button><button onclick="_khSkok('kh-g-podaci')">🗺 Moji podaci</button><button onclick="_khSkok('kh-g-teren')">⛰ Teren</button>
+      <button onclick="_khSkok('kh-gran')">▱ Granice</button><button onclick="_khSkok('kh-g-podloga')">🌍 Podloga</button><button onclick="_khSkok('kh-g-offline')">🗂 Offline</button><button onclick="_khSkok('kh-g-server')">☁ Server</button><button onclick="_khSkok('kh-g-podaci')">📁 Moji</button><button onclick="_khSkok('kh-g-teren')">⛰ Teren</button>
     </nav>
     <div class="karta-hub-grid">
       <section class="karta-hub-card kh-gran" id="kh-gran"></section>
@@ -2045,13 +2070,12 @@ body.sl-uredi #sl-ured { display: block; }
         <div id="karta-base-list"></div>
         <p id="protomaps-status">Protomaps ključ podešava se u Postavkama.</p>
       </section>
-      <section class="karta-hub-card">
-        <h3>🗂 Offline karte <span class="kh-bedz" id="kh-b-off" hidden></span></h3>
-        <p id="kh-offline" class="kh-stat">.sqlitedb / .mbtiles — rad bez signala</p>
-        <button class="karta-hub-action" onclick="openUcitajKartuSection()">Upravljaj offline kartama</button>
-      </section>
-      <div class="kh-grupa" id="kh-g-podaci">Moji podaci</div>
-      <section class="karta-hub-card kh-lista" id="kh-lista" hidden></section>
+      <div class="kh-grupa" id="kh-g-offline">Offline karte</div>
+      <section class="karta-hub-card kh-off" id="kh-offline-kartica"></section>
+      <div class="kh-grupa srv" id="kh-g-server">☁ Sa servera</div>
+      <section class="karta-hub-card kh-srv" id="kh-server"></section>
+      <div class="kh-grupa moj" id="kh-g-podaci">📁 Moji podaci</div>
+      <section class="karta-hub-card kh-lista" id="kh-lista"></section>
       <section class="karta-hub-card">
         <h3>🗺 KML — preglednik poligona <span class="kh-bedz" id="kh-b-kml" hidden></span></h3>
         <p id="kh-kml" class="kh-stat">Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp</p>
@@ -5727,6 +5751,15 @@ function _kmlSaveContent(name, content, col, stil) {
 const _KML_POLIGONSKI = /granice\s+taksacije/i;
 const _kmlJePoligonski = ime => _KML_POLIGONSKI.test(String(ime || ''));
 const _kmlNaKarti = k => k.vis !== false && !k.samoOdabir;
+// Serverski slojevi = oni iz liste kml_drive.json (preuzeti s Drive-a), ugrađeni odjeli i „Granice taksacije”; sve ostalo je korisnikovo.
+function _kmlServerLista() {
+  try { if (typeof _dkmlLista !== 'undefined' && _dkmlLista && _dkmlLista.length) return _dkmlLista; } catch(e) {}
+  try { const l = JSON.parse(localStorage.getItem('usf_kml_lista') || '[]'); return Array.isArray(l) ? l : []; } catch(e) { return []; }
+}
+const _kmlServerImena = z => [z.naziv + '.kml', z.naziv + '.kmz'];
+function _kmlJeServerski(k) {
+  return !!k._ugradjeno || _kmlJePoligonski(k.name) || _kmlServerLista().some(z => _kmlServerImena(z).includes(k.name));
+}
 function _kmlPrimijeniPrikaz(k) {
   try { if (_kmlNaKarti(k) && !_razmjeraSkriva('kml')) { if (!map.hasLayer(k.grp)) k.grp.addTo(map); } else if (map.hasLayer(k.grp)) map.removeLayer(k.grp); } catch(e) {}
 }
@@ -6050,14 +6083,15 @@ function _kmlRegRender() {
   const lista = kmlLs.filter(k => _kmlFilt === 'svi' || (_kmlFilt === 'karta' ? _kmlNaKarti(k) : !_kmlNaKarti(k)));
   el.innerHTML = trazi + `<div class="ul-sum">${plit('🗂', kmlLs.length, 'sloj', 'sloja', 'slojeva')}${plit('▱', ukupno.pol, 'poligon', 'poligona', 'poligona')}${plit('〰', ukupno.lin, 'linija', 'linije', 'linija')}${plit('●', ukupno.tac, 'tačka', 'tačke', 'tačaka')}</div>
     <div class="ul-alat"><div class="ul-filt">${chip('svi', 'Svi', kmlLs.length)}${chip('karta', '👁 Na karti', naKarti)}${chip('skriveno', '🙈 Skriveni', skrivenih)}</div>
-    <div class="ul-bulk"><button onclick="_kmlSviVid(true)">👁 Prikaži sve</button><button onclick="_kmlSviVid(false)">🙈 Sakrij sve</button></div></div>` + lista.map(k => {
+    <div class="ul-bulk"><button onclick="_kmlSviVid(true)">👁 Prikaži sve</button><button onclick="_kmlSviVid(false)">🙈 Sakrij sve</button></div></div>` + [...lista].sort((a, b) => _kmlJeServerski(b) - _kmlJeServerski(a)).map((k, i, niz) => {
+    const zag = (i === 0 || _kmlJeServerski(k) !== _kmlJeServerski(niz[i - 1])) ? `<div class="ul-grupa ${_kmlJeServerski(k) ? 'srv' : 'moj'}">${_kmlJeServerski(k) ? '☁ Serverski slojevi <small>preuzeto sa servera</small>' : '📁 Moji slojevi <small>koje si učitao</small>'}</div>` : '';
     const s = _kmlStat(k), pills = [];
     if (s.pol) pills.push('▱ ' + oblik(s.pol, 'poligon', 'poligona', 'poligona'));
     if (s.lin) pills.push('〰 ' + oblik(s.lin, 'linija', 'linije', 'linija'));
     if (s.tac) pills.push('● ' + oblik(s.tac, 'tačka', 'tačke', 'tačaka'));
     if (s.ha) pills.push('◰ ' + (s.ha >= 100 ? Math.round(s.ha) : s.ha.toFixed(1)).toLocaleString('bs-BA') + ' ha');
     const tip = k._shp ? 'SHP' : k._ugradjeno ? 'ugrađeno' : 'KML', pol = _kmlJePoligonski(k.name), vid = _kmlNaKarti(k);
-    return `<div class="ul-red${vid ? '' : ' skriven'}" style="--kc:${k.col}">
+    return `${zag}<div class="ul-red${vid ? '' : ' skriven'}" style="--kc:${k.col}">
     <button class="ul-boja" style="background:${k.col}" onclick="_kmlPromijeniBoju('${k.id}')" title="Promijeni boju" aria-label="Promijeni boju sloja"></button>
     <div class="ul-info" onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}<span class="ul-oznaka">${tip}</span></b><div class="ul-pills">${pills.map(p => `<em>${p}</em>`).join('') || '<em>bez geometrija</em>'}</div></div>
     <label class="ng-switch ul-sw" aria-label="Prikaži sloj na karti"><input type="checkbox" ${vid ? 'checked' : ''} onchange="${pol ? `_kmlSamoOdabir('${k.id}', !this.checked)` : `_kmlToggle('${k.id}')`}"><span></span></label>
@@ -6379,7 +6413,7 @@ function _khStat() {
     if (kml) kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp';
     const vidljivi = kmlLs.filter(_kmlNaKarti).length;
     bedz('kh-b-kml', kmlLs.length ? vidljivi + '/' + kmlLs.length + ' na karti' : '');
-    _khGranice(); _khRazmjera(); _khSlojevi();
+    _khGranice(); _khRazmjera(); _khOffline(); _khServer(); _khSlojevi();
     bedz('kh-b-ozn', kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') : ''); _kedHubRender();
     // Pregled: podloga, offline, KML, uključeni slojevi (teren + praćenje šume) — dodir vodi u odgovarajuću sekciju
     const tem = typeof _tematskiUkljuceni === 'function' ? _tematskiUkljuceni().length : 0;
@@ -6407,32 +6441,82 @@ function _khRazmjera() {
   el.innerHTML = `<div class="kg-top"><i>🔭</i><div><h3>Razmjera <b class="rz">${_razmjeraTxt()}</b></h3><p>${sk.length ? 'Zbog razmjere je sakriveno: ' + sk.join(', ') : 'Svi slojevi su vidljivi pri ovoj razmjeri'}</p></div></div>
     <button class="karta-hub-action" onclick="switchMainTab('postavke');setTimeout(()=>_setSkok('set-g-karta'),150)">Podesi prikaz po razmjeri</button>`;
 }
+function _khGranicaZapis() { return _kmlServerLista().find(z => _KML_POLIGONSKI.test(z.naziv)); }
+// Preuzmi/osvježi zapis sa servera: bez PIN-a prvo traži otključavanje
+function _khSrvAkcija(id) { _dkKljuc() ? _dkmlPreuzmi(id) : _dkOtkljucaj(); }
 function _khGranice() {
   const el = document.getElementById('kh-gran'); if (!el) return;
-  const k = kmlLs.find(x => _kmlJePoligonski(x.name));
+  const k = kmlLs.find(x => _kmlJePoligonski(x.name)), z = _khGranicaZapis();
+  const osv = z && !(_dkNapredak && _dkNapredak[z.id]) ? `<button onclick="_khSrvAkcija('${z.id}')">${_dkKljuc() ? '↻ Osvježi sa servera' : '🔒 Osvježi (PIN)'}</button>` : '';
   if (!k) {
     el.className = 'karta-hub-card kh-gran';
-    el.innerHTML = '<div class="kg-top"><i>▱</i><div><h3>Granice odjela</h3><p>Sloj „Granice taksacije” još nije učitan — preuzmi ga ili dodaj KML.</p></div></div><button class="karta-hub-action" onclick="openUcitajKmlSection()">☁ Učitaj granice odjela</button>';
+    el.innerHTML = `<div class="kg-top"><i>▱</i><div><h3>Granice odjela <span class="kh-bedz srv">☁ server</span></h3><p>Sloj „Granice taksacije” još nije na telefonu — preuzmi ga sa servera ili dodaj svoj KML.</p></div></div><div class="kg-akc">${z ? `<button class="glavno" onclick="_khSrvAkcija('${z.id}')">${_dkKljuc() ? '⬇ Preuzmi granice odjela' : '🔒 Otključaj i preuzmi'}</button>` : '<button class="glavno" onclick="openUcitajKmlSection()">☁ Učitaj granice odjela</button>'}</div>`;
     return;
   }
   const on = _kmlNaKarti(k), s = _kmlStat(k);
   el.className = 'karta-hub-card kh-gran' + (on ? ' on' : '');
-  el.innerHTML = `<div class="kg-top"><i>▱</i><div><h3>Granice odjela</h3><p>${s.pol} poligona · ${Math.round(s.ha).toLocaleString('bs-BA')} ha · ${on ? 'prikazane na karti' : 'skrivene (služe za izbor odjela)'}</p></div>
+  el.innerHTML = `<div class="kg-top"><i>▱</i><div><h3>Granice odjela <span class="kh-bedz srv">☁ server</span></h3><p>${s.pol} poligona · ${Math.round(s.ha).toLocaleString('bs-BA')} ha · ${on ? 'prikazane na karti' : 'skrivene (služe za izbor odjela)'}</p></div>
     <label class="ng-switch kg-sw" aria-label="Prikaži granice odjela na karti"><input type="checkbox" ${on ? 'checked' : ''} onchange="_kmlSamoOdabir('${k.id}', !this.checked)"><span></span></label></div>
-    <div class="kg-akc"><button onclick="_kmlZoom('${k.id}')">🔍 Na karti</button><button onclick="_kmlPromijeniBoju('${k.id}')">🎨 Boja i debljina</button></div>`;
+    <div class="kg-akc"><button onclick="_kmlZoom('${k.id}')">🔍 Na karti</button><button onclick="_kmlPromijeniBoju('${k.id}')">🎨 Stil</button>${osv}</div>`;
 }
-// Brzi popis svih KML slojeva s prekidačima (bez ulaska u preglednik)
+// Offline karte: popis sa pregledom, aktivna istaknuta, izbor jednim dodirom
+function _khOffline() {
+  const el = document.getElementById('kh-offline-kartica'); if (!el) return;
+  const sql = typeof _sqlLayers !== 'undefined' ? _sqlLayers : [];
+  const akt = sql.find(r => r.active);
+  const zoomTxt = r => (Number.isFinite(r.zmin) && Number.isFinite(r.zmax)) ? 'zoom ' + r.zmin + '–' + r.zmax : 'karta bez signala';
+  const redovi = sql.map(r => `<div class="ko-kar${r.active ? ' akt' : ''}">
+      <img src="${r.thumb || _SQL_THUMB}" alt="" loading="lazy">
+      <div class="ko-kar-i" onclick="_sqlmapSelect('${r.id}', 'tiho')"><b>${_escHtml(String(r.name).replace(/\.(sqlitedb|mbtiles)$/i, ''))}</b><small>${zoomTxt(r)}${r.native ? ' · brza' : ''}</small></div>
+      ${r.active ? '<span class="kh-bedz">✓ aktivna</span>' : `<button class="ko-kar-b" onclick="_sqlmapSelect('${r.id}', 'tiho')">▶ Koristi</button>`}
+      ${r.bounds ? `<button class="ko-kar-z" onclick="_sqlmapZoom('${r.id}')" aria-label="Obuhvat karte" title="Obuhvat karte">⤢</button>` : ''}</div>`).join('');
+  el.className = 'karta-hub-card kh-off' + (akt ? ' on' : '');
+  el.innerHTML = `<div class="kg-top"><i>🗂</i><div><h3>Offline karte ${sql.length ? `<span class="kh-bedz">${sql.length}</span>` : ''}</h3>
+      <p>${sql.length ? (akt ? 'Aktivna: ' + _escHtml(akt.name) : 'Nijedna nije aktivna — izaberi jednu') : '.sqlitedb / .mbtiles — rad bez signala. Još nema karata na telefonu.'}</p></div></div>
+    ${redovi ? `<div class="ko-kar-lista">${redovi}</div>` : ''}
+    <div class="kg-akc"><button class="glavno" onclick="openUcitajKartuSection()">＋ Dodaj</button><button onclick="openUcitajKartuSection()">☁ Preuzmi sa servera</button><button onclick="openUcitajKartuSection()">⚙ Upravljaj</button></div>`;
+}
+// Serverski KML slojevi: popis iz kml_drive.json + ugrađeni; status, prekidač, preuzmi/osvježi (PIN)
+function _khServer() {
+  const el = document.getElementById('kh-server'); if (!el) return;
+  const lista = _kmlServerLista();
+  if (!lista.length && typeof _dkmlUcitaj === 'function' && !_dkmlP) { _dkmlP = _dkmlUcitaj(); _dkmlP.then(() => _khServer()); }
+  const kljuc = _dkKljuc(), pokriveni = new Set();
+  const redovi = [...lista].sort((a, b) => _KML_POLIGONSKI.test(b.naziv) - _KML_POLIGONSKI.test(a.naziv)).map(z => {
+    const k = kmlLs.find(x => _kmlServerImena(z).includes(x.name));
+    if (k) pokriveni.add(k.id);
+    return _khSrvRed(k, z, kljuc);
+  });
+  kmlLs.filter(k => _kmlJeServerski(k) && !pokriveni.has(k.id)).forEach(k => redovi.push(_khSrvRed(k, null, kljuc)));
+  el.className = 'karta-hub-card kh-srv';
+  el.innerHTML = `<div class="kg-top"><i>☁</i><div><h3>Serverski slojevi <span class="kh-bedz">${pokriveni.size + redovi.length - pokriveni.size > 0 ? kmlLs.filter(_kmlJeServerski).length + ' na telefonu' : ''}</span></h3><p>Granice odjela i putevi koje održava administrator. Preuzimaju se jednom, rade bez interneta.</p></div></div>
+    ${redovi.join('') || '<div class="ul-prazno">Popis sa servera se učitava…</div>'}
+    ${kljuc ? '' : '<button class="karta-hub-action" onclick="_dkOtkljucaj()">🔒 Otključaj preuzimanje (PIN)</button>'}`;
+}
+function _khSrvRed(k, z, kljuc) {
+  const gran = (k && _kmlJePoligonski(k.name)) || (z && _KML_POLIGONSKI.test(z.naziv));
+  const naziv = k ? k.name.replace(/\.(kml|kmz)$/i, '') : z.naziv, n = z && typeof _dkNapredak !== 'undefined' ? _dkNapredak[z.id] : null;
+  let info = z ? (z.opis || '') + (z.mb ? ' · ' + z.mb + ' MB' : '') : 'ugrađeni sloj';
+  if (k) { const s = _kmlStat(k); info = [s.pol ? s.pol + ' pol.' : '', s.lin ? s.lin + ' lin.' : '', s.tac ? s.tac + ' tač.' : ''].filter(Boolean).join(' · ') || 'prazno'; }
+  const vid = k && _kmlNaKarti(k);
+  const akc = n ? `<div class="dk-traka"><u style="width:${n.p || 0}%"></u></div><small>${n.p != null ? n.p + ' %' : '…'}</small>`
+    : z ? `<button class="${k ? '' : 'glavno'}" onclick="_khSrvAkcija('${z.id}')" aria-label="${k ? 'Osvježi' : 'Preuzmi'}">${kljuc ? (k ? '↻' : '⬇ Preuzmi') : '🔒'}</button>` : '';
+  return `<div class="ks-red${vid ? '' : ' skriven'}" style="--kc:${k ? k.col : '#475569'}">
+    <i></i><div class="ks-i" ${k ? `onclick="_kmlZoom('${k.id}')"` : ''}><b>${gran ? '★ ' : ''}${_escHtml(naziv)}</b><small>${k ? '✓ na telefonu · ' : 'nije preuzeto · '}${_escHtml(info)}</small></div>
+    ${akc}${k ? `<label class="ng-switch" aria-label="Prikaži sloj"><input type="checkbox" ${vid ? 'checked' : ''} onchange="${gran ? `_kmlSamoOdabir('${k.id}', !this.checked)` : `_kmlToggle('${k.id}')`}"><span></span></label>` : ''}</div>`;
+}
+// Moji slojevi (učitani iz fajla) + tragovi
 function _khSlojevi() {
   const el = document.getElementById('kh-lista'); if (!el) return;
-  const l = kmlLs.filter(k => !_kmlJePoligonski(k.name)), tr = typeof _tragRegistry !== 'undefined' ? _tragRegistry : [];
-  if (!l.length && !tr.length) { el.hidden = true; return; }
-  el.hidden = false;
+  const l = kmlLs.filter(k => !_kmlJeServerski(k)), tr = typeof _tragRegistry !== 'undefined' ? _tragRegistry : [];
   const tragovi = tr.length ? `<div class="kl-podnasl">🥾 Tragovi <small>${tr.length}</small></div>` + tr.slice(0, 12).map(t => { const vid = t.visible !== false;
     return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${t.color || '#f97316'}"><i></i><div onclick="_tragRegZoom('${t.id}')"><b>${_escHtml(t.name)}</b><small>${_tragFmtLen(_tragCalcLen(t.pts))} · ${t.pts.length} tač.</small></div>
       <button class="kl-stil" onclick="_tragStilUredi('${t.id}')" aria-label="Stil traga">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_tragRegToggle('${t.id}')"><span></span></label></div>`; }).join('') + (tr.length > 12 ? `<small class="kl-vise" onclick="openTragoviPanel()">… još ${tr.length - 12} — otvori sve tragove ›</small>` : '') : '';
-  el.innerHTML = '<h3>🧭 Slojevi na karti</h3>' + tragovi + (l.length && tr.length ? '<div class="kl-podnasl">🗺 KML slojevi</div>' : '') + l.map(k => { const s = _kmlStat(k), vid = _kmlNaKarti(k);
+  const kml = l.length ? '<div class="kl-podnasl">🗺 KML / SHP slojevi <small>' + l.length + '</small></div>' + l.map(k => { const s = _kmlStat(k), vid = _kmlNaKarti(k);
     return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${k.col}"><i></i><div onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}</b><small>${[s.pol ? s.pol + ' pol.' : '', s.lin ? s.lin + ' lin.' : '', s.tac ? s.tac + ' tač.' : ''].filter(Boolean).join(' · ') || 'prazno'}</small></div>
-      <label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label></div>`; }).join('');
+      <button class="kl-stil" onclick="_kmlPromijeniBoju('${k.id}')" aria-label="Stil sloja">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label></div>`; }).join('') : '<p class="kh-prazno">Još nisi učitao svoj KML / KMZ / SHP. Učitani fajlovi ostaju na telefonu.</p>';
+  el.hidden = false;
+  el.innerHTML = '<h3>📁 Moji slojevi</h3>' + kml + tragovi + '<div class="kg-akc" style="margin-top:10px"><button class="glavno" onclick="document.getElementById(\'kml-file-input\').click()">＋ Dodaj KML / KMZ / SHP</button></div>';
 }
 function _khKmlTrazi() {
   const q = document.getElementById('kh-kml-trazi')?.value || '';
@@ -7142,6 +7226,7 @@ async function _sqlmapRegRender() {
   </div>`).join('');
   html += '<p class="ul-savjet">Aktivna karta se crta ispod slojeva (požari, KML, nagib) i pamti se za sljedeće pokretanje.</p>';
   el.innerHTML = html;
+  try { _khOffline(); } catch(e) {}
 }
 async function _sqlmapRestoreManual(name) {
   let records;
@@ -7927,6 +8012,7 @@ async function _driveKmlRender() {
     return `<div class="dk-red"><div><b>${_escHtml(k.naziv)}</b><small>${_escHtml(k.opis || '')}${k.mb ? ' · ' + k.mb + ' MB' : ''}</small></div><div class="dk-akc">${desno}</div></div>`;
   }).join('') + '<p class="set-nap">Sloj se skida jednom i ostaje u aplikaciji (radi bez interneta).</p>';
   if (el) el.innerHTML = html;
+  try { _khServer(); _khGranice(); } catch(e) {}
   if (otv) otv.innerHTML = '<div class="otv-lbl">☁ Preuzmi s Drive-a (odjeli, ŠKP)</div>' + html;
 }
 async function _dkmlPreuzmi(id) {
