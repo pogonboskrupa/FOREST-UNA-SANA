@@ -3910,7 +3910,7 @@ function _tragCalcLen(pts) {
 function _tragFmtLen(m) { return m >= 1000 ? (m/1000).toFixed(2)+' km' : Math.round(m)+' m'; }
 
 // Vrste crte: stari ključevi (solid/dash/dot) i ključevi editora stila (puna/isprek/tack/crtatack)
-const _tragDashArray = k => ({ dash: '8 4', isprek: '8 4', dot: '2 6', tack: '2 6', crtatack: '10 4 2 4' }[k] || null);
+const _tragDashArray = k => ({ dash: '10 10', isprek: '10 10', dot: '1 12', tack: '1 12', crtatack: '12 9 1 9' }[k] || null);
 // Uređivanje stila jednog traga (isti editor kao KML slojevi): boja, debljina, providnost, vrsta crte — živo na karti
 async function _tragStilUredi(id) {
   const t = _tragRegistry.find(x => x.id === id); if (!t) return;
@@ -5196,7 +5196,7 @@ function _parseKmlExtData(pm) {
 // Boje KML-a su aabbggrr; Leaflet traži #rrggbb + prozirnost posebno.
 const _kmlBojaUKml = (hex, a = 1) => { const h = String(hex || '#ffffff').replace('#', '').padEnd(6, '0'); return Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0') + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2); };
 const _kmlBojaIzKml = t => { t = String(t || '').trim(); if (!/^[0-9a-f]{8}$/i.test(t)) return null; return { hex: ('#' + t.slice(6, 8) + t.slice(4, 6) + t.slice(2, 4)).toLowerCase(), a: parseInt(t.slice(0, 2), 16) / 255 }; };
-const _KML_CRTA = { puna: null, isprek: '6,4', tack: '1,6', crtatack: '10,4,2,4' };
+const _KML_CRTA = { puna: null, isprek: '10,10', tack: '1,12', crtatack: '12,9,1,9' };
 // Zadani stil NOVOG fajla (KML/KMZ/SHP, i preuzetog sa servera): puna linija i blago ispunjen poligon; natpisi isključeni.
 const _KML_STIL_NOVI = { w: 2, crta: 'puna', op: 90, ispuna: 12 };
 let _kmlZadrziStil = null; // { ime, col, stil } — za zamjenu sloja istog imena (osvježavanje sa servera)
@@ -5817,7 +5817,7 @@ async function _kmlPromijeniBoju(id) {
 const _KML_PALETA = ['#ef4444','#f97316','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#ffffff','#111827'];
 // Editor stila (sloj ili objekat): kartice Linija / Ispuna / Oznake, živi pregled (SVG) i živa primjena na karti (`uzivo`).
 // Vraća { col, stil } | 'vrati' (stil sloja) | null. stil: { w, crta, op (neprovidnost linije %), ispuna (%), ispunaBoja, providno }.
-const _KED_CRTE = [['puna', 'Puna', ''], ['isprek', 'Isprekidana', '12 7'], ['tack', 'Tačkasta', '1 7'], ['crtatack', 'Crta-tačka', '14 5 2 5']];
+const _KED_CRTE = [['puna', 'Puna', ''], ['isprek', 'Isprekidana', '12 12'], ['tack', 'Tačkasta', '1 12'], ['crtatack', 'Crta-tačka', '14 10 1 10']];
 const _KED_SABLONI = [
   ['Granica odjela', '#111827', { w: 3, crta: 'isprek', op: 100, ispuna: 0 }],
   ['Odjel', '#ef4444', { w: 2, crta: 'puna', op: 90, ispuna: 15 }],
