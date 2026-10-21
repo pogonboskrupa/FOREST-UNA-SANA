@@ -686,6 +686,17 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-grp { display:flex; align-items:baseline; gap:8px; margin:20px 2px 8px; color:#6ee7b7; font-size:11px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
 .set-grp small { color:#6b8277; font-size:10.5px; font-weight:500; letter-spacing:0; text-transform:none; }
 #postavke-panel .ng-card { margin-bottom:10px; }
+/* Postavke — harmonika (v2.7.5): sekcije su sklopive, jedna otvorena odjednom; svaka ima svoju boju */
+#postavke-panel .set-grp { margin:18px 0 8px; padding:7px 12px; border-radius:10px; background:rgba(74,222,128,.09); border:1px solid rgba(74,222,128,.22); color:#86efac; font-size:11.5px; }
+#postavke-panel .set-grp small { margin-left:auto; text-align:right; }
+.set-acc { padding:0 !important; overflow:hidden; border:1px solid #1f3b2d; border-left:4px solid var(--acc,#4ade80); background:#0f1d16; }
+.set-acc > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; min-height:52px; padding:0 14px; font-size:15px; font-weight:800; color:#f0fdf4; }
+.set-acc > summary::-webkit-details-marker { display:none; }
+.set-acc > summary::after { content:'›'; margin-left:auto; font-size:24px; font-weight:400; color:var(--acc,#4ade80); transition:transform .2s; }
+.set-acc[open] > summary { background:linear-gradient(90deg, color-mix(in srgb, var(--acc) 18%, transparent), transparent); border-bottom:1px solid #1f3b2d; }
+.set-acc[open] > summary::after { transform:rotate(90deg); }
+.set-acc-body { padding:12px 14px 14px; }
+
 .set-nav { position:sticky; top:-1px; z-index:5; display:flex; gap:6px; overflow-x:auto; padding:8px 0; margin:0 0 6px; background:linear-gradient(var(--bg,#08140e) 80%, transparent); scrollbar-width:none; }
 .set-nav::-webkit-scrollbar { display:none; }
 .set-nav button { flex:none; padding:7px 12px; border-radius:999px; border:1px solid #1f3b2d; background:#0d1a14; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; white-space:nowrap; }
@@ -2104,14 +2115,17 @@ body.sl-uredi #sl-ured { display: block; }
       </div>
     </section>
     <h4 class="set-grp" id="set-g-karta">Prikaz na karti<small>razmjera, koordinate, dugmad, trag</small></h4>
-    <section class="ng-card" id="set-s-razmjera">
-      <h3>🔭 Prikaz po razmjeri</h3>
+    <details class="ng-card set-acc" id="set-s-razmjera" style="--acc:#38bdf8">
+      <summary>🔭 Prikaz po razmjeri</summary>
+      <div class="set-acc-body">
       <p class="set-nap" style="margin-top:0">Sloj se sakrije kad zumiraš dalje od odabrane razmjere (npr. 1:50 000 = sitnija od toga). Izbor se pamti.</p>
       <div id="set-razmjera"></div>
       <div class="set-nap" id="set-razmjera-sad"></div>
-    </section>
-    <section class="ng-card" id="set-s-ui">
-      <h3>🎛 Koordinate i dugmad</h3>
+      </div>
+    </details>
+    <details class="ng-card set-acc" id="set-s-ui" style="--acc:#a78bfa">
+      <summary>🎛 Koordinate i dugmad</summary>
+      <div class="set-acc-body">
       <div class="ui-pregled"><div id="ui-pr-badge" class="ui-bdg"></div><div id="ui-pr-btn" class="map-ctl">🗂</div></div>
       <div class="set-red"><div><b>Tema podloge</b><small>Tamna ili svijetla staklena podloga (tekst i ikone se prilagode).</small></div></div>
       <div class="set-seg" id="ui-tema" style="grid-template-columns:1fr 1fr"><button data-v="tamna" onclick="_setUi('tema','tamna')">🌙 Tamna</button><button data-v="svijetla" onclick="_setUi('tema','svijetla')">☀ Svijetla</button></div>
@@ -2129,10 +2143,12 @@ body.sl-uredi #sl-ured { display: block; }
       <label class="set-klizac" style="margin-top:12px"><span>Providnost podloge dugmadi <b id="ui-btnA-v"></b></span><input type="range" id="ui-btnA" min="0" max="100" step="5" oninput="_setUi('btnA', +this.value)"></label>
       <label class="set-klizac"><span>Veličina dugmadi <b id="ui-btnZ-v"></b></span><input type="range" id="ui-btnZ" min="80" max="140" step="5" oninput="_setUi('btnZ', +this.value)"></label>
       <button class="set-dugme" style="margin-top:10px" onclick="_setUiZadano()">↺ Vrati zadano</button>
-    </section>
+      </div>
+    </details>
 
-    <section class="ng-card" id="set-s-trag">
-      <h3>🥾 Snimanje traga i linije</h3>
+    <details class="ng-card set-acc" id="set-s-trag" style="--acc:#fb923c">
+      <summary>🥾 Snimanje traga i linije</summary>
+      <div class="set-acc-body">
       <svg id="set-trag-pregled" class="set-pregled" viewBox="0 0 320 64" aria-hidden="true"><path d="M8 48 C60 8 110 60 160 30 S260 8 312 40" fill="none" stroke-linecap="round"/></svg>
       <label class="set-klizac"><span>Debljina <b id="set-trag-w-v"></b></span><input type="range" id="set-trag-w" min="1" max="10" step="1" oninput="_setTragStil()"></label>
       <label class="set-klizac"><span>Neprovidnost <b id="set-trag-op-v"></b></span><input type="range" id="set-trag-op" min="30" max="100" step="5" oninput="_setTragStil()"></label>
@@ -2140,25 +2156,31 @@ body.sl-uredi #sl-ured { display: block; }
       <div class="set-red"><div><b>Najlošija GPS tačnost za trag</b><small>Tačke s većom greškom od zadane se odbacuju (stroža = čistiji trag, ali rupe u šumi).</small></div></div>
       <div class="set-seg" id="set-trag-ac"><button data-v="20" onclick="_setTragAc(20)">±20 m</button><button data-v="50" onclick="_setTragAc(50)">±50 m · zadano</button><button data-v="100" onclick="_setTragAc(100)">±100 m</button></div>
       <button class="set-dugme" style="margin-top:10px" onclick="_setTragZadano()">↺ Vrati zadano</button>
-    </section>
+      </div>
+    </details>
     <h4 class="set-grp" id="set-g-snimanje">GPS<small>baterija i pozadinski rad</small></h4>
-    <section class="ng-card" id="set-s-gps">
-      <h3>📍 GPS i baterija</h3>
+    <details class="ng-card set-acc" id="set-s-gps" style="--acc:#f472b6">
+      <summary>📍 GPS i baterija</summary>
+      <div class="set-acc-body">
       <div class="set-red"><div><b>Rad bez ograničenja baterije</b><small id="set-bat-txt">Da poziv ili druga aplikacija ne prekine GPS snimanje u pozadini.</small></div><button id="set-bat-btn" onclick="_setBaterija()">Podesi</button></div>
       <div class="set-red" id="set-autostart" hidden><div><b>Autostart (Xiaomi/Redmi)</b><small>Uključi Autostart za Grmeč Navigator — inače HyperOS može ugasiti snimanje traga dok je ekran zaključan.</small></div><button onclick="AndroidGps.otvoriAutostart()">Otvori</button></div>
-    </section>
+      </div>
+    </details>
     <h4 class="set-grp" id="set-g-podaci">Podaci<small>rezervna kopija</small></h4>
-    <section class="ng-card" id="set-s-podaci">
-      <h3>💾 Podaci na uređaju</h3>
+    <details class="ng-card set-acc" id="set-s-podaci" style="--acc:#facc15">
+      <summary>💾 Podaci na uređaju</summary>
+      <div class="set-acc-body">
       <div class="set-grid" id="set-podaci"></div>
       <div class="rd-akc"><button class="glavno" onclick="_setBackup()">⤓ Rezervna kopija</button><button onclick="document.getElementById('set-restore-input').click()">⤒ Vrati iz kopije</button></div>
       <input type="file" id="set-restore-input" accept=".json,application/json" style="display:none" onchange="_setRestore(event)">
       <div class="rd-akc"><button id="set-pin-zakljucaj" hidden onclick="_pinZakljucaj()">🔒 Zaključaj zaštićene sekcije</button></div>
       <p class="set-nap">Kopija (.json) sadrži tragove, mjerenja, KML slojeve, trase, mjerenja nagiba, postavke i API ključeve — ne dijeli je. Offline karte (.mbtiles) nisu u kopiji; to su već fajlovi na telefonu. Korisno pri prelasku na novi telefon.</p>
-    </section>
+      </div>
+    </details>
     <h4 class="set-grp" id="set-g-izgled">Memorija i uređaj<small>keš karata, prikaz, napredno</small></h4>
-    <section class="ng-card" id="set-s-karte">
-      <h3>🗺 Karte i memorija</h3>
+    <details class="ng-card set-acc" id="set-s-karte" style="--acc:#4ade80">
+      <summary>🗺 Karte i memorija</summary>
+      <div class="set-acc-body">
       <div class="set-mem"><div class="set-mem-bar"><i id="set-mem-fill"></i></div><small id="set-mem-txt">Računam zauzeće…</small></div>
       <div class="set-red"><div><b>Pločice karata</b><small id="set-kes-plocice">Topo / Satelit / Karta pregledane online</small></div><button onclick="clearTileCache()">Očisti</button></div>
       <div class="set-red"><div><b>Visinske pločice</b><small id="set-kes-teren">Nagib, sjenčenje, profil van 5 općina</small></div><button onclick="_setOcistiTeren()">Očisti</button></div>
@@ -2167,12 +2189,15 @@ body.sl-uredi #sl-ured { display: block; }
         <input id="protomaps-key" type="password" autocomplete="off" placeholder="Unesi svoj Protomaps ključ" class="set-input">
         <button class="set-dugme" onclick="_terrainProtomapsSave()">Sačuvaj i koristi Protomaps</button>
       </details>
-    </section>
-    <section class="ng-card" id="set-s-prikaz">
-      <h3>🖥 Prikaz</h3>
+      </div>
+    </details>
+    <details class="ng-card set-acc" id="set-s-prikaz" style="--acc:#22d3ee">
+      <summary>🖥 Prikaz</summary>
+      <div class="set-acc-body">
       <div class="set-seg" id="set-prikaz"><button data-v="auto" onclick="_prikazPostavi('auto')">Automatski</button><button data-v="desktop" onclick="_prikazPostavi('desktop')">Računar</button><button data-v="mobilni" onclick="_prikazPostavi('mobilni')">Telefon</button></div>
       <small class="set-nap" id="set-prikaz-txt"></small>
-    </section>
+      </div>
+    </details>
     <section class="ng-card">
       <details class="set-det"><summary>🛠 Napredno</summary>
         <p class="set-nap">Uređaj ID — pošalji administratoru za pristup dijeljenim ključevima.</p>
@@ -11504,7 +11529,19 @@ document.addEventListener('keydown', e => {
   if (document.querySelector('#dlg-overlay.show, .dlg-overlay.show, .leaflet-popup')) return;
   if (_ALL_PANELS.some(id => document.getElementById(id)?.classList.contains('show'))) switchMainTab('karta');
 });
-function _setSkok(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function _setSkok(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const acc = el.matches('details.set-acc') ? el : el.nextElementSibling?.matches?.('details.set-acc') ? el.nextElementSibling : null;
+  if (acc) acc.open = true;
+  setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
+}
+// samo jedna sekcija Postavki otvorena odjednom — manje skrolanja
+document.addEventListener('toggle', e => {
+  const d = e.target;
+  if (!d.matches || !d.matches('details.set-acc') || !d.open) return;
+  document.querySelectorAll('#postavke-panel details.set-acc[open]').forEach(o => { if (o !== d) o.open = false; });
+}, true);
 const _PR_VRSTE = [['slike', '📷 Slike i tačke'], ['tragovi', '🥾 Tragovi'], ['mjerenja', '📏 Mjerenja'], ['kml', '🗺 KML / SHP slojevi']];
 const _PR_PRESETI = [0, 10000, 25000, 50000, 100000, 250000];
 function _setRazmjeraUi() {
