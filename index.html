@@ -1157,6 +1157,31 @@ body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /
 .treg-btns button.del-btn { color: #fca5a5; border-color: rgba(239,68,68,.35); background: rgba(127,29,29,.22); }
 .treg-empty { color: var(--pn-dim); }
 
+/* Tragovi — kartice (v2.7.3) */
+.treg-sum { display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:2px 4px 10px; }
+.treg-sum b { font-size:20px; font-weight:800; color:#e8f5ee; font-variant-numeric:tabular-nums; }
+.treg-sum span { font-size:11.5px; color:var(--pn-mut); }
+.treg-row { position:relative; border-left:4px solid var(--tc, #4ade80); }
+.treg-row.treg-off { opacity:.62; }
+.treg-top { display:flex; gap:10px; align-items:center; }
+.treg-prev { flex:0 0 52px; height:52px; border-radius:12px; background:var(--pn-bg-3); border:1px solid var(--pn-line); display:grid; place-items:center; cursor:pointer; }
+.treg-info { min-width:0; flex:1; }
+.treg-info .treg-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:0 !important; padding:0 !important; }
+.treg-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.treg-chip { font-size:11px; font-weight:650; padding:2px 8px; border-radius:99px; background:var(--pn-bg-3); border:1px solid var(--pn-line); color:#cfe3d8; font-variant-numeric:tabular-nums; }
+.treg-chip.treg-len { background:rgba(74,222,128,.14); border-color:rgba(74,222,128,.4); color:#86efac; }
+.treg-chip.treg-warn { background:rgba(245,158,11,.14); border-color:rgba(245,158,11,.4); color:#fcd34d; }
+.treg-row .treg-btns { margin-top:10px; }
+.treg-btns button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; font-size:15px; }
+.treg-btns button span { font-size:10.5px; font-weight:650; }
+.treg-vise { margin-top:8px; }
+.treg-vise summary { list-style:none; cursor:pointer; text-align:center; font-size:12px; font-weight:700; color:var(--pn-mut); padding:5px 0; border-radius:8px; }
+.treg-vise summary::-webkit-details-marker { display:none; }
+.treg-vise[open] summary { color:#cfe3d8; }
+.treg-btns2 { margin-top:6px !important; }
+.treg-empty { padding:36px 20px; line-height:1.6; }
+.treg-empty-ik { font-size:34px; margin-bottom:6px; }
+
 /* Alat za mjerenje */
 #msr-panel { padding: 12px; }
 #msr-panel .msr-modes button { min-height: 38px; border-radius: 11px; background: var(--pn-bg-2); border-color: var(--pn-line); color: var(--pn-mut); font-weight: 700; }
@@ -3962,13 +3987,31 @@ function _tragRegRender() {
   const cnt = document.getElementById('tragovi-count');
   if (!el) return;
   if (cnt) cnt.textContent = _tragRegistry.length ? `(${_tragRegistry.length})` : '';
-  if (!_tragRegistry.length) { el.innerHTML = '<div class="treg-empty">Nema sačuvanih tragova.<br>Otvori 📍 Lokacija → Snimi trag.</div>'; return; }
-  el.innerHTML = _tragRegistry.map(t => {
+  if (!_tragRegistry.length) { el.innerHTML = '<div class="treg-empty"><div class="treg-empty-ik">🥾</div><b>Nema sačuvanih tragova</b><br>Otvori 📍 Lokacija → Snimi trag.</div>'; return; }
+  let ukupno = 0, vidljivo = 0;
+  const kartice = _tragRegistry.map(t => {
     const lenM = _tragCalcLen(t.pts);
+    ukupno += lenM;
     const vis = t.visible !== false;
-    return `<div class="treg-row">
-      <div class="treg-name" onclick="_tragRegZoom('${t.id}')" style="border-left:3px solid ${t.color};padding-left:8px;">${_escHtml(t.name)}</div>
-      <div class="treg-meta">${fmtDateShort(t.date)} · ${_tragFmtLen(lenM)} · ${t.pts.length} tač.</div>
+    if (vis) vidljivo++;
+    const trajanje = _tragTrajanje(t.pts);
+    const foto = (t.tacke || []).length;
+    const pr = t.prekidi && t.prekidi.n ? t.prekidi.n : 0;
+    return `<div class="treg-row${vis ? '' : ' treg-off'}" style="--tc:${t.color}">
+      <div class="treg-top">
+        <div class="treg-prev" onclick="_tragRegZoom('${t.id}')">${_tragMiniSvg(t.pts, t.color)}</div>
+        <div class="treg-info">
+          <div class="treg-name" onclick="_tragRegZoom('${t.id}')">${_escHtml(t.name)}</div>
+          <div class="treg-meta">${fmtDateShort(t.date)}</div>
+          <div class="treg-chips">
+            <span class="treg-chip treg-len">${_tragFmtLen(lenM)}</span>
+            ${trajanje ? `<span class="treg-chip">⏱ ${trajanje}</span>` : ''}
+            <span class="treg-chip">${t.pts.length} tač.</span>
+            ${foto ? `<span class="treg-chip">📷 ${foto}</span>` : ''}
+            ${pr ? `<span class="treg-chip treg-warn">⚠ ${pr} prekid${pr === 1 ? '' : 'a'}</span>` : ''}
+          </div>
+        </div>
+      </div>
       <div id="treg-ugl-${t.id}" style="display:none;" class="treg-meta-edit">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
           <span style="font-size:11px;white-space:nowrap;color:#94a3b8;">Vraćanje/stajanje do:</span>
@@ -3989,17 +4032,45 @@ function _tragRegRender() {
         </div>
       </div>
       <div class="treg-btns">
-        <button onclick="_tragRegZoom('${t.id}')">🔍 Zoom</button>
-        <button onclick="_tragRegToggle('${t.id}')">${_okoDugme(vis)}</button>
-        <button onclick="_uglTragOtvori('${t.id}')" title="Poravna vraćanje istim putem i mirovanje u mjestu">🔧 Ugladi</button>
-        ${_uglMoguciPovratak('trag', t) ? `<button onclick="_uglVrati();_tragRegRender();">↩ Vrati</button>` : ''}
-        <button onclick="_tragStilUredi('${t.id}')">🎨 Stil</button>
-        <button onclick="_tragRegRename('${t.id}')">✏ Preimenuj</button>
-        <button onclick="_tragRegShare('${t.id}')">📤 Pošalji</button>
-        <button class="del-btn" onclick="_tragRegDeleteConfirm('${t.id}')">🗑 Briši</button>
+        <button onclick="_tragRegZoom('${t.id}')" title="Prikaži na karti">🔍<span>Zoom</span></button>
+        <button onclick="_tragRegToggle('${t.id}')" title="Prikaži / sakrij">${_okoDugme(vis)}</button>
+        <button onclick="_tragStilUredi('${t.id}')" title="Boja, debljina, vrsta crte">🎨<span>Stil</span></button>
+        <button onclick="_tragRegShare('${t.id}')" title="Pošalji trag">📤<span>Pošalji</span></button>
       </div>
+      <details class="treg-vise">
+        <summary>⋯ Više</summary>
+        <div class="treg-btns treg-btns2">
+          <button onclick="_uglTragOtvori('${t.id}')" title="Poravna vraćanje istim putem i mirovanje u mjestu">🔧<span>Ugladi</span></button>
+          ${_uglMoguciPovratak('trag', t) ? `<button onclick="_uglVrati();_tragRegRender();">↩<span>Vrati</span></button>` : ''}
+          <button onclick="_tragRegRename('${t.id}')">✏<span>Preimenuj</span></button>
+          <button class="del-btn" onclick="_tragRegDeleteConfirm('${t.id}')">🗑<span>Briši</span></button>
+        </div>
+      </details>
     </div>`;
   }).join('');
+  el.innerHTML = `<div class="treg-sum"><b>${_tragFmtLen(ukupno)}</b><span>${_tragRegistry.length} ${_tragRegistry.length === 1 ? 'trag' : 'tragova'} · ${vidljivo} na karti</span></div>` + kartice;
+}
+function _tragTrajanje(pts) {
+  if (!pts.length || !(pts[0][3] > 1e12)) return '';
+  const s = Math.round((pts[pts.length - 1][3] - pts[0][3]) / 1000);
+  if (!(s > 0)) return '';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `${h}h ${String(m).padStart(2, '0')}min` : `${Math.max(1, m)} min`;
+}
+function _tragMiniSvg(pts, col) {
+  if (pts.length < 2) return '';
+  const k = Math.max(1, Math.ceil(pts.length / 90)), a = [];
+  for (let i = 0; i < pts.length; i += k) a.push(pts[i]);
+  a.push(pts[pts.length - 1]);
+  const la = a.map(q => q[0]), lo = a.map(q => q[1]);
+  const mnLa = Math.min(...la), mxLa = Math.max(...la), mnLo = Math.min(...lo), mxLo = Math.max(...lo);
+  const kx = Math.cos((mnLa + mxLa) / 2 * Math.PI / 180);
+  const w = Math.max((mxLo - mnLo) * kx, 1e-9), h = Math.max(mxLa - mnLa, 1e-9);
+  const sc = 44 / Math.max(w, h), ox = (52 - w * sc) / 2, oy = (52 - h * sc) / 2;
+  const xy = q => [(ox + (q[1] - mnLo) * kx * sc).toFixed(1), (oy + (mxLa - q[0]) * sc).toFixed(1)];
+  const d = a.map(q => xy(q).join(',')).join(' ');
+  const [sx, sy] = xy(a[0]), [ex, ey] = xy(a[a.length - 1]);
+  return `<svg viewBox="0 0 52 52" width="52" height="52" aria-hidden="true"><polyline points="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${sx}" cy="${sy}" r="3" fill="#4ade80" stroke="#0b1d14" stroke-width="1"/><circle cx="${ex}" cy="${ey}" r="3" fill="#f87171" stroke="#0b1d14" stroke-width="1"/></svg>`;
 }
 function _tragRegZoom(id) {
   const t = _tragRegistry.find(x => x.id === id);
