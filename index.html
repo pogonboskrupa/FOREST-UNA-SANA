@@ -775,15 +775,6 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #ab-loc-popup .loc-toggle-item { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
 #ab-loc-popup .loc-toggle-item span { color:#94a3b8; font-size:11px; }
 #ab-loc-popup .loc-btn-row { display:flex; gap:6px; }
-#ab-loc-popup .loc-live { margin:-2px 0 12px; padding:10px 12px; border-radius:14px; border:1px solid var(--pn-line,#1f3b2d); background:rgba(255,255,255,.03); --lq:#64748b; }
-#loc-live[data-q="dobra"] { --lq:#22c55e; } #loc-live[data-q="srednja"] { --lq:#facc15; } #loc-live[data-q="losa"] { --lq:#ef4444; }
-#loc-live { border-left:5px solid var(--lq) !important; }
-.loc-koord b { display:block; font-size:16px; color:#f1f5f9; font-variant-numeric:tabular-nums; letter-spacing:.2px; } .loc-koord small { display:block; color:#94a3b8; font-size:11.5px; margin-top:2px; font-variant-numeric:tabular-nums; }
-.loc-kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:9px 0; }
-.loc-kpi div { background:rgba(2,6,23,.4); border-radius:9px; padding:5px 2px; text-align:center; } .loc-kpi b { display:block; font-size:13.5px; color:#e2e8f0; } .loc-kpi span { font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; }
-.loc-kpi .loc-ac b { color:var(--lq); }
-.loc-akc2 { display:flex; gap:6px; } .loc-akc2 button { flex:1; padding:8px 4px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; }
-#ab-loc-popup .loc-gps-info::before { content:'●'; margin-right:5px; color:var(--lq,#64748b); }
 .loc-switch {
   width:38px; height:22px; border-radius:11px; background:#334155; position:relative;
   cursor:pointer; transition:background 0.15s; flex-shrink:0;
@@ -1134,7 +1125,7 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 /* Dugmad na karti — jedinstven dizajn: oblik (--btn-r), debljina ikona (--btn-sw), stanje pritiska, fokus */
 .map-ctl, #layer-btn, #ab-loc, #zoom-grp, .fab-pill { border-radius: var(--btn-r, 16px); }
 .map-ctl svg { stroke-width: var(--btn-sw, 2); }
-#map-fabs { gap: 12px; }
+#map-fabs { gap: 12px; bottom: calc(var(--dock-b) + var(--rec-h) + 6px); }
 .fab-pill button, #zoom-grp button { width: 48px; height: 48px; }
 .map-ctl button:active, #ab-loc:active, #layer-btn:active { background: rgba(74,222,128,.16); transform: scale(.94); }
 .map-ctl button:focus-visible, #ab-loc:focus-visible, #layer-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: -3px; }
@@ -1865,11 +1856,6 @@ body.sl-uredi #sl-ured { display: block; }
   <div class="loc-hdr">
     <span class="loc-title">📍 Moja lokacija</span>
     <span class="loc-gps-info" id="gps-info">GPS: isključen</span>
-  </div>
-  <div class="loc-live" id="loc-live" data-q="off">
-    <div class="loc-koord"><b id="loc-mgi">Nema GPS pozicije</b><small id="loc-wgs">Uključi GPS prekidačem ispod</small></div>
-    <div class="loc-kpi"><div class="loc-ac"><b id="loc-ac">—</b><span>tačnost</span></div><div><b id="loc-al">—</b><span>visina</span></div><div><b id="loc-sp">—</b><span>brzina</span></div></div>
-    <div class="loc-akc2"><button onclick="_locKopiraj()">📋 Kopiraj</button><button onclick="_locPodijeli()">📤 Podijeli</button></div>
   </div>
   <div class="loc-toggles">
     <div class="loc-toggle-item"><span>GPS</span><div class="loc-switch" id="gps-switch" onclick="toggleGPS()"></div></div>
@@ -3440,7 +3426,6 @@ function onP(p) {
     _locCenterUpdateDist();
   }
 
-  if (document.getElementById('ab-loc-popup').style.display === 'block') _locPopupLive();
   // Prati lokaciju dok se snima trag (osim u slobodnom pogledu)
   if (_tragOn && !_tragPaused && !_recFreeView) map.panTo([la, lo], { animate: true, duration: 0.5 });
 }
@@ -3460,30 +3445,7 @@ function _toggleLocPopup() {
   const p = document.getElementById('ab-loc-popup');
   const opening = p.style.display === 'none' || !p.style.display;
   p.style.display = opening ? 'block' : 'none';
-  if (opening) { _updGpsSwitch(); _locPopupLive(); }
-}
-// Uživo podaci u modalu: MGI 5 + WGS84, tačnost (boja), visina, brzina; osvježava se pri svakom fiksu dok je modal otvoren
-function _locPopupLive() {
-  const box = document.getElementById('loc-live'); if (!box) return;
-  const p = lastP, set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
-  if (!gpsOn || !p) { box.dataset.q = 'off'; set('loc-mgi', gpsOn ? 'Tražim signal…' : 'Nema GPS pozicije'); set('loc-wgs', gpsOn ? 'Čekam prvi fiks' : 'Uključi GPS prekidačem ispod'); ['loc-ac', 'loc-al', 'loc-sp'].forEach(i => set(i, '—')); return; }
-  let mgi = '—'; try { const m = wgsToMGI5(p.la, p.lo); mgi = 'Y ' + m.y + ' · X ' + m.x; } catch (e) {}
-  box.dataset.q = p.ac <= 10 ? 'dobra' : p.ac <= 30 ? 'srednja' : 'losa';
-  set('loc-mgi', mgi); set('loc-wgs', p.la.toFixed(6) + ', ' + p.lo.toFixed(6));
-  set('loc-ac', '±' + Math.round(p.ac) + ' m'); set('loc-al', p.al > 0 ? Math.round(p.al) + ' m' : '—');
-  set('loc-sp', Number.isFinite(p.sp) && p.sp >= 0 ? (p.sp * 3.6).toFixed(p.sp * 3.6 < 10 ? 1 : 0) + ' km/h' : '—');
-}
-const _locTekst = () => lastP ? 'Moja lokacija: ' + lastP.la.toFixed(6) + ', ' + lastP.lo.toFixed(6) + ' (±' + Math.round(lastP.ac) + ' m)\nhttps://www.google.com/maps?q=' + lastP.la.toFixed(6) + ',' + lastP.lo.toFixed(6) : '';
-async function _locKopiraj() {
-  if (!lastP) { showToast('⚠ Nema GPS pozicije'); return; }
-  try { await navigator.clipboard.writeText(lastP.la.toFixed(6) + ', ' + lastP.lo.toFixed(6)); showToast('📋 Koordinate kopirane'); }
-  catch (e) { showToast(lastP.la.toFixed(6) + ', ' + lastP.lo.toFixed(6)); }
-}
-async function _locPodijeli() {
-  if (!lastP) { showToast('⚠ Nema GPS pozicije'); return; }
-  const t = _locTekst();
-  if (navigator.share) { try { await navigator.share({ text: t }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-  try { await navigator.clipboard.writeText(t); showToast('📋 Lokacija s Google Maps linkom kopirana — zalijepi u poruku'); } catch (e) { showToast(t); }
+  if (opening) _updGpsSwitch();
 }
 function _locPopupCentriraj() { document.getElementById('ab-loc-popup').style.display = 'none'; fabLokacija(); }
 function _locPopupSnimiTrag() { document.getElementById('ab-loc-popup').style.display = 'none'; fabSnimTrag(); }
