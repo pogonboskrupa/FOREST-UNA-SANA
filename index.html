@@ -1397,6 +1397,12 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 #kml-stil.ked .ked-kl input { width:100%; accent-color:#22c55e; height:28px; } #kml-stil.ked .ked-kl small { color:#80958a; font-size:11px; }
 #kml-stil.ked .ked-crte, #kml-stil.ked .ked-brzo { display:grid; grid-template-columns:repeat(auto-fit,minmax(70px,1fr)); gap:6px; }
 #kml-stil.ked .ked-crte button, #kml-stil.ked .ked-brzo button { display:flex; flex-direction:column; align-items:center; gap:4px; min-height:42px; padding:6px; border-radius:11px; border:1px solid var(--line); background:#0d1d16; color:#d1e7dc; font:700 11.5px 'DM Sans',Arial,sans-serif; cursor:pointer; }
+#kml-stil.ked .ked-tac-pr { border-radius:12px; overflow:hidden; border:1px solid #1f3b2d; background:repeating-conic-gradient(#e3ebdc 0 25%, #cdd9c4 0 50%) 0 0/16px 16px; }
+#kml-stil.ked .ked-tac-ploha { display:flex; align-items:center; justify-content:space-evenly; min-height:92px; padding:10px 6px; }
+#kml-stil.ked .ked-tac-ploha i { display:block; border-radius:50%; box-sizing:border-box; flex:none; }
+#kml-stil.ked .ked-tac-mjera { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 12px; background:rgba(8,20,14,.92); color:#e8f3ec; }
+#kml-stil.ked .ked-tac-mjera b { font-size:14px; } #kml-stil.ked .ked-tac-mjera small { color:#9db0a7; font-size:11px; flex-basis:100%; }
+#kml-stil.ked .ked-tac-ravnalo { display:block; height:4px; border-radius:2px; background:#4ade80; max-width:60%; }
 #kml-stil.ked .ked-crte svg { width:52px; height:10px; } #kml-stil.ked .ked-crte button.on, #kml-stil.ked .ked-brzo button.on { border-color:#4ade80; background:rgba(74,222,128,.16); color:#dcfce7; }
 #kml-stil.ked .ked-prek { display:flex; align-items:center; gap:12px; padding:12px; border-radius:14px; background:rgba(148,163,184,.06); border:1px solid rgba(148,163,184,.12); cursor:pointer; }
 #kml-stil.ked .ked-prek.mali { padding:6px 0; background:none; border:0; } #kml-stil.ked .ked-prek span { flex:1; } #kml-stil.ked .ked-prek b { display:block; font-size:13.5px; } #kml-stil.ked .ked-prek small { color:#80958a; font-size:11.5px; }
@@ -5289,6 +5295,11 @@ function _kmlLeafletStil(tip, col, stil, op) {
   if (tip === 'Point') {
     // stil.r = veličina tačke (px); bez nje stari način 4 + debljina. stil.tObrub: isti | bijeli | crni | bez
     const ob = stil.tObrub || 'isti', po = stil.op != null ? stil.op / 100 : op;
+    if (stil.d != null) {
+      // stil.d = vidljivi promjer tačke u px (ukupno s obrubom): radijus = (d − debljina obruba) / 2
+      const wt = ob === 'bez' ? 0 : 2;
+      return { radius: Math.max(1, (stil.d - wt) / 2), weight: wt, color: ob === 'bijeli' ? '#ffffff' : ob === 'crni' ? '#111827' : col, fillColor: col, opacity: po, fillOpacity: po };
+    }
     const o = { radius: stil.r != null ? stil.r : 4 + (stil.w || 2), color: ob === 'bijeli' ? '#ffffff' : ob === 'crni' ? '#111827' : col, fillColor: col, opacity: po, fillOpacity: po };
     if (ob === 'bez') o.weight = 0; else if (stil.tObrub) o.weight = 2;
     return o;
@@ -5924,6 +5935,8 @@ const _KED_SABLONI = [
   ['Sječina', '#eab308', { w: 2, crta: 'puna', op: 90, ispuna: 35 }],
   ['Voda', '#3b82f6', { w: 2, crta: 'puna', op: 85, ispuna: 30 }],
   ['Samo dodir', '#ffffff', { providno: true }]];
+// vidljivi promjer tačke u px (stari zapisi: r radijus + obrub 3 px)
+const _kmlTacD = st => st.d != null ? st.d : st.r != null ? 2 * st.r + 3 : 2 * (4 + (st.w || 2)) + 3;
 function _kedSvg(c, st, imaPol, imaLin, imaTac) {
   const d = (_KED_CRTE.find(x => x[0] === (st.crta || 'puna')) || _KED_CRTE[0])[2], w = Math.max(0.5, st.w || 2) * 1.6;
   const lin = st.providno ? 0 : (st.op != null ? st.op : 90) / 100, isp = st.providno ? 0 : (st.ispuna || 0) / 100, fb = st.ispunaBoja || c;
@@ -5932,7 +5945,7 @@ function _kedSvg(c, st, imaPol, imaLin, imaTac) {
     <rect width="320" height="120" fill="url(#ked-sah)"/><g fill="none" stroke="#b9925a" stroke-opacity=".45"><path d="M-10 92 C60 70 120 108 190 84 S300 60 340 76"/><path d="M-10 56 C70 34 130 74 200 50 S300 26 340 40"/><path d="M-10 20 C80 4 140 36 210 16 S300 -4 340 8"/></g>
     ${imaPol ? `<path d="M34 96 L62 24 L164 14 L204 58 L156 106 Z" fill="${fb}" fill-opacity="${isp}"/><path d="M34 96 L62 24 L164 14 L204 58 L156 106 Z" ${crt}/>` : ''}
     ${imaLin || (!imaPol && !imaTac) ? `<path d="M222 104 C246 42 282 88 306 16" ${crt}/>` : ''}
-    ${imaTac ? [[96, 78], [168, 44], [236, 86], [276, 36]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${Math.min(26, (st.r != null ? st.r : 4 + (st.w || 2)) * 1.4)}" fill="${c}" fill-opacity="${lin}" stroke="${st.tObrub === 'bijeli' ? '#fff' : st.tObrub === 'crni' ? '#111827' : st.tObrub === 'bez' ? 'none' : c}" stroke-width="${st.tObrub ? 2.5 : 3}" stroke-opacity="${lin}"/>`).join('') : ''}
+    ${imaTac ? [[96, 78], [168, 44], [236, 86], [276, 36]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${Math.min(28, _kmlTacD(st) / 2 / 1.12)}" fill="${c}" fill-opacity="${lin}" stroke="${st.tObrub === 'bijeli' ? '#fff' : st.tObrub === 'crni' ? '#111827' : st.tObrub === 'bez' ? 'none' : c}" stroke-width="${st.tObrub ? 2.5 : 3}" stroke-opacity="${lin}"/>`).join('') : ''}
     ${st.providno ? '<text x="160" y="66" text-anchor="middle" font-size="15" font-weight="800" fill="#334155">samo dodir — nevidljivo</text>' : ''}</svg>`;
 }
 function _kmlStilOtvori({ naslov, podnaslov = '', col, stil, imaPol, imaLin = true, imaTac = false, vratiStil = false, uzivo = null, sloj = null }) {
@@ -5947,14 +5960,24 @@ function _kmlStilOtvori({ naslov, podnaslov = '', col, stil, imaPol, imaLin = tr
     el = document.createElement('div'); el.id = 'kml-stil'; el.className = 'ked';
     const boje = (g, akt) => `<div class="ked-boje">${_KML_PALETA.map(b => `<button data-g="${g}" data-v="${b}" style="--c:${b}" class="ked-b${b === akt ? ' on' : ''}" aria-label="Boja ${b}"></button>`).join('')}<label class="ked-b ked-druga" title="Druga boja">＋<input type="color" data-g="${g}" value="${/^#[0-9a-f]{6}$/i.test(akt || '') ? akt : '#ffffff'}"></label></div>`;
     const klizac = (g, v, min, max, korak, nas, jed, opis) => `<div class="ked-kl"><div class="ked-kl-gl"><span>${nas}</span><b data-out="${g}">${v}${jed}</b></div><input type="range" data-g="${g}" min="${min}" max="${max}" step="${korak}" value="${v}" aria-label="${nas}">${opis ? `<small>${opis}</small>` : ''}</div>`;
-    const rTek = () => st.r != null ? st.r : 4 + (st.w || 2);
-    const sazetak = () => samoTac ? `Tačke ${rTek()} px · ${100 - st.op} % providne` : st.providno ? 'Nevidljivo — objekat ostaje dostupan za dodir' :
+    const rTek = () => _kmlTacD(st);
+    const tacPr = () => {
+      const d = rTek(), ob = st.tObrub || 'isti', wt = ob === 'bez' ? 0 : 2, po = (st.op != null ? st.op : 90) / 100;
+      const bc = ob === 'bijeli' ? '#fff' : ob === 'crni' ? '#111827' : c;
+      let m = '';
+      try { const z = map.getZoom(), la = map.getCenter().lat; m = d * 40075016.686 * Math.cos(la * Math.PI / 180) / (256 * Math.pow(2, z)); } catch (e) {}
+      const mt = m ? (m >= 10 ? Math.round(m) : m.toFixed(1)) + ' m' : '';
+      return `<div class="ked-tac-ploha">${[0, 1, 2].map(() => `<i style="width:${d}px;height:${d}px;background:${c};border:${wt}px solid ${bc};opacity:${po}"></i>`).join('')}</div>
+        <div class="ked-tac-mjera"><span class="ked-tac-ravnalo" style="width:${d}px"></span><b>⌀ ${d} px</b>${mt ? `<small>≈ ${mt} na terenu pri ovom zumu (${map.getZoom()})</small>` : ''}</div>`;
+    };
+    const sazetak = () => samoTac ? `Tačke ⌀ ${rTek()} px · ${100 - st.op} % providne` : st.providno ? 'Nevidljivo — objekat ostaje dostupan za dodir' :
       `${st.w} px · ${(_KED_CRTE.find(x => x[0] === st.crta) || _KED_CRTE[0])[1].toLowerCase()} · linija ${100 - st.op} % providna` + (imaPol ? ` · ispuna ${st.ispuna ? (100 - st.ispuna) + ' % providna' : 'isključena'}` : '');
     const tijelo = () => {
       if (tab === 'tac') return `
         <div class="ked-sek"><div class="ked-nasl">Boja tačaka</div>${boje('col', c)}</div>
-        <div class="ked-sek">${klizac('r', rTek(), 2, 30, 1, 'Veličina tačke', ' px')}
-          <div class="ked-brzo">${[[3, 'Sitno'], [6, 'Malo'], [10, 'Srednje'], [16, 'Veliko'], [24, 'Jako']].map(([v, t]) => `<button data-g="rbrzo" data-v="${v}" class="${rTek() === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+        <div class="ked-sek"><div class="ked-nasl">Pregled u stvarnoj veličini</div><div class="ked-tac-pr">${tacPr()}</div>
+          ${klizac('d', rTek(), 4, 60, 2, 'Promjer tačke', ' px', 'Vidljivi promjer na ekranu, s obrubom')}
+          <div class="ked-brzo">${[[6, 'Sitno'], [10, 'Malo'], [16, 'Srednje'], [26, 'Veliko'], [40, 'Jako']].map(([v, t]) => `<button data-g="rbrzo" data-v="${v}" class="${rTek() === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         <div class="ked-sek"><div class="ked-nasl">Obrub</div><div class="ked-brzo">${[['isti', 'Ista boja'], ['bijeli', 'Bijeli'], ['crni', 'Crni'], ['bez', 'Bez']].map(([v, t]) => `<button data-g="tobrub" data-v="${v}" class="${(st.tObrub || 'isti') === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         <div class="ked-sek">${klizac('lprov', 100 - st.op, 0, 95, 5, 'Providnost', ' %', '0 % = puna boja')}</div>`;
       if (tab === 'lin') return `
@@ -5986,7 +6009,7 @@ function _kmlStilOtvori({ naslov, podnaslov = '', col, stil, imaPol, imaLin = tr
         <div class="ked-akc">${vratiStil ? '<button data-x="vrati">↺ Stil sloja</button>' : ''}<button data-x="1">Odustani</button><button data-x="ok" class="glavno">✓ Primijeni</button></div></div>`;
       const t = el.querySelector('.ked-tijelo'); if (t) t.scrollTop = skrol;
     };
-    const zivo = () => { el.querySelector('.ked-pregled').innerHTML = _kedSvg(c, st, imaPol, imaLin, imaTac); el.querySelector('.ked-saz').textContent = sazetak(); if (uzivo) uzivo(c, { ...st }); };
+    const zivo = () => { const tp = el.querySelector('.ked-tac-pr'); if (tp) tp.innerHTML = tacPr(); el.querySelector('.ked-pregled').innerHTML = _kedSvg(c, st, imaPol, imaLin, imaTac); el.querySelector('.ked-saz').textContent = sazetak(); if (uzivo) uzivo(c, { ...st }); };
     const kraj = v => { if (!v && sloj) { if (ozn0) _oznSt[sloj.name] = ozn0; else delete _oznSt[sloj.name]; _oznSpremi(); _oznOsvjezi(); } el.remove(); res(v); };
     const ozn = izm => { _oznSt[sloj.name] = { ..._oznCfg(sloj), ...izm }; _oznSpremi(); _oznOsvjezi(); crtaj(); };
     crtaj(); document.body.appendChild(el); if (uzivo) uzivo(c, { ...st });
@@ -5999,7 +6022,7 @@ function _kmlStilOtvori({ naslov, podnaslov = '', col, stil, imaPol, imaLin = tr
       const g = b.dataset.g, v = b.dataset.v;
       if (g === 'col') c = v; else if (g === 'fcol') st.ispunaBoja = v; else if (g === 'crta') st.crta = v;
       else if (g === 'fbrzo') st.ispuna = 100 - Number(v);
-      else if (g === 'rbrzo') st.r = Number(v); else if (g === 'tobrub') st.tObrub = v;
+      else if (g === 'rbrzo') { st.d = Number(v); delete st.r; } else if (g === 'tobrub') st.tObrub = v;
       else if (g === 'sabl') { const [, b2, x] = _KED_SABLONI.filter(([, , y]) => imaPol || !y.ispuna)[+v]; c = b2; st = { ...st, providno: false, ispunaBoja: null, ...x }; }
       else if (g === 'ovel') return ozn({ vel: v }); else if (g === 'obj') return ozn({ boja: v });
       crtaj(); zivo();
@@ -6007,8 +6030,8 @@ function _kmlStilOtvori({ naslov, podnaslov = '', col, stil, imaPol, imaLin = tr
     el.addEventListener('input', e => {
       const g = e.target.dataset.g, v = e.target.value; if (!g) return;
       if (e.target.type === 'range') {
-        if (g === 'w') st.w = +v; else if (g === 'r') st.r = +v; else if (g === 'lprov') st.op = 100 - +v; else if (g === 'fprov') st.ispuna = 100 - +v;
-        const out = el.querySelector(`[data-out="${g}"]`); if (out) out.textContent = v + (g === 'w' || g === 'r' ? ' px' : ' %');
+        if (g === 'w') st.w = +v; else if (g === 'd') { st.d = +v; delete st.r; } else if (g === 'lprov') st.op = 100 - +v; else if (g === 'fprov') st.ispuna = 100 - +v;
+        const out = el.querySelector(`[data-out="${g}"]`); if (out) out.textContent = v + (g === 'w' || g === 'd' ? ' px' : ' %');
         el.querySelectorAll('[data-g="fbrzo"]').forEach(x => x.classList.toggle('on', +x.dataset.v === (st.ispuna ? 100 - st.ispuna : 100)));
         zivo();
       } else if (e.target.type === 'color') {
