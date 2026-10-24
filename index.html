@@ -1043,7 +1043,8 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .kg-akc { display:flex; gap:8px; } .kg-akc button { flex:1; padding:10px 6px; border-radius:11px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; }
 .kh-lista h3 { margin:0 0 8px; }
 /* Karte tab — server / moji / offline (v2.7.6) */
-.kh-grupa { scroll-margin-top:56px; } .kh-grupa.srv { color:#7dd3fc; } .kh-grupa.moj { color:#fcd34d; }
+.kh-grupa { scroll-margin-top:56px; } .rr-pil { position:absolute; transform:translate(-50%,-50%); padding:2px 8px; border-radius:999px; background:#1d4ed8; color:#fff; border:2px solid #fff; font:800 11px/1.2 'DM Sans',Arial,sans-serif; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.kh-grupa.srv { color:#7dd3fc; } .kh-grupa.moj { color:#fcd34d; }
 .kh-grupa { padding:6px 10px; border-radius:9px; background:rgba(74,222,128,.08); margin:12px 0 -2px; }
 .kh-grupa.srv { background:rgba(56,189,248,.1); } .kh-grupa.moj { background:rgba(250,204,21,.09); }
 .kh-bedz.srv { background:rgba(56,189,248,.16); border-color:#38bdf8; color:#bae6fd; }
@@ -3651,21 +3652,26 @@ function _geodesicCirclePts(la, lo, radiusM, n) {
   }
   return pts;
 }
+// Prsten = bijeli oreol (čita se i na tamnoj i na svijetloj podlozi) + puna plava linija 2,5 px + oznaka na pločici
 function _drawRadiusRings() {
   _clearRadiusRings();
   if (!_radiusOn || !lastP) return;
   _radiusDistances.forEach(r => {
-    const c = L.polygon(_geodesicCirclePts(lastP.la, lastP.lo, r, 72), { color:'#3b82f6', weight:1, opacity:0.45, fillColor:'#3b82f6', fillOpacity:0.03, dashArray:'6,4', interactive:false }).addTo(map);
-    const lbl = L.marker(_radiusNorthPt(lastP.la, lastP.lo, r), { icon: L.divIcon({ className:'radius-label', html:`<span style="color:#93c5fd;font-size:10px;font-weight:700;text-shadow:0 0 3px #000;">${r >= 1000 ? (r/1000)+'km' : r+'m'}</span>`, iconSize:[0,0], iconAnchor:[-4,8] }), interactive:false }).addTo(map);
-    _radiusCircles.push(c, lbl);
+    const pts = _geodesicCirclePts(lastP.la, lastP.lo, r, 96);
+    const halo = L.polygon(pts, { color:'#ffffff', weight:6, opacity:0.75, fill:false, interactive:false }).addTo(map);
+    const c = L.polygon(pts, { color:'#1d4ed8', weight:2.5, opacity:0.95, fillColor:'#3b82f6', fillOpacity:0.05, dashArray:'10,6', interactive:false }).addTo(map);
+    const lbl = L.marker(_radiusNorthPt(lastP.la, lastP.lo, r), { icon: L.divIcon({ className:'radius-label', html:`<span class="rr-pil">${r >= 1000 ? (r/1000)+' km' : r+' m'}</span>`, iconSize:[0,0], iconAnchor:[0,0] }), interactive:false, keyboard:false }).addTo(map);
+    _radiusCircles.push(halo, c, lbl);
   });
 }
 function _updateRadiusRings() {
   if (!_radiusOn || !lastP) return;
   let ci = 0;
   _radiusDistances.forEach(r => {
-    const circle = _radiusCircles[ci++], label = _radiusCircles[ci++];
-    if (circle) circle.setLatLngs(_geodesicCirclePts(lastP.la, lastP.lo, r, 72));
+    const halo = _radiusCircles[ci++], circle = _radiusCircles[ci++], label = _radiusCircles[ci++];
+    const pts = _geodesicCirclePts(lastP.la, lastP.lo, r, 96);
+    if (halo) halo.setLatLngs(pts);
+    if (circle) circle.setLatLngs(pts);
     if (label) label.setLatLng(_radiusNorthPt(lastP.la, lastP.lo, r));
   });
 }
