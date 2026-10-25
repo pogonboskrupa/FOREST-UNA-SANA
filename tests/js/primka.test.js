@@ -24,7 +24,7 @@ t('Meni: sektor „Realizacija izvedbenih projekata” odmah ispod Praćenja šu
   assert.ok(i > 0 && grupe[i - 1].h === 'Praćenje šume');
   assert.deepStrictEqual(grupe[i].ids, ['mc-primka', 'mc-sjekacke']);
   assert.ok(!grupe.find(g => g.h === 'Planiranje').ids.includes('mc-sjekacke'), 'Sjekačke više nisu u Planiranju');
-  assert.ok(HTML.includes("'primka-panel'];") && HTML.includes('<script src="static/js/primka.js">'));
+  assert.ok(HTML.includes("'primka-panel'") && HTML.includes('<script src="static/js/primka.js">'));
   assert.ok(R('sw.js').includes("'./static/js/primka.js'") && R('android/copy-assets.sh').includes('static/js/primka.js'));
 });
 

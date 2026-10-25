@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '2.8.3';
+const APP_VERSION = '2.8.4';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -46,6 +46,7 @@ const APP_SHELL = [
   './static/js/sjekacke.js',
   './static/js/primka.js',
   './static/js/otvorenost.js',
+  './static/js/inventura.js',
   './static/js/mjerenja-profil.js',
   './static/js/slika-karte.js',
   './static/data/zima_paketi.json',

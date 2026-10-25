@@ -1043,6 +1043,40 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .kg-akc { display:flex; gap:8px; } .kg-akc button { flex:1; padding:10px 6px; border-radius:11px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; }
 .kh-lista h3 { margin:0 0 8px; }
 /* Karte tab — server / moji / offline (v2.7.6) */
+
+/* Inventura šuma — koncentrični krugovi (v2.8.4) */
+.inv-natpis { position:absolute; transform:translate(8px,-50%); padding:1px 6px; border-radius:6px; background:rgba(10,24,18,.82); color:#fff; border-left:3px solid var(--c); font:800 11px/1.3 'DM Sans',Arial,sans-serif; white-space:nowrap; }
+.inv-r { position:absolute; transform:translate(4px,-50%); padding:1px 6px; border-radius:999px; background:#facc15; color:#111827; border:2px solid #111827; font:800 11px/1.2 'DM Sans',Arial,sans-serif; white-space:nowrap; }
+.inv-centar { position:absolute; width:26px; height:26px; transform:translate(-50%,-50%); }
+.inv-centar::before, .inv-centar::after { content:''; position:absolute; left:50%; top:50%; background:#facc15; box-shadow:0 0 0 2px #111827; transform:translate(-50%,-50%); }
+.inv-centar::before { width:26px; height:3px; } .inv-centar::after { width:3px; height:26px; }
+#inv-rad { position:fixed; z-index:640; left:10px; right:10px; max-width:440px; margin:0 auto; top:calc(env(safe-area-inset-top) + 64px); padding:10px 12px 10px; border-radius:16px; background:rgba(10,24,18,.94); border:2px solid #475569; color:#e8f3ec; box-shadow:0 10px 28px rgba(0,0,0,.5); font-family:'DM Sans',Arial,sans-serif; }
+#inv-rad.unutra { border-color:#22c55e; } #inv-rad.granica { border-color:#facc15; } #inv-rad.vani { border-color:#ef4444; }
+#inv-rad .ir-gl { display:flex; align-items:center; gap:8px; } #inv-rad .ir-n { flex:1; min-width:0; font-weight:800; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } #inv-rad .ir-n em { font-style:normal; color:#9db0a7; font-weight:600; margin-left:4px; }
+#inv-rad .ir-str { flex:none; width:30px; height:30px; fill:#facc15; stroke:#111827; stroke-width:1.2; transform-origin:50% 50%; transition:transform .4s; }
+#inv-rad .ir-sr { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:2px 0 2px; }
+#inv-rad .ir-d { font-size:34px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+#inv-rad.unutra .ir-d { color:#4ade80; } #inv-rad.granica .ir-d { color:#facc15; } #inv-rad.vani .ir-d { color:#f87171; }
+#inv-rad .ir-st { font-size:13px; font-weight:700; color:#d5e6dc; } #inv-rad small { display:block; color:#9db0a7; font-size:11.5px; }
+#inv-rad .ir-akc { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:6px; margin-top:8px; }
+#inv-rad .ir-akc button { min-height:38px; padding:6px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; }
+#inv-rad .ir-akc button.ok { border-color:#22c55e; color:#86efac; background:rgba(22,101,52,.3); }
+.inv-pop b { display:block; font-size:15px; } .inv-pop small { color:#80958a; } .inv-pop-k { margin:6px 0; font-size:12px; font-variant-numeric:tabular-nums; }
+.inv-pop table { width:100%; font-size:12px; border-collapse:collapse; margin-bottom:6px; } .inv-pop th { text-align:left; color:#80958a; font-weight:600; padding:2px 6px 2px 0; } .inv-pop td { padding:2px 0; }
+.inv-pop-a { display:grid; grid-template-columns:1fr 1fr; gap:6px; } .inv-pop-a button { min-height:38px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font-weight:700; font-size:12px; } .inv-pop-a button.glavno { border-color:#facc15; color:#fde68a; background:rgba(113,63,18,.4); }
+#inv-body .inv-uvod p { color:#9db0a7; font-size:12px; line-height:1.5; margin:4px 0 10px; }
+.inv-uc { display:block; text-align:center; padding:12px; border-radius:12px; background:linear-gradient(145deg,#a16207,#713f12); color:#fefce8; font-weight:800; cursor:pointer; }
+.inv-sum { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:10px 0; } .inv-sum div { text-align:center; padding:8px; border-radius:12px; background:#0d1a14; border:1px solid #1f3b2d; } .inv-sum b { display:block; font-size:20px; } .inv-sum small { color:#80958a; font-size:11px; }
+.inv-pr { margin:6px 0; } .inv-pr label { display:flex; align-items:center; gap:8px; font-size:13px; } .inv-pr input { flex:1; min-width:0; padding:9px 10px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; }
+.inv-post small { color:#80958a; font-size:11px; }
+.inv-skup { border-left:4px solid #facc15; } .inv-skup.skriven { opacity:.65; }
+.inv-sk-gl { display:flex; align-items:center; gap:10px; } .inv-sk-gl > div { flex:1; min-width:0; } .inv-sk-gl h3 { margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .inv-sk-gl small { color:#80958a; font-size:11.5px; }
+.inv-traka { height:6px; border-radius:3px; background:#1f3b2d; margin:8px 0; overflow:hidden; } .inv-traka u { display:block; height:100%; background:#22c55e; }
+.inv-sk-a { display:grid; grid-template-columns:1fr 1fr auto; gap:6px; } .inv-sk-a button { min-height:36px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; padding:0 10px; } .inv-sk-a button.brisi { color:#fca5a5; border-color:rgba(239,68,68,.35); }
+.inv-lista { margin-top:8px; display:grid; gap:4px; max-height:52vh; overflow:auto; }
+.inv-red { display:flex; align-items:center; gap:8px; padding:7px 6px; border-radius:10px; background:#0d1a14; border:1px solid #1a3326; } .inv-red > i { flex:none; width:10px; height:10px; border-radius:50%; background:#f97316; } .inv-red.ok > i { background:#22c55e; } .inv-red.akt { border-color:#facc15; }
+.inv-red > div { flex:1; min-width:0; } .inv-red b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .inv-red small { color:#80958a; font-size:11px; }
+.inv-red button { flex:none; min-height:34px; padding:0 10px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; } .inv-red button.glavno { border-color:#facc15; color:#fde68a; }
 .kh-grupa { scroll-margin-top:56px; } .rr-pil { position:absolute; transform:translate(-50%,-50%); padding:2px 8px; border-radius:999px; background:#1d4ed8; color:#fff; border:2px solid #fff; font:800 11px/1.2 'DM Sans',Arial,sans-serif; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.45); }
 .kh-grupa.srv { color:#7dd3fc; } .kh-grupa.moj { color:#fcd34d; }
 .kh-grupa { padding:6px 10px; border-radius:9px; background:rgba(74,222,128,.08); margin:12px 0 -2px; }
@@ -2038,6 +2072,12 @@ body.sl-uredi #sl-ured { display: block; }
         <span class="mc-stat" id="mc-stat-put"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
+      <button type="button" class="meni-card" id="mc-inventura" onclick="USFInv.otvori()" style="--mc:#facc15">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5" stroke-dasharray="2.5 2"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+        <span class="mc-txt"><b>Inventura šuma</b><span>Koncentrični krugovi: centar plohe, krug 25 m, udaljenost uživo</span></span>
+        <span class="mc-stat" id="mc-stat-inventura"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
       <button type="button" class="meni-card" id="mc-tematska" onclick="openTematskaSection()" style="--mc:#c084fc">
         <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.6 0-1-.9-1.4-.9-2.4 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.7 17 3 12 3z"/><circle cx="7.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.3" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.2" cy="7.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>
         <span class="mc-txt"><b>Tematska karta</b><span>Bojenje odjela/odsjeka po atributu (.gpkg)</span></span>
@@ -2564,6 +2604,11 @@ body.sl-uredi #sl-ured { display: block; }
 </div>
 
 <!-- Sjekačke linije -->
+<div id="inventura-panel" class="usf-panel">
+  <div class="up-hdr"><h2>◎ Inventura šuma</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
+  <div class="up-body" id="inv-body"></div>
+</div>
+
 <div id="primka-panel" class="usf-panel">
   <div class="up-hdr"><h2>🪵 Primka</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body">
@@ -11628,7 +11673,7 @@ _temRestore();
 // GLAVNA NAVIGACIJA — Mapa / Karte / Meni / Postavke
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel','primka-panel'];
+const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel','primka-panel','inventura-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -12039,6 +12084,7 @@ window.addEventListener('load', () => {
 <script src="static/js/sjekacke.js"></script>
 <script src="static/js/primka.js"></script>
 <script src="static/js/otvorenost.js"></script>
+<script src="static/js/inventura.js"></script>
 <script src="static/js/mjerenja-profil.js"></script>
 <script src="static/js/slika-karte.js"></script>
 </body>
