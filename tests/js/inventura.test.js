@@ -3,14 +3,14 @@
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const SRC = fs.readFileSync(path.join(__dirname, '../../static/js/inventura.js'), 'utf8');
+const SRC0 = fs.readFileSync(path.join(__dirname, '../../static/js/inventura.js'), 'utf8');
 const HTML = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
 let pass = 0;
 const t = (ime, fn) => { fn(); pass++; console.log('  ✓ ' + ime); };
 console.log('Inventura šuma:');
 
 const win = {};
-new Function('window', 'localStorage', SRC)(win, { getItem: () => null, setItem() {} });
+new Function('window', 'localStorage', SRC0)(win, { getItem: () => null, setItem() {} });
 const T = win.USFInv._test;
 
 t('udaljenost: 25 m sjeverno i istočno', () => {
@@ -44,6 +44,13 @@ t('unutrašnji krugovi: decimalni zarez, razdvajanje, samo < R', () => {
   assert.deepStrictEqual(T.parsirajKrugove('7, 12.62 30', 25), [7, 12.62]);
   assert.deepStrictEqual(T.parsirajKrugove('12,5 7 7', 25), [7, 12.5]);
   assert.deepStrictEqual(T.parsirajKrugove('', 25), []);
+});
+
+t('filter poligonom i redoslijed brojeva krugova', () => {
+  const ring = [[44, 16], [44, 16.01], [44.01, 16.01], [44.01, 16]];
+  assert.ok(T.uPoligonu(44.005, 16.005, ring)); assert.ok(!T.uPoligonu(44.02, 16.005, ring));
+  const k = [{ br: '10' }, { br: '2' }, { br: '1' }, { br: '2a' }].sort(T.poBroju).map(x => x.br);
+  assert.deepStrictEqual(k, ['1', '2', '2a', '10']);
 });
 
 t('Meni: Inventura odmah ispod Projektovanja puta, panel registrovan, skripta u sw.js', () => {
