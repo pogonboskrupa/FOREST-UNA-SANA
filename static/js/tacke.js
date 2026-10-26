@@ -294,19 +294,55 @@
   function prikazi(id) { const l = citaj(), t = l.find(x => x.id === id); if (!t) return; t.vis = t.vis === false; pisi(l); crtaj(); renderLista(); }
 
   // ── Lista (panel) ────────────────────────────────────────────────────
+  // Filter (vrsta / samo s fotografijom), pretraga i redoslijed — samo prikaz, stanje u memoriji.
+  const LS = { vrsta: 'sve', sort: 'novi', q: '' };
+  const udaljM = t => { const p = gp(); return p ? L.latLng(p.la, p.lo).distanceTo([t.la, t.lo]) : null; };
+  function filtrirane() {
+    const q = LS.q.trim().toLowerCase();
+    const l = citaj().filter(t => {
+      if (LS.vrsta === 'foto' ? !(t.foto || []).length : LS.vrsta !== 'sve' && kat(t.kat).k !== LS.vrsta) return false;
+      return !q || (String(t.naziv || '') + ' ' + kat(t.kat).t).toLowerCase().includes(q);
+    });
+    if (LS.sort === 'blizu') l.sort((a, b) => (udaljM(a) ?? 1e12) - (udaljM(b) ?? 1e12));
+    else if (LS.sort === 'ime') l.sort((a, b) => String(a.naziv).localeCompare(String(b.naziv), 'bs'));
+    else l.sort((a, b) => String(b.datum || '').localeCompare(String(a.datum || '')));
+    return l;
+  }
+  function renderKartice() {
+    const el = document.getElementById('tk-kartice'); if (!el) return;
+    const l = filtrirane();
+    el.innerHTML = l.length ? l.map(t => {
+      const k = kat(t.kat), ud = udaljenost(t), nf = (t.foto || []).length;
+      return `<div class="tk-red${t.vis === false ? ' skriven' : ''}" style="--c:${k.boja}">
+        <div class="tk-mini" style="--c:${k.boja}">${nf ? `<img data-foto="${t.foto[0]}" alt="">${nf > 1 ? `<i class="tk-nf">${nf}</i>` : ''}` : `<span>${k.ik}</span>`}</div>
+        <div class="tk-info"><b>${esc(t.naziv)}</b><span class="tk-vrsta">${esc(k.t)}</span>
+          <small>${fmtDatum(t.datum)}${nf ? ' · 📷 ' + nf : ''}${t.vis === false ? ' · skrivena' : ''}</small></div>
+        ${ud ? `<div class="tk-ud"><b>${ud.split(' ')[0]}</b><small>${ud.split(' ')[1]}</small></div>` : ''}
+        <div class="tk-red-akc"><button onclick="USFTacke.zoom('${t.id}')">🗺 Karta</button><button onclick="USFTacke.uredi('${t.id}')">✏ Uredi</button><button onclick="USFTacke.prikazi('${t.id}')">${t.vis === false ? '○ Skrivena' : '● Na karti'}</button></div>
+      </div>`;
+    }).join('') : '<div class="treg-empty">Nema tačaka za ovaj filter.</div>';
+    popuniMini(el);
+  }
+  function filtriraj(v) { LS.vrsta = v; renderLista(); }
+  function sortiraj(v) { LS.sort = v; renderKartice(); }
+  function trazi(v) { LS.q = v; renderKartice(); }
   function renderLista() {
     const el = document.getElementById('tacke-lista'); if (!el) return;
     const l = citaj();
     const br = document.getElementById('tacke-broj'); if (br) br.textContent = l.length ? '(' + l.length + ')' : '';
-    el.innerHTML = l.length ? l.map(t => {
-      const k = kat(t.kat), ud = udaljenost(t);
-      return `<div class="tk-red${t.vis === false ? ' skriven' : ''}">
-        <div class="tk-mini" style="--c:${k.boja}">${(t.foto || []).length ? `<img data-foto="${t.foto[0]}" alt="">` : `<span>${k.ik}</span>`}</div>
-        <div class="tk-info"><b>${esc(t.naziv)}</b><small>${esc(k.t)} · ${fmtDatum(t.datum)}${(t.foto || []).length ? ' · 📷 ' + t.foto.length : ''}${ud ? ' · ' + ud : ''}</small></div>
-        <div class="tk-red-akc"><button onclick="USFTacke.zoom('${t.id}')">🗺 Karta</button><button onclick="USFTacke.uredi('${t.id}')">✏ Uredi</button><button onclick="USFTacke.prikazi('${t.id}')">${t.vis === false ? '○ Skrivena' : '● Na karti'}</button></div>
-      </div>`;
-    }).join('') : '<div class="treg-empty">Još nema terenskih tačaka.<br>Dodaj ih dugmetom 📍 na karti — sa fotografijom ili bez.</div>';
-    popuniMini(el);
+    if (!l.length) { el.innerHTML = '<div class="treg-empty"><div class="treg-empty-ik">📍</div>Još nema terenskih tačaka.<br>Dodaj ih dugmetom 📍 na karti — sa fotografijom ili bez.</div>'; return; }
+    const nFoto = l.reduce((a, t) => a + (t.foto || []).length, 0), naKarti = l.filter(t => t.vis !== false).length;
+    const po = {}; l.forEach(t => { const k = kat(t.kat).k; po[k] = (po[k] || 0) + 1; });
+    const cip = (k, ik, naz, n) => `<button class="${LS.vrsta === k ? 'on' : ''}" onclick="USFTacke.filtriraj('${k}')">${ik} ${naz} <i>${n}</i></button>`;
+    el.innerHTML = `<div class="tk-kpi">
+        <div><b>${l.length}</b><span>tačaka</span></div><div><b>${nFoto}</b><span>fotografija</span></div><div><b>${naKarti}</b><span>na karti</span></div>
+      </div>
+      <div class="tk-alat">
+        <div class="tk-cipovi">${cip('sve', '', 'Sve', l.length)}${nFoto ? cip('foto', '📷', 'Sa foto', l.filter(t => (t.foto || []).length).length) : ''}${KATEGORIJE.filter(k => po[k.k]).map(k => cip(k.k, k.ik, esc(k.t.split(',')[0]), po[k.k])).join('')}</div>
+        <div class="tk-trazi">${l.length > 4 ? `<input type="search" placeholder="Traži tačku…" value="${esc(LS.q)}" oninput="USFTacke.trazi(this.value)" aria-label="Traži tačku">` : ''}
+          <select onchange="USFTacke.sortiraj(this.value)" aria-label="Redoslijed"><option value="novi"${LS.sort === 'novi' ? ' selected' : ''}>Najnovije</option><option value="blizu"${LS.sort === 'blizu' ? ' selected' : ''}>Najbliže meni</option><option value="ime"${LS.sort === 'ime' ? ' selected' : ''}>Po imenu</option></select></div>
+      </div><div id="tk-kartice"></div>`;
+    renderKartice();
   }
   function otvoriListu() {
     if (typeof _ALL_PANELS !== 'undefined') _ALL_PANELS.forEach(id => document.getElementById(id)?.classList.remove('show'));
@@ -437,7 +473,7 @@
     }));
   }
 
-  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, podijeliFoto, posalji, zaVrijeme, veziZaTrag, jpegSaGps, tekstTacaka, otvoriListu, zatvoriListu, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
+  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, podijeliFoto, posalji, zaVrijeme, veziZaTrag, jpegSaGps, tekstTacaka, otvoriListu, zatvoriListu, filtriraj, sortiraj, trazi, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
   if (typeof module !== 'undefined') module.exports = { zip, crc32, KATEGORIJE, jpegSaGps };
   if (typeof L !== 'undefined' && imaKartu()) { registruj(); crtaj(); renderLista(); }
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1367,7 +1367,7 @@ body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /
 .treg-filt button.on { background:rgba(34,197,94,.18); border-color:#22c55e; color:#bbf7d0; }
 .treg-trazi { display:flex; gap:6px; }
 .treg-trazi input, .treg-trazi select, .treg-trazi button { min-height:36px; border-radius:11px; border:1px solid var(--pn-line); background:var(--pn-bg-2); color:#e2e8f0; font:600 12px 'DM Sans',Arial,sans-serif; padding:0 10px; min-width:0; }
-.treg-trazi input { flex:1; }
+.treg-trazi input { flex:1.4; } .treg-trazi select { flex:1; }
 .treg-trazi button { white-space:nowrap; }
 .treg-row { border-radius:16px; padding:12px; background:linear-gradient(135deg,color-mix(in srgb,var(--tc,#4ade80) 9%,var(--pn-bg-2)),var(--pn-bg-2) 60%); box-shadow:0 4px 12px rgba(0,0,0,.18); }
 .treg-prev { flex-basis:64px; height:64px; border-radius:14px; }
@@ -1716,6 +1716,27 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 .tk-info small { color: var(--pn-mut); font-size: 11.5px; }
 .tk-red-akc { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 6px; }
 .tk-red-akc button { min-height: 36px; border-radius: 10px; border: 1px solid var(--pn-line); background: var(--pn-bg-3); color: #d5e6dc; font: 700 12px 'DM Sans', Arial, sans-serif; }
+/* Tačke i fotografije — dizajn i pregled (v2.9.8) */
+.tk-kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 10px; }
+.tk-kpi div { padding:10px 4px; border-radius:14px; text-align:center; background:linear-gradient(160deg,rgba(74,222,128,.13),rgba(0,0,0,.18)); border:1px solid rgba(74,222,128,.22); }
+.tk-kpi b { display:block; font-size:20px; font-weight:850; color:#e8f5ee; font-variant-numeric:tabular-nums; }
+.tk-kpi span { font-size:10px; color:var(--pn-mut); text-transform:uppercase; letter-spacing:.06em; }
+.tk-alat { position:sticky; top:0; z-index:2; padding:6px 0 8px; background:linear-gradient(var(--pn-bg, #0b1510) 85%, transparent); }
+.tk-cipovi { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none; }
+.tk-cipovi::-webkit-scrollbar { display:none; }
+.tk-cipovi button { flex:none; min-height:34px; padding:0 12px; border-radius:999px; border:1px solid var(--pn-line); background:var(--pn-bg-2); color:#cbd5e1; font:700 12px 'DM Sans',Arial,sans-serif; white-space:nowrap; }
+.tk-cipovi button i { font-style:normal; opacity:.7; margin-left:2px; }
+.tk-cipovi button.on { background:rgba(34,197,94,.18); border-color:#22c55e; color:#bbf7d0; }
+.tk-trazi { display:flex; gap:6px; }
+.tk-trazi input, .tk-trazi select { min-height:36px; border-radius:11px; border:1px solid var(--pn-line); background:var(--pn-bg-2); color:#e2e8f0; font:600 12px 'DM Sans',Arial,sans-serif; padding:0 10px; min-width:0; }
+.tk-trazi input { flex:1.4; } .tk-trazi select { flex:1; }
+.tk-red { grid-template-columns:64px 1fr auto; border-radius:16px; padding:12px; background:linear-gradient(135deg,color-mix(in srgb,var(--c,#4ade80) 9%,var(--pn-bg-2)),var(--pn-bg-2) 60%); border-left:4px solid var(--c,#4ade80); box-shadow:0 4px 12px rgba(0,0,0,.18); }
+.tk-mini { position:relative; width:64px; height:64px; border-radius:14px; }
+.tk-nf { position:absolute; right:3px; bottom:3px; min-width:18px; height:18px; padding:0 4px; border-radius:9px; background:rgba(8,18,14,.85); color:#fff; font:800 10px/18px 'DM Sans',Arial,sans-serif; text-align:center; font-style:normal; box-sizing:border-box; }
+.tk-vrsta { display:inline-block; margin:3px 0 2px; padding:1px 8px; border-radius:999px; font-size:10.5px; font-weight:800; color:var(--c); background:color-mix(in srgb,var(--c) 15%,transparent); border:1px solid color-mix(in srgb,var(--c) 38%,transparent); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:top; }
+.tk-info small { display:block; }
+.tk-ud { text-align:right; align-self:flex-start; } .tk-ud b { display:block; font-size:17px; font-weight:850; line-height:1; color:color-mix(in srgb,var(--c) 55%,#fff); font-variant-numeric:tabular-nums; } .tk-ud small { font-size:10.5px; color:var(--pn-mut); font-weight:700; }
+.tk-red-akc button { min-height:40px; border-radius:12px; }
 
 .uk-grupa { background: var(--surface, #102019); border: 1px solid var(--pn-line); border-radius: 16px; padding: 12px 14px 6px; margin-bottom: 16px; }
 .uk-grupa h3 { margin: 0 0 6px; font-size: 14px; color: var(--pn-txt); font-weight: 800; }
@@ -5371,24 +5392,95 @@ async function _msrRegRename(id) {
   m.name = val.trim();
   _msrRegSave(); _msrRegRender(); _msrDrawAllSaved();
 }
+let _msrFilt = 'sva', _msrSort = 'novo', _msrQ = '';
+const _MSR_TIP = { dist: { n: 'Udaljenost', ik: '📏' }, area: { n: 'Površina', ik: '◻' }, nagib: { n: 'Nagib', ik: '📐' } };
+// Glavna vrijednost mjerenja (veliko na kartici) + broj za sortiranje + dodatni čipovi.
+function _msrVrijednost(m) {
+  const mode = m.mode || 'dist', P = m.pts || [], d = _msrPts2Len(P);
+  if (mode === 'area' && P.length >= 3) { const a = _msrPoligonPovrsina(P); return { mode, g: (a / 10000).toFixed(2), j: 'ha', num: a, cipovi: ['obim ' + _msrFmt(d)] }; }
+  if (mode === 'nagib' && P.length >= 2) {
+    const a = P[0], b = P[P.length - 1], dd = _msrHaversine(a.lat, a.lng, b.lat, b.lng);
+    const dh = (a.elev != null && b.elev != null) ? b.elev - a.elev : null;
+    return { mode, g: dh != null && dd > 0 ? (dh > 0 ? '+' : '') + (dh / dd * 100).toFixed(1) : '—', j: '%', num: dd, cipovi: [_msrFmt(dd), ...(dh != null ? [(dh > 0 ? '+' : '') + Math.round(dh) + ' m visine'] : [])] };
+  }
+  const f = _msrFmt(d).split(' ');
+  return { mode, g: f[0], j: f[1], num: d, cipovi: P.length > 1 ? ['⌀ segment ' + _msrFmt(d / (P.length - 1))] : [] };
+}
+function _msrMiniSvg(pts, col, zatvori) {
+  if (!pts || pts.length < 2) return '';
+  const k = Math.max(1, Math.ceil(pts.length / 90)), a = [];
+  for (let i = 0; i < pts.length; i += k) a.push(pts[i]);
+  if ((pts.length - 1) % k) a.push(pts[pts.length - 1]);
+  const la = a.map(q => q.lat), lo = a.map(q => q.lng);
+  const mnLa = Math.min(...la), mxLa = Math.max(...la), mnLo = Math.min(...lo), mxLo = Math.max(...lo);
+  const kx = Math.cos((mnLa + mxLa) / 2 * Math.PI / 180), w = Math.max((mxLo - mnLo) * kx, 1e-9), h = Math.max(mxLa - mnLa, 1e-9);
+  const sc = 44 / Math.max(w, h), ox = (52 - w * sc) / 2, oy = (52 - h * sc) / 2;
+  const xy = q => (ox + (q.lng - mnLo) * kx * sc).toFixed(1) + ',' + (oy + (mxLa - q.lat) * sc).toFixed(1);
+  const d = a.map(xy).join(' ');
+  return zatvori
+    ? `<svg viewBox="0 0 52 52" width="52" height="52" aria-hidden="true"><polygon points="${d}" fill="${col}" fill-opacity=".28" stroke="${col}" stroke-width="2.2" stroke-linejoin="round"/></svg>`
+    : `<svg viewBox="0 0 52 52" width="52" height="52" aria-hidden="true"><polyline points="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${xy(a[0]).split(',')[0]}" cy="${xy(a[0]).split(',')[1]}" r="3" fill="#4ade80"/><circle cx="${xy(a[a.length - 1]).split(',')[0]}" cy="${xy(a[a.length - 1]).split(',')[1]}" r="3" fill="#f87171"/></svg>`;
+}
+function _msrRegLista() {
+  const q = _msrQ.trim().toLowerCase();
+  const l = _msrRegistry.map(m => ({ m, v: _msrVrijednost(m) })).filter(({ m, v }) => (_msrFilt === 'sva' || v.mode === _msrFilt) && (!q || String(m.name || '').toLowerCase().includes(q)));
+  if (_msrSort === 'vrijednost') l.sort((a, b) => b.v.num - a.v.num);
+  else if (_msrSort === 'ime') l.sort((a, b) => String(a.m.name).localeCompare(String(b.m.name), 'bs'));
+  return l;
+}
+function _msrRegKartice() {
+  const el = document.getElementById('msr-kartice'); if (!el) return;
+  const l = _msrRegLista();
+  el.innerHTML = l.length ? l.map(({ m, v }) => {
+    const col = m.color || '#fbbf24', tip = _MSR_TIP[v.mode] || _MSR_TIP.dist;
+    return `<div class="treg-row msr-kart" style="--tc:${col}">
+      <div class="treg-top">
+        <div class="treg-prev" onclick="_msrRegPogled('${m.id}')">${_msrMiniSvg(m.pts, col, v.mode === 'area')}</div>
+        <div class="treg-info">
+          <div class="treg-name" onclick="_msrRegPogled('${m.id}')">${_escHtml(m.name)}</div>
+          <div class="treg-meta">${fmtDateShort(m.date)}</div>
+          <div class="treg-chips"><span class="treg-chip msr-tip">${tip.ik} ${tip.n}</span><span class="treg-chip">${m.pts.length} tač.</span>${v.cipovi.map(c => `<span class="treg-chip">${_escHtml(c)}</span>`).join('')}</div>
+        </div>
+        <div class="treg-km"><b>${_escHtml(v.g)}</b><small>${_escHtml(v.j)}</small></div>
+      </div>
+      <div class="treg-btns">
+        <button onclick="_msrRegPogled('${m.id}')">🔍<span>Na karti</span></button>
+        <button onclick="_msrRegZoom('${m.id}')">✏<span>Uredi</span></button>
+        <button onclick="_msrRegRename('${m.id}')">✎<span>Preimenuj</span></button>
+        <button class="del-btn" onclick="_msrRegDeleteConfirm('${m.id}')">🗑<span>Briši</span></button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="treg-empty">Nema mjerenja za ovaj filter.</div>';
+}
+function _msrFiltriraj(v) { _msrFilt = v; _msrRegRender(); }
+function _msrSortiraj(v) { _msrSort = v; _msrRegKartice(); }
+function _msrTrazi(v) { _msrQ = v; _msrRegKartice(); }
+// „Na karti”: samo pogled i kartica mjerenja — bez ulaska u izmjenu (za to je „Uredi”).
+function _msrRegPogled(id) {
+  const m = _msrRegistry.find(x => x.id === id); if (!m || !m.pts.length) return;
+  closeMjerenjaPanel(); switchMainTab('karta');
+  map.fitBounds(L.latLngBounds(m.pts.map(p => [p.lat, p.lng])), { padding: [60, 60], maxZoom: 18 });
+  setTimeout(() => { try { _msrOpenPopupNa(m, map.getCenter()); } catch (e) {} }, 350);
+}
 function _msrRegRender() {
   const el = document.getElementById('msr-saved-list');
   const cnt = document.getElementById('msr-saved-count');
   if (!el) return;
   if (cnt) cnt.textContent = _msrRegistry.length ? `(${_msrRegistry.length})` : '';
-  if (!_msrRegistry.length) { el.innerHTML = '<div class="treg-empty">Nema sačuvanih mjerenja.<br>Otvori 📏 Mjerenja na karti.</div>'; return; }
-  el.innerHTML = _msrRegistry.map(m => {
-    const lenM = _msrPts2Len(m.pts);
-    return `<div class="treg-row" style="border-left:3px solid ${m.color||'#fbbf24'};">
-      <div class="treg-name" onclick="_msrRegZoom('${m.id}')">${_escHtml(m.name)}</div>
-      <div class="treg-meta">${fmtDateShort(m.date)} · ${_msrFmt(lenM)} · ${m.pts.length} tač.</div>
-      <div class="treg-btns">
-        <button onclick="_msrRegZoom('${m.id}')">✏ Edituj</button>
-        <button onclick="_msrRegRename('${m.id}')">✏ Preimenuj</button>
-        <button class="del-btn" onclick="_msrRegDeleteConfirm('${m.id}')">🗑 Briši</button>
-      </div>
-    </div>`;
-  }).join('');
+  if (!_msrRegistry.length) { el.innerHTML = '<div class="treg-empty"><div class="treg-empty-ik">📏</div>Nema sačuvanih mjerenja.<br>Otvori 📏 Mjerenja na karti.</div>'; return; }
+  const br = { dist: 0, area: 0, nagib: 0 };
+  let duz = 0, ha = 0;
+  _msrRegistry.forEach(m => { const v = _msrVrijednost(m); br[v.mode] = (br[v.mode] || 0) + 1; if (v.mode === 'dist') duz += v.num; else if (v.mode === 'area') ha += v.num / 10000; });
+  const n = _msrRegistry.length, cip = (k, t, b) => `<button class="${_msrFilt === k ? 'on' : ''}" onclick="_msrFiltriraj('${k}')">${t} <i>${b}</i></button>`;
+  el.innerHTML = `<div class="treg-kpi">
+      <div><b>${n}</b><span>mjerenja</span></div><div><b>${_msrFmt(duz)}</b><span>dužine</span></div><div><b>${ha.toFixed(2)} ha</b><span>površine</span></div><div><b>${br.nagib || 0}</b><span>nagiba</span></div>
+    </div>
+    <div class="treg-alat" style="top:-10px">
+      <div class="treg-filt">${cip('sva', 'Sva', n)}${cip('dist', '📏', br.dist)}${cip('area', '◻', br.area)}${cip('nagib', '📐', br.nagib)}</div>
+      <div class="treg-trazi">${n > 4 ? `<input type="search" placeholder="Traži mjerenje…" value="${_escHtml(_msrQ)}" oninput="_msrTrazi(this.value)" aria-label="Traži mjerenje">` : ''}
+        <select onchange="_msrSortiraj(this.value)" aria-label="Redoslijed"><option value="novo"${_msrSort === 'novo' ? ' selected' : ''}>Najnovija</option><option value="vrijednost"${_msrSort === 'vrijednost' ? ' selected' : ''}>Najveća</option><option value="ime"${_msrSort === 'ime' ? ' selected' : ''}>Po imenu</option></select></div>
+    </div><div id="msr-kartice"></div>`;
+  _msrRegKartice();
   if (window.map && !_mqmId) _msrDrawAllSaved();
 }
 function openMjerenjaPanel() { _ALL_PANELS.forEach(id => document.getElementById(id)?.classList.remove('show')); _msrRegRender(); document.getElementById('mjerenja-panel').classList.add('show'); }
