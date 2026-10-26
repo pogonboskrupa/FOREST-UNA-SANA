@@ -225,13 +225,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v2.9.2';
+      if (label) label.textContent = 'v2.9.3';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v2.9.2';
+  if (badge) badge.textContent = 'Grmeč Navigator v2.9.3';
 })();
 
 

@@ -1190,6 +1190,46 @@ body.inv-num-on #zoom-grp { bottom:calc(var(--dock-b, 78px) + 96px) !important; 
 }
 #karta-base-list button.active { border-color:#4ade80; background:#14532d; color:#dcfce7; }
 
+
+/* Meni — dizajn (v2.9.3): grupe s bojom i linijom, kartice s bojenim rubom i sjajem ikone, jasniji status */
+#meni-panel .up-body { padding-top:6px; }
+.meni-grp { --gc:#4ade80; position:relative; margin:0 0 20px; }
+.meni-grp:nth-of-type(1) { --gc:#4ade80; } .meni-grp:nth-of-type(2) { --gc:#fbbf24; } .meni-grp:nth-of-type(3) { --gc:#60a5fa; }
+.meni-grp:nth-of-type(4) { --gc:#2dd4bf; } .meni-grp:nth-of-type(5) { --gc:#f472b6; }
+.meni-grp h3 {
+  display:flex; align-items:center; gap:9px; margin:0 2px 10px; padding:0; color:var(--gc); font-size:11px; font-weight:800; letter-spacing:.12em;
+}
+.meni-grp h3::before { content:''; flex:none; width:9px; height:9px; border-radius:3px; background:var(--gc); box-shadow:0 0 0 3px color-mix(in srgb,var(--gc) 22%,transparent); }
+.meni-grp h3::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 45%,transparent),transparent); }
+.meni-card {
+  position:relative; overflow:hidden; min-height:64px; padding:11px 12px 11px 16px; margin-bottom:9px; border-radius:18px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--mc) 9%,#1a3026) 0%,#13251d 62%);
+  border:1px solid color-mix(in srgb,var(--mc) 20%,var(--line));
+  box-shadow:0 6px 18px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.meni-card::before { content:''; position:absolute; left:0; top:12px; bottom:12px; width:4px; border-radius:0 4px 4px 0; background:var(--mc); box-shadow:0 0 12px color-mix(in srgb,var(--mc) 55%,transparent); }
+.meni-card .mc-ico {
+  width:46px; height:46px; border-radius:14px;
+  background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--mc) 32%,transparent),color-mix(in srgb,var(--mc) 10%,transparent));
+  border:1px solid color-mix(in srgb,var(--mc) 38%,transparent);
+  box-shadow:0 0 16px color-mix(in srgb,var(--mc) 16%,transparent);
+}
+.meni-card .mc-txt b { font-size:15px; }
+.meni-card .mc-txt span { color:#9bb0a6; }
+.meni-card .mc-chev { color:color-mix(in srgb,var(--mc) 70%,#56705f); transition:transform .15s; }
+.meni-card:active .mc-chev { transform:translateX(3px); }
+.meni-card:hover { border-color:color-mix(in srgb,var(--mc) 45%,transparent); }
+.meni-card .mc-stat { font-size:10.5px; }
+.meni-set {
+  margin-top:2px; padding:14px 16px; border-radius:18px; border:1px solid rgba(148,163,184,.22); border-style:solid;
+  background:linear-gradient(135deg,#1b2a34,#13201f); box-shadow:0 6px 18px rgba(0,0,0,.2);
+}
+.meni-set svg { color:#cbd5e1; width:24px; height:24px; }
+.meni-nedavno { margin:0 0 18px; padding:2px 0; gap:8px; }
+.meni-nedavno small { display:inline-flex; align-items:center; gap:5px; } .meni-nedavno small::before { content:'⏱'; font-size:12px; }
+.meni-nedavno button { padding:7px 14px 7px 8px; box-shadow:0 3px 10px rgba(0,0,0,.2); }
+#meni-ver-badge { margin-top:14px; text-align:center; opacity:.8; }
+@media (min-width:700px) { .meni-card { min-height:76px; } }
 @media (min-width:700px) {
   .usf-panel .up-body { width:min(680px,calc(100% - 32px)); margin:0 auto; box-sizing:border-box; }
   .meni-grp { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
