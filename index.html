@@ -1063,6 +1063,24 @@ body.inv-num-on #zoom-grp { bottom:calc(var(--dock-b, 78px) + 96px) !important; 
 .inv-od > i { flex:none; width:10px; align-self:stretch; border-radius:4px; background:var(--c); } .inv-od > div { flex:1; min-width:0; } .inv-od b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .inv-od small { color:#80958a; font-size:11px; }
 .inv-od button { flex:none; min-height:34px; padding:0 9px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; } .inv-od button.brisi { color:#fca5a5; }
 .inv-rb { font-style:normal; display:inline-block; min-width:20px; padding:0 6px; margin-right:6px; border-radius:999px; background:var(--c); color:#0b1220; text-align:center; font-size:12px; }
+.inv-hero { display:grid; grid-template-columns:auto 1fr; gap:12px 14px; align-items:center; padding:14px; margin-bottom:10px; border-radius:18px; background:linear-gradient(145deg,#3b2f0a,#12201a 60%); border:1px solid rgba(250,204,21,.35); }
+.inv-ring { position:relative; width:84px; height:84px; } .inv-ring svg { width:84px; height:84px; } .inv-ring circle { fill:none; stroke-width:8; } .inv-ring .bg { stroke:rgba(250,204,21,.18); } .inv-ring .fg { stroke:#facc15; stroke-linecap:round; transition:stroke-dasharray .4s; }
+.inv-ring b { position:absolute; inset:0; display:grid; place-items:center; font-size:19px; font-weight:800; color:#fef9c3; }
+.inv-hero-t h3 { margin:0 0 6px; font-size:16px; color:#fef9c3; } .inv-hero-t p { margin:0; color:#d9c98a; font-size:12px; line-height:1.45; }
+.inv-hero .inv-sum { margin:0; }
+.inv-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.inv-ak { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-height:70px; padding:6px 2px; border-radius:13px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; cursor:pointer; text-align:center; }
+.inv-ak i { font-style:normal; font-size:20px; } .inv-ak b { font-size:11.5px; } .inv-ak small { font-size:9.5px; color:#80958a; } .inv-ak:disabled { opacity:.4; }
+.inv-ak.glavno { border-color:#facc15; background:linear-gradient(145deg,#a16207,#713f12); color:#fefce8; } .inv-ak.glavno small { color:#fde68a; }
+.inv-raz { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; border-radius:12px; font-size:12px; font-weight:700; }
+.inv-raz.on { background:rgba(34,197,94,.14); border:1px solid rgba(74,222,128,.4); color:#bbf7d0; } .inv-raz.van { background:rgba(245,158,11,.14); border:1px solid rgba(245,158,11,.45); color:#fde68a; } .inv-raz.off { background:rgba(100,116,139,.18); border:1px solid #475569; color:#cbd5e1; }
+.inv-raz b { font-variant-numeric:tabular-nums; }
+.inv-nasl { margin:16px 4px 8px; color:#6ee7b7; font-size:11px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+.inv-acc { margin-bottom:8px; border-radius:14px; background:#0f1d16; border:1px solid #1f3b2d; border-left:4px solid var(--c); overflow:hidden; }
+.inv-acc > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; min-height:52px; padding:0 14px; } .inv-acc > summary::-webkit-details-marker { display:none; }
+.inv-acc > summary i { font-style:normal; font-size:20px; } .inv-acc > summary span { flex:1; min-width:0; } .inv-acc > summary b { display:block; font-size:14px; color:#f0fdf4; } .inv-acc > summary small { color:#80958a; font-size:11px; }
+.inv-acc > summary::after { content:'›'; font-size:24px; color:var(--c); transition:transform .2s; } .inv-acc[open] > summary::after { transform:rotate(90deg); } .inv-acc[open] > summary { border-bottom:1px solid #1f3b2d; background:linear-gradient(90deg,color-mix(in srgb,var(--c) 16%,transparent),transparent); }
+.inv-acc-b { padding:12px 14px 14px; } .inv-p { color:#9db0a7; font-size:12px; line-height:1.5; margin:0 0 8px; }
 .inv-natpis { position:absolute; transform:translate(8px,-50%); padding:1px 6px; border-radius:6px; background:rgba(10,24,18,.82); color:#fff; border-left:3px solid var(--c); font:800 11px/1.3 'DM Sans',Arial,sans-serif; white-space:nowrap; }
 .inv-r { position:absolute; transform:translate(4px,-50%); padding:1px 6px; border-radius:999px; background:#facc15; color:#111827; border:2px solid #111827; font:800 11px/1.2 'DM Sans',Arial,sans-serif; white-space:nowrap; }
 .inv-centar { position:absolute; width:26px; height:26px; transform:translate(-50%,-50%); }

@@ -7,7 +7,7 @@
   'use strict';
   const KLJUC = 'usf_inventura';
   const R_ZAD = 25, GRANICA_M = 1.5; // ± oko R se smatra „na granici”
-  const RAZM_ZAD = 10000, RAZMJERE = [[0, 'Uvijek'], [2000, '1:2 000'], [5000, '1:5 000'], [10000, '1:10 000'], [25000, '1:25 000'], [50000, '1:50 000']], MAX_KRUGOVA = 400, MAX_NATPISA = 300;
+  const RAZM_ZAD = 10000, RAZMJERE = [[0, 'Uvijek'], [1000, '1:1 000'], [2000, '1:2 000'], [5000, '1:5 000'], [10000, '1:10 000'], [15000, '1:15 000'], [20000, '1:20 000'], [25000, '1:25 000'], [50000, '1:50 000'], [100000, '1:100 000']], MAX_KRUGOVA = 400, MAX_NATPISA = 300;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const toast = t => { if (typeof showToast === 'function') showToast(t); };
@@ -52,7 +52,7 @@
 
   // ── Stanje ──
   function citaj() {
-    try { const v = JSON.parse(localStorage.getItem(KLJUC) || 'null'); if (v && Array.isArray(v.skupovi)) return { r: R_ZAD, unutra: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true, ...v }; } catch (e) {}
+    try { const v = JSON.parse(localStorage.getItem(KLJUC) || 'null'); if (v && Array.isArray(v.skupovi)) return { r: R_ZAD, unutra: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true, centri: false, ...v }; } catch (e) {}
     return { r: R_ZAD, unutra: [], skupovi: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true };
   }
   let S = citaj();
@@ -153,7 +153,7 @@
         L.polygon(k, { renderer: ren, pane: 'inventuraPane', color: c, weight: 2.5, opacity: 0.95, fillColor: c, fillOpacity: 0.07, interactive: false }).addTo(grp);
         S.unutra.forEach(ru => L.polygon(krugTacke(t.la, t.lo, ru, 48), { renderer: ren, pane: 'inventuraPane', color: c, weight: 1.5, opacity: 0.8, dashArray: '5,5', fill: false, interactive: false }).addTo(grp));
       }
-      if (!akt && S.vid !== false && gr.contains(ll)) L.circleMarker(ll, { renderer: ren, pane: 'inventuraPane', radius: kv ? 5 : 4, color: '#ffffff', weight: 2, fillColor: c, fillOpacity: 1, interactive: false }).addTo(grp);
+      if (!akt && S.vid !== false && (kv || S.centri) && gr.contains(ll)) L.circleMarker(ll, { renderer: ren, pane: 'inventuraPane', radius: kv ? 5 : 4, color: '#ffffff', weight: 2, fillColor: c, fillOpacity: 1, interactive: false }).addTo(grp);
       // natpis = SAMO broj koji je korisnik dao (nazivi iz KML-a se ne prikazuju)
       if (t.br != null && t.br !== '' && kv && nN < MAX_NATPISA && gr.contains(ll)) {
         nN++;
@@ -435,42 +435,53 @@
           <i></i><div><b>${t.br ? '<em class="inv-rb" style="--c:' + ((odjel(t.odj) || {}).boja || '#facc15') + '">' + esc(t.br) + '</em>' : ''}${esc(t.br ? oznaka(t) : t.n)}</b><small>${t.st === 'snimljeno' ? '✓ snimljeno' : 'nije snimljeno'}${p ? ' · ' + fmtM(udaljenost(p.la, p.lo, t.la, t.lo)) : ''}</small></div>
           <button onclick="USFInv.snimljeno('${t.id}')" aria-label="Snimljeno">${t.st === 'snimljeno' ? '↺' : '✓'}</button><button class="glavno" onclick="USFInv.radi('${t.id}')">◎ Radi</button></div>`).join('');
       return `<section class="ng-card inv-skup${s.vis === false ? ' skriven' : ''}">
-        <div class="inv-sk-gl"><div><h3>📍 ${esc(s.naziv)}</h3><small>${n} ploha · ${ns} snimljeno</small></div>
+        <div class="inv-sk-gl"><div><h3>📍 ${esc(s.naziv)}</h3><small>${n} krugova · ${ns} snimljeno</small></div>
           <label class="ng-switch" aria-label="Prikaži na karti"><input type="checkbox" ${s.vis !== false ? 'checked' : ''} onchange="USFInv.vidljiv('${s.id}', this.checked)"><span></span></label></div>
         <div class="inv-traka"><u style="width:${n ? Math.round(ns / n * 100) : 0}%"></u></div>
-        <div class="inv-sk-a"><button onclick="USFInv.zum('${s.id}')">🔍 Na karti</button><button onclick="USFInv.sklopi('${s.id}')">${otv ? '▾' : '▸'} Plohe</button><button class="brisi" onclick="USFInv.obrisi('${s.id}')" aria-label="Ukloni">🗑</button></div>
-        ${otv ? `<div class="inv-lista">${redovi || '<small>Nema ploha za pretragu.</small>'}${l.length > 200 ? '<small>Prikazano 200 — suzi pretragu.</small>' : ''}</div>` : ''}</section>`;
+        <div class="inv-sk-a"><button onclick="USFInv.zum('${s.id}')">🔍 Na karti</button><button onclick="USFInv.sklopi('${s.id}')">${otv ? '▾' : '▸'} Krugovi</button><button class="brisi" onclick="USFInv.obrisi('${s.id}')" aria-label="Ukloni">🗑</button></div>
+        ${otv ? `<div class="inv-lista">${redovi || '<small>Nema krugova za pretragu.</small>'}${l.length > 200 ? '<small>Prikazano 200 — suzi pretragu.</small>' : ''}</div>` : ''}</section>`;
     }).join('');
-    el.innerHTML = `<section class="ng-card inv-uvod">
-        <h3>◎ Koncentrični krugovi</h3>
-        <p>Učitaj KML/KMZ s tačkama — svaka tačka je centar primjerne plohe. Na karti se crta centar i krug od ${S.r} m; dodir na krug → „Radi na krugu” stalno pokazuje udaljenost od centra.</p>
-        <label class="inv-uc">📂 Učitaj tačke (KML / KMZ)<input type="file" accept=".kml,.kmz" multiple onchange="USFInv.ucitaj(event)" hidden></label>
-        ${sve.length ? `<div class="inv-sum"><div><b>${sve.length}</b><small>ploha</small></div><div><b>${sn}</b><small>snimljeno</small></div><div><b>${sve.length - sn}</b><small>preostalo</small></div></div>
-        <button class="karta-hub-action" onclick="USFInv.sljedeca()">⏭ Najbliža nesnimljena ploha</button>` : ''}
+    const r = razmjera(), rTxt = '1:' + String(Math.round(r / 10) * 10).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const pct = sve.length ? Math.round(sn / sve.length * 100) : 0, C = 2 * Math.PI * 34;
+    const acc = (k, naslov, ik, boja, sadrzaj, pod) => `<details class="inv-acc" style="--c:${boja}" ${otvoren['acc_' + k] ? 'open' : ''} ontoggle="USFInv.acc('${k}', this.open)"><summary><i>${ik}</i><span><b>${naslov}</b>${pod ? `<small>${pod}</small>` : ''}</span></summary><div class="inv-acc-b">${sadrzaj}</div></details>`;
+    const kv = krugVidljiv();
+    el.innerHTML = `<section class="inv-hero">
+        <div class="inv-ring"><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34" class="bg"/><circle cx="40" cy="40" r="34" class="fg"${pct ? '' : ' style="display:none"'} stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg><b>${sve.length ? pct + '%' : '—'}</b></div>
+        <div class="inv-hero-t"><h3>Inventura šuma</h3>
+          ${sve.length ? `<div class="inv-sum"><div><b>${sve.length}</b><small>krugova</small></div><div><b>${sn}</b><small>snimljeno</small></div><div><b>${sve.length - sn}</b><small>preostalo</small></div></div>` : `<p>Učitaj KML/KMZ s tačkama — svaka tačka je centar kruga (plohe) od ${S.r} m.</p>`}</div>
+        <div class="inv-grid">
+          <label class="inv-ak glavno"><i>📂</i><b>Učitaj tačke</b><small>KML / KMZ</small><input type="file" accept=".kml,.kmz" multiple onchange="USFInv.ucitaj(event)" hidden></label>
+          <button class="inv-ak" onclick="USFInv.sljedeca()" ${sve.length ? '' : 'disabled'}><i>⏭</i><b>Najbliža</b><small>nesnimljena</small></button>
+          <button class="inv-ak" onclick="USFInv.${filt ? 'bezFiltera' : 'filtriraj'}()" ${sve.length ? '' : 'disabled'}><i>${filt ? '✕' : '◱'}</i><b>${filt ? 'Prikaži sve' : 'Samo dio'}</b><small>${filt ? sveTacke().length + ' u poligonu' : 'crtaj poligon'}</small></button>
+          <button class="inv-ak" onclick="USFInv.odjel('novi')" ${sve.length ? '' : 'disabled'}><i>🔢</i><b>Obrojči</b><small>novi odjel</small></button>
+        </div>
+        ${sve.length ? `<div class="inv-raz ${S.vid === false ? 'off' : kv ? 'on' : 'van'}"><span>${S.vid === false ? '🙈 Krugovi su sakriveni' : kv ? '✓ Krugovi su vidljivi' : '✕ Krugovi sakriveni na ovoj razmjeri — zumiraj'}</span><b>${rTxt}</b></div>` : ''}
       </section>
-      <section class="ng-card inv-odj"><h3>🔢 Odjeli i redoslijed krugova</h3>
-        <p>Napravi odjel u kojem snimaš, pa dodiruj krugove redom kojim ideš — svaki dobija broj, a na karti strelice pokazuju put od kruga do kruga.</p>
-        ${(S.odjeli || []).map(o => { const k = krugoviOdjela(o.id); return `<div class="inv-od${o.id === S.aktOdj ? ' akt' : ''}" style="--c:${o.boja}"><i></i><div><b>${esc(o.naziv)}</b><small>${k.length} obrojčano${k.length ? ' · ' + esc(k[0].br) + ' → ' + esc(k[k.length - 1].br) : ''}</small></div>
-          <button onclick="USFInv.odjel('nastavi','${o.id}')">▶ Obrojči</button><button onclick="USFInv.odjel('zum','${o.id}')" aria-label="Na karti">🔍</button><button onclick="USFInv.odjel('ime','${o.id}')" aria-label="Preimenuj">✏</button><button class="brisi" onclick="USFInv.odjel('brisi','${o.id}')" aria-label="Obriši odjel">🗑</button></div>`; }).join('')}
-        <button class="karta-hub-action" onclick="USFInv.odjel('novi')">＋ Novi odjel i obrojčavanje</button></section>
-      <section class="ng-card inv-flt"><h3>◱ Prikaz samo dijela krugova</h3>
-        ${filt ? `<p>Prikazano <b>${sveTacke().length}</b> krugova unutar nacrtanog poligona; ostali su privremeno sakriveni.</p><div class="inv-sk-a"><button onclick="USFInv.filtriraj()">✏ Novi poligon</button><button onclick="USFInv.bezFiltera()">✕ Prikaži sve</button></div>`
-          : `<p>Nacrtaj poligon (npr. granicu odjela) — ostaju samo krugovi unutar njega, ostali se privremeno sakriju.</p><button class="karta-hub-action" onclick="USFInv.filtriraj()">✏ Nacrtaj poligon</button>`}</section>
-      <section class="ng-card inv-prk"><h3>👁 Prikaz krugova</h3>
+      ${S.skupovi.length ? `<input class="kh-trazi" type="search" placeholder="🔎 Traži krug po oznaci ili broju…" value="${esc(trazi)}" oninput="USFInv.trazi(this.value)">` : ''}
+      ${skupovi || '<div class="ul-prazno"><b>◎</b>Još nema učitanih krugova.<br>Dodirni „Učitaj tačke”.</div>'}
+      <h4 class="inv-nasl">Postavke i alati</h4>
+      ${acc('prk', 'Prikaz krugova', '👁', '#38bdf8', `
         <div class="inv-prk-r"><div><b>Prikaži krugove</b><small>${S.vid !== false ? 'Uključeno' : 'Sakriveno — vide se samo kartica i lista'}</small></div>
           <label class="ng-switch" aria-label="Prikaži krugove"><input type="checkbox" ${S.vid !== false ? 'checked' : ''} onchange="USFInv.prikaz(this.checked)"><span></span></label></div>
         <div class="inv-pr"><label>Vidljivi do razmjere <select class="set-sel" onchange="USFInv.razmjera(this.value)">${RAZMJERE.map(([v, t]) => `<option value="${v}"${(S.razm || 0) === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label></div>
-        <small>Krugovi, brojevi i put se crtaju tek kad je karta približena do ove razmjere (sada ${(() => { const r = razmjera(); return '1:' + String(Math.round(r / 10) * 10).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); })()}); centri ostaju vidljivi. Aktivni krug u radu se uvijek crta.</small></section>
-      <section class="ng-card inv-post"><h3>⚙ Krugovi</h3>
-        <div class="inv-pr"><label>Radijus plohe <input type="number" min="1" max="200" step="0.01" value="${S.r}" onchange="USFInv.postavi('r', this.value)"> m</label></div>
+        <div class="inv-prk-r"><div><b>Centri ostaju vidljivi</b><small>Tačke centara se vide i kad su krugovi sakriveni zbog razmjere</small></div>
+          <label class="ng-switch" aria-label="Centri ostaju vidljivi"><input type="checkbox" ${S.centri ? 'checked' : ''} onchange="USFInv.centri(this.checked)"><span></span></label></div>
+        <small>Iznad izabrane razmjere (sitnije od nje) se ne crta ništa: ni krugovi, ni brojevi, ni put${S.centri ? '' : ', ni centri'}. Aktivni krug u radu se uvijek crta.</small>`, S.vid === false ? 'sakriveno' : S.razm ? 'do 1:' + String(S.razm).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : 'uvijek')}
+      ${acc('odj', 'Odjeli i redoslijed', '🔢', '#a3e635', `
+        <p class="inv-p">Napravi odjel u kojem snimaš, pa dodiruj krugove redom kojim ideš — svaki dobija broj, a na karti strelice pokazuju put.</p>
+        ${(S.odjeli || []).map(o => { const k = krugoviOdjela(o.id); return `<div class="inv-od${o.id === S.aktOdj ? ' akt' : ''}" style="--c:${o.boja}"><i></i><div><b>${esc(o.naziv)}</b><small>${k.length} obrojčano${k.length ? ' · ' + esc(k[0].br) + ' → ' + esc(k[k.length - 1].br) : ''}</small></div>
+          <button onclick="USFInv.odjel('nastavi','${o.id}')">▶</button><button onclick="USFInv.odjel('zum','${o.id}')" aria-label="Na karti">🔍</button><button onclick="USFInv.odjel('ime','${o.id}')" aria-label="Preimenuj">✏</button><button class="brisi" onclick="USFInv.odjel('brisi','${o.id}')" aria-label="Obriši odjel">🗑</button></div>`; }).join('')}
+        <button class="karta-hub-action" onclick="USFInv.odjel('novi')">＋ Novi odjel i obrojčavanje</button>`, (S.odjeli || []).length ? (S.odjeli || []).length + (S.odjeli.length === 1 ? ' odjel' : ' odjela') : 'nema odjela')}
+      ${acc('kr', 'Radijusi krugova', '⚙', '#facc15', `
+        <div class="inv-pr"><label>Radijus kruga <input type="number" min="1" max="200" step="0.01" value="${S.r}" onchange="USFInv.postavi('r', this.value)"> m</label></div>
         <div class="inv-pr"><label>Unutrašnji krugovi <input type="text" inputmode="decimal" placeholder="npr. 7; 12,5" value="${S.unutra.join('; ').replace(/\./g, ',')}" onchange="USFInv.postavi('unutra', this.value)"> m</label></div>
-        <small>Unutrašnji krugovi se crtaju isprekidano; u traci „Radi na krugu” ● = unutar tog kruga.</small></section>
-      ${S.skupovi.length ? `<input class="kh-trazi" type="search" placeholder="🔎 Traži plohu po oznaci…" value="${esc(trazi)}" oninput="USFInv.trazi(this.value)">` : ''}
-      ${skupovi || '<div class="ul-prazno"><b>◎</b>Još nema učitanih ploha.</div>'}`;
+        <small>Unutrašnji krugovi se crtaju isprekidano; u traci „Radi na krugu” ● = unutar tog kruga.</small>`, S.r + ' m' + (S.unutra.length ? ' + ' + S.unutra.length : ''))}`;
   }
 
   window.USFInv = {
     otvori() { if (typeof _openStubPanel === 'function') _openStubPanel('inventura-panel', 'meni'); render(); crtaj(); },
+    centri(on) { S.centri = !!on; pisi(); crtaj(); render(); },
+    acc(k, on) { otvoren['acc_' + k] = !!on; },
     prikaz(on) { S.vid = !!on; pisi(); crtaj(); render(); },
     razmjera(v) { S.razm = Math.max(0, parseInt(v, 10) || 0); pisi(); crtaj(); render(); },
     ucitaj, radi, zavrsi, snimljeno, sljedeca, render, obrojci, filtriraj, bezFiltera,
