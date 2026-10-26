@@ -700,6 +700,29 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .set-nav { position:sticky; top:-1px; z-index:5; display:flex; gap:6px; overflow-x:auto; padding:8px 0; margin:0 0 6px; background:linear-gradient(var(--bg,#08140e) 80%, transparent); scrollbar-width:none; }
 .set-nav::-webkit-scrollbar { display:none; }
 .set-nav button { flex:none; padding:7px 12px; border-radius:999px; border:1px solid #1f3b2d; background:#0d1a14; color:#cbd5e1; font:inherit; font-size:12px; font-weight:700; white-space:nowrap; }
+/* Postavke — dizajn (v2.9.4): hero kartica, grupe s linijom, sekcije s bojom/sjajem, bolji redovi i kontrole */
+#postavke-panel .set-app { background:linear-gradient(135deg,#1c3a2b,#12261c 70%); border:1px solid rgba(74,222,128,.28); border-radius:20px; box-shadow:0 8px 22px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06); }
+#postavke-panel .set-app .set-ikona { border-radius:16px; box-shadow:0 0 0 2px rgba(74,222,128,.35), 0 6px 14px rgba(0,0,0,.35); }
+#postavke-panel .set-nav { padding:10px 0; }
+#postavke-panel .set-nav button { padding:8px 14px; background:linear-gradient(180deg,#14281e,#0d1a14); box-shadow:0 2px 6px rgba(0,0,0,.25); transition:border-color .15s, color .15s; }
+#postavke-panel .set-nav button:active { border-color:#4ade80; color:#86efac; }
+#postavke-panel .set-grp { display:flex; align-items:center; gap:9px; margin:22px 2px 10px; padding:0; background:none; border:0; border-radius:0; color:#86efac; font-size:11px; letter-spacing:.12em; }
+#postavke-panel .set-grp::before { content:''; flex:none; width:9px; height:9px; border-radius:3px; background:#4ade80; box-shadow:0 0 0 3px rgba(74,222,128,.2); }
+#postavke-panel .set-grp::after { content:''; order:1; flex:1; height:1px; min-width:12px; background:linear-gradient(90deg,rgba(74,222,128,.4),transparent); }
+#postavke-panel .set-grp small { order:2; margin-left:0; max-width:48%; font-size:10px; color:#6b8277; text-align:right; }
+#postavke-panel .set-acc { border-radius:18px; border:1px solid color-mix(in srgb,var(--acc) 22%,#1f3b2d); border-left:4px solid var(--acc,#4ade80); background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 7%,#12231a),#0f1d16 65%); box-shadow:0 6px 16px rgba(0,0,0,.2); transition:box-shadow .2s, border-color .2s; }
+#postavke-panel .set-acc[open] { box-shadow:0 10px 26px rgba(0,0,0,.32), 0 0 0 1px color-mix(in srgb,var(--acc) 30%,transparent); }
+#postavke-panel .set-acc > summary { min-height:58px; padding:0 16px; gap:10px; font-size:15.5px; }
+#postavke-panel .set-acc > summary::after { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; background:color-mix(in srgb,var(--acc) 16%,transparent); font-size:20px; line-height:1; }
+#postavke-panel .set-acc-body { padding:14px 16px 16px; }
+#postavke-panel .set-red { padding:10px 0; border-bottom:1px solid rgba(148,163,184,.1); }
+#postavke-panel .set-red:last-child { border-bottom:0; }
+#postavke-panel .set-red button, #postavke-panel .set-uid button { min-height:36px; border-radius:12px; background:#101c2a; }
+#postavke-panel .set-dugme { min-height:44px; border-radius:12px; }
+#postavke-panel .set-klizac input { height:28px; }
+#postavke-panel .set-nap { padding:8px 10px; border-radius:10px; background:rgba(148,163,184,.06); border-left:2px solid rgba(148,163,184,.25); }
+#postavke-panel .set-sel, #postavke-panel .set-input { border-radius:12px; min-height:40px; }
+#postavke-panel .update-card { border-radius:18px; }
 [id^='set-s-'], [id^='set-g-'], #set-update-card { scroll-margin-top:54px; }
 .set-pregled { width:100%; height:56px; display:block; margin:2px 0 10px; border-radius:10px; background:#0b1a13; border:1px solid #1f3b2d; }
 .set-klizac { display:block; margin:8px 0; } .set-klizac span { display:flex; justify-content:space-between; font-size:12.5px; color:#cbd5e1; margin-bottom:4px; } .set-klizac b { color:#4ade80; } .set-klizac input { width:100%; accent-color:#22c55e; }
@@ -5459,10 +5482,25 @@ function _kmlStilPlacemarka(pm, ext) {
   return { col: boja ? boja.hex : null, w: Number.isFinite(w) ? w : null, crta: ext.usf_crta || null, providno: ext.usf_providno === '1', ispuna: fill === '0' || !poly ? 0 : Math.round(poly.a * 100),
     op: boja && dio('LineStyle', 'color') ? Math.round(boja.a * 100) : null, ispunaBoja: poly && boja && poly.hex !== boja.hex ? poly.hex : null };
 }
+// Zašto tri funkcije: sloj sa hiljadama tačaka je blokirao UI nit pri pokretanju; pkmlAsync gradi sloj u komadima (~20 ms) uz popuštanje niti.
 function pkml(doc, col, op, stilSloja) {
-  op = op ?? 0.9;
   const g = L.featureGroup();
-  doc.querySelectorAll('Placemark').forEach((pm, pmi) => {
+  doc.querySelectorAll('Placemark').forEach((pm, pmi) => _pkmlJedan(g, pm, pmi, col, op, stilSloja));
+  return g;
+}
+async function pkmlAsync(doc, col, op, stilSloja) {
+  const g = L.featureGroup(), lista = doc.querySelectorAll('Placemark');
+  if (lista.length < 400) { lista.forEach((pm, pmi) => _pkmlJedan(g, pm, pmi, col, op, stilSloja)); return g; }
+  let t0 = performance.now();
+  for (let i = 0; i < lista.length; i++) {
+    _pkmlJedan(g, lista[i], i, col, op, stilSloja);
+    if (performance.now() - t0 > 20) { await new Promise(r => setTimeout(r, 0)); t0 = performance.now(); }
+  }
+  return g;
+}
+function _pkmlJedan(g, pm, pmi, col, op, stilSloja) {
+  op = op ?? 0.9;
+  {
     // _kmlPm/_kmlGi: veza sloja s <Placemark> i njegovom geometrijom — za uređivanje/brisanje
     const veza = (l, tip, gi) => { l._kmlPm = pmi; l._kmlTip = tip; l._kmlGi = gi; };
     const name = pm.querySelector('name')?.textContent?.trim() || '';
@@ -5505,16 +5543,24 @@ function pkml(doc, col, op, stilSloja) {
       if (cs.length > 0) {
         const m = oznaci(L.circleMarker(cs[0], { ..._kmlLeafletStil('Point', bojaO, stilO, op), pane: 'tragMsrLines', renderer: _kmlRenderer }));
         m._kmlIsPoint = true; m._kmlName = name; m._kmlDesc = desc; m._kmlExtData = extData; veza(m, 'Point', gi);
-        if (name) m.bindTooltip(_escHtml(name));
+        if (name) m.once('mouseover', _kmlTipLijeno); // tooltip tek na prvi prelazak mišem — bindTooltip za hiljade tačaka je skup, a na dodir ga nema
         _bindKmlPopup(m);
         m.addTo(g);
       }
     });
-  });
-  return g;
+  }
+}
+function _kmlTipLijeno(e) {
+  const l = e.target; if (l.getTooltip && l.getTooltip()) return;
+  l.bindTooltip(_escHtml(l._kmlName)).openTooltip(e.latlng);
+}
+// Jedan zajednički handler (layer = e.target) umjesto zatvaranja po objektu — manje memorije za velike slojeve.
+function _kmlKlik(e) {
+  if (window._npHvataKlik || _msrOn || _kmlUred || _odsIzbor) return;
+  L.DomEvent.stopPropagation(e); const h = _kartaPogodak(e.latlng); if (h) h.otvori(e.latlng); else _kmlOpenPopup(e.target._kmlSloj || e.target, e.latlng);
 }
 function _bindKmlPopup(layer) {
-  const onClick = e => { if (window._npHvataKlik || _msrOn || _kmlUred || _odsIzbor) return; L.DomEvent.stopPropagation(e); const h = _kartaPogodak(e.latlng); if (h) h.otvori(e.latlng); else _kmlOpenPopup(layer, e.latlng); };
+  const onClick = _kmlKlik;
   layer.on('click', onClick);
   // Tanke/isprekidane linije rijetko pogode prst na terenu — širi nevidljiv
   // hit-sloj (isti obrazac kao attachPolyClick za trag). Poligoni (fill hit-
@@ -5524,7 +5570,7 @@ function _bindKmlPopup(layer) {
     layer.on('add', () => { try { hit.addTo(map); } catch(e) {} });
     layer.on('remove', () => { try { map.removeLayer(hit); } catch(e) {} });
     if (layer._map) { try { hit.addTo(map); } catch(e) {} }
-    hit.on('click', onClick);
+    hit._kmlSloj = layer; hit.on('click', onClick);
   }
 }
 function _kmlPopupHtml(layer) {
@@ -5896,7 +5942,8 @@ function _kmlLoadFile(file) {
       const z = _kmlZadrziStil && _kmlZadrziStil.ime === file.name ? _kmlZadrziStil : null; _kmlZadrziStil = null;
       const col = z ? z.col : KCOLS[kmlCI % KCOLS.length]; kmlCI++;
       const stil = z && z.stil ? { ...z.stil } : { ..._KML_STIL_NOVI };
-      const grp = pkml(doc, col, undefined, stil);
+      if (doc.getElementsByTagName('Placemark').length >= 400) showToast('⏳ Učitavam ' + file.name + '…');
+      const grp = await pkmlAsync(doc, col, undefined, stil);
       const cnt = grp.getLayers().length;
       if (!cnt) { showToast('⚠ KML nema prepoznatih geometrija: ' + file.name); return; }
       const novi = { id: 'kml_' + Date.now() + '_' + kmlCI, name: file.name, grp, col, stil, vis: true, _content: usedText, samoOdabir: _kmlJePoligonski(file.name) };
@@ -5991,7 +6038,7 @@ async function _kmlRestore() {
       const col = data.col || KCOLS[kmlCI % KCOLS.length]; kmlCI++;
       await new Promise(r => setTimeout(r, 0)); // popusti UI niti između velikih slojeva
       const doc = new DOMParser().parseFromString(txt, 'text/xml');
-      const grp = pkml(doc, col, undefined, data.stil);
+      const grp = await pkmlAsync(doc, col, undefined, data.stil);
       const nov = { id: 'kml_' + Date.now() + '_' + kmlCI, name, grp, col, stil: data.stil, vis: data.vis !== false, _content: txt, samoOdabir: _kmlJePoligonski(name) };
       kmlLs.push(nov); _kmlPrimijeniPrikaz(nov); _kmlRegRender(); // odmah vidljiv i u listi, ne čeka ostale
       if (data.content != null) _kmlSpremi(name, txt, data); // seoba iz localStorage u IDB

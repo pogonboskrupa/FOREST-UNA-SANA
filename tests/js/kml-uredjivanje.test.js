@@ -20,7 +20,7 @@ t('dodir na kartu dok je kartica otvorena samo je zatvara (capture prije Leaflet
 });
 
 t('pkml veže sloj s Placemark-om i geometrijom; kartica ima Uredi/Obriši (ne za ugrađene)', () => {
-  const p = tijelo(H, 'function pkml(');
+  const p = tijelo(H, 'function _pkmlJedan(');
   assert.ok(p.includes("veza(l, 'Polygon', gi)") && p.includes("veza(l, 'LineString', gi)") && p.includes("veza(m, 'Point', gi)"));
   assert.ok(tijelo(H, 'function _kmlPopupHtml(').includes("if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi'"));
 });
@@ -53,7 +53,7 @@ t('stil: KML boja aabbggrr ↔ #rrggbb, vlastiti stil samo uz usf_stil, usf_* sk
   assert.ok(tijelo(H, 'function _kmlStilPlacemarka(').includes("ext.usf_stil !== '1'"), 'tuđi KML stilovi ne mijenjaju izgled');
   assert.ok(tijelo(H, 'function _kmlPopupHtml(').includes("filter(k => !k.startsWith('usf_'))"));
   assert.ok(tijelo(H, 'function _kmlUpisiStil(').includes("_kmlPostaviExt(doc, pm, 'usf_stil', col ? '1' : null)"));
-  assert.ok(tijelo(H, 'async function _kmlSpremi(').includes('stil: meta.stil') && tijelo(H, 'function _kmlRestore(').includes('pkml(doc, col, undefined, data.stil)'));
+  assert.ok(tijelo(H, 'async function _kmlSpremi(').includes('stil: meta.stil') && tijelo(H, 'function _kmlRestore(').includes('pkmlAsync(doc, col, undefined, data.stil)'));
 });
 
 t('uređivanje: poništi, dodir dodaje tačku, novi objekat u sloju', () => {

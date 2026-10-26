@@ -19,7 +19,7 @@ assert.strictEqual(f(l, { polje: '__naziv' }), 'Odsjek A'); assert.strictEqual(f
 assert(grid.includes('onclick="_kedListaOtvori()"') && !grid.includes('ked-hub-red'), 'slojevi tek u editoru');
 assert(H.includes("const _oznCfg = k => ({ on: false,"), 'natpisi zadano isključeni');
 assert(/const _KML_STIL_NOVI = \{ w: 2, crta: 'puna', op: 90, ispuna: (\d+) \}/.test(H) && +H.match(/_KML_STIL_NOVI = \{[^}]*ispuna: (\d+)/)[1] > 0 && +H.match(/_KML_STIL_NOVI = \{[^}]*ispuna: (\d+)/)[1] <= 20, 'blaga ispuna');
-assert(H.includes('const grp = pkml(doc, col, undefined, stil);') && H.includes('_kmlSaveContent(file.name, usedText, col, stil);'), 'novi KML dobija i pamti zadani stil');
+assert(H.includes('const grp = await pkmlAsync(doc, col, undefined, stil);') && H.includes('_kmlSaveContent(file.name, usedText, col, stil);'), 'novi KML dobija i pamti zadani stil');
 for (const t of ['data-a="stil"', 'data-a="vid"', 'data-a="zoom"', 'data-a="obj"', "await _kmlPromijeniBoju(id); _kedListaOtvori();"]) assert(H.includes(t), t);
 // osvježavanje sloja sa servera zadržava stil; stil ugrađenog sloja se pamti posebno; sloj samo s tačkama ima karticu Boja
 assert(H.includes('if (stari) _kmlZadrziStil = { ime, col: stari.col, stil: stari.stil };') && H.includes("const stil = z && z.stil ? { ...z.stil } : { ..._KML_STIL_NOVI };"));
