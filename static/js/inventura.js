@@ -7,7 +7,7 @@
   'use strict';
   const KLJUC = 'usf_inventura';
   const R_ZAD = 25, GRANICA_M = 1.5; // ± oko R se smatra „na granici”
-  const MIN_Z_KRUG = 14, MAX_KRUGOVA = 400, MAX_NATPISA = 300;
+  const RAZM_ZAD = 10000, RAZMJERE = [[0, 'Uvijek'], [2000, '1:2 000'], [5000, '1:5 000'], [10000, '1:10 000'], [25000, '1:25 000'], [50000, '1:50 000']], MAX_KRUGOVA = 400, MAX_NATPISA = 300;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const toast = t => { if (typeof showToast === 'function') showToast(t); };
@@ -52,12 +52,16 @@
 
   // ── Stanje ──
   function citaj() {
-    try { const v = JSON.parse(localStorage.getItem(KLJUC) || 'null'); if (v && Array.isArray(v.skupovi)) return { r: R_ZAD, unutra: [], odjeli: [], aktOdj: null, ...v }; } catch (e) {}
-    return { r: R_ZAD, unutra: [], skupovi: [], odjeli: [], aktOdj: null };
+    try { const v = JSON.parse(localStorage.getItem(KLJUC) || 'null'); if (v && Array.isArray(v.skupovi)) return { r: R_ZAD, unutra: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true, ...v }; } catch (e) {}
+    return { r: R_ZAD, unutra: [], skupovi: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true };
   }
   let S = citaj();
   function pisi() { try { localStorage.setItem(KLJUC, JSON.stringify(S)); return true; } catch (e) { toast('⚠ Nema mjesta za spremanje inventure'); return false; } }
   // Filter poligonom je privremen (samo u memoriji): krugovi izvan nacrtanog poligona se ne crtaju niti hvataju dodir.
+  // Prikaz krugova: prekidač (S.vid) + najsitnija razmjera na kojoj se još crtaju (S.razm = nazivnik, 0 = uvijek).
+  // Centri (tačke) ostaju vidljivi i kad su krugovi sakriveni zbog razmjere; prekidač sakriva sve.
+  const razmjera = () => { try { return _razmjera(); } catch (e) { return 1; } };
+  const krugVidljiv = () => S.vid !== false && (!S.razm || razmjera() <= S.razm);
   let filt = null, crtamFilter = false; // dok se crta obuhvat, krugovi se ne crtaju — vidi se samo teren ispod
   function uPoligonu(la, lo, ring) {
     let u = false;
@@ -138,31 +142,31 @@
     grp.clearLayers(); natpisi.clearLayers();
     if (crtamFilter) { aktGrp.clearLayers(); return; }
     const sve = sveTacke(); if (!sve.length) return;
-    const z = map.getZoom(), gr = map.getBounds().pad(0.3), r = S.r;
+    const z = map.getZoom(), gr = map.getBounds().pad(0.3), r = S.r, kv = krugVidljiv();
     let nK = 0, nN = 0;
     for (const { t } of sve) {
       const ll = L.latLng(t.la, t.lo), c = BOJA(t), akt = aktivni === t.id;
-      if (z >= MIN_Z_KRUG && nK < MAX_KRUGOVA && gr.contains(ll) && !akt) {
+      if (kv && nK < MAX_KRUGOVA && gr.contains(ll) && !akt) {
         nK++;
         const k = krugTacke(t.la, t.lo, r);
         L.polygon(k, { renderer: ren, pane: 'inventuraPane', color: '#ffffff', weight: 5, opacity: 0.7, fill: false, interactive: false }).addTo(grp);
         L.polygon(k, { renderer: ren, pane: 'inventuraPane', color: c, weight: 2.5, opacity: 0.95, fillColor: c, fillOpacity: 0.07, interactive: false }).addTo(grp);
         S.unutra.forEach(ru => L.polygon(krugTacke(t.la, t.lo, ru, 48), { renderer: ren, pane: 'inventuraPane', color: c, weight: 1.5, opacity: 0.8, dashArray: '5,5', fill: false, interactive: false }).addTo(grp));
       }
-      if (!akt) L.circleMarker(ll, { renderer: ren, pane: 'inventuraPane', radius: z >= MIN_Z_KRUG ? 5 : 4, color: '#ffffff', weight: 2, fillColor: c, fillOpacity: 1, interactive: false }).addTo(grp);
+      if (!akt && S.vid !== false && gr.contains(ll)) L.circleMarker(ll, { renderer: ren, pane: 'inventuraPane', radius: kv ? 5 : 4, color: '#ffffff', weight: 2, fillColor: c, fillOpacity: 1, interactive: false }).addTo(grp);
       // natpis = SAMO broj koji je korisnik dao (nazivi iz KML-a se ne prikazuju)
-      if (t.br != null && t.br !== '' && z >= 13 && nN < MAX_NATPISA && gr.contains(ll)) {
+      if (t.br != null && t.br !== '' && kv && nN < MAX_NATPISA && gr.contains(ll)) {
         nN++;
         const o = odjel(t.odj);
         L.marker(ll, { pane: 'inventuraPane', interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<span class="inv-br" style="--c:${o ? o.boja : '#facc15'}">${esc(t.br)}</span>` }) }).addTo(natpisi);
       }
     }
     crtajPut();
-    crtajAktivni();
+    crtajAktivni(); vidCip();
   }
   // Put kretanja po odjelu: linija između uzastopno obrojčanih krugova i strelica na sredini svakog odsječka
   function crtajPut() {
-    if (map.getZoom() < 13) return;
+    if (!krugVidljiv()) return;
     const vidljivi = new Set(sveTacke().map(x => x.t.id)), gr = map.getBounds().pad(0.5);
     (S.odjeli || []).forEach(o => {
       const k = krugoviOdjela(o.id).filter(t => vidljivi.has(t.id));
@@ -371,6 +375,12 @@
     filt = ring; crtaj(); render(); filtCip();
     toast('◱ Prikazano ' + sveTacke().length + ' krugova u poligonu');
   }
+  function vidCip() {
+    let el = document.getElementById('inv-vid');
+    if (S.vid !== false || !sveTacke().length && !S.skupovi.length) { el?.remove(); return; }
+    if (!el) { el = document.createElement('button'); el.id = 'inv-vid'; el.onclick = () => USFInv.prikaz(true); document.body.appendChild(el); }
+    el.innerHTML = '◎ Krugovi sakriveni <b>Prikaži</b>';
+  }
   function bezFiltera() { filt = null; crtaj(); render(); filtCip(); }
   function filtCip() {
     let el = document.getElementById('inv-filt');
@@ -387,7 +397,7 @@
       <div class="inv-pop-a"><button class="glavno" onclick="USFInv.radi('${t.id}')">◎ Radi na krugu</button><button onclick="USFInv.snimljeno('${t.id}')">${t.st === 'snimljeno' ? '↺ Nije snimljeno' : '✓ Snimljeno'}</button><button class="inv-pop-br" onclick="USFInv.obrojci('${t.id}')">🔢 ${t.br ? 'Promijeni broj' : 'Obrojči krug'}</button></div></div>`;
   }
   function klikIzvor(ll, kp) {
-    if (!grp) return [];
+    if (!grp || S.vid === false) return [];
     const out = [];
     for (const { t, s } of sveTacke()) {
       const d = udaljenost(ll.lat, ll.lng, t.la, t.lo);
@@ -395,7 +405,7 @@
       const otvori = numOn ? () => imenuj(t) : at => L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng([t.la, t.lo]).setContent(popupHtml(t, s)).openOn(map);
       const cp = map.latLngToContainerPoint([t.la, t.lo]), dpx = Math.hypot(cp.x - kp.x, cp.y - kp.y);
       if (dpx <= 22) out.push({ vrsta: 'tacka', d: dpx, otvori });
-      else if (d <= S.r && map.getZoom() >= MIN_Z_KRUG) {
+      else if (d <= S.r && krugVidljiv()) {
         const rpx = Math.abs(map.latLngToContainerPoint(krugTacke(t.la, t.lo, S.r, 4)[1]).x - cp.x);
         out.push({ vrsta: 'poligon', pov: Math.PI * rpx * rpx, otvori });
       }
@@ -446,6 +456,11 @@
       <section class="ng-card inv-flt"><h3>◱ Prikaz samo dijela krugova</h3>
         ${filt ? `<p>Prikazano <b>${sveTacke().length}</b> krugova unutar nacrtanog poligona; ostali su privremeno sakriveni.</p><div class="inv-sk-a"><button onclick="USFInv.filtriraj()">✏ Novi poligon</button><button onclick="USFInv.bezFiltera()">✕ Prikaži sve</button></div>`
           : `<p>Nacrtaj poligon (npr. granicu odjela) — ostaju samo krugovi unutar njega, ostali se privremeno sakriju.</p><button class="karta-hub-action" onclick="USFInv.filtriraj()">✏ Nacrtaj poligon</button>`}</section>
+      <section class="ng-card inv-prk"><h3>👁 Prikaz krugova</h3>
+        <div class="inv-prk-r"><div><b>Prikaži krugove</b><small>${S.vid !== false ? 'Uključeno' : 'Sakriveno — vide se samo kartica i lista'}</small></div>
+          <label class="ng-switch" aria-label="Prikaži krugove"><input type="checkbox" ${S.vid !== false ? 'checked' : ''} onchange="USFInv.prikaz(this.checked)"><span></span></label></div>
+        <div class="inv-pr"><label>Vidljivi do razmjere <select class="set-sel" onchange="USFInv.razmjera(this.value)">${RAZMJERE.map(([v, t]) => `<option value="${v}"${(S.razm || 0) === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label></div>
+        <small>Krugovi, brojevi i put se crtaju tek kad je karta približena do ove razmjere (sada ${(() => { const r = razmjera(); return '1:' + String(Math.round(r / 10) * 10).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); })()}); centri ostaju vidljivi. Aktivni krug u radu se uvijek crta.</small></section>
       <section class="ng-card inv-post"><h3>⚙ Krugovi</h3>
         <div class="inv-pr"><label>Radijus plohe <input type="number" min="1" max="200" step="0.01" value="${S.r}" onchange="USFInv.postavi('r', this.value)"> m</label></div>
         <div class="inv-pr"><label>Unutrašnji krugovi <input type="text" inputmode="decimal" placeholder="npr. 7; 12,5" value="${S.unutra.join('; ').replace(/\./g, ',')}" onchange="USFInv.postavi('unutra', this.value)"> m</label></div>
@@ -456,6 +471,8 @@
 
   window.USFInv = {
     otvori() { if (typeof _openStubPanel === 'function') _openStubPanel('inventura-panel', 'meni'); render(); crtaj(); },
+    prikaz(on) { S.vid = !!on; pisi(); crtaj(); render(); },
+    razmjera(v) { S.razm = Math.max(0, parseInt(v, 10) || 0); pisi(); crtaj(); render(); },
     ucitaj, radi, zavrsi, snimljeno, sljedeca, render, obrojci, filtriraj, bezFiltera,
     async odjel(a, id) {
       const o = odjel(id);
