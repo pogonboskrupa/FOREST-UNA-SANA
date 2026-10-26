@@ -1121,6 +1121,8 @@ body.inv-num-on #zoom-grp { bottom:calc(var(--dock-b, 78px) + 96px) !important; 
 .inv-red > div { flex:1; min-width:0; } .inv-red b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .inv-red small { color:#80958a; font-size:11px; }
 .inv-red button { flex:none; min-height:34px; padding:0 10px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; } .inv-red button.glavno { border-color:#facc15; color:#fde68a; }
 .kh-obav { border:2px solid #38bdf8 !important; background:linear-gradient(145deg,#0c3a52,#0d1a14) !important; } .kh-obav .kg-top > i { color:#7dd3fc; }
+.kh-lista-zag { display:flex; align-items:center; gap:10px; margin-bottom:8px; } .kh-lista-zag h3 { margin:0 !important; flex:1; }
+.kh-sakrij { flex:none; padding:7px 12px; border-radius:10px; border:1px solid #475569; background:#0b1220; color:#e2e8f0; font:700 12px 'DM Sans',Arial,sans-serif; cursor:pointer; } .kh-sakrij.off { border-color:#22c55e; color:#86efac; }
 .kh-grupa { scroll-margin-top:56px; } .rr-pil { position:absolute; transform:translate(-50%,-50%); padding:2px 8px; border-radius:999px; background:#1d4ed8; color:#fff; border:2px solid #fff; font:800 11px/1.2 'DM Sans',Arial,sans-serif; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.45); }
 .kh-grupa.srv { color:#7dd3fc; } .kh-grupa.moj { color:#fcd34d; }
 .kh-grupa { padding:6px 10px; border-radius:9px; background:rgba(74,222,128,.08); margin:12px 0 -2px; }
@@ -6762,6 +6764,14 @@ function _khSrvRed(k, z, kljuc) {
     <i></i><div class="ks-i" ${k ? `onclick="_kmlZoom('${k.id}')"` : ''}><b>${gran ? '★ ' : ''}${_escHtml(naziv)}</b><small>${k ? '✓ na telefonu · ' : 'nije preuzeto · '}${_escHtml(info)}</small></div>
     ${akc}${k ? `<label class="ng-switch" aria-label="Prikaži sloj"><input type="checkbox" ${vid ? 'checked' : ''} onchange="${gran ? `_kmlSamoOdabir('${k.id}', !this.checked)` : `_kmlToggle('${k.id}')`}"><span></span></label>` : ''}</div>`;
 }
+// „Sakrij sve / Prikaži sve” u zaglavlju Mojih slojeva: korisnikovi KML/SHP slojevi i tragovi (serverski i „samo za odabir” se ne diraju)
+function _khMojiVid(on) {
+  kmlLs.filter(k => !_kmlJeServerski(k) && !k.samoOdabir).forEach(k => { k.vis = on; _kmlPrimijeniPrikaz(k); });
+  _kmlSaveAllFromRegistry();
+  if (typeof _tragRegistry !== 'undefined') { _tragRegistry.forEach(t => { t.visible = on; _tragRegAddLayer(t); }); _tragRegSave(); _tragRegRender(); }
+  _kmlRegRender(); _khStat();
+  showToast(on ? '👁 Moji slojevi prikazani' : '🙈 Moji slojevi sakriveni');
+}
 // Moji slojevi (učitani iz fajla) + tragovi — sklopive grupe, stanje se pamti
 const _khOtvoreno = k => { try { return !!JSON.parse(localStorage.getItem('usf_kh_otv') || '{}')[k]; } catch(e) { return false; } };
 document.addEventListener('toggle', e => {
@@ -6780,7 +6790,9 @@ function _khSlojevi() {
     return `<div class="kl-red${vid ? '' : ' skriven'}" style="--kc:${k.col}"><i></i><div onclick="_kmlZoom('${k.id}')"><b>${_escHtml(k.name)}</b><small>${[s.pol ? s.pol + ' pol.' : '', s.lin ? s.lin + ' lin.' : '', s.tac ? s.tac + ' tač.' : ''].filter(Boolean).join(' · ') || 'prazno'}</small></div>
       <button class="kl-stil" onclick="_kmlPromijeniBoju('${k.id}')" aria-label="Stil sloja">🎨</button><label class="ng-switch"><input type="checkbox" ${vid ? 'checked' : ''} onchange="_kmlToggle('${k.id}')"><span></span></label></div>`; }).join('') + '</details>' : '<p class="kh-prazno">Još nisi učitao svoj KML / KMZ / SHP. Učitani fajlovi ostaju na telefonu.</p>';
   el.hidden = false;
-  el.innerHTML = '<h3>📁 Moji slojevi</h3>' + kml + tragovi + '<div class="kg-akc" style="margin-top:10px"><button class="glavno" onclick="document.getElementById(\'kml-file-input\').click()">＋ Dodaj KML / KMZ / SHP</button></div>';
+  const svi = [...l.filter(k => !k.samoOdabir), ...tr], vidSvi = svi.filter(x => x.grp ? _kmlNaKarti(x) : x.visible !== false).length;
+  const sakrijBtn = svi.length ? `<button class="kh-sakrij${vidSvi ? '' : ' off'}" onclick="_khMojiVid(${vidSvi ? 'false' : 'true'})" aria-label="${vidSvi ? 'Sakrij sve moje slojeve' : 'Prikaži sve moje slojeve'}">${vidSvi ? '🙈 Sakrij sve' : '👁 Prikaži sve'}</button>` : '';
+  el.innerHTML = `<div class="kh-lista-zag"><h3>📁 Moji slojevi</h3>${sakrijBtn}</div>` + kml + tragovi + '<div class="kg-akc" style="margin-top:10px"><button class="glavno" onclick="document.getElementById(\'kml-file-input\').click()">＋ Dodaj KML / KMZ / SHP</button></div>';
 }
 function _khKmlTrazi() {
   const q = document.getElementById('kh-kml-trazi')?.value || '';
