@@ -5115,6 +5115,16 @@ function msrStop(skipSave) {
   // Auto-sačuvaj ako ima ≥2 tačke i ovo nije edit postojećeg mjerenja —
   // isti obrazac kao Snimi trag (sačuvaj odmah, preimenuj kasnije iz liste).
   if (!skipSave && _msrPts.length >= 2 && !_mqmId) _msrRegAddFromActive();
+  else if (!skipSave && _mqmId) _msrZavrsiIzmjenu();
+}
+// Izmjena sačuvanog mjerenja (✏ Uredi): „Završi” mora izaći iz izmjene — inače tačke ostaju na karti, mjerenje se ne crta kao sačuvano i nije klikabilno.
+function _msrZavrsiIzmjenu() {
+  if (window.USFProfil) USFProfil.zatvori();
+  if (_msrPts.length >= 2) _msrSyncRegistry(); // manje od 2 tačke: zadrži prethodno sačuvano, ne kvari ga
+  _mqmId = null; _msrPts = [];
+  if (_msrLayer) { _msrLayer.clearLayers(); try { map.removeLayer(_msrLayer); } catch(e) {} _msrLayer = null; }
+  _msrUpdPanel(); _msrRegRender(); _msrDrawAllSaved();
+  showToast('✅ Mjerenje sačuvano');
 }
 function msrClear() {
   if (window.USFProfil) USFProfil.zatvori();
