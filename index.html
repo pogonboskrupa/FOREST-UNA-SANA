@@ -1120,6 +1120,7 @@ body.inv-num-on #zoom-grp { bottom:calc(var(--dock-b, 78px) + 96px) !important; 
 .inv-red { display:flex; align-items:center; gap:8px; padding:7px 6px; border-radius:10px; background:#0d1a14; border:1px solid #1a3326; } .inv-red > i { flex:none; width:10px; height:10px; border-radius:50%; background:#f97316; } .inv-red.ok > i { background:#22c55e; } .inv-red.akt { border-color:#facc15; }
 .inv-red > div { flex:1; min-width:0; } .inv-red b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .inv-red small { color:#80958a; font-size:11px; }
 .inv-red button { flex:none; min-height:34px; padding:0 10px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; font:inherit; font-size:12px; font-weight:700; } .inv-red button.glavno { border-color:#facc15; color:#fde68a; }
+.kh-obav { border:2px solid #38bdf8 !important; background:linear-gradient(145deg,#0c3a52,#0d1a14) !important; } .kh-obav .kg-top > i { color:#7dd3fc; }
 .kh-grupa { scroll-margin-top:56px; } .rr-pil { position:absolute; transform:translate(-50%,-50%); padding:2px 8px; border-radius:999px; background:#1d4ed8; color:#fff; border:2px solid #fff; font:800 11px/1.2 'DM Sans',Arial,sans-serif; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.45); }
 .kh-grupa.srv { color:#7dd3fc; } .kh-grupa.moj { color:#fcd34d; }
 .kh-grupa { padding:6px 10px; border-radius:9px; background:rgba(74,222,128,.08); margin:12px 0 -2px; }
@@ -6657,7 +6658,7 @@ function _khStat() {
     if (kml) kml.textContent = kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') + ' · ' + st.pol + ' poligona · ' + Math.round(st.ha).toLocaleString('bs-BA') + ' ha' : 'Odjeli, odsjeci, putevi i tačke iz .kml / .kmz / .shp';
     const vidljivi = kmlLs.filter(_kmlNaKarti).length;
     bedz('kh-b-kml', kmlLs.length ? vidljivi + '/' + kmlLs.length + ' na karti' : '');
-    _khGranice(); _khRazmjera(); _khOffline(); _khServer(); _khSlojevi();
+    _khGranice(); _khRazmjera(); _khOffline(); _khServer(); _khSlojevi(); _khObavijest();
     bedz('kh-b-ozn', kmlLs.length ? kmlLs.length + (kmlLs.length === 1 ? ' sloj' : ' sloja') : ''); _kedHubRender();
     // Pregled: podloga, offline, KML, uključeni slojevi (teren + praćenje šume) — dodir vodi u odgovarajuću sekciju
     const tem = typeof _tematskiUkljuceni === 'function' ? _tematskiUkljuceni().length : 0;
@@ -6684,6 +6685,18 @@ function _khRazmjera() {
   el.className = 'karta-hub-card kh-razm' + (sk.length ? ' sk' : '');
   el.innerHTML = `<div class="kg-top"><i>🔭</i><div><h3>Razmjera <b class="rz">${_razmjeraTxt()}</b></h3><p>${sk.length ? 'Zbog razmjere je sakriveno: ' + sk.join(', ') : 'Svi slojevi su vidljivi pri ovoj razmjeri'}</p></div></div>
     <button class="karta-hub-action" onclick="switchMainTab('postavke');setTimeout(()=>_setSkok('set-g-karta'),150)">Podesi prikaz po razmjeri</button>`;
+}
+// Jednokratna obavijest pri prvom otvaranju taba Karte: karte i granice se mogu preuzeti sa servera
+const _KH_OBAV_KEY = 'usf_kh_obavijest_server';
+function _khObavijest() {
+  try { if (localStorage.getItem(_KH_OBAV_KEY) === '1') return; } catch (e) { return; }
+  if (!document.getElementById('karte-panel')?.classList.contains('show') || document.getElementById('kh-obavijest')) return;
+  const grid = document.querySelector('#karte-panel .karta-hub-grid'); if (!grid) return;
+  try { localStorage.setItem(_KH_OBAV_KEY, '1'); } catch (e) {} // prikazuje se samo jednom, bez obzira da li je zatvorena
+  const el = document.createElement('section'); el.id = 'kh-obavijest'; el.className = 'karta-hub-card kh-obav'; el.setAttribute('role', 'note');
+  el.innerHTML = `<div class="kg-top"><i>☁</i><div><h3>Karte sa servera</h3><p>Offline karte i granice odjela možeš preuzeti direktno u aplikaciju — jednom skineš, pa rade i bez interneta. Potreban je PIN karata.</p></div></div>
+    <div class="kg-akc"><button class="glavno" onclick="document.getElementById('kh-obavijest')?.remove();openUcitajKartuSection()">☁ Pogledaj karte</button><button onclick="document.getElementById('kh-obavijest')?.remove()">Razumijem</button></div>`;
+  grid.insertBefore(el, grid.firstChild);
 }
 function _khGranicaZapis() { return _kmlServerLista().find(z => _KML_POLIGONSKI.test(z.naziv)); }
 // Preuzmi/osvježi zapis sa servera: bez PIN-a prvo traži otključavanje
@@ -7673,10 +7686,17 @@ function _poziPragIzmedju(a, b, prag, prepreke) {
 // šira od stvarne) — počisti staru postavku.
 try { localStorage.removeItem('usf_pozari_effis'); } catch(e) {}
 
+// Legenda požara se vidi samo dok je sloj Požari uključen (inače bi pri prvom pokretanju visio prazan okvir sa ✕).
+function _poziLegendaVid() {
+  const box = document.getElementById('poz-legends'); if (!box) return;
+  let sloj = false; try { sloj = !!_poziOn; } catch(e) {} // _poziOn je let deklarisan niže (TDZ pri učitavanju)
+  let pref = true; try { pref = localStorage.getItem('usf_poz_legenda') !== '0'; } catch(e) {}
+  box.hidden = !(pref && sloj);
+}
 function _poziLegendaToggle(on) {
-  document.getElementById('poz-legends').hidden = !on;
   document.getElementById('poz-legend-check').checked = !!on;
   try { localStorage.setItem('usf_poz_legenda', on ? '1' : '0'); } catch(e) {}
+  _poziLegendaVid();
 }
 (function () {
   const box = document.getElementById('poz-legends');
@@ -9710,6 +9730,7 @@ function _poziSimRenderControls(podaci) {
 function _poziToggle(on) {
   _poziOn = !!on;
   try { localStorage.setItem(_POZ_ON_KEY, _poziOn ? '1' : '0'); } catch(e) {}
+  _poziLegendaVid();
   _poziAutoSync();
   if (!_poziOn) {
     [_poziLayer, _poziHeatLayer, _poziOpozLayer, _povGodLayer].forEach(layer => { try { if (layer && map.hasLayer(layer)) map.removeLayer(layer); } catch(e) {} });
@@ -10097,6 +10118,7 @@ async function openPozariSection() {
   // bez ovoga otvaranje panela odmah poslije pokretanja daje lažno praznu godinu.
   await _poziKljucUcitaj();
   try { _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1'; } catch(e) {}
+  _poziLegendaVid();
   if (_poziOn && !_poziEvts.length) _poziObnoviIzKesa();
   const fEl = document.getElementById('poz-key-firms'), gEl = document.getElementById('poz-key-gfw');
   if (fEl) fEl.value = _poziKljucevi.firms || '';
@@ -10161,6 +10183,7 @@ async function _poziAdminSacuvajKljuceve() {
 }
 
 try { _poziOn = localStorage.getItem(_POZ_ON_KEY) === '1'; } catch(e) {}
+_poziLegendaVid();
 _poziKljucUcitaj();
 setTimeout(() => {
   if (_poziOn) _poziObnoviIzKesa();
