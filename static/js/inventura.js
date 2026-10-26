@@ -58,7 +58,7 @@
   let S = citaj();
   function pisi() { try { localStorage.setItem(KLJUC, JSON.stringify(S)); return true; } catch (e) { toast('⚠ Nema mjesta za spremanje inventure'); return false; } }
   // Filter poligonom je privremen (samo u memoriji): krugovi izvan nacrtanog poligona se ne crtaju niti hvataju dodir.
-  let filt = null;
+  let filt = null, crtamFilter = false; // dok se crta obuhvat, krugovi se ne crtaju — vidi se samo teren ispod
   function uPoligonu(la, lo, ring) {
     let u = false;
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -136,6 +136,7 @@
   function crtaj() {
     if (!pripremi()) return;
     grp.clearLayers(); natpisi.clearLayers();
+    if (crtamFilter) { aktGrp.clearLayers(); return; }
     const sve = sveTacke(); if (!sve.length) return;
     const z = map.getZoom(), gr = map.getBounds().pad(0.3), r = S.r;
     let nK = 0, nN = 0;
@@ -362,8 +363,11 @@
     if (!window.USFPrimka || !USFPrimka.nacrtaj) { toast('⚠ Crtanje nije dostupno'); return; }
     if (!map.getPane('primkaPane')) { map.createPane('primkaPane'); map.getPane('primkaPane').style.zIndex = '414'; map.getPane('primkaPane').style.pointerEvents = 'none'; }
     if (typeof switchMainTab === 'function') switchMainTab('karta');
-    const ring = await USFPrimka.nacrtaj({ naslov: '◱ Obuhvat — prikazuju se samo krugovi unutra', boja: '#facc15' });
-    if (!ring || ring.length < 3) return;
+    crtamFilter = true; crtaj();
+    let ring = null;
+    try { ring = await USFPrimka.nacrtaj({ naslov: '◱ Obuhvat — krugovi su skriveni dok crtaš', boja: '#facc15' }); }
+    finally { crtamFilter = false; }
+    if (!ring || ring.length < 3) { crtaj(); return; }
     filt = ring; crtaj(); render(); filtCip();
     toast('◱ Prikazano ' + sveTacke().length + ' krugova u poligonu');
   }
