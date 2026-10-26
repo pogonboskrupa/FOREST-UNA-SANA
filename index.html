@@ -1314,7 +1314,7 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
   left: 10px; right: 10px; max-width: 440px; margin: 0 auto;
   bottom: calc(var(--dock-b) + var(--rec-h));
 }
-#tragovi-panel { max-height: min(62vh, 520px); }
+#tragovi-panel { max-height: min(72vh, 620px); }
 #ab-loc-popup { bottom: calc(var(--dock-b) + var(--rec-h)); width: min(360px, calc(100vw - 20px)); max-width: none; padding: 14px 16px 16px; }
 #map-fabs, #zoom-grp { bottom: calc(var(--dock-b) + var(--rec-h)); transition: bottom .2s ease; }
 /* Dugmad na karti — jedinstven dizajn: oblik (--btn-r), debljina ikona (--btn-sw), stanje pritiska, fokus */
@@ -1355,6 +1355,27 @@ body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /
 
 /* Lista tragova */
 #tragovi-list { padding: 10px; }
+/* Tragovi — dizajn i pregled (v2.9.7): KPI ukupno, filter/sort/pretraga, veća kartica s kilometrima i brzinom */
+.treg-kpi { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:0 0 10px; }
+.treg-kpi div { padding:8px 4px; border-radius:12px; text-align:center; background:linear-gradient(160deg,rgba(74,222,128,.13),rgba(0,0,0,.18)); border:1px solid rgba(74,222,128,.22); }
+.treg-kpi b { display:block; font-size:14px; font-weight:850; color:#e8f5ee; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.treg-kpi span { font-size:10px; color:var(--pn-mut); text-transform:uppercase; letter-spacing:.06em; }
+.treg-alat { position:sticky; top:-10px; z-index:2; padding:6px 0 8px; margin:0 0 4px; background:linear-gradient(var(--pn-bg) 85%, transparent); }
+.treg-filt { display:flex; gap:6px; margin-bottom:6px; }
+.treg-filt button { flex:1; min-height:34px; border-radius:999px; border:1px solid var(--pn-line); background:var(--pn-bg-2); color:#cbd5e1; font:700 12px 'DM Sans',Arial,sans-serif; }
+.treg-filt button i { font-style:normal; opacity:.7; margin-left:2px; }
+.treg-filt button.on { background:rgba(34,197,94,.18); border-color:#22c55e; color:#bbf7d0; }
+.treg-trazi { display:flex; gap:6px; }
+.treg-trazi input, .treg-trazi select, .treg-trazi button { min-height:36px; border-radius:11px; border:1px solid var(--pn-line); background:var(--pn-bg-2); color:#e2e8f0; font:600 12px 'DM Sans',Arial,sans-serif; padding:0 10px; min-width:0; }
+.treg-trazi input { flex:1; }
+.treg-trazi button { white-space:nowrap; }
+.treg-row { border-radius:16px; padding:12px; background:linear-gradient(135deg,color-mix(in srgb,var(--tc,#4ade80) 9%,var(--pn-bg-2)),var(--pn-bg-2) 60%); box-shadow:0 4px 12px rgba(0,0,0,.18); }
+.treg-prev { flex-basis:64px; height:64px; border-radius:14px; }
+.treg-km { flex:none; text-align:right; align-self:flex-start; }
+.treg-km b { display:block; font-size:21px; font-weight:850; line-height:1; color:color-mix(in srgb,var(--tc,#4ade80) 55%,#fff); font-variant-numeric:tabular-nums; }
+.treg-km small { font-size:11px; font-weight:700; color:var(--pn-mut); }
+.treg-btns button { min-height:48px; }
+
 .treg-row { background: var(--pn-bg-2); border: 1px solid var(--pn-line); border-radius: 14px; padding: 11px 12px; margin-bottom: 8px; }
 .treg-name { font-size: 14.5px; }
 .treg-meta { color: var(--pn-mut); font-variant-numeric: tabular-nums; }
@@ -4252,36 +4273,46 @@ function _tragRegAdd(pts, prekidi) {
   // backend spreman (offline queue: sačuvaj lokalno odmah, pošalji kad ima veze).
   return t;
 }
-function _tragRegRender() {
-  try { _khStat(); } catch (e) {}
-  const el = document.getElementById('tragovi-list');
-  const cnt = document.getElementById('tragovi-count');
-  if (!el) return;
-  if (cnt) cnt.textContent = _tragRegistry.length ? `(${_tragRegistry.length})` : '';
-  if (!_tragRegistry.length) { el.innerHTML = '<div class="treg-empty"><div class="treg-empty-ik">🥾</div><b>Nema sačuvanih tragova</b><br>Otvori 📍 Lokacija → Snimi trag.</div>'; return; }
-  let ukupno = 0, vidljivo = 0;
-  const kartice = _tragRegistry.map(t => {
-    const lenM = _tragCalcLen(t.pts);
-    ukupno += lenM;
-    const vis = t.visible !== false;
-    if (vis) vidljivo++;
-    const trajanje = _tragTrajanje(t.pts);
-    const foto = (t.tacke || []).length;
-    const pr = t.prekidi && t.prekidi.n ? t.prekidi.n : 0;
+let _tragFilt = 'svi', _tragSort = 'novi', _tragQ = '';
+function _tragStat(t) {
+  const p = t.pts || [], lenM = _tragCalcLen(p);
+  const al = p.map(x => x[2]).filter(Number.isFinite), uspon = al.slice(1).reduce((s, a, i) => s + Math.max(0, a - al[i]), 0);
+  const sek = p.length > 1 && p[0][3] > 1e12 ? Math.round((p[p.length - 1][3] - p[0][3]) / 1000) : 0;
+  return { lenM, uspon: al.length > 1 ? Math.round(uspon) : 0, sek, kmh: sek > 60 ? lenM / 1000 / (sek / 3600) : null };
+}
+// Filter, pretraga i redoslijed — samo prikaz liste; stanje u memoriji.
+function _tragRegLista() {
+  const q = _tragQ.trim().toLowerCase();
+  const lista = _tragRegistry.map(t => ({ t, st: _tragStat(t) })).filter(({ t }) => {
+    if (_tragFilt === 'karta' && t.visible === false) return false;
+    if (_tragFilt === 'skriveni' && t.visible !== false) return false;
+    return !q || String(t.name || '').toLowerCase().includes(q);
+  });
+  if (_tragSort === 'duzina') lista.sort((a, b) => b.st.lenM - a.st.lenM);
+  else if (_tragSort === 'ime') lista.sort((a, b) => String(a.t.name).localeCompare(String(b.t.name), 'bs'));
+  return lista;
+}
+function _tragRegKartice() {
+  const el = document.getElementById('treg-kartice'); if (!el) return;
+  const lista = _tragRegLista();
+  el.innerHTML = lista.length ? lista.map(({ t, st }) => {
+    const lenM = st.lenM, vis = t.visible !== false, trajanje = _tragTrajanje(t.pts), foto = (t.tacke || []).length, pr = t.prekidi && t.prekidi.n ? t.prekidi.n : 0;
     return `<div class="treg-row${vis ? '' : ' treg-off'}" style="--tc:${t.color}">
       <div class="treg-top">
         <div class="treg-prev" onclick="_tragRegZoom('${t.id}')">${_tragMiniSvg(t.pts, t.color)}</div>
         <div class="treg-info">
           <div class="treg-name" onclick="_tragRegZoom('${t.id}')">${_escHtml(t.name)}</div>
-          <div class="treg-meta">${fmtDateShort(t.date)}</div>
+          <div class="treg-meta">${fmtDateShort(t.date)}${vis ? '' : ' · skriven'}</div>
           <div class="treg-chips">
-            <span class="treg-chip treg-len">${_tragFmtLen(lenM)}</span>
             ${trajanje ? `<span class="treg-chip">⏱ ${trajanje}</span>` : ''}
+            ${st.kmh ? `<span class="treg-chip">⌀ ${st.kmh.toFixed(1)} km/h</span>` : ''}
+            ${st.uspon ? `<span class="treg-chip">▲ ${st.uspon} m</span>` : ''}
             <span class="treg-chip">${t.pts.length} tač.</span>
             ${foto ? `<span class="treg-chip">📷 ${foto}</span>` : ''}
             ${pr ? `<span class="treg-chip treg-warn">⚠ ${pr} prekid${pr === 1 ? '' : 'a'}</span>` : ''}
           </div>
         </div>
+        <div class="treg-km"><b>${_tragFmtLen(lenM).split(' ')[0]}</b><small>${_tragFmtLen(lenM).split(' ')[1]}</small></div>
       </div>
       <div id="treg-ugl-${t.id}" style="display:none;" class="treg-meta-edit">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
@@ -4318,8 +4349,39 @@ function _tragRegRender() {
         </div>
       </details>
     </div>`;
-  }).join('');
-  el.innerHTML = `<div class="treg-sum"><b>${_tragFmtLen(ukupno)}</b><span>${_tragRegistry.length} ${_tragRegistry.length === 1 ? 'trag' : 'tragova'} · ${vidljivo} na karti</span></div>` + kartice;
+  }).join('') : '<div class="treg-empty">Nema tragova za ovaj filter.</div>';
+}
+function _tragFiltriraj(v) { _tragFilt = v; _tragRegRender(); }
+function _tragSortiraj(v) { _tragSort = v; _tragRegKartice(); }
+function _tragTrazi(v) { _tragQ = v; _tragRegKartice(); }
+function _tragSviVid(on) {
+  _tragRegistry.forEach(t => { if ((t.visible !== false) !== on) { t.visible = on; _tragRegAddLayer(t); } });
+  _tragRegSave(); _tragRegRender(); _khStat();
+}
+function _tragRegRender() {
+  try { _khStat(); } catch (e) {}
+  const el = document.getElementById('tragovi-list');
+  const cnt = document.getElementById('tragovi-count');
+  if (!el) return;
+  if (cnt) cnt.textContent = _tragRegistry.length ? `(${_tragRegistry.length})` : '';
+  if (!_tragRegistry.length) { el.innerHTML = '<div class="treg-empty"><div class="treg-empty-ik">🥾</div><b>Nema sačuvanih tragova</b><br>Otvori 📍 Lokacija → Snimi trag.</div>'; return; }
+  let ukupno = 0, vidljivo = 0, uspon = 0, sek = 0;
+  _tragRegistry.forEach(t => { const st = _tragStat(t); ukupno += st.lenM; uspon += st.uspon; sek += st.sek; if (t.visible !== false) vidljivo++; });
+  const sat = sek >= 3600 ? Math.floor(sek / 3600) + ' h ' + String(Math.floor(sek % 3600 / 60)).padStart(2, '0') + ' min' : sek ? Math.max(1, Math.round(sek / 60)) + ' min' : '—';
+  const n = _tragRegistry.length, cip = (k, t, b) => `<button class="${_tragFilt === k ? 'on' : ''}" onclick="_tragFiltriraj('${k}')">${t}${b != null ? ` <i>${b}</i>` : ''}</button>`;
+  el.innerHTML = `<div class="treg-kpi">
+      <div><b>${_tragFmtLen(ukupno)}</b><span>ukupno</span></div>
+      <div><b>${n}</b><span>${n === 1 ? 'trag' : 'tragova'}</span></div>
+      <div><b>${uspon ? '▲ ' + Math.round(uspon) + ' m' : '—'}</b><span>uspon</span></div>
+      <div><b>${sat}</b><span>vrijeme</span></div>
+    </div>
+    <div class="treg-alat">
+      <div class="treg-filt">${cip('svi', 'Svi', n)}${cip('karta', 'Na karti', vidljivo)}${cip('skriveni', 'Skriveni', n - vidljivo)}</div>
+      <div class="treg-trazi">${n > 4 ? `<input type="search" placeholder="Traži trag…" value="${_escHtml(_tragQ)}" oninput="_tragTrazi(this.value)" aria-label="Traži trag">` : ''}
+        <select onchange="_tragSortiraj(this.value)" aria-label="Redoslijed"><option value="novi"${_tragSort === 'novi' ? ' selected' : ''}>Najnoviji</option><option value="duzina"${_tragSort === 'duzina' ? ' selected' : ''}>Najduži</option><option value="ime"${_tragSort === 'ime' ? ' selected' : ''}>Po imenu</option></select>
+        <button onclick="_tragSviVid(${vidljivo < n})">${vidljivo < n ? '👁 Prikaži sve' : '🙈 Sakrij sve'}</button></div>
+    </div><div id="treg-kartice"></div>`;
+  _tragRegKartice();
 }
 function _tragTrajanje(pts) {
   if (!pts.length || !(pts[0][3] > 1e12)) return '';
