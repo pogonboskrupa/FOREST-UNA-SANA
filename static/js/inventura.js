@@ -52,11 +52,13 @@
 
   // ── Stanje ──
   function citaj() {
-    try { const v = JSON.parse(localStorage.getItem(KLJUC) || 'null'); if (v && Array.isArray(v.skupovi)) return { r: R_ZAD, unutra: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true, centri: false, ...v }; } catch (e) {}
+    try { const v = JSON.parse(localStorage.getItem(KLJUC) || 'null'); if (v && Array.isArray(v.skupovi)) return { r: R_ZAD, unutra: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true, centri: false, samoOdj: false, ...v }; } catch (e) {}
     return { r: R_ZAD, unutra: [], skupovi: [], odjeli: [], aktOdj: null, razm: RAZM_ZAD, vid: true };
   }
   let S = citaj();
   function pisi() { try { localStorage.setItem(KLJUC, JSON.stringify(S)); return true; } catch (e) { toast('⚠ Nema mjesta za spremanje inventure'); return false; } }
+  // „Sakrij krugove izvan odjela”: dok je odjel aktivan, vide se (i hvataju dodir) samo njegovi krugovi; za vrijeme izbora krugova odjela se ne primjenjuje
+  const samoOdjelAktivan = () => !!(S.samoOdj && !selOn && (S.odjeli || []).some(o => o.id === S.aktOdj));
   // Filter poligonom je privremen (samo u memoriji): krugovi izvan nacrtanog poligona se ne crtaju niti hvataju dodir.
   // Prikaz krugova: prekidač (S.vid) + najsitnija razmjera na kojoj se još crtaju (S.razm = nazivnik, 0 = uvijek).
   // Centri (tačke) ostaju vidljivi i kad su krugovi sakriveni zbog razmjere; prekidač sakriva sve.
@@ -71,7 +73,7 @@
     }
     return u;
   }
-  const sveTacke = () => S.skupovi.filter(s => s.vis !== false).flatMap(s => s.tacke.map(t => ({ t, s }))).filter(x => !filt || uPoligonu(x.t.la, x.t.lo, filt));
+  const sveTacke = () => S.skupovi.filter(s => s.vis !== false).flatMap(s => s.tacke.map(t => ({ t, s }))).filter(x => !filt || uPoligonu(x.t.la, x.t.lo, filt)).filter(x => !samoOdjelAktivan() || x.t.odj === S.aktOdj);
   // ── Odjeli i brojevi krugova: korisnik otvori odjel (u kojem snima) pa krugovima daje brojeve redom kojim ide;
   //    put kretanja = brojevi po redu (strelice između uzastopnih krugova). t.odj = id odjela, t.br = broj (tekst), t.bt = kad je dat.
   const ODJ_BOJE = ['#38bdf8', '#f472b6', '#a3e635', '#fb923c', '#c084fc', '#facc15', '#2dd4bf', '#f87171'];
@@ -164,7 +166,7 @@
       }
     }
     crtajPut();
-    crtajAktivni(); vidCip();
+    crtajAktivni(); vidCip(); odjCip();
   }
   // Put kretanja po odjelu: linija između uzastopno obrojčanih krugova i strelica na sredini svakog odsječka
   function crtajPut() {
@@ -422,13 +424,14 @@
         const a = b.dataset.a;
         if (a === 'kraj') { numOn = false; numTraka(); render(); }
         else if (a === 'vrati') ponistiZadnji();
+        else if (a === 'samo') USFInv.samoOdjel(!S.samoOdj);
         else if (a === 'odj') { await odaberiOdjel(); numTraka(); }
       });
     }
     const n = krugoviOdjela(o.id).length;
     el.style.setProperty('--c', o.boja);
     el.innerHTML = `<div class="in-gl"><b>🔢 ${esc(o.naziv)}</b><small>dodirni krug → broj · sljedeći <b>${sljedeciBroj(o.id)}</b> · obrojčano ${n}</small></div>
-      <div class="in-akc"><button data-a="odj">📋 Odjel</button><button data-a="vrati" ${n ? '' : 'disabled'}>↶</button><button data-a="kraj" class="ok">✓ Gotovo</button></div>`;
+      <div class="in-akc"><button data-a="samo" class="${S.samoOdj ? 'on' : ''}" title="Sakrij krugove izvan odjela">${S.samoOdj ? '👁 Svi krugovi' : '🙈 Izvan odjela'}</button><button data-a="odj">📋 Odjel</button><button data-a="vrati" ${n ? '' : 'disabled'}>↶</button><button data-a="kraj" class="ok">✓ Gotovo</button></div>`;
   }
   async function odaberiOdjel() {
     const l = S.odjeli || [];
@@ -456,6 +459,13 @@
     if (S.vid !== false || !sveTacke().length && !S.skupovi.length) { el?.remove(); return; }
     if (!el) { el = document.createElement('button'); el.id = 'inv-vid'; el.onclick = () => USFInv.prikaz(true); document.body.appendChild(el); }
     el.innerHTML = '◎ Krugovi sakriveni <b>Prikaži</b>';
+  }
+  function odjCip() {
+    let el = document.getElementById('inv-odjchip'); const o = odjel(S.aktOdj);
+    if (!samoOdjelAktivan() || !o) { el?.remove(); return; }
+    if (!el) { el = document.createElement('button'); el.id = 'inv-odjchip'; el.onclick = () => USFInv.samoOdjel(false); document.body.appendChild(el); }
+    el.style.setProperty('--c', o.boja);
+    el.innerHTML = `◎ Samo ${esc(o.naziv)}: ${sveTacke().length} krugova <b>✕</b>`;
   }
   function bezFiltera() { filt = null; crtaj(); render(); filtCip(); }
   function filtCip() {
@@ -547,6 +557,8 @@
         <p class="inv-p">Napravi odjel u kojem snimaš, pa dodiruj krugove redom kojim ideš — svaki dobija broj, a na karti strelice pokazuju put.</p>
         ${(S.odjeli || []).map(o => { const k = krugoviOdjela(o.id); return `<div class="inv-od${o.id === S.aktOdj ? ' akt' : ''}" style="--c:${o.boja}"><i></i><div><b>${esc(o.naziv)}</b><small>${clanovi(o.id).length} krugova · ${k.length} obrojčano${k.length ? ' · ' + esc(k[0].br) + ' → ' + esc(k[k.length - 1].br) : ''}</small></div>
           <button onclick="USFInv.odjel('krugovi','${o.id}')" aria-label="Krugovi odjela">☑</button><button onclick="USFInv.odjel('nastavi','${o.id}')">▶</button><button onclick="USFInv.odjel('zum','${o.id}')" aria-label="Na karti">🔍</button><button onclick="USFInv.odjel('ime','${o.id}')" aria-label="Preimenuj">✏</button><button class="brisi" onclick="USFInv.odjel('brisi','${o.id}')" aria-label="Obriši odjel">🗑</button></div>`; }).join('')}
+        ${(S.odjeli || []).length ? `<div class="inv-prk-r"><div><b>Sakrij krugove izvan odjela</b><small>${odjel(S.aktOdj) ? 'Aktivni odjel: ' + esc(odjel(S.aktOdj).naziv) : 'Nema aktivnog odjela'} — vide se samo njegovi krugovi</small></div>
+          <label class="ng-switch" aria-label="Sakrij krugove izvan odjela"><input type="checkbox" ${S.samoOdj ? 'checked' : ''} onchange="USFInv.samoOdjel(this.checked)"><span></span></label></div>` : ''}
         <button class="karta-hub-action" onclick="USFInv.odjel('novi')">＋ Novi odjel i obrojčavanje</button>`, (S.odjeli || []).length ? (S.odjeli || []).length + (S.odjeli.length === 1 ? ' odjel' : ' odjela') : 'nema odjela')}
       ${acc('kr', 'Radijusi krugova', '⚙', '#facc15', `
         <div class="inv-pr"><label>Radijus kruga <input type="number" min="1" max="200" step="0.01" value="${S.r}" onchange="USFInv.postavi('r', this.value)"> m</label></div>
@@ -558,6 +570,10 @@
     otvori() { if (typeof _openStubPanel === 'function') _openStubPanel('inventura-panel', 'meni'); render(); crtaj(); },
     centri(on) { S.centri = !!on; pisi(); crtaj(); render(); },
     acc(k, on) { otvoren['acc_' + k] = !!on; },
+    samoOdjel(on) {
+      if (on) { const o = odjel(S.aktOdj); if (!o) { toast('Prvo napravi ili izaberi odjel'); render(); return; } if (!clanovi(o.id).length) { toast('⚠ Odjel „' + o.naziv + '” još nema krugova — dodaj ih (☑)'); render(); return; } }
+      S.samoOdj = !!on; pisi(); crtaj(); render(); numTraka(); odjCip();
+    },
     prikaz(on) { S.vid = !!on; pisi(); crtaj(); render(); },
     razmjera(v) { S.razm = Math.max(0, parseInt(v, 10) || 0); pisi(); crtaj(); render(); },
     ucitaj, radi, zavrsi, snimljeno, sljedeca, render, obrojci, filtriraj, bezFiltera,
@@ -566,7 +582,7 @@
       if (a === 'novi') { if (await noviOdjel(null)) { numOn = true; numTraka(); if (typeof switchMainTab === 'function') switchMainTab('karta'); toast('🔢 Dodiruj krugove redom kojim ideš'); } }
       else if (!o) return;
       else if (a === 'krugovi') { await izborKrugova(o, null, false); }
-      else if (a === 'nastavi') { S.aktOdj = o.id; pisi(); numOn = true; numTraka(); const k = krugoviOdjela(o.id); if (typeof switchMainTab === 'function') switchMainTab('karta'); if (k.length) map.setView([k[k.length - 1].la, k[k.length - 1].lo], Math.max(map.getZoom(), 17)); }
+      else if (a === 'nastavi') { S.aktOdj = o.id; pisi(); if (S.samoOdj && !clanovi(o.id).length) S.samoOdj = false; numOn = true; numTraka(); const k = krugoviOdjela(o.id); if (typeof switchMainTab === 'function') switchMainTab('karta'); if (k.length) map.setView([k[k.length - 1].la, k[k.length - 1].lo], Math.max(map.getZoom(), 17)); }
       else if (a === 'zum') { const k = krugoviOdjela(o.id); if (!k.length) { toast('Odjel još nema obrojčanih krugova'); return; } if (typeof switchMainTab === 'function') switchMainTab('karta'); map.fitBounds(L.latLngBounds(k.map(t => [t.la, t.lo])).pad(0.2), { maxZoom: 18 }); }
       else if (a === 'ime') { const v = typeof _dlgPrompt === 'function' ? await _dlgPrompt('Naziv odjela', o.naziv, { title: '✏ Odjel', okLabel: 'Spremi' }) : prompt('Naziv', o.naziv); if (v && v.trim()) { o.naziv = v.trim().slice(0, 40); pisi(); } }
       else if (a === 'brisi') {
