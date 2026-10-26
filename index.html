@@ -99,7 +99,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #geo-badge .bseg, .ui-bdg .bseg { padding:1px 9px; white-space:nowrap; }
 #geo-badge .bseg + .bseg, .ui-bdg .bseg + .bseg { border-left:1px solid var(--ui-sep,rgba(134,239,172,.16)); }
 #geo-badge .elev, .ui-bdg .elev { color:var(--ui-a1,#4ade80); font-weight:800; }
-#geo-badge .mgi, .ui-bdg .mgi { font-weight:600; letter-spacing:.2px; }
+#geo-badge .mgi, .ui-bdg .mgi { font-weight:600; letter-spacing:.2px; cursor:pointer; }
 #geo-badge .rz, .ui-bdg .rz { color:var(--ui-a2,#fde68a); font-weight:800; }
 
 /* === Prekidač baznih slojeva — mala ikona gore desno, otvara dropdown === */
@@ -1325,6 +1325,20 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 .map-ctl button:active, #ab-loc:active, #layer-btn:active { background: rgba(74,222,128,.16); transform: scale(.94); }
 .map-ctl button:focus-visible, #ab-loc:focus-visible, #layer-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: -3px; }
 #ab-loc.active::after { content:''; position:absolute; inset:-5px; border-radius:calc(var(--btn-r,16px) + 4px); border:2px solid rgba(74,222,128,.35); animation:fabRecPulse 2.2s ease-in-out infinite; pointer-events:none; }
+/* Zoom +/− i Moja lokacija — dizajn (v2.9.9): jasniji znakovi, kratka razdjelnica, lokacija kao glavno dugme sa stanjem GPS-a */
+#zoom-grp { box-shadow:0 6px 18px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.08); background:linear-gradient(180deg,rgba(var(--ui-bg,10,24,18),calc(var(--btn-a,.86) + .06)),rgba(var(--ui-bg,10,24,18),var(--btn-a,.86))); }
+#zoom-grp button { width:50px; height:50px; }
+#zoom-grp button svg { width:24px; height:24px; stroke-width:calc(var(--btn-sw,2) + .5); color:var(--ui-a1,#4ade80); transition:transform .12s; }
+#zoom-grp button:active svg { transform:scale(.85); }
+#zoom-grp button + button { border-top:0; }
+#zoom-grp button + button::before { content:''; position:absolute; top:0; left:14px; right:14px; height:1px; background:var(--ui-sep,rgba(134,239,172,.2)); }
+#ab-loc { width:56px; height:56px; border-radius:var(--btn-r,16px); color:var(--ui-a1,#4ade80); border:1.5px solid color-mix(in srgb,var(--ui-a1,#4ade80) 45%,transparent);
+  background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--ui-a1,#4ade80) 20%,rgba(var(--ui-bg,10,24,18),var(--btn-a,.86))),rgba(var(--ui-bg,10,24,18),var(--btn-a,.86)) 72%);
+  box-shadow:0 8px 22px rgba(0,0,0,.4), 0 0 0 4px color-mix(in srgb,var(--ui-a1,#4ade80) 10%,transparent), inset 0 1px 0 rgba(255,255,255,.1); }
+#ab-loc svg { width:26px; height:26px; }
+#ab-loc.active { color:#052e16; border-color:#86efac; background:linear-gradient(145deg,#4ade80,#16a34a); box-shadow:0 8px 22px rgba(22,163,74,.45), 0 0 0 4px rgba(74,222,128,.22), inset 0 1px 0 rgba(255,255,255,.35); }
+#ab-loc.active svg { stroke-width:calc(var(--btn-sw,2) + .4); }
+#ab-loc.active::before { content:''; position:absolute; right:7px; top:7px; width:9px; height:9px; border-radius:50%; background:#052e16; border:2px solid #bbf7d0; }
 /* Tokom snimanja traga: desni stub dugmadi i modal Moja lokacija (Snimi trag) se sklanjaju — traka snimanja ima 🎯 i 📷 */
 body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /* i mjerenja / tragovi / nova tačka — 📷 je u traci snimanja */
 
@@ -2408,8 +2422,10 @@ body.sl-uredi #sl-ured { display: block; }
       <label class="set-klizac"><span>Veličina teksta <b id="ui-bdgFs-v"></b></span><input type="range" id="ui-bdgFs" min="9" max="16" step="1" oninput="_setUi('bdgFs', +this.value)"></label>
       <div class="set-red"><div><b>Obris teksta</b><small>Obris čini koordinate čitljivim na svijetloj podlozi.</small></div></div>
       <div class="set-seg" id="ui-bdgOut"><button data-v="isklj" onclick="_setUi('bdgOut','isklj')">Bez</button><button data-v="tanak" onclick="_setUi('bdgOut','tanak')">Tanak</button><button data-v="jak" onclick="_setUi('bdgOut','jak')">Jak</button></div>
+      <div class="set-red"><div><b>Koordinatni sistem</b><small>Dodir na koordinate u uglu karte mijenja sistem redom.</small></div></div>
+      <div class="set-seg" id="ui-koord" style="grid-template-columns:repeat(3,1fr)"><button data-v="mgi5" onclick="_setUi('koord','mgi5')">MGI 5</button><button data-v="mgi6" onclick="_setUi('koord','mgi6')">MGI 6</button><button data-v="wgs" onclick="_setUi('koord','wgs')">WGS84</button></div>
       <div class="set-red"><div><b>Šta se prikazuje</b></div></div>
-      <div class="set-seg ui-dijelovi"><button id="ui-bdgElev" onclick="_setUi('bdgElev', !_uiPrikaz.bdgElev)">↕ Visina</button><button id="ui-bdgMgi" onclick="_setUi('bdgMgi', !_uiPrikaz.bdgMgi)">MGI5</button><button id="ui-bdgRz" onclick="_setUi('bdgRz', !_uiPrikaz.bdgRz)">1:razmjera</button></div>
+      <div class="set-seg ui-dijelovi"><button id="ui-bdgElev" onclick="_setUi('bdgElev', !_uiPrikaz.bdgElev)">↕ Visina</button><button id="ui-bdgMgi" onclick="_setUi('bdgMgi', !_uiPrikaz.bdgMgi)">Koordinate</button><button id="ui-bdgRz" onclick="_setUi('bdgRz', !_uiPrikaz.bdgRz)">1:razmjera</button></div>
       <div class="set-red" style="margin-top:8px"><div><b>Oblik dugmadi</b></div></div>
       <div class="set-seg" id="ui-btnOblik"><button data-v="ostro" onclick="_setUi('btnOblik','ostro')">Oštro</button><button data-v="zaobljeno" onclick="_setUi('btnOblik','zaobljeno')">Zaobljeno</button><button data-v="okruglo" onclick="_setUi('btnOblik','okruglo')">Okruglo</button></div>
       <div class="set-red"><div><b>Debljina ikona</b></div></div>
@@ -3330,6 +3346,18 @@ function wgsToMGI5(lat, lon) {
   const [y, x] = proj4('EPSG:4326', 'MGI-ZONE5', [lon, lat]);
   return { y: Math.round(y), x: Math.round(x) };
 }
+function wgsToMGI6(lat, lon) {
+  const [y, x] = proj4('EPSG:4326', 'MGI-ZONE6', [lon, lat]);
+  return { y: Math.round(y), x: Math.round(x) };
+}
+// Koordinatni sistem za prikaz (Postavke → Koordinate i dugmad; dodir na koordinate u uglu karte ga mijenja): mgi5 | mgi6 | wgs
+const _KOORD_SIST = { mgi5: 'MGI 5', mgi6: 'MGI 6', wgs: 'WGS84' };
+function _koordFmt(lat, lon, sist) {
+  sist = sist || (typeof _uiPrikaz !== 'undefined' && _uiPrikaz.koord) || 'mgi5';
+  if (sist === 'wgs') return { naz: 'WGS84', txt: lat.toFixed(5) + '°, ' + lon.toFixed(5) + '°' };
+  const m = (sist === 'mgi6' ? wgsToMGI6 : wgsToMGI5)(lat, lon);
+  return { naz: _KOORD_SIST[sist], txt: 'Y ' + m.y + ', X ' + m.x };
+}
 // ── Razmjera: tekst uz koordinate i prikaz slojeva po razmjeri (Postavke → 🔭 Prikaz po razmjeri, pamti se) ──
 const _PR_KEY = 'usf_prikaz_razmjera', _PR_ZAD = { slike: 0, tragovi: 50000, kml: 0, mjerenja: 25000 }; // 0 = uvijek vidljivo
 let _prRazmjera = { ..._PR_ZAD };
@@ -3355,7 +3383,7 @@ function _prPrimijeni(sve) {
   });
 }
 // Izgled koordinata i dugmadi na karti (Postavke → 🎛 Koordinate i dugmad, pamti se): providnost podloge, obris teksta, veličina, dijelovi
-const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, bdgRz: true, btnA: 86, btnZ: 100, tema: 'tamna', blur: 0, btnOblik: 'zaobljeno', btnIk: 'normalne' };
+const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, koord: 'mgi5', bdgRz: true, btnA: 86, btnZ: 100, tema: 'tamna', blur: 0, btnOblik: 'zaobljeno', btnIk: 'normalne' };
 const _UI_OBLIK = { okruglo: '26px', zaobljeno: '16px', ostro: '7px' }, _UI_IK = { tanke: '1.5', normalne: '2', podebljane: '2.7' };
 const _UI_TEME = { tamna: { bg: '10,24,18', fg: '#e8f3ec', bd: 'rgba(134,239,172,.22)', sep: 'rgba(134,239,172,.16)', out: '#000', a1: '#4ade80', a2: '#fde68a' }, svijetla: { bg: '255,255,255', fg: '#0f172a', bd: 'rgba(15,23,42,.2)', sep: 'rgba(15,23,42,.16)', out: '#fff', a1: '#15803d', a2: '#b45309' } };
 let _uiPrikaz = { ..._UI_ZAD };
@@ -3370,17 +3398,17 @@ function _uiPrimijeni() {
   r.setProperty('--btn-a', (u.btnA / 100).toFixed(2)); r.setProperty('--btn-z', (u.btnZ / 100).toFixed(2));
   _geoBadgeRender();
 }
-const _geoBadgeLast = { elev: '…', mgi: '' };
-function _geoBadgeHtml(elev, mgi) {
+const _geoBadgeLast = { elev: '…', ll: null };
+function _geoBadgeHtml(elev, ll) {
   const u = _uiPrikaz, d = [];
   if (u.bdgElev) d.push(`<span class="bseg elev">⛰ ${elev}</span>`);
-  if (u.bdgMgi && mgi) d.push(`<span class="bseg mgi">MGI5 ${mgi}</span>`);
+  if (u.bdgMgi && ll) { const k = _koordFmt(ll[0], ll[1]); d.push(`<span class="bseg mgi" onclick="_koordSljedeci()" title="Dodir mijenja koordinatni sistem">${k.naz} ${k.txt}</span>`); }
   if (u.bdgRz) d.push(`<span class="bseg rz">${_razmjeraTxt()}</span>`);
   return d.join('');
 }
 function _geoBadgeRender() {
   const el = document.getElementById('geo-badge'); if (!el) return;
-  const h = _geoBadgeHtml(_geoBadgeLast.elev, _geoBadgeLast.mgi);
+  const h = _geoBadgeHtml(_geoBadgeLast.elev, _geoBadgeLast.ll);
   el.innerHTML = h; el.style.display = h ? '' : 'none';
 }
 let _geoBadgeElevSeq = 0;
@@ -3388,9 +3416,8 @@ async function _geoBadgeUpdate() {
   const el = document.getElementById('geo-badge');
   if (!el) return;
   const c = map.getCenter();
-  const mgi = wgsToMGI5(c.lat, c.lng);
   const mySeq = ++_geoBadgeElevSeq;
-  _geoBadgeLast.mgi = `Y ${mgi.y}, X ${mgi.x}`; _geoBadgeLast.elev = '…'; _geoBadgeRender();
+  _geoBadgeLast.ll = [c.lat, c.lng]; _geoBadgeLast.elev = '…'; _geoBadgeRender();
   try {
     const elev = await _msrFetchElev(c.lat, c.lng);
     if (mySeq !== _geoBadgeElevSeq) return; // karta se pomjerila u međuvremenu — odbaci zastarjeli odgovor
@@ -10130,7 +10157,7 @@ function _poziNavUrl(g) {
 }
 function _poziKoordTxt(g) {
   let txt = 'WGS84 ' + g.la.toFixed(5) + ', ' + g.lo.toFixed(5);
-  try { const m = wgsToMGI5(g.la, g.lo); txt += ' · MGI5 Y ' + m.y + ', X ' + m.x; } catch(e) {}
+  try { const k = _koordFmt(g.la, g.lo, 'mgi5'), k6 = _uiPrikaz.koord === 'mgi6' ? _koordFmt(g.la, g.lo, 'mgi6') : k; txt += ' · ' + k6.naz.replace(' ', '') + ' ' + k6.txt; } catch(e) {}
   return txt;
 }
 function _poziKopirajKoord(kljuc) {
@@ -12214,7 +12241,8 @@ function _setUiUi() {
   document.querySelectorAll('#ui-tema button').forEach(b => b.classList.toggle('on', b.dataset.v === u.tema));
   document.querySelectorAll('#ui-btnOblik button').forEach(b => b.classList.toggle('on', b.dataset.v === u.btnOblik));
   document.querySelectorAll('#ui-btnIk button').forEach(b => b.classList.toggle('on', b.dataset.v === u.btnIk));
-  const pb = document.getElementById('ui-pr-badge'); if (pb) pb.innerHTML = _geoBadgeHtml('812 m', 'Y 5591642, X 4971308'); set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
+  const pb = document.getElementById('ui-pr-badge'); if (pb) pb.innerHTML = _geoBadgeHtml('812 m', [44.5, 17.0]); set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
+  document.querySelectorAll('#ui-koord button').forEach(b => b.classList.toggle('on', b.dataset.v === u.koord));
   document.querySelectorAll('#ui-bdgOut button').forEach(b => b.classList.toggle('on', b.dataset.v === u.bdgOut));
   ['bdgElev', 'bdgMgi', 'bdgRz'].forEach(k => document.getElementById('ui-' + k)?.classList.toggle('on', !!u[k]));
 }
@@ -12223,6 +12251,7 @@ function _setUi(k, v) {
   try { localStorage.setItem(_UI_KEY, JSON.stringify(_uiPrikaz)); } catch (e) {}
   _uiPrimijeni(); _setUiUi();
 }
+function _koordSljedeci() { const o = ['mgi5', 'mgi6', 'wgs']; _setUi('koord', o[(o.indexOf(_uiPrikaz.koord) + 1) % 3]); }
 function _setUiZadano() { _uiPrikaz = { ..._UI_ZAD }; try { localStorage.removeItem(_UI_KEY); } catch (e) {} _uiPrimijeni(); _setUiUi(); showToast('↺ Zadani izgled koordinata i dugmadi'); }
 function _setTragUi() {
   const w = document.getElementById('set-trag-w'); if (!w) return;

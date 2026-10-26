@@ -117,7 +117,7 @@
   }
   function popupHtml(t) {
     const k = kat(t.kat), redovi = [['Vrsta', k.t], ['Koordinate', t.la.toFixed(6) + ', ' + t.lo.toFixed(6)]];
-    if (typeof root.wgsToMGI5 === 'function') { try { const m = wgsToMGI5(t.la, t.lo); if (m) redovi.push(['MGI 5', 'Y ' + Math.round(m[0] ?? m.y) + ', X ' + Math.round(m[1] ?? m.x)]); } catch (e) {} }
+    if (typeof root._koordFmt === 'function') { try { const k = _koordFmt(t.la, t.lo); if (k.naz !== 'WGS84') redovi.push([k.naz, k.txt]); } catch (e) {} }
     if (t.al > 0) redovi.push(['Nadmorska visina', Math.round(t.al) + ' m' + (t.alDem ? ' (DEM)' : '')]);
     if (Number.isFinite(t.ac)) redovi.push(['GPS tačnost', '±' + Math.round(t.ac) + ' m']);
     const ud = udaljenost(t); if (ud) redovi.push(['Od mene', ud]);
