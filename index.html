@@ -1614,6 +1614,28 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 #kml-ured-bar button:disabled { opacity: .4; }
 .pk-akc button.glavno { grid-column: 1 / -1; background: linear-gradient(135deg, var(--ok-a), var(--ok-b)); border-color: #22c55e; color: #fff; }
 .pk-akc button.opasno { color: #fca5a5; border-color: rgba(239,68,68,.35); background: rgba(127,29,29,.22); }
+/* Kartica poligona/objekta — dizajn (v2.9.6): naglašena glavna vrijednost, tip kao pilula, jasne akcije, bolji klizač */
+.pk-pop .leaflet-popup-content-wrapper { background: linear-gradient(160deg, #162a20 0%, #0d1913 70%); border: 1px solid rgba(134,239,172,.18); box-shadow: 0 14px 38px rgba(0,0,0,.55); overflow: hidden; }
+.pk-pop .leaflet-popup-content { margin: 0; padding: 14px 14px 14px; }
+.pk { position: relative; }
+.pk::before { content: ''; position: absolute; left: -14px; right: -14px; top: -14px; height: 4px; background: linear-gradient(90deg, var(--pk-boja), color-mix(in srgb, var(--pk-boja) 20%, transparent)); }
+.pk-hdr { margin: 4px 0 12px; align-items: flex-start; }
+.pk-ico { width: 44px; height: 44px; border-radius: 14px; font-size: 20px; background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--pk-boja) 40%, transparent), color-mix(in srgb, var(--pk-boja) 12%, #0c1a13)); box-shadow: 0 0 16px color-mix(in srgb, var(--pk-boja) 28%, transparent); }
+.pk-nasl b { font-size: 16px; letter-spacing: -.01em; }
+.pk-nasl small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 5px; }
+.pk-tip { font-style: normal; font-weight: 800; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; color: var(--pk-boja); background: color-mix(in srgb, var(--pk-boja) 16%, transparent); border: 1px solid color-mix(in srgb, var(--pk-boja) 40%, transparent); }
+.pk-redovi { border-radius: 14px; padding: 2px 12px; background: rgba(0,0,0,.22); }
+.pk-red { padding: 7px 0; align-items: baseline; }
+.pk-redovi .pk-red:first-child { padding: 10px 0 8px; }
+.pk-redovi .pk-red:first-child b { font-size: 19px; font-weight: 850; color: color-mix(in srgb, var(--pk-boja) 55%, #fff); }
+.pk-red span { font-size: 12px; }
+.pk-klizac { padding: 10px 12px; border-radius: 14px; background: rgba(0,0,0,.2); border: 1px solid var(--pn-line); }
+.pk-klizac span { padding: 1px 8px; border-radius: 999px; background: rgba(74,222,128,.14); color: #86efac; }
+.pk-klizac input { height: 26px; margin-top: 4px; }
+.pk-akc { grid-template-columns: 1fr 1fr; gap: 8px; }
+.pk-akc button { min-height: 44px; border-radius: 13px; background: rgba(148,163,184,.1); font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.15; }
+.pk-akc button.glavno { min-height: 48px; font-size: 13.5px; box-shadow: 0 6px 16px rgba(34,197,94,.28); }
+.pk-akc:not(:has(.glavno)) button:last-child:nth-child(odd), .pk-akc:has(.glavno) button:last-child:nth-child(even) { grid-column: 1 / -1; }
 
 /* ═══ Pregled fotografije ═══ */
 #slika-pregled { position: fixed; inset: 0; z-index: 999950; display: none; flex-direction: column; background: rgba(2,6,4,.96); }
@@ -3362,7 +3384,7 @@ function _okoDugme(vidljivo) { return vidljivo ? _okoIkona(true) + ' Sakrij' : _
 function _popKartica({ ikona = '', boja = '#4ade80', naslov = '', tip = '', meta = '', redovi = [], opis = '', vise = '', dugmad = [] }) {
   const red = ([k, v]) => `<div class="pk-red"><span>${_escHtml(k)}</span><b>${_escHtml(v)}</b></div>`;
   return `<div class="pk" style="--pk-boja:${/^#[0-9a-f]{3,8}$/i.test(boja) ? boja : '#4ade80'}">
-    <div class="pk-hdr"><span class="pk-ico">${ikona}</span><div class="pk-nasl"><b>${_escHtml(naslov || '(bez imena)')}</b>${tip || meta ? `<small>${_escHtml([tip, meta].filter(Boolean).join(' · '))}</small>` : ''}</div></div>
+    <div class="pk-hdr"><span class="pk-ico">${ikona}</span><div class="pk-nasl"><b>${_escHtml(naslov || '(bez imena)')}</b>${tip || meta ? `<small>${tip ? `<i class="pk-tip">${_escHtml(tip)}</i>` : ''}${meta ? `<span>${_escHtml(meta)}</span>` : ''}</small>` : ''}</div></div>
     ${redovi.length ? `<div class="pk-redovi">${redovi.map(red).join('')}</div>` : ''}
     ${opis ? `<div class="pk-opis">${opis}</div>` : ''}${vise}
     ${dugmad.length ? `<div class="pk-akc">${dugmad.map(d => `<button class="${d.v || ''}" onclick="${d.on}">${d.t}</button>`).join('')}</div>` : ''}
@@ -5228,7 +5250,7 @@ function _msrPopupHtml(m) {
     if (dh != null && dd > 0) redovi.push(['Nagib', (dh > 0 ? '+' : '') + (dh / dd * 100).toFixed(1) + ' %'], ['Visinska razlika', Math.round(dh) + ' m']);
   } else if (mode === 'area' && P.length >= 3) {
     const aM2 = _msrPoligonPovrsina(P);
-    redovi.push(['Površina', (aM2 / 10000).toFixed(2) + ' ha'], ['', Math.round(aM2).toLocaleString('bs') + ' m²'], ['Obim', _msrFmt(d)]);
+    redovi.push(['Površina', (aM2 / 10000).toFixed(2) + ' ha'], ['Površina u m²', Math.round(aM2).toLocaleString('bs') + ' m²'], ['Obim', _msrFmt(d)]);
     const fop = Math.round((m.fillOpacity || 0.18) * 100);
     vise = `<label class="pk-klizac">Ispuna <span id="mfop-lbl-${m.id}">${fop}%</span><input type="range" min="0" max="100" value="${fop}" oninput="_msrSetFillOpacity('${m.id}', this.value/100)"></label>`;
     if (typeof npIzMjerenja === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzMjerenja('${m.id}')`, v: 'glavno' });
