@@ -735,18 +735,21 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .ui-pregled-okv { position:relative; margin:2px 0 14px; }
 .ui-pregled { height:170px; margin:0; border-radius:16px; border:1px solid rgba(167,139,250,.35); box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.04); background:none; }
 .ui-sab-stanje { position:absolute; left:50%; transform:translateX(-50%); bottom:10px; white-space:nowrap; padding:2px 9px; border-radius:999px; font:800 10.5px 'DM Sans',Arial,sans-serif; letter-spacing:.03em; color:#ede9fe; background:rgba(76,29,149,.78); border:1px solid rgba(196,181,253,.5); }
-.ui-scena { position:relative; width:100%; height:100%; overflow:hidden; border-radius:inherit; background:linear-gradient(140deg,#7a9a6e 0%,#a7b884 34%,#d4c492 58%,#9fae8c 78%,#7d93a0 100%); }
+.ui-scena { position:relative; width:100%; height:100%; overflow:hidden; border-radius:inherit; isolation:isolate; contain:paint; background:linear-gradient(140deg,#7a9a6e 0%,#a7b884 34%,#d4c492 58%,#9fae8c 78%,#7d93a0 100%); }
 .ui-sc-teren { position:absolute; inset:0; width:100%; height:100%; }
 .ui-sc-teren path { fill:none; stroke:rgba(101,67,33,.42); stroke-width:1.1; } .ui-sc-teren path.p { stroke:#fff; stroke-width:2.2; stroke-dasharray:5 4; opacity:.75; }
 .ui-scena .ui-sc-bdg { position:absolute; left:8px; top:8px; max-width:calc(100% - 58px); }
-.ui-scena .map-ctl { position:absolute; display:grid; place-items:center; color:var(--ui-fg); zoom:var(--btn-z,1); }
+.ui-scena .map-ctl { position:absolute; display:grid; place-items:center; color:var(--ui-fg); --sc:var(--btn-z,1); transform:scale(var(--sc)); }
+/* Android WebView: backdrop-filter i CSS zoom unutar skrolanog panela crtaju se pogrešno (pregled potamni i ostane samo tekst) — u pregledu ih nema; zamućenje se vidi tek na karti */
+.ui-scena .map-ctl, .ui-scena .ui-bdg { -webkit-backdrop-filter:none !important; backdrop-filter:none !important; zoom:1 !important; }
+.ui-sc-sloj { transform-origin:top right; } .ui-sc-zoom { transform-origin:bottom left; } .ui-sc-fab, .ui-sc-loc { transform-origin:bottom right; }
 .ui-scena .map-ctl svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:var(--btn-sw,2); stroke-linecap:round; stroke-linejoin:round; }
 .ui-sc-sloj { right:8px; top:8px; width:36px; height:36px; border-radius:var(--btn-r,16px); font-size:16px; }
 .ui-sc-zoom { left:8px; bottom:8px; width:34px; border-radius:var(--btn-r,16px); overflow:hidden; } .ui-sc-zoom span { display:grid; place-items:center; width:34px; height:32px; color:var(--ui-a1); } .ui-sc-zoom span + span { border-top:1px solid var(--ui-sep); }
 .ui-sc-fab { right:8px; bottom:52px; width:34px; border-radius:var(--btn-r,16px); overflow:hidden; } .ui-sc-fab span { display:grid; place-items:center; width:34px; height:32px; } .ui-sc-fab span + span { border-top:1px solid var(--ui-sep); }
 .ui-sc-loc { right:8px; bottom:8px; width:38px; height:38px; border-radius:var(--btn-r,16px); color:var(--ui-a1) !important; border-color:color-mix(in srgb,var(--ui-a1) 50%,transparent) !important; box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-a1) 14%,transparent), 0 4px 12px rgba(0,0,0,.3) !important; }
 .ui-scena.mala { height:112px; border-radius:12px 12px 0 0; }
-.ui-scena.mala .map-ctl { zoom:calc(var(--btn-z,1) * .78); }
+.ui-scena.mala .map-ctl { --sc:calc(var(--btn-z,1) * .78); }
 .ui-scena.mala .ui-sc-bdg { left:6px; top:6px; font-size:calc(var(--bdg-fs,11px) * .78); max-width:calc(100% - 44px); }
 .ui-scena.mala .ui-sc-bdg .bseg { padding:1px 6px; }
 .ui-scena.mala .ui-sc-bdg .bseg.mgi, .ui-scena.mala .ui-sc-fab { display:none; }
