@@ -157,9 +157,26 @@
     const a = `'${p.id}','${d.id}'`;
     const dug = REDOSLIJED.map(x => ({ t: STATUS[x].ik + ' ' + STATUS[x].k, on: `USFPrimka.status(${a},'${x}')`, v: k === x ? 'on' : '' }));
     if (k === 'sumskired') dug.push({ t: '✓ Popravljeno', on: `USFPrimka.popravljeno(${a})` });
-    dug.push({ t: '✏ Uredi', on: `USFPrimka.uredi(${a})` }, { t: '🗑', on: `USFPrimka.obrisiDio(${a})`, v: 'opasno' });
+    dug.push({ t: '📷 Slikaj ovdje', on: `USFPrimka.tackaOvdje('${p.id}',${at.lat},${at.lng},true)` }, { t: '📍 Dodaj tačku', on: `USFPrimka.tackaOvdje('${p.id}',${at.lat},${at.lng},false)` },
+      { t: '✏ Uredi', on: `USFPrimka.uredi(${a})` }, { t: '🗑', on: `USFPrimka.obrisiDio(${a})`, v: 'opasno' });
     const html = typeof _popKartica === 'function' ? _popKartica({ ikona: st.ik, boja: st.c, naslov: d.naziv || 'Dio odjela', tip: 'Primka', meta: p.naziv, redovi, dugmad: dug }) : esc(d.naziv);
     L.popup({ maxWidth: 300, minWidth: 230, className: 'pk-pop' }).setLatLng(at).setContent(html).openOn(map);
+  }
+  // Terenska tačka (USFTacke) na mjestu dodira u odjelu: „Slikaj” odmah otvara kameru, „Dodaj tačku” pita o čemu se radi.
+  // Vrste su postojeće kategorije tačaka, pa tačka ide i u Tačke i fotografije i u KMZ izvoz.
+  const TACKA_VRSTE = [['red', '⚠️ Loš šumski red'], ['sjeca', '🪓 Bespravna sječa'], ['vlaka', '🛣️ Silazak sa vlake'], ['suho', '🌲 Suho, prelomljeno, izvala'], ['potkornjak', '🪲 Potkornjak'], ['ostalo', '📌 Ostalo']];
+  async function tackaOvdje(pid, la, lo, foto) {
+    if (typeof USFTacke === 'undefined' || !USFTacke.nova) { toast('⚠ Terenske tačke nisu dostupne'); return; }
+    const p = nadji(pid); map.closePopup();
+    let kat = 'ostalo';
+    if (!foto) {
+      if (typeof _dlgActions !== 'function') return;
+      const i = await _dlgActions('📍 O čemu se radi?', TACKA_VRSTE.map(v => ({ label: v[1] })));
+      if (i == null || !TACKA_VRSTE[i]) return;
+      kat = TACKA_VRSTE[i][0];
+    }
+    const naz = foto ? 'Fotografija' : (TACKA_VRSTE.find(v => v[0] === kat) || [0, ''])[1].replace(/^\S+\s/, '');
+    USFTacke.nova(la, lo, { kat, naziv: naz + (p ? ' · ' + p.naziv : ''), foto: !!foto });
   }
   // Kartica odjela (dodir na odjel van označenih dijelova): zbir i radnje — bez nje nacrtani odjel nije bio klikabilan.
   function popupOdjel(p, at) {
@@ -169,7 +186,8 @@
       ['✕ Neprimljeno', fmt(z.neprimljeno, 2) + ' ha' + (z.m3n ? ' · ' + fmt(z.m3n, 1) + ' m³' : '')],
       ['⚠ Šumski red', fmt(z.sumskired, 2) + ' ha' + (z.nSr ? ' · ' + z.nSr + ' dij.' : '')],
       ['Neoznačeno', fmt(z.neoznaceno, 2) + ' ha'], ['Dijelova', String(z.nDij)]], dugmad: [
-      { t: '✏ Označi dio', on: `USFPrimka.dockOtvori(${a})` }, { t: '📋 Otvori', on: `USFPrimka.otvoriProjekat(${a})` },
+      { t: '✏ Označi dio', on: `USFPrimka.dockOtvori(${a})`, v: 'glavno' }, { t: '📷 Slikaj ovdje', on: `USFPrimka.tackaOvdje(${a},${at.lat},${at.lng},true)` },
+      { t: '📍 Dodaj tačku', on: `USFPrimka.tackaOvdje(${a},${at.lat},${at.lng},false)` }, { t: '📋 Otvori', on: `USFPrimka.otvoriProjekat(${a})` },
       { t: '🙈 Sakrij', on: `USFPrimka.sakrij(${a})` }, { t: '🗑', on: `USFPrimka.obrisi(${a})`, v: 'opasno' }] }) : esc(p.naziv);
     L.popup({ maxWidth: 300, minWidth: 220, className: 'pk-pop' }).setLatLng(at).setContent(html).openOn(map);
   }
@@ -620,18 +638,32 @@ ${dij}
     const rows = p.poligoni.map((x, i) => `<div class="pr-pol-red"><b>${esc((x.odjel ? 'Odjel ' + x.odjel : '') + (x.odsjek ? ' · ' + x.odsjek : '') || x.naziv || 'Poligon ' + (i + 1))}</b><span>${fmt(haDijela([x.ring]), 2)} ha</span><button data-a="pol-zoom" data-id="${p.id}" data-i="${i}" title="Na karti">🔍</button></div>`).join('');
     return det(p.id + ':pol', `▣ Poligoni odjela <small>${p.poligoni.length} · ${fmt(zbir(p).odjel, 2)} ha</small>`, rows, 'pr-pol');
   }
-  function render() {
-    aktivniBar(); izborRender();
-    const el = document.getElementById('pr-lista'); if (!el) return;
-    const l = citaj();
-    if (aktivni && !l.some(p => p.id === aktivni)) aktivni = null;
-    pamtiAktivni();
-    el.innerHTML = l.map(p => {
+  const osnova = z => Math.max(z.odjel, z.oznaceno) || 0;
+  const pctHtml = z => { const o = osnova(z); if (!o || !z.nDij) return ''; const v = Math.round(100 * z.primljeno / o); return `<span class="pr-pct" style="--c:${v >= 100 ? '#22c55e' : v >= 50 ? '#84cc16' : '#f59e0b'}">${v} %</span>`; };
+  const miniZbir = z => z.nDij ? `<div class="pr-mini">${REDOSLIJED.filter(k => z[k] > 0).map(k => `<span style="--c:${STATUS[k].c}"><i></i>${fmt(z[k], 2)} ha</span>`).join('')}${z.neoznaceno > 0.005 ? `<span class="pr-mini-n">neoznačeno ${fmt(z.neoznaceno, 2)} ha</span>` : ''}</div>` : '';
+  let projQ = '';
+  // Pregled svih projekata: broj, površina, udio primljenog i šta čeka popravak — iznad liste.
+  function ukupnoHtml(l) {
+    let od = 0, pr = 0, ne = 0, sr = 0, nsr = 0, kasni = 0;
+    l.forEach(p => { const z = zbir(p); od += osnova(z); pr += z.primljeno; ne += z.neprimljeno; sr += z.sumskired; (p.dijelovi || []).forEach(d => { if (kljucStatusa(d) === 'sumskired') { nsr++; if (istekao(d)) kasni++; } }); });
+    const v = od ? Math.round(100 * pr / od) : 0;
+    return `<section class="pr-ukupno"><div class="pr-uk-kpi">
+        <div><b>${l.length}</b><span>${l.length === 1 ? 'projekat' : 'projekata'}</span></div><div><b>${fmt(od, 1)}</b><span>ha ukupno</span></div>
+        <div class="pr"><b>${v} %</b><span>primljeno</span></div><div class="${nsr ? 'sr' : ''}"><b>${nsr}</b><span>${kasni ? kasni + ' kasni' : 'za popraviti'}</span></div></div>
+      <div class="pr-traka">${[['primljeno', pr], ['neprimljeno', ne], ['sumskired', sr]].map(([k, x]) => `<i style="width:${(100 * x / (od || 1)).toFixed(1)}%;background:${STATUS[k].c}"></i>`).join('')}</div>
+      ${l.length > 4 ? `<input type="search" id="pr-trazi" placeholder="Traži odjel…" value="${esc(projQ)}" aria-label="Traži projekat">` : ''}</section><div id="pr-projekti"></div>`;
+  }
+  function projektiHtml(l) {
+    const q = projQ.trim().toLowerCase(), r = q ? l.filter(p => String(p.naziv || '').toLowerCase().includes(q)) : l;
+    return r.length ? projektiKartice(r) : '<div class="treg-empty">Nema projekata za ovu pretragu.</div>';
+  }
+  function projektiKartice(l) {
+    return l.map(p => {
       const z = zbir(p), akt = p.id === aktivni, n = (p.dijelovi || []).length;
       const dij = (p.dijelovi || []).filter(d => filter === 'svi' || kljucStatusa(d) === filter);
       return `<section class="ng-card pr-proj${akt ? ' akt' : ''}">
-        <div class="pr-proj-zag" data-a="aktiviraj" data-id="${p.id}"><b>🪵 ${esc(p.naziv)}</b><small>${prsteni(p).length ? fmt(z.odjel, 2) + ' ha' + (prsteni(p).length > 1 ? ' · ' + prsteni(p).length + ' poligona' : '') : 'bez granice odjela'} · ${n} ${n === 1 ? 'dio' : 'dijelova'}${p.sjekId ? ' · partije' : ''}${akt ? '' : ' · dodirni za otvaranje'}</small></div>
-        ${akt ? trakaHtml(z, p) : `<div class="pr-traka">${REDOSLIJED.map(k => `<i style="width:${(100 * z[k] / (Math.max(z.odjel, z.oznaceno) || 1)).toFixed(1)}%;background:${STATUS[k].c}"></i>`).join('')}</div>`}
+        <div class="pr-proj-zag" data-a="aktiviraj" data-id="${p.id}"><div class="pr-proj-nasl"><b>🪵 ${esc(p.naziv)}</b>${pctHtml(z)}</div><small>${prsteni(p).length ? fmt(z.odjel, 2) + ' ha' + (prsteni(p).length > 1 ? ' · ' + prsteni(p).length + ' poligona' : '') : 'bez granice odjela'} · ${n} ${n === 1 ? 'dio' : 'dijelova'}${p.sjekId ? ' · partije' : ''}${akt ? '' : ' · dodirni za otvaranje'}</small></div>
+        ${akt ? trakaHtml(z, p) : `<div class="pr-traka">${REDOSLIJED.map(k => `<i style="width:${(100 * z[k] / (Math.max(z.odjel, z.oznaceno) || 1)).toFixed(1)}%;background:${STATUS[k].c}"></i>`).join('')}</div>${miniZbir(z)}`}
         ${akt ? `<div class="sl-dug"><button class="zp-glavno" data-a="dock" data-id="${p.id}">✏ Označi dio na karti</button><button data-a="partije" data-id="${p.id}">Partije iz sjekačkih</button></div>
         ${poligoniHtml(p)}
         ${n ? filterHtml(p) : ''}
@@ -639,6 +671,16 @@ ${dij}
         <div class="sl-dug"><button data-a="kml" data-id="${p.id}">📤 Podijeli (KML)</button><button data-a="zoom" data-id="${p.id}">🔍 Na karti</button><button data-a="vid" data-id="${p.id}">${p.vidljiv !== false ? '🙈 Sakrij' : '👁 Prikaži'}</button><button data-a="brisi" data-id="${p.id}" class="opasno" title="Obriši projekat">🗑</button></div>` : ''}
       </section>`;
     }).join('');
+  }
+  function render() {
+    aktivniBar(); izborRender();
+    const el = document.getElementById('pr-lista'); if (!el) return;
+    const l = citaj();
+    if (aktivni && !l.some(p => p.id === aktivni)) aktivni = null;
+    pamtiAktivni();
+    if (!l.length) { el.innerHTML = ''; return; }
+    el.innerHTML = ukupnoHtml(l);
+    document.getElementById('pr-projekti').innerHTML = projektiHtml(l);
   }
   function polje(el) {
     const p = nadji(el.dataset.id), d = p && (p.dijelovi || []).find(x => x.id === el.dataset.d); if (!d) return;
@@ -692,7 +734,7 @@ ${dij}
   }
 
   window.USFPrimka = {
-    dockOtvori, dockZatvori, crtajStatus,
+    dockOtvori, dockZatvori, crtajStatus, tackaOvdje,
     dockSrGotovo(r) { if (!RAZLOZI[r]) return; dockSr.has(r) ? dockSr.delete(r) : dockSr.add(r); dockRender(); },
     razlog, popravljeno,
     // Cijeli odjel jednom klasom (npr. sve primljeno): dio = poligoni projekta
@@ -727,7 +769,7 @@ ${dij}
     panel.addEventListener('click', e => { const el = e.target.closest('[data-a]'); if (el && el.tagName !== 'INPUT' && el.tagName !== 'SELECT') akcija(el); });
     panel.addEventListener('change', e => { const el = e.target.closest('input[data-a]'); if (!el) return; if (el.dataset.a.startsWith('izb-')) izborAkcija(el); else polje(el); });
     panel.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.det) { if (d.open) otvoreno.add(d.dataset.det); else otvoreno.delete(d.dataset.det); } }, true);
-    panel.addEventListener('input', e => { if (e.target.id === 'pr-izb-trazi' && izbor) { izbor.trazi = e.target.value; izborLista(); } });
+    panel.addEventListener('input', e => { if (e.target.id === 'pr-izb-trazi' && izbor) { izbor.trazi = e.target.value; izborLista(); } else if (e.target.id === 'pr-trazi') { projQ = e.target.value; const c = document.getElementById('pr-projekti'); if (c) c.innerHTML = projektiHtml(citaj()); } });
   }
   if (typeof map !== 'undefined' && map && map.getContainer) { crtaj(); render(); }
 })();
