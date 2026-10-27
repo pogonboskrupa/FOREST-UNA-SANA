@@ -731,6 +731,33 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #layer-btn, #zoom-grp, #map-fabs { zoom:var(--btn-z,1); }
 .ui-pregled { position:relative; height:84px; margin:2px 0 12px; border-radius:12px; overflow:hidden; border:1px solid #1f3b2d; background:linear-gradient(135deg,#6b8f71,#c9b48a 55%,#7a8f9a); }
 .ui-pregled #ui-pr-badge { position:absolute; left:10px; top:10px; max-width:calc(100% - 70px); } .ui-pregled #ui-pr-btn { position:absolute; right:10px; top:10px; width:40px; height:40px; border-radius:13px; display:grid; place-items:center; font-size:19px; }
+/* Izgled — pregled scene i šabloni (v3.0.1) */
+.ui-pregled-okv { position:relative; margin:2px 0 14px; }
+.ui-pregled { height:170px; margin:0; border-radius:16px; border:1px solid rgba(167,139,250,.35); box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.04); background:none; }
+.ui-sab-stanje { position:absolute; left:50%; transform:translateX(-50%); bottom:10px; white-space:nowrap; padding:2px 9px; border-radius:999px; font:800 10.5px 'DM Sans',Arial,sans-serif; letter-spacing:.03em; color:#ede9fe; background:rgba(76,29,149,.78); border:1px solid rgba(196,181,253,.5); }
+.ui-scena { position:relative; width:100%; height:100%; overflow:hidden; border-radius:inherit; background:linear-gradient(140deg,#7a9a6e 0%,#a7b884 34%,#d4c492 58%,#9fae8c 78%,#7d93a0 100%); }
+.ui-sc-teren { position:absolute; inset:0; width:100%; height:100%; }
+.ui-sc-teren path { fill:none; stroke:rgba(101,67,33,.42); stroke-width:1.1; } .ui-sc-teren path.p { stroke:#fff; stroke-width:2.2; stroke-dasharray:5 4; opacity:.75; }
+.ui-scena .ui-sc-bdg { position:absolute; left:8px; top:8px; max-width:calc(100% - 58px); }
+.ui-scena .map-ctl { position:absolute; display:grid; place-items:center; color:var(--ui-fg); zoom:var(--btn-z,1); }
+.ui-scena .map-ctl svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:var(--btn-sw,2); stroke-linecap:round; stroke-linejoin:round; }
+.ui-sc-sloj { right:8px; top:8px; width:36px; height:36px; border-radius:var(--btn-r,16px); font-size:16px; }
+.ui-sc-zoom { left:8px; bottom:8px; width:34px; border-radius:var(--btn-r,16px); overflow:hidden; } .ui-sc-zoom span { display:grid; place-items:center; width:34px; height:32px; color:var(--ui-a1); } .ui-sc-zoom span + span { border-top:1px solid var(--ui-sep); }
+.ui-sc-fab { right:8px; bottom:52px; width:34px; border-radius:var(--btn-r,16px); overflow:hidden; } .ui-sc-fab span { display:grid; place-items:center; width:34px; height:32px; } .ui-sc-fab span + span { border-top:1px solid var(--ui-sep); }
+.ui-sc-loc { right:8px; bottom:8px; width:38px; height:38px; border-radius:var(--btn-r,16px); color:var(--ui-a1) !important; border-color:color-mix(in srgb,var(--ui-a1) 50%,transparent) !important; box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-a1) 14%,transparent), 0 4px 12px rgba(0,0,0,.3) !important; }
+.ui-scena.mala { height:112px; border-radius:12px 12px 0 0; }
+.ui-scena.mala .map-ctl { zoom:calc(var(--btn-z,1) * .78); }
+.ui-scena.mala .ui-sc-bdg { left:6px; top:6px; font-size:calc(var(--bdg-fs,11px) * .78); max-width:calc(100% - 44px); }
+.ui-scena.mala .ui-sc-bdg .bseg { padding:1px 6px; }
+.ui-scena.mala .ui-sc-bdg .bseg.mgi, .ui-scena.mala .ui-sc-fab { display:none; }
+.ui-sab-zag { margin:16px 0 8px; } .ui-sab-zag b { display:block; color:var(--text,#e8f5ee); font-size:14px; } .ui-sab-zag small { display:block; color:#80958a; font-size:11px; line-height:1.4; margin-top:2px; }
+.ui-sabloni { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ui-sab { position:relative; padding:0; text-align:left; border-radius:14px; overflow:hidden; border:1.5px solid #1f3b2d; background:#0d1a14; color:#e2e8f0; cursor:pointer; transition:transform .12s, border-color .15s, box-shadow .15s; }
+.ui-sab:active { transform:scale(.97); }
+.ui-sab.on { border-color:#a78bfa; box-shadow:0 0 0 3px rgba(167,139,250,.25), 0 8px 20px rgba(0,0,0,.35); }
+.ui-sab-t { display:block; padding:8px 10px 10px; }
+.ui-sab-t b { font-size:13px; font-weight:800; } .ui-sab-t i { float:right; font-style:normal; font-size:10px; font-weight:800; color:#c4b5fd; margin-top:2px; }
+.ui-sab-t small { display:block; margin-top:2px; font-size:10.5px; line-height:1.35; color:#94a3b8; }
 .set-nap { color:#80958a; font-size:11px; line-height:1.45; margin:8px 0 0; }
 .set-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:4px 0 6px; }
 .set-grid div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:8px 4px; text-align:center; }
@@ -2431,9 +2458,9 @@ body.sl-uredi #sl-ured { display: block; }
     <details class="ng-card set-acc" id="set-s-ui" style="--acc:#a78bfa">
       <summary>🎛 Koordinate i dugmad</summary>
       <div class="set-acc-body">
-      <div class="ui-pregled"><div id="ui-pr-badge" class="ui-bdg"></div><div id="ui-pr-btn" class="map-ctl">🗂</div></div>
-      <div class="set-red"><div><b>Tema podloge</b><small>Tamna ili svijetla staklena podloga (tekst i ikone se prilagode).</small></div></div>
-      <div class="set-seg" id="ui-tema" style="grid-template-columns:1fr 1fr"><button data-v="tamna" onclick="_setUi('tema','tamna')">🌙 Tamna</button><button data-v="svijetla" onclick="_setUi('tema','svijetla')">☀ Svijetla</button></div>
+      <div class="ui-pregled-okv"><div id="ui-pregled" class="ui-pregled"></div><span id="ui-sab-stanje" class="ui-sab-stanje"></span></div>
+      <div class="set-red"><div><b>Tema podloge</b><small>Tamna, svijetla ili grafit podloga (tekst, akcenti i ikone se prilagode).</small></div></div>
+      <div class="set-seg" id="ui-tema" style="grid-template-columns:repeat(3,1fr)"><button data-v="tamna" onclick="_setUi('tema','tamna')">🌙 Tamna</button><button data-v="svijetla" onclick="_setUi('tema','svijetla')">☀ Svijetla</button><button data-v="grafit" onclick="_setUi('tema','grafit')">◆ Grafit</button></div>
       <label class="set-klizac"><span>Providnost podloge koordinata <b id="ui-bdgA-v"></b></span><input type="range" id="ui-bdgA" min="0" max="100" step="5" oninput="_setUi('bdgA', +this.value)"></label>
       <label class="set-klizac"><span>Zamućenje pozadine <b id="ui-blur-v"></b></span><input type="range" id="ui-blur" min="0" max="16" step="1" oninput="_setUi('blur', +this.value)"></label>
       <label class="set-klizac"><span>Veličina teksta <b id="ui-bdgFs-v"></b></span><input type="range" id="ui-bdgFs" min="9" max="16" step="1" oninput="_setUi('bdgFs', +this.value)"></label>
@@ -2449,6 +2476,8 @@ body.sl-uredi #sl-ured { display: block; }
       <div class="set-seg" id="ui-btnIk"><button data-v="tanke" onclick="_setUi('btnIk','tanke')">Tanke</button><button data-v="normalne" onclick="_setUi('btnIk','normalne')">Normalne</button><button data-v="podebljane" onclick="_setUi('btnIk','podebljane')">Podebljane</button></div>
       <label class="set-klizac" style="margin-top:12px"><span>Providnost podloge dugmadi <b id="ui-btnA-v"></b></span><input type="range" id="ui-btnA" min="0" max="100" step="5" oninput="_setUi('btnA', +this.value)"></label>
       <label class="set-klizac"><span>Veličina dugmadi <b id="ui-btnZ-v"></b></span><input type="range" id="ui-btnZ" min="80" max="140" step="5" oninput="_setUi('btnZ', +this.value)"></label>
+      <div class="ui-sab-zag"><b>🎨 Šabloni izgleda</b><small>Jedan dodir postavi cijeli izgled — pa ga klizačima iznad dotjeraj po svom. Koordinatni sistem i dijelovi ostaju tvoji.</small></div>
+      <div id="ui-sabloni" class="ui-sabloni"></div>
       <button class="set-dugme" style="margin-top:10px" onclick="_setUiZadano()">↺ Vrati zadano</button>
       </div>
     </details>
@@ -3402,18 +3431,49 @@ function _prPrimijeni(sve) {
 // Izgled koordinata i dugmadi na karti (Postavke → 🎛 Koordinate i dugmad, pamti se): providnost podloge, obris teksta, veličina, dijelovi
 const _UI_KEY = 'usf_ui_prikaz', _UI_ZAD = { bdgA: 55, bdgFs: 11, bdgOut: 'tanak', bdgElev: true, bdgMgi: true, koord: 'mgi5', bdgRz: true, btnA: 86, btnZ: 100, tema: 'tamna', blur: 0, btnOblik: 'zaobljeno', btnIk: 'normalne' };
 const _UI_OBLIK = { okruglo: '26px', zaobljeno: '16px', ostro: '7px' }, _UI_IK = { tanke: '1.5', normalne: '2', podebljane: '2.7' };
-const _UI_TEME = { tamna: { bg: '10,24,18', fg: '#e8f3ec', bd: 'rgba(134,239,172,.22)', sep: 'rgba(134,239,172,.16)', out: '#000', a1: '#4ade80', a2: '#fde68a' }, svijetla: { bg: '255,255,255', fg: '#0f172a', bd: 'rgba(15,23,42,.2)', sep: 'rgba(15,23,42,.16)', out: '#fff', a1: '#15803d', a2: '#b45309' } };
+const _UI_TEME = { tamna: { bg: '10,24,18', fg: '#e8f3ec', bd: 'rgba(134,239,172,.22)', sep: 'rgba(134,239,172,.16)', out: '#000', a1: '#4ade80', a2: '#fde68a' }, svijetla: { bg: '255,255,255', fg: '#0f172a', bd: 'rgba(15,23,42,.2)', sep: 'rgba(15,23,42,.16)', out: '#fff', a1: '#15803d', a2: '#b45309' },
+  grafit: { bg: '15,23,42', fg: '#e2e8f0', bd: 'rgba(56,189,248,.32)', sep: 'rgba(148,163,184,.2)', out: '#000', a1: '#38bdf8', a2: '#fbbf24' } };
 let _uiPrikaz = { ..._UI_ZAD };
 try { const v = JSON.parse(localStorage.getItem(_UI_KEY) || 'null'); if (v) Object.keys(_UI_ZAD).forEach(k => { if (k in v && typeof v[k] === typeof _UI_ZAD[k]) _uiPrikaz[k] = v[k]; }); } catch (e) {}
 const _uiObris = (v, c) => v === 'tanak' ? `-1px 0 ${c}, 1px 0 ${c}, 0 -1px ${c}, 0 1px ${c}` : v === 'jak' ? `-1.5px -1.5px 0 ${c}, 1.5px -1.5px 0 ${c}, -1.5px 1.5px 0 ${c}, 1.5px 1.5px 0 ${c}, 0 0 5px ${c}` : 'none';
-function _uiPrimijeni() {
-  const r = document.documentElement.style, u = _uiPrikaz;
+// CSS varijable izgleda za dati skup postavki — ista funkcija puni :root (karta) i pregled šablona (svaka kartica svoje).
+function _uiVarovi(u) {
   const t = _UI_TEME[u.tema] || _UI_TEME.tamna;
-  r.setProperty('--ui-bg', t.bg); r.setProperty('--ui-fg', t.fg); r.setProperty('--ui-bd', t.bd); r.setProperty('--ui-sep', t.sep); r.setProperty('--ui-a1', t.a1); r.setProperty('--ui-a2', t.a2); r.setProperty('--ui-blur', u.blur + 'px');
-  r.setProperty('--bdg-a', (u.bdgA / 100).toFixed(2)); r.setProperty('--bdg-fs', u.bdgFs + 'px'); r.setProperty('--bdg-ts', _uiObris(u.bdgOut, t.out));
-  r.setProperty('--btn-r', _UI_OBLIK[u.btnOblik] || '16px'); r.setProperty('--btn-sw', _UI_IK[u.btnIk] || '2');
-  r.setProperty('--btn-a', (u.btnA / 100).toFixed(2)); r.setProperty('--btn-z', (u.btnZ / 100).toFixed(2));
+  return { '--ui-bg': t.bg, '--ui-fg': t.fg, '--ui-bd': t.bd, '--ui-sep': t.sep, '--ui-a1': t.a1, '--ui-a2': t.a2, '--ui-blur': u.blur + 'px',
+    '--bdg-a': (u.bdgA / 100).toFixed(2), '--bdg-fs': u.bdgFs + 'px', '--bdg-ts': _uiObris(u.bdgOut, t.out),
+    '--btn-r': _UI_OBLIK[u.btnOblik] || '16px', '--btn-sw': _UI_IK[u.btnIk] || '2', '--btn-a': (u.btnA / 100).toFixed(2), '--btn-z': (u.btnZ / 100).toFixed(2) };
+}
+function _uiPrimijeni() {
+  const r = document.documentElement.style;
+  Object.entries(_uiVarovi(_uiPrikaz)).forEach(([k, v]) => r.setProperty(k, v));
   _geoBadgeRender();
+}
+// Šabloni izgleda: polazište koje korisnik dalje podešava klizačima. Koordinatni sistem i dijelovi badge-a ostaju korisnikovi.
+const _UI_SABLONI = {
+  zadano: { naz: 'Šumski', opis: 'Zadani — tamno zeleno staklo', ik: '🌲', v: { tema: 'tamna', bdgA: 55, bdgFs: 11, bdgOut: 'tanak', blur: 0, btnA: 86, btnZ: 100, btnOblik: 'zaobljeno', btnIk: 'normalne' } },
+  teren: { naz: 'Teren', opis: 'Jarko sunce — svijetlo, veliko, jak obris', ik: '☀', v: { tema: 'svijetla', bdgA: 92, bdgFs: 13, bdgOut: 'jak', blur: 0, btnA: 96, btnZ: 115, btnOblik: 'okruglo', btnIk: 'podebljane' } },
+  minimal: { naz: 'Minimal', opis: 'Karta u prvom planu — providno, sitnije', ik: '◌', v: { tema: 'tamna', bdgA: 25, bdgFs: 10, bdgOut: 'tanak', blur: 0, btnA: 55, btnZ: 90, btnOblik: 'ostro', btnIk: 'tanke' } },
+  grafit: { naz: 'Grafit', opis: 'Pro — tamni grafit, plavi akcent, staklo', ik: '◆', v: { tema: 'grafit', bdgA: 78, bdgFs: 11, bdgOut: 'isklj', blur: 8, btnA: 88, btnZ: 100, btnOblik: 'zaobljeno', btnIk: 'normalne' } }
+};
+const _uiSablonAktivan = () => Object.keys(_UI_SABLONI).find(k => Object.entries(_UI_SABLONI[k].v).every(([p, x]) => _uiPrikaz[p] === x)) || null;
+function _uiSablon(k) {
+  const sb = _UI_SABLONI[k]; if (!sb) return;
+  _uiPrikaz = { ..._uiPrikaz, ...sb.v };
+  try { localStorage.setItem(_UI_KEY, JSON.stringify(_uiPrikaz)); } catch (e) {}
+  _uiPrimijeni(); _setUiUi(); showToast(sb.ik + ' Šablon „' + sb.naz + '” — klizačima ga dalje podesi po svom');
+}
+// Mala scena karte (teren, izohipse, koordinate, 🗂, zoom, alati, lokacija) — za glavni pregled i kartice šablona.
+function _uiScena(u, mala) {
+  const vars = Object.entries(_uiVarovi(u)).map(([k, v]) => k + ':' + v).join(';');
+  const ik = d => `<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+  return `<div class="ui-scena${mala ? ' mala' : ''}" style="${vars}">
+    <svg class="ui-sc-teren" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-10 92 C30 70 60 98 100 76 S170 50 210 66" /><path d="M-10 70 C40 50 70 74 110 54 S170 30 210 44"/><path d="M-10 48 C40 30 80 50 120 32 S180 14 210 22"/><path class="p" d="M20 112 C50 90 90 104 120 84 S170 70 196 58"/></svg>
+    <div class="ui-bdg ui-sc-bdg">${_geoBadgeHtml('812 m', [44.5, 17.0])}</div>
+    <div class="map-ctl ui-sc-sloj">🗂</div>
+    <div class="map-ctl ui-sc-zoom"><span>${ik('M12 5v14M5 12h14')}</span><span>${ik('M5 12h14')}</span></div>
+    <div class="map-ctl ui-sc-fab"><span>${ik('M3.5 16.5 16.5 3.5l4 4-13 13z')}</span><span>${ik('M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z')}</span></div>
+    <div class="map-ctl ui-sc-loc"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div>
+  </div>`;
 }
 const _geoBadgeLast = { elev: '…', ll: null };
 function _geoBadgeHtml(elev, ll) {
@@ -12258,7 +12318,10 @@ function _setUiUi() {
   document.querySelectorAll('#ui-tema button').forEach(b => b.classList.toggle('on', b.dataset.v === u.tema));
   document.querySelectorAll('#ui-btnOblik button').forEach(b => b.classList.toggle('on', b.dataset.v === u.btnOblik));
   document.querySelectorAll('#ui-btnIk button').forEach(b => b.classList.toggle('on', b.dataset.v === u.btnIk));
-  const pb = document.getElementById('ui-pr-badge'); if (pb) pb.innerHTML = _geoBadgeHtml('812 m', [44.5, 17.0]); set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
+  const pr = document.getElementById('ui-pregled'); if (pr) pr.innerHTML = _uiScena(u);
+  const akt = _uiSablonAktivan(), sb = document.getElementById('ui-sabloni');
+  if (sb) sb.innerHTML = Object.entries(_UI_SABLONI).map(([k, x]) => `<button class="ui-sab${akt === k ? ' on' : ''}" onclick="_uiSablon('${k}')">${_uiScena({ ...u, ...x.v }, true)}<span class="ui-sab-t"><b>${x.ik} ${x.naz}</b>${akt === k ? '<i>✓ aktivno</i>' : ''}<small>${x.opis}</small></span></button>`).join('');
+  const st = document.getElementById('ui-sab-stanje'); if (st) st.textContent = akt ? 'Šablon: ' + _UI_SABLONI[akt].naz : 'Prilagođeno — tvoja podešavanja'; set('ui-bdgFs', u.bdgFs, u.bdgFs + ' px'); set('ui-btnA', u.btnA, u.btnA + ' %'); set('ui-btnZ', u.btnZ, u.btnZ + ' %');
   document.querySelectorAll('#ui-koord button').forEach(b => b.classList.toggle('on', b.dataset.v === u.koord));
   document.querySelectorAll('#ui-bdgOut button').forEach(b => b.classList.toggle('on', b.dataset.v === u.bdgOut));
   ['bdgElev', 'bdgMgi', 'bdgRz'].forEach(k => document.getElementById('ui-' + k)?.classList.toggle('on', !!u[k]));
