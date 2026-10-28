@@ -1734,6 +1734,9 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 #rec-bar #rb-vrijeme { margin-left:auto; font-size:14px; color:var(--pn-txt); }
 #rec-bar #rb-go, #rec-bar #rb-tacka { width:34px; height:34px; }
 #rec-bar .rb-akc button { min-height:38px; border-radius:11px; font-size:13px; }
+/* v3.0.6: 📷 Slika je u donjem redu (Pauza · Slika · Završi) */
+#rec-bar .rb-akc { grid-template-columns:1fr 1fr 1.2fr; }
+#rec-bar .rb-akc #rb-tacka { width:auto; height:auto; min-height:38px; padding:0 6px; display:flex; align-items:center; justify-content:center; font-size:13px; white-space:nowrap; }
 .tk-mk { position: relative; width: 34px; height: 34px; border-radius: 50% 50% 50% 4px; transform: rotate(-45deg); background: var(--c); border: 2.5px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.5); display: grid; place-items: center; }
 .tk-mk span { transform: rotate(45deg); font-size: 15px; line-height: 1; }
 .tk-mk b { position: absolute; top: -6px; right: -6px; transform: rotate(45deg); min-width: 17px; height: 17px; padding: 0 3px; border-radius: 9px; background: #0b1220; color: #fff; border: 1.5px solid #fff; font: 800 10px/14px 'DM Sans', Arial, sans-serif; text-align: center; box-sizing: border-box; }
@@ -2256,8 +2259,8 @@ body.sl-uredi #sl-ured { display: block; }
 
 <!-- Traka aktivnog snimanja traga -->
 <div id="rec-bar" role="status" aria-live="polite">
-  <div class="rb-top"><span id="rb-dot"></span><span class="rb-lbl" id="rb-lbl">Snimanje traga</span><span class="rb-m"><b id="rb-vrijeme">0:00</b></span><span class="rb-m"><b id="rb-duz">0 m</b></span><span class="rb-m"><b id="rb-acc">—</b></span><button id="rb-tacka" onclick="USFTacke.naGps(true)" aria-label="Fotografija / tačka na trenutnoj poziciji">📷</button><button id="rb-go" onclick="_recBarGo()" aria-label="Centriraj na moju poziciju">🎯</button></div>
-  <div class="rb-akc"><button id="rb-pauza" onclick="togTragPause()"><span id="rb-pauza-txt">⏸ Pauza</span></button><button id="rb-kraj" onclick="fabSnimTrag()">⏹ Završi i sačuvaj</button></div>
+  <div class="rb-top"><span id="rb-dot"></span><span class="rb-lbl" id="rb-lbl">Snimanje traga</span><span class="rb-m"><b id="rb-vrijeme">0:00</b></span><span class="rb-m"><b id="rb-duz">0 m</b></span><span class="rb-m"><b id="rb-acc">—</b></span><button id="rb-go" onclick="_recBarGo()" aria-label="Centriraj na moju poziciju">🎯</button></div>
+  <div class="rb-akc"><button id="rb-pauza" onclick="togTragPause()"><span id="rb-pauza-txt">⏸ Pauza</span></button><button id="rb-tacka" onclick="USFTacke.naGps(true)" aria-label="Fotografija na trenutnoj poziciji">📷 Slika</button><button id="rb-kraj" onclick="fabSnimTrag()">⏹ Završi</button></div>
 </div>
 
 
