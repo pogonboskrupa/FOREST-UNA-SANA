@@ -171,7 +171,6 @@ t('dijalozi i modali su tamni, u istom stilu', () => {
   const v2 = HTML.slice(HTML.indexOf('<style id="ui-v2">'));
   assert.ok(/#dlg-sheet \{[^}]*\}/.test(v2) && /#dlg-input \{ background: var\(--pn-bg-2\)/.test(v2));
   assert.ok(v2.includes('#profil-box, #tem-table-box, #poz-sim-box { background: var(--pn-bg)'));
-  assert.ok(HTML.includes('<div id="gstab-card"'), 'GPS stabilizacija bez inline stilova');
 });
 t('meni kartice nemaju oznake "Osnovno spremno"/"Spremno"', () => {
   assert.ok(!/mc-badge/.test(HTML), 'oznake statusa su uklonjene iz menija');

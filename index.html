@@ -1725,6 +1725,15 @@ body.pop-open #loc-center-dot, body.pop-open #loc-dist-badge { display: none !im
 
 /* ═══ Terenske tačke ═══ */
 #rec-bar #rb-tacka { flex: none; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 11px; background: rgba(245,158,11,.18); border: 1px solid rgba(245,158,11,.45); color: #fde68a; font-size: 16px; }
+/* Traka snimanja — niža (v3.0.5): vrijeme, dužina i GPS tačnost u jednom redu s oznakom i dugmadima; bez broja tačaka */
+#rec-bar { gap:6px; padding:8px 10px 10px; }
+#rec-bar .rb-top { gap:6px; }
+#rec-bar .rb-lbl { font-size:10px; letter-spacing:.6px; white-space:nowrap; }
+#rec-bar .rb-m { padding:3px 7px; border-radius:9px; background:var(--pn-bg-2); }
+#rec-bar .rb-m b { display:block; font-size:14px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+#rec-bar #rb-vrijeme { margin-left:auto; font-size:14px; color:var(--pn-txt); }
+#rec-bar #rb-go, #rec-bar #rb-tacka { width:34px; height:34px; }
+#rec-bar .rb-akc button { min-height:38px; border-radius:11px; font-size:13px; }
 .tk-mk { position: relative; width: 34px; height: 34px; border-radius: 50% 50% 50% 4px; transform: rotate(-45deg); background: var(--c); border: 2.5px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.5); display: grid; place-items: center; }
 .tk-mk span { transform: rotate(45deg); font-size: 15px; line-height: 1; }
 .tk-mk b { position: absolute; top: -6px; right: -6px; transform: rotate(45deg); min-width: 17px; height: 17px; padding: 0 3px; border-radius: 9px; background: #0b1220; color: #fff; border: 1.5px solid #fff; font: 800 10px/14px 'DM Sans', Arial, sans-serif; text-align: center; box-sizing: border-box; }
@@ -2247,10 +2256,10 @@ body.sl-uredi #sl-ured { display: block; }
 
 <!-- Traka aktivnog snimanja traga -->
 <div id="rec-bar" role="status" aria-live="polite">
-  <div class="rb-top"><span id="rb-dot"></span><span class="rb-lbl" id="rb-lbl">Snimanje traga</span><b id="rb-vrijeme">0:00</b><button id="rb-tacka" onclick="USFTacke.naGps(true)" aria-label="Fotografija / tačka na trenutnoj poziciji">📷</button><button id="rb-go" onclick="_recBarGo()" aria-label="Centriraj na moju poziciju">🎯</button></div>
-  <div class="rb-stat"><div><b id="rb-duz">0 m</b><span>dužina</span></div><div><b id="rb-info">0</b><span>tačaka</span></div><div><b id="rb-acc">—</b><span>GPS tačnost</span></div></div>
+  <div class="rb-top"><span id="rb-dot"></span><span class="rb-lbl" id="rb-lbl">Snimanje traga</span><span class="rb-m"><b id="rb-vrijeme">0:00</b></span><span class="rb-m"><b id="rb-duz">0 m</b></span><span class="rb-m"><b id="rb-acc">—</b></span><button id="rb-tacka" onclick="USFTacke.naGps(true)" aria-label="Fotografija / tačka na trenutnoj poziciji">📷</button><button id="rb-go" onclick="_recBarGo()" aria-label="Centriraj na moju poziciju">🎯</button></div>
   <div class="rb-akc"><button id="rb-pauza" onclick="togTragPause()"><span id="rb-pauza-txt">⏸ Pauza</span></button><button id="rb-kraj" onclick="fabSnimTrag()">⏹ Završi i sačuvaj</button></div>
 </div>
+
 
 <!-- Upozorenje: app u pozadini (samo iOS/web, APK ima foreground servis) -->
 <div id="bg-warning" style="display:none;position:fixed;top:0;left:0;right:0;z-index:950;background:#7f1d1d;color:#fecaca;font-size:12px;text-align:center;padding:6px 8px;padding-top:calc(6px + env(safe-area-inset-top));">
@@ -4016,61 +4025,34 @@ function _clearRadiusRings() { _radiusCircles.forEach(l => map.removeLayer(l)); 
 // nekoliko fikseva skače tamo-vamo. Snimanje ne počinje dok se ne skupi
 // nekoliko uzastopnih fikseva dovoljno tačnih i skupljenih oko iste tačke.
 const GPS_STAB_ACC = 12, GPS_STAB_SPREAD = 6, GPS_STAB_NEED = 4, GPS_STAB_FORCE_MS = 9000;
-let _gpsStabActive = false, _gpsStabCb = null, _gpsStabWasOn = false, _gpsStabBeginFn = null;
+let _gpsStabActive = false, _gpsStabCb = null, _gpsStabWasOn = false, _gpsStabTimer = null;
+// Tačke starije od ovog trenutka se odbacuju (_addTragPoint, i za native bafer) — Infinity dok signal „luta”.
+let _tragOdT = 0;
+// „Ispod radara”: snimanje (traka, timer, GPS) kreće ODMAH, bez prozora i čekanja. Dok se signal ne smiri
+// (4 uzastopna fiksa ≤ 12 m, lutanje ≤ 6 m — ili najkasnije 9 s) tačke se tiho odbacuju, pa trag ne počinje „zvjezdicom”.
 function _gpsStabilizeGate(beginFn) {
   if (_gpsStabActive) return;
   if (!navigator.geolocation) { beginFn(); return; }
-  _gpsStabActive = true; _gpsStabBeginFn = beginFn; _gpsStabWasOn = gpsOn;
+  _gpsStabActive = true; _gpsStabWasOn = gpsOn; _tragOdT = Infinity;
   if (!gpsOn) startGPS();
   const buf = [];
-  _buildGpsStabOverlay();
   _gpsStabCb = (la, lo, ac) => {
-    buf.push({ la, lo, ac });
+    buf.push({ la, lo, ac, t: Date.now() });
     while (buf.length > GPS_STAB_NEED) buf.shift();
     const cLa = buf.reduce((s, p) => s + p.la, 0) / buf.length;
     const cLo = buf.reduce((s, p) => s + p.lo, 0) / buf.length;
     const spread = buf.length >= 2 ? Math.max(...buf.map(p => dst(cLa, cLo, p.la, p.lo))) : null;
-    const ready = buf.length >= GPS_STAB_NEED && ac <= GPS_STAB_ACC && spread != null && spread <= GPS_STAB_SPREAD;
-    _updGpsStabOverlay(ac, spread, buf.length, ready);
-    if (ready) _gpsStabFinish(true);
+    if (buf.length >= GPS_STAB_NEED && ac <= GPS_STAB_ACC && spread != null && spread <= GPS_STAB_SPREAD) _gpsStabFinish(buf[0].t);
   };
-  setTimeout(() => { const f = document.getElementById('gstab-force'); if (f && _gpsStabActive) f.style.display = ''; }, GPS_STAB_FORCE_MS);
+  _gpsStabTimer = setTimeout(() => _gpsStabFinish(Date.now() - 1500), GPS_STAB_FORCE_MS);
+  Promise.resolve(beginFn()).catch(() => {}).then(() => { if (!_tragOn) _gpsStabFinish(0); });
 }
-function _gpsStabFinish(ok) {
+function _gpsStabFinish(odT) {
   if (!_gpsStabActive) return;
-  _gpsStabActive = false; _gpsStabCb = null;
-  const ov = document.getElementById('gstab-overlay'); if (ov) ov.remove();
-  const fn = _gpsStabBeginFn; _gpsStabBeginFn = null;
-  if (ok) { if (fn) fn(); } else if (!_gpsStabWasOn) stopGPS();
-}
-function _gpsStabForce() { showToast('▶ Započeto uz nestabilan signal'); _gpsStabFinish(true); }
-function _gpsStabCancel() { _gpsStabFinish(false); showToast('✕ Snimanje otkazano'); }
-function _buildGpsStabOverlay() {
-  if (document.getElementById('gstab-overlay')) return;
-  const d = document.createElement('div');
-  d.id = 'gstab-overlay';
-  d.innerHTML = `
-    <div id="gstab-card" role="dialog" aria-label="Stabilizacija GPS signala">
-      <div class="gs-spin"></div>
-      <h3>📡 Stabiliziram GPS signal…</h3>
-      <p>Sačekaj da signal prestane lutati — snimanje počinje čim se smiri.</p>
-      <div class="gs-met">
-        <div class="gstab-m"><span>Tačnost</span><b id="gstab-acc" style="color:#6b8577;">—</b></div>
-        <div class="gstab-m"><span>Lutanje</span><b id="gstab-spr" style="color:#6b8577;">—</b></div>
-        <div class="gstab-m"><span>Fiksevi</span><b id="gstab-cnt" style="color:#6b8577;">0/${GPS_STAB_NEED}</b></div>
-      </div>
-      <div class="gs-akc">
-        <button class="gs-odustani" onclick="_gpsStabCancel()">Odustani</button>
-        <button id="gstab-force" onclick="_gpsStabForce()" style="display:none;">Započni svejedno</button>
-      </div>
-    </div>`;
-  document.body.appendChild(d);
-}
-function _updGpsStabOverlay(ac, spread, n, ready) {
-  const accEl = document.getElementById('gstab-acc'), sprEl = document.getElementById('gstab-spr'), cntEl = document.getElementById('gstab-cnt');
-  if (accEl) { accEl.textContent = `±${Math.round(ac)}m`; accEl.style.color = ac <= 8 ? '#4ade80' : ac <= GPS_STAB_ACC ? '#fbbf24' : '#f87171'; }
-  if (sprEl) { sprEl.textContent = spread == null ? '—' : `${spread.toFixed(1)}m`; sprEl.style.color = spread == null ? '#475569' : spread <= GPS_STAB_SPREAD ? '#4ade80' : '#f87171'; }
-  if (cntEl) { cntEl.textContent = `${Math.min(n, GPS_STAB_NEED)}/${GPS_STAB_NEED}`; cntEl.style.color = ready ? '#4ade80' : '#e2e8f0'; }
+  _gpsStabActive = false; _gpsStabCb = null; clearTimeout(_gpsStabTimer); _gpsStabTimer = null;
+  _tragOdT = odT || 0;
+  if (!_tragOn && !_gpsStabWasOn) stopGPS();
+  _updRecBarUI();
 }
 
 function dst(la1,lo1,la2,lo2){const R=6371000,a=Math.sin((la2-la1)*Math.PI/360)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin((lo2-lo1)*Math.PI/360)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
@@ -4143,6 +4125,7 @@ function _addTragPoint(la, lo, ac, al, sp, nowOverride) {
   if (!_tragOn || _tragPaused) return;
   if (ac > _tragAcMax) return; // prag GPS tačnosti (Postavke → Snimanje traga, zadano 50 m)
   const now = nowOverride || Date.now();
+  if (now < _tragOdT) return; // signal se još smiruje (_gpsStabilizeGate)
   _tragPrekidBiljezi(now);
 
   // Median filtar od 3 fiksa — biramo STVARNI fix najbliži centroidu (median
@@ -4196,6 +4179,7 @@ function _tragLiveClear() { if (_tragLiveSeg) { map.removeLayer(_tragLiveSeg); _
 
 async function fabSnimTrag() {
   if (_tragOn) {
+    _gpsStabFinish(0);
     if (typeof AndroidGps !== 'undefined' && AndroidGps.setPaused) AndroidGps.setPaused(true);
     if (await _drainNativeGpsBuffer() === false) { showToast('⚠ Trag još nije sigurno spremljen — oslobodi prostor i pokušaj ponovo'); return; }
     _tragOn = false; _tragPaused = false;
@@ -4295,8 +4279,7 @@ function _updRecBarUI() {
   document.documentElement.style.setProperty('--rec-h', (bar.offsetHeight + 10) + 'px');
   bar.classList.toggle('paused', _tragPaused);
   const txt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  txt('rb-lbl', _tragPaused ? 'Pauzirano' : 'Snimanje traga');
-  txt('rb-info', String(_tragPts.length));
+  txt('rb-lbl', _tragPaused ? 'Pauzirano' : _gpsStabActive ? 'Hvatam GPS…' : 'Snimanje traga');
   txt('rb-duz', _tragFmtLen(_tragDuzina()));
   txt('rb-pauza-txt', _tragPaused ? '▶ Nastavi' : '⏸ Pauza');
   const acc = document.getElementById('rb-acc'), ac = lastP && Number.isFinite(lastP.ac) ? Math.round(lastP.ac) : null;
