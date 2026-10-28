@@ -1394,7 +1394,7 @@ body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /
 #ab-loc-popup .loc-toggle-item:has(.loc-switch.on) span { color:#bbf7d0; }
 #ab-loc-popup .loc-btn { border-radius:13px; }
 /* Alati u Mojoj lokaciji (v3.0.3): mjerenja / tragovi / tačka u jednom redu umjesto stuba na karti */
-#ab-loc-popup .loc-alati { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px; }
+#ab-loc-popup .loc-alati { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:14px -2px 0; padding-top:12px; border-top:1px solid var(--pn-line, rgba(134,239,172,.25)); }
 #ab-loc-popup .loc-alati button { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px 8px; border-radius:13px; border:1px solid var(--pn-line, rgba(134,239,172,.2)); background:var(--pn-bg-2, rgba(255,255,255,.05)); color:#d5e6dc; font:700 11.5px 'DM Sans',Arial,sans-serif; cursor:pointer; }
 #ab-loc-popup .loc-alati button svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:var(--btn-sw,2); stroke-linecap:round; stroke-linejoin:round; }
 #ab-loc-popup .loc-alati button:active { transform:scale(.96); background:rgba(74,222,128,.16); }
@@ -2233,16 +2233,16 @@ body.sl-uredi #sl-ured { display: block; }
     <div class="loc-toggle-item"><span>🧭 Kompas</span><div class="loc-switch" id="compass-switch" onclick="_togCompassSwitch()"></div></div>
     <div class="loc-toggle-item"><span>◎ Radijus</span><div class="loc-switch" id="radius-switch" onclick="_togRadiusRings()"></div></div>
   </div>
-  <div class="loc-alati">
-    <button id="ab-msr" onclick="_toggleLocPopup();_toggleMsrPanel()" title="Mjerenja"><svg viewBox="0 0 24 24"><path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></svg><span>Mjerenja</span></button>
-    <button id="ab-tragovi" onclick="_toggleLocPopup();openTragoviPanel()" title="Tragovi"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg><span>Tragovi</span></button>
-    <button id="ab-tacka" onclick="_toggleLocPopup();USFTacke.dodaj()" title="Nova terenska tačka / fotografija"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg><span>Tačka</span></button>
-  </div>
   <div class="loc-btn-row">
     <button class="loc-btn loc-btn-primary" onclick="_locPopupCentriraj()">🎯 Centriraj</button>
     <button class="loc-btn" id="ab-loc-trag" onclick="_locPopupSnimiTrag()"><span id="ab-loc-trag-txt">Snimi trag</span></button>
   </div>
   <div class="loc-btn-row" style="margin-top:6px"><button class="loc-btn loc-btn-sek" onclick="_toggleLocPopup();USFTacke.naGps(true)">📷 Slikaj ovdje</button><button class="loc-btn loc-btn-sek" onclick="_toggleLocPopup();USFTacke.naGps(false)">📍 Tačka ovdje</button></div>
+  <div class="loc-alati">
+    <button id="ab-msr" onclick="_toggleLocPopup();_toggleMsrPanel()" title="Mjerenja"><svg viewBox="0 0 24 24"><path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></svg><span>Mjerenja</span></button>
+    <button id="ab-tragovi" onclick="_toggleLocPopup();openTragoviPanel()" title="Tragovi"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg><span>Tragovi</span></button>
+    <button id="ab-tacka" onclick="_toggleLocPopup();USFTacke.dodaj()" title="Nova terenska tačka / fotografija"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg><span>Tačka</span></button>
+  </div>
 </div>
 
 <!-- Traka aktivnog snimanja traga -->
