@@ -10,5 +10,12 @@
   "naziv": "Karta 2010:2020",
   "opis": "server · ŠPD UNSKO SANSKE ŠUME (starija verzija 2010:2020)",
   "url": "https://github.com/pogonboskrupa/KARTE/releases/download/stara_verzija/SPD.UNSKO.SANSKE.SUME.KARTA.sqlitedb"
+ },
+ {
+  "id": "gh_unsko_2026_10",
+  "naziv": "Karta UNSKO 29.10.2026",
+  "opis": "server · ŠPD UNSKO SANSKE ŠUME (z12–16, nova verzija)",
+  "mb": 1547,
+  "url": "https://github.com/pogonboskrupa/KARTE/releases/download/29.10.2026_UNSKO/KARTA_APP_v5_z12-16_q95.mbtiles"
  }
 ]
