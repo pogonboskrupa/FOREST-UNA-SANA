@@ -262,6 +262,25 @@ function rdFindRoute(opts) {
       let penalty = 1;
       if (slopePct > params.nagibPreporuceni*1.5) penalty = 3.5;
       else if (slopePct > params.nagibPreporuceni) penalty = 1.8;
+      // Ravnomjeran pad: i blago odstupanje ISPOD preporučenog se plaća (nikad se ne gradi naizmjenično
+      // 1 % pa 8 %), a ispod nagibMin (odvodnjavanje) nešto više.
+      else if (slopePct < params.nagibMin) penalty = 1.25;
+      else penalty += 0.25 * Math.abs(slopePct - params.nagibPreporuceni) / Math.max(1, params.nagibPreporuceni);
+
+      // Poprečni nagib i oblik terena u kandidat-tački (±15 m okomito na pravac): preko poprecniNagibMax
+      // je usjek preskup/nestabilan ⇒ TVRDO odbačeno; jarci i grebeni (jaka zakrivljenost) se plaćaju.
+      const pa = rdDestPoint(cand.lat, cand.lon, (az + 90) % 360, 15), pb = rdDestPoint(cand.lat, cand.lon, (az + 270) % 360, 15);
+      const eA = sampleElev(pa.lat, pa.lon), eB = sampleElev(pb.lat, pb.lon);
+      if (eA != null && eB != null) {
+        const poprecni = Math.abs(eA - eB) / 30 * 100;
+        if (poprecni > params.poprecniNagibMax) continue;
+        if (poprecni > params.poprecniNagibMax * 0.7) penalty *= 1.3;
+        const zakr = Math.abs(eA + eB - 2 * candElev);
+        if (zakr > 6) penalty *= 1.5; else if (zakr > 3) penalty *= 1.2;
+      }
+      // Blaga linearna kazna za skretanje u odnosu na prethodni korak (kvadratna je pokvarila pretragu —
+      // vidi napomenu ispod): krivulja već u pretrazi, ne samo naknadno zaglađena.
+      penalty *= 1 + turnDiff / 1200;
       const angPenalty = 1 + Math.abs(off)/400; // blaga kazna za skretanje, da ne luta bez potrebe
 
       // NAPOMENA (regresija otkrivena i uklonjena poslije v3.95.1): ovdje je

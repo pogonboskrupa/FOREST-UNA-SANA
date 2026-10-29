@@ -280,6 +280,10 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .rd-tacka small { display:block; color:#80958a; font-size:10.5px; line-height:1.35; word-break:break-word; }
 .rd-tacka button { padding:7px 8px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:11.5px; cursor:pointer; white-space:nowrap; }
 .rd-tacka button.brisi { color:#f87171; border-color:#7f1d1d; }
+.rd-var { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:6px; margin:4px 0 10px; }
+.rd-var button { text-align:left; padding:8px 9px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
+.rd-var button.on { border-color:#4ade80; background:#0f2a1b; box-shadow:0 0 0 1px #4ade80 inset; }
+.rd-var small { display:block; color:#80958a; font-size:10px; margin-top:2px; }
 .rd-kreiraj { width:100%; margin:0 0 10px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:13px; font-size:15px; }
 .rd-kreiraj small { font-size:10.5px; font-weight:500; opacity:.85; }
 .rd-prof { width:100%; height:auto; display:block; background:#0b1220; border:1px solid #1f3b2d; border-radius:10px; margin:6px 0 8px; }
@@ -11191,38 +11195,76 @@ function _rdRouteLeg(dem, aLat, aLon, bLat, bLon, params) {
   });
 }
 
+// Tri varijante iste trase (ista pretraga, drugačije težine): uravnotežena (zadani preporučeni nagib), najblaža
+// (niži ciljni nagib ⇒ duža, ravnomjernija) i najkraća (cilj = max nagib ⇒ najmanje dužine, više zemljanih radova).
+const _RD_VARIJANTE = [
+  { k: 'bal', naziv: 'Uravnotežena', ik: '⚖', izm: () => ({}) },
+  { k: 'blaga', naziv: 'Najblaža', ik: '🌿', izm: p => ({ nagibPreporuceni: Math.max(p.nagibMin + 0.5, p.nagibPreporuceni - 1.5) }) },
+  { k: 'kratka', naziv: 'Najkraća', ik: '⚡', izm: p => ({ nagibPreporuceni: p.nagibMax }) }
+];
+let _rdVarijante = [], _rdVarIdx = 0;
+function _rdTraziVarijantu(dem, tacke, ozn, params) {
+  let path = null; const kljucni = [{ ozn: 'A', i: 0 }];
+  for (let k = 0; k < tacke.length - 1; k++) {
+    const res = _rdRouteLeg(dem, tacke[k].lat, tacke[k].lon, tacke[k + 1].lat, tacke[k + 1].lon, params);
+    if (!res.ok) return { greska: res.reason, dionica: tacke.length > 2 ? ozn[k] + '→' + ozn[k + 1] : '' };
+    const gladak = rdZaobli(res.path, _rdSample, params);
+    path = path ? path.concat(gladak.slice(1)) : gladak.slice();
+    kljucni.push({ ozn: ozn[k + 1], i: path.length - 1 });
+  }
+  path._kljucni = kljucni;
+  return { path, val: rdValidateRoute(path, params) };
+}
 function _rdGenerate() {
   const a = _rdPoints.start, b = _rdPoints.end, vias = _rdVias;
   if (_rdNotReadyReason) { showToast('⚠ ' + _rdNotReadyReason); return; }
   if (!a || !b || !_rdDem || a.elev == null || b.elev == null) { showToast('⚠ Postavite obje tačke i sačekajte model terena'); return; }
   if (vias.some(v => v.elev == null)) { showToast('⚠ Sačekajte da se učita visina međutačaka'); return; }
-  const params = _rdCollectParams();
-  const dem = _rdDem;
-  showToast('⏳ Tražim optimalnu trasu…');
+  const params = _rdCollectParams(), dem = _rdDem;
   const serpHint = params.bezSerpentina ? ', isključite "Ne pravi serpentine"' : '';
-  setTimeout(() => {
-    const tacke = [a, ...vias, b], ozn = ['A', ...vias.map((_, i) => _rdViaOzn(i)), 'B'];
-    let path = null; const kljucni = [{ ozn: 'A', i: 0 }];
-    for (let k = 0; k < tacke.length - 1; k++) {
-      const res = _rdRouteLeg(dem, tacke[k].lat, tacke[k].lon, tacke[k + 1].lat, tacke[k + 1].lon, params);
-      if (!res.ok) {
-        const dio = tacke.length > 2 ? ' (dionica ' + ozn[k] + '→' + ozn[k + 1] + ')' : '';
-        showToast(res.reason === 'NO_ROUTE'
-          ? '⚠ Nije moguće naći trasu' + dio + ' — probajte veći maksimalni nagib' + serpHint + ', dodajte međutačku ili pomjerite tačku'
-          : '⚠ Model terena ne pokriva odabrane tačke');
-        return;
-      }
-      const gladak = rdZaobli(res.path, _rdSample, params);
-      path = path ? path.concat(gladak.slice(1)) : gladak.slice();
-      kljucni.push({ ozn: ozn[k + 1], i: path.length - 1 });
+  const tacke = [a, ...vias, b], ozn = ['A', ...vias.map((_, i) => _rdViaOzn(i)), 'B'];
+  const gotove = [];
+  let vi = 0;
+  const korak = () => {
+    if (vi >= _RD_VARIJANTE.length) return kraj();
+    const v = _RD_VARIJANTE[vi++];
+    showToast(`⏳ Tražim trasu: ${v.naziv} (${vi}/${_RD_VARIJANTE.length})…`);
+    setTimeout(() => {
+      const pv = Object.assign({}, params, v.izm(params));
+      const r = _rdTraziVarijantu(dem, tacke, ozn, pv);
+      if (r.path) {
+        // Ista (gotovo identična) trasa kao već nađena se ne nudi dvaput.
+        const dup = gotove.some(g => Math.abs(g.val.totalDist - r.val.totalDist) < 3 && Math.abs(g.val.maxSlopePct - r.val.maxSlopePct) < 0.2);
+        if (!dup) gotove.push({ ...v, path: r.path, val: r.val, params });
+      } else if (v.k === 'bal') gotove.greska = r;
+      korak();
+    }, 30);
+  };
+  const kraj = () => {
+    if (!gotove.length) {
+      const r = gotove.greska || {}, dio = r.dionica ? ' (dionica ' + r.dionica + ')' : '';
+      showToast(r.greska === 'DEM_MISSING' ? '⚠ Model terena ne pokriva odabrane tačke'
+        : '⚠ Nije moguće naći trasu' + dio + ' — probajte veći maksimalni nagib' + serpHint + ', dodajte međutačku ili pomjerite tačku');
+      return;
     }
-    path._kljucni = kljucni;
-    _rdResultPath = path;
-    _rdResultVal = rdValidateRoute(path, params);
-    _rdResultParams = params;
-    _rdShowResult();
+    _rdVarijante = gotove;
+    _rdVarijantaIzaberi(0, true);
     document.getElementById('rd-result')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }, 30);
+  };
+  korak();
+}
+function _rdVarijantaIzaberi(i, bezToasta) {
+  const v = _rdVarijante[i]; if (!v) return;
+  _rdVarIdx = i;
+  _rdResultPath = v.path; _rdResultVal = v.val; _rdResultParams = v.params;
+  _rdShowResult(bezToasta);
+}
+function _rdVarijanteHtml() {
+  if (_rdVarijante.length < 2) return '';
+  return `<div class="rd-var">${_rdVarijante.map((v, i) => {
+    const up = v.path.reduce((s, q, k) => s + (k && q.elev > v.path[k - 1].elev ? q.elev - v.path[k - 1].elev : 0), 0);
+    return `<button class="${i === _rdVarIdx ? 'on' : ''}" onclick="_rdVarijantaIzaberi(${i})"><b>${v.ik} ${v.naziv}</b><small>${_msrFmt(v.val.totalDist)} · max ${v.val.maxSlopePct.toFixed(1)} % · ▲${up.toFixed(0)} m</small></button>`;
+  }).join('')}</div>`;
 }
 
 let _rdCop = null;          // Copernicus DEM (USFDem) — finije visine za poprečni nagib i uređivanje
@@ -11252,6 +11294,7 @@ function _rdCrtajTrasu(path, val, bezStac) {
     // Gustina oznaka po zumu: crtica svakih 100 m, broj rjeđe kad je karta udaljena.
     const z = map.getZoom();
     const korakBroj = z >= 17 ? 100 : z >= 16 ? 200 : z >= 15 ? 500 : 1000, korakCrt = z >= 15 ? 100 : korakBroj;
+    const natpisi = [];
     rdStacionaze(path, korakCrt).forEach(st => {
       const t = rdNaTrasi(path, st.lat, st.lon), az = t ? t.az : 0;
       const broj = st.kraj || Math.round(st.dist) % korakBroj === 0;
@@ -11261,8 +11304,13 @@ function _rdCrtajTrasu(path, val, bezStac) {
         // Broj sa strane trase (okomito), da ne pokriva liniju.
         const r = (az + 90) * Math.PI / 180, dx = Math.sin(r) * 16, dy = -Math.cos(r) * 16;
         const lijevo = dx < 0;
-        L.marker([st.lat, st.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0],
+        // Natpisi koji bi se preklopili (kriva trasa) se izostavljaju; završni natpis ima prednost.
+        const pt = map.latLngToContainerPoint([st.lat, st.lon]);
+        const sudar = natpisi.findIndex(n => Math.abs(n.x - pt.x) < 54 && Math.abs(n.y - pt.y) < 16);
+        if (sudar >= 0) { if (!st.kraj) return; g.removeLayer(natpisi[sudar].m); natpisi.splice(sudar, 1); }
+        const nm = L.marker([st.lat, st.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0],
           html: `<div class="rd-st${Math.round(st.dist) % 1000 === 0 ? ' glavna' : ''}" style="transform:translate(${lijevo ? `calc(-100% + ${dx}px)` : dx + 'px'},calc(-50% + ${dy}px))">${rdStacionazaTxt(st.dist)}</div>` }) }).addTo(g);
+        natpisi.push({ x: pt.x, y: pt.y, m: nm });
       }
     });
   }
@@ -11293,6 +11341,7 @@ function _rdDiscardResult() {
   _rdResultPath = null;
   _rdResultVal = null;
   _rdResultParams = null;
+  _rdVarijante = [];
   const resEl = document.getElementById('rd-result');
   if (resEl) { resEl.style.display = 'none'; resEl.innerHTML = ''; }
 }
@@ -11306,6 +11355,7 @@ function _rdSazetakHtml(path, val, params) {
   const uk = val.totalDist || 1;
   return `${badge}
     <div class="rd-kpi"><div><b>${_msrFmt(val.totalDist)}</b><small>dužina</small></div><div><b>${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m</b><small>visinska razl.</small></div><div><b>${val.maxSlopePct.toFixed(1)} %</b><small>maks. nagib</small></div><div><b>${val.avgSlopePct.toFixed(1)} %</b><small>prosj. nagib</small></div></div>
+    ${(() => { const ravno = val.segments.filter(x => x.slopePct < params.nagibMin).reduce((t, x) => t + x.distM, 0); return ravno > uk * 0.15 ? `<div class="rd-badge warn">💧 ${_msrFmt(ravno)} (${(ravno / uk * 100).toFixed(0)} %) dužine je ispod minimalnog nagiba ${params.nagibMin} % — pazi na odvodnjavanje (poprečni pad, propusti)</div>` : ''; })()}
     <div class="ng-podnaslov">Uzdužni nagib po dužini</div>
     <div class="rd-traka">${['ok', 'warn', 'bad'].map(k => `<i style="width:${(m[k] / uk * 100).toFixed(2)}%;background:${_RD_BOJE[k]}"></i>`).join('')}</div>
     <div class="rd-leg"><span style="--c:${_RD_BOJE.ok}">≤${params.nagibPreporuceni} %: ${_msrFmt(m.ok)}</span><span style="--c:${_RD_BOJE.warn}">do ${params.nagibMax} %: ${_msrFmt(m.warn)}</span>${m.bad ? `<span style="--c:${_RD_BOJE.bad}">>${params.nagibMax} %: ${_msrFmt(m.bad)}</span>` : ''}</div>`;
@@ -11366,7 +11416,7 @@ function _rdPoprecniKlaseHtml(pn) {
     ${pn.poKlasi.map(p => `<div class="rd-pop"><i style="background:${p.k.boja}"></i><span>${p.k.naziv}</span><span class="bar"><u style="width:${(p.m / pn.ukupno * 100).toFixed(1)}%;background:${p.k.boja}"></u></span><span>${_msrFmt(p.m)}</span></div>`).join('')}
     <div class="rd-pop-nap">Prosjek ${pn.sr.toFixed(0)} %, maks. ${pn.max.toFixed(0)} %. ${pn.poKlasi[3].m > 0 ? '⚠ Dionice preko 70 % traže potporne zidove ili pomjeranje trase. ' : ''}${pn.poKlasi[2].m > 0 ? 'Na 50–70 % računaj s punim usjekom.' : ''}</div>`;
 }
-function _rdShowResult() {
+function _rdShowResult(bezToasta) {
   if (_rdResultLayer) map.removeLayer(_rdResultLayer);
   _rdResultLayer = _rdCrtajTrasu(_rdResultPath, _rdResultVal).addTo(map);
   const v = _rdResultVal;
@@ -11374,6 +11424,7 @@ function _rdShowResult() {
   resEl.style.display = 'block';
   resEl.innerHTML = `<section class="ng-card">
     <h3>Rezultat ${_rdResultPath._uredjeno ? '<small style="color:#a78bfa;font-weight:600">· ručno uređeno</small>' : ''}</h3>
+    ${_rdVarijanteHtml()}
     ${_rdSazetakHtml(_rdResultPath, v, _rdResultParams)}
     ${_rdProfilHtml(_rdResultPath, _rdResultParams)}
     ${_rdPoprecniHtml(_rdResultPath)}
@@ -11381,7 +11432,7 @@ function _rdShowResult() {
     <div class="rd-akc"><button onclick="_rdIzvoz('kml')">⤓ KML</button><button onclick="_rdIzvoz('gpx')">⤓ GPX</button><button onclick="_rdIzvoz('csv')">⤓ CSV</button></div>
     <div class="rd-akc"><button class="glavno" onclick="_rdSaveRoute()">💾 Sačuvaj trasu</button><button onclick="_rdDiscardResult()">Odbaci</button></div>
   </section>`;
-  showToast(`✓ Trasa: ${_msrFmt(v.totalDist)}, max nagib ${v.maxSlopePct.toFixed(1)}%`);
+  if (!bezToasta) showToast(`✓ Trasa: ${_msrFmt(v.totalDist)}, max nagib ${v.maxSlopePct.toFixed(1)}%`);
 }
 function _rdStacToggle() { _rdStacOn = !_rdStacOn; if (_rdResultPath) _rdShowResult(); }
 
