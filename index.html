@@ -8599,12 +8599,19 @@ async function _dkUcitaj() {
   try { _dkLista = JSON.parse(localStorage.getItem('usf_karte_lista') || '[]'); } catch(e) { _dkLista = []; }
   return _dkLista;
 }
-// PIN karata se mijenja svaki mjesec: sačuvani ključ važi samo u mjesecu u kojem je PIN unesen. Već preuzete karte
-// ("✓ Na telefonu" / "✓ Učitan") ne traže ništa; PIN treba tek za novo preuzimanje.
-// Važeći šifrat = tekući mjesec, a poslije zadnjeg pripremljenog mjeseca ostaje zadnji (`kljucZa`) — tada PIN više ne ističe.
+// PIN karata se mijenja svaki mjesec, ali se otključava JEDNOM: sačuvani ključ ostaje i u idućim mjesecima. Šifrat u zapisu liste je isti
+// Drive ID šifrovan PIN-om svakog mjeseca — pa se ključ iz mjeseca unosa (`usf_karte_mjesec`) i dalje koristi na šifratu TOG mjeseca (`_dkDesifruj`).
+// Ako tog mjeseca više nema u listi (lista obnovljena), pada na šifrat tekućeg mjeseca; tek ako ni on ne prolazi, traži se novi PIN.
+// Već preuzete karte ("✓ Na telefonu" / "✓ Učitan") ne traže ništa.
 const _dkVazeci = () => { const z = (_dkLista || []).concat(_dkmlLista || [], _dkGh || []).find(x => x.encm); return z ? USFDriveKarte.kljucZa(z) : null; };
-const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc'), v = _dkVazeci(); return k && v && localStorage.getItem('usf_karte_mjesec') === v ? USFDriveKarte.izB64(k) : null; } catch(e) { return null; } };
-const _dkProvjeri = async (kljuc, zapisi) => { const z = zapisi.find(x => USFDriveKarte.encZaMjesec(x)); return !!z && !!await USFDriveKarte.desifruj(kljuc, USFDriveKarte.encZaMjesec(z)); };
+const _dkKljuc = () => { try { const k = localStorage.getItem('usf_karte_kljuc'); return k ? USFDriveKarte.izB64(k) : null; } catch(e) { return null; } };
+async function _dkDesifruj(kljuc, zapis) {
+  let mj = null; try { mj = localStorage.getItem('usf_karte_mjesec'); } catch(e) {}
+  const kand = [mj && zapis.encm && zapis.encm[mj], USFDriveKarte.encZaMjesec(zapis)].filter((x, i, a) => x && a.indexOf(x) === i);
+  for (const e of kand) { const o = await USFDriveKarte.desifruj(kljuc, e); if (o) return o; }
+  return null;
+}
+const _dkProvjeri = async (kljuc, zapisi) => { const z = zapisi.find(x => USFDriveKarte.encZaMjesec(x)); return !!z && !!await _dkDesifruj(kljuc, z); };
 const _dkNaTelefonu = k => (typeof _sqlLayers !== 'undefined') && _sqlLayers.some(x => x.name === k.naziv + '.sqlitedb' || x.name === k.naziv);
 async function _driveKarteRender() {
   const el = document.getElementById('drive-karte'); if (!el || !window.USFDriveKarte) return;
@@ -8653,8 +8660,8 @@ async function _dkPreuzmi(id) {
   const k = (_dkLista || []).concat(_dkGh).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
   if (!kljuc) { _dkOtkljucaj(); return; }
   if (k.url) return _dkGhPreuzmi(k); // GitHub release: javni link, ali isti PIN-om zaštićen izbor kao i Drive karte
-  const o = await USFDriveKarte.desifruj(kljuc, USFDriveKarte.encZaMjesec(k) || '');
-  if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je istekao ili je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
+  const o = await _dkDesifruj(kljuc, k);
+  if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 Sačuvani PIN više ne važi — unesi novi (jednom)'); _dkOtkljucaj(); return; }
   if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmi) { _dkRacunar(o.fileId, 'U Downloads je fajl karte — dodaj ga kroz Karte → Offline karte (velike karte ne staju u preglednik, koristi online podloge).'); return; }
   _dkNapredak[id] = { p: 0 }; _driveKarteRender();
   try { AndroidKarta.preuzmi(id, USFDriveKarte.urlPreuzimanja(o.fileId), k.naziv); }
@@ -8703,8 +8710,8 @@ async function _driveKmlRender() {
 async function _dkmlPreuzmi(id) {
   const k = (_dkmlLista || []).find(x => x.id === id), kljuc = _dkKljuc(); if (!k) return;
   if (!kljuc) { _dkOtkljucaj(); return; }
-  const o = await USFDriveKarte.desifruj(kljuc, USFDriveKarte.encZaMjesec(k) || '');
-  if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 PIN je istekao ili je promijenjen — unesi novi'); _dkOtkljucaj(); return; }
+  const o = await _dkDesifruj(kljuc, k);
+  if (!o || !o.fileId) { try { localStorage.removeItem('usf_karte_kljuc'); } catch(e) {} showToast('🔒 Sačuvani PIN više ne važi — unesi novi (jednom)'); _dkOtkljucaj(); return; }
   if (typeof AndroidKarta === 'undefined' || !AndroidKarta.preuzmiKml) { _dkRacunar(o.fileId, 'U Downloads je fajl — dodaj ga dugmetom „Dodaj KML / KMZ / SHP”.'); return; }
   _dkNapredak[id] = { p: 0 }; _driveKmlRender();
   try { AndroidKarta.preuzmiKml(id, USFDriveKarte.urlPreuzimanja(o.fileId)); }

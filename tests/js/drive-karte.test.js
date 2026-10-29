@@ -59,10 +59,10 @@ t('PIN po mjesecu: šifrat tekućeg mjeseca otvara samo PIN tog mjeseca; stari/i
 t('app: zaseban PIN karata (provjera dešifrovanjem), nativno preuzimanje, provjera SQLite zaglavlja', () => {
   const H = R('index.html'), J = R('android/app/src/main/java/ba/spd/usf/forest/MainActivity.java');
   const fn = ime => { const i = H.indexOf('async function ' + ime + '('); return H.slice(i, H.indexOf('\n}', i)); };
-  assert.ok(fn('_dkOtkljucaj').includes("'usf_karte_greske'") && fn('_dkOtkljucaj').includes('_dkProvjeri(k, l)') && R('index.html').includes('USFDriveKarte.encZaMjesec(z)'), 'PIN karata se provjerava dešifrovanjem šifrata tekućeg mjeseca');
+  assert.ok(fn('_dkOtkljucaj').includes("'usf_karte_greske'") && fn('_dkOtkljucaj').includes('_dkProvjeri(k, l)') && R('index.html').includes('await _dkDesifruj(kljuc, z)'), 'PIN karata se provjerava dešifrovanjem šifrata (mjesec unosa ili tekući)');
   assert.ok(!fn('_pinTrazi').includes('usf_karte') && !fn('_pinTrazi').includes('USFDriveKarte'), 'PIN sekcija ne otključava karte');
   assert.ok(H.includes('const kljuc = _dkKljuc();') && H.includes("localStorage.removeItem('usf_karte_kljuc')"));
-  assert.ok(H.includes('usf_karte_mjesec') && H.includes("localStorage.getItem('usf_karte_mjesec') === v") && H.includes('USFDriveKarte.kljucZa(z)'), 'ključ važi u mjesecu unosa; poslije zadnjeg mjeseca ostaje važeći');
+  assert.ok(H.includes('usf_karte_mjesec') && !H.includes("localStorage.getItem('usf_karte_mjesec') === v") && H.includes('async function _dkDesifruj(') && H.includes('USFDriveKarte.kljucZa(z)'), 'ključ se otključava jednom: ostaje važeći u idućim mjesecima (šifrat mjeseca unosa)');
   assert.ok(H.includes('AndroidKarta.preuzmi(id, USFDriveKarte.urlPreuzimanja(o.fileId), k.naziv)') && H.includes('id="drive-karte"'));
   assert.ok(J.includes('new KartaBridge(), "AndroidKarta"') && J.includes('equals("SQLite format 3")') && J.includes('"Range", "bytes=" + imam + "-"'));
   assert.ok(J.includes('url.startsWith("https://drive.usercontent.google.com/")'), 'most skida samo s Drive-a');
