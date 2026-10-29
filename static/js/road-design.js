@@ -263,8 +263,9 @@ function rdFindRoute(opts) {
       if (params.bezSerpentina && turnDiff > RD_MAX_TURN_NO_SERPENTINE) continue; // TVRDO odbačen — serpentina zabranjena
 
       let penalty = 1;
-      if (slopePct > params.nagibPreporuceni*1.5) penalty = 3.5;
-      else if (slopePct > params.nagibPreporuceni) penalty = 1.8;
+      // Cilj je ravnomjeran PREPORUČENI nagib (kontura), ne najstrmiji dozvoljeni pravac uz padinu: što je nagib
+      // iznad preporučenog, to je kazna veća (kontinualno), pa se isplati zaobići/vijugati po padini.
+      if (slopePct > params.nagibPreporuceni) penalty = 1.8 + 3.2 * Math.min(1, (slopePct - params.nagibPreporuceni) / Math.max(1, nagibMax - params.nagibPreporuceni));
       // Ravnomjeran pad: i blago odstupanje ISPOD preporučenog se plaća (nikad se ne gradi naizmjenično
       // 1 % pa 8 %), a ispod nagibMin (odvodnjavanje) nešto više.
       else if (slopePct < params.nagibMin) penalty = 1.25;

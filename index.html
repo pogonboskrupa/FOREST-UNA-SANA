@@ -11187,12 +11187,16 @@ function _rdIterBudget(straightDistM) { return Math.max(8000, Math.min(150000, M
 // Copernicus 30 m direktno gdje postoji (tačne visine), inače DEM grid trase.
 function _rdSample(lat, lon) { const h = _rdVisina(lat, lon); return Number.isFinite(h) ? h : null; }
 function _rdRouteLeg(dem, aLat, aLon, bLat, bLon, params) {
-  const straightDist = rdHaversine(aLat, aLon, bLat, bLon);
-  return rdFindRoute({
-    startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon,
-    sampleElev: _rdSample,
-    params, maxIterations: _rdIterBudget(straightDist)
-  });
+  const straightDist = rdHaversine(aLat, aLon, bLat, bLon), b = _rdIterBudget(straightDist);
+  // Prvo skoro-optimalna pretraga (hW 1,15 — prati konture i drži preporučeni nagib); samo ako ne uspije
+  // u pola budžeta, grublja i brža (hW 1,8) s većim budžetom — trasa je tada manje „fina”, ali postoji.
+  let r = null;
+  for (const [hW, f] of [[1.15, 0.5], [1.8, 1.2]]) {
+    r = rdFindRoute({ startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon, sampleElev: _rdSample, params,
+      maxIterations: Math.round(b * f), heuristikaTezina: hW });
+    if (r.ok || r.reason === 'DEM_MISSING') break;
+  }
+  return r;
 }
 
 // Tri varijante iste trase (ista pretraga, drugačije težine): uravnotežena (zadani preporučeni nagib), najblaža
