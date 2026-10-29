@@ -11219,12 +11219,24 @@ function _rdIterBudget(straightDistM) { return Math.max(6000, Math.min(100000, M
 
 // Copernicus 30 m direktno gdje postoji (tačne visine), inače DEM grid trase.
 function _rdSample(lat, lon) { const h = _rdVisina(lat, lon); return Number.isFinite(h) ? h : null; }
+// Najkraća moguća dužina puta za visinsku razliku pri max nagibu (ravna linija ne postoji — trasa mora imati
+// bar toliko): ΔH / nagib. Ako je to blizu ili iznad `duzinaMax`, pretraga bi ODBACIVALA sve grane (predugo),
+// pa se limit za tu dionicu podigne na 2,2× minimum, a budžet koraka srazmjerno (do 600 k).
+function _rdMinDuzina(aLat, aLon, bLat, bLon, params) {
+  const ha = _rdSample(aLat, aLon), hb = _rdSample(bLat, bLon);
+  return Number.isFinite(ha) && Number.isFinite(hb) ? Math.abs(hb - ha) / (params.nagibMax / 100) : 0;
+}
 function _rdRouteLeg(dem, aLat, aLon, bLat, bLon, params) {
-  const straightDist = rdHaversine(aLat, aLon, bLat, bLon), b = _rdIterBudget(straightDist);
-  const trazi = (it, stat) => rdFindRoute({ startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon, sampleElev: _rdSample, params, maxIterations: it, stat });
+  const straightDist = rdHaversine(aLat, aLon, bLat, bLon), minLen = _rdMinDuzina(aLat, aLon, bLat, bLon, params);
+  const eff = Math.min(40000, Math.max(params.duzinaMax, minLen * 2.2));
+  const p2 = eff > params.duzinaMax ? Object.assign({}, params, { duzinaMax: eff }) : params;
+  const b = Math.min(600000, Math.max(_rdIterBudget(straightDist), Math.round(Math.max(eff, minLen * 2.2) * 40)));
+  const trazi = (it, stat) => rdFindRoute({ startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon, sampleElev: _rdSample, params: p2, maxIterations: it, stat });
   // Ista pretraga; ako je stala jer je ISCRPLJEN budžet koraka (ne jer put ne postoji), jednom se ponovi s trostrukim.
-  const st = {}, r = trazi(b, st);
-  if (!r.ok && r.reason === 'NO_ROUTE' && st.iscrpljen) return trazi(b * 3);
+  const st = {};
+  let r = trazi(b, st);
+  if (!r.ok && r.reason === 'NO_ROUTE' && st.iscrpljen) r = trazi(Math.min(900000, b * 2));
+  if (!r.ok) { r.minLen = minLen; r.dH = minLen * params.nagibMax / 100; }
   return r;
 }
 
@@ -11253,7 +11265,7 @@ function _rdTraziStrogo(dem, tacke, ozn, params) {
   let path = null; const kljucni = [{ ozn: 'A', i: 0 }];
   for (let k = 0; k < tacke.length - 1; k++) {
     const res = _rdRouteLeg(dem, tacke[k].lat, tacke[k].lon, tacke[k + 1].lat, tacke[k + 1].lon, params);
-    if (!res.ok) return { greska: res.reason, dionica: tacke.length > 2 ? ozn[k] + '→' + ozn[k + 1] : '' };
+    if (!res.ok) return { greska: res.reason, dionica: tacke.length > 2 ? ozn[k] + '→' + ozn[k + 1] : '', minLen: res.minLen, dH: res.dH };
     const gladak = rdZaobli(res.path, _rdSample, params);
     path = path ? path.concat(gladak.slice(1)) : gladak.slice();
     kljucni.push({ ozn: ozn[k + 1], i: path.length - 1 });
@@ -11327,8 +11339,11 @@ async function _rdDebugPokreni() {
       for (let k = 0; k < tacke.length - 1 && ok; k++) {
         await new Promise(r => setTimeout(r, 20));
         const d = rdHaversine(tacke[k].lat, tacke[k].lon, tacke[k + 1].lat, tacke[k + 1].lon), stat = {};
+        const minL = _rdMinDuzina(tacke[k].lat, tacke[k].lon, tacke[k + 1].lat, tacke[k + 1].lon, pp), eff = Math.min(40000, Math.max(pp.duzinaMax, minL * 2.2));
+        const pp2 = eff > pp.duzinaMax ? Object.assign({}, pp, { duzinaMax: eff }) : pp;
+        if (k === 0 || true) redovi.push(`   ${ozn[k]}→${ozn[k + 1]} najkraća moguća dužina puta ${(minL / 1000).toFixed(2)} km pri nagibu ${pp.nagibMax} %; limit dužine ${(pp2.duzinaMax / 1000).toFixed(1)} km`);
         const t1 = performance.now();
-        const r = rdFindRoute({ startLat: tacke[k].lat, startLon: tacke[k].lon, endLat: tacke[k + 1].lat, endLon: tacke[k + 1].lon, sampleElev: _rdSample, params: pp, maxIterations: _rdIterBudget(d) * pk.f, stat });
+        const r = rdFindRoute({ startLat: tacke[k].lat, startLon: tacke[k].lon, endLat: tacke[k + 1].lat, endLon: tacke[k + 1].lon, sampleElev: _rdSample, params: pp2, maxIterations: Math.min(900000, Math.max(_rdIterBudget(d), Math.round(eff * 40)) * pk.f), stat });
         const ms = Math.round(performance.now() - t1); ukMs += ms;
         redovi.push(`   ${ozn[k]}→${ozn[k + 1]}: ${r.ok ? 'OK' : 'NEUSPJEH (' + r.reason + ')'} | koraka ${stat.it}/${stat.maxIt} | otvoreno ${stat.otvoreno} | najbliže cilju ${Number.isFinite(stat.najblize) ? stat.najblize.toFixed(0) : '-'} m | odbačeno: strmo ${stat.prestrmo}, bez visine ${stat.bezDem}, serpentina ${stat.serp}, predugo ${stat.preDuga} | ${ms} ms`);
         if (!r.ok && stat.iscrpljen) dijag.iscrpljen = true;
@@ -11380,7 +11395,7 @@ function _rdGenerate() {
   const korak = () => {
     if (vi >= _RD_VARIJANTE.length) return kraj();
     const v = _RD_VARIJANTE[vi++];
-    showToast(`⏳ Tražim trasu: ${v.naziv} (${vi}/${_RD_VARIJANTE.length})…`);
+    showToast('⏳ Tražim trasu… (na strmom terenu može potrajati)');
     setTimeout(() => {
       const pv = Object.assign({}, params, v.izm(params));
       const r = _rdTraziVarijantu(dem, tacke, ozn, pv);
@@ -11396,6 +11411,7 @@ function _rdGenerate() {
     if (!gotove.length) {
       const r = gotove.greska || {}, dio = r.dionica ? ' (dionica ' + r.dionica + ')' : '';
       showToast(r.greska === 'DEM_MISSING' ? '⚠ Model terena ne pokriva odabrane tačke'
+        : r.minLen > 0 ? `⚠ Nema trase${dio}: visinska razlika ${Math.round(r.dH)} m pri ${params.nagibMax} % traži najmanje ${(r.minLen / 1000).toFixed(1)} km puta po vrlo strmom terenu — povećaj max nagib, dodaj međutačke na blažim mjestima ili pomjeri tačku`
         : '⚠ Nije moguće naći trasu' + dio + ' — probajte veći maksimalni nagib' + serpHint + ', dodajte međutačku ili pomjerite tačku');
       return;
     }
