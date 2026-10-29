@@ -353,6 +353,52 @@ function _rdSmoothPath(path, sampleElev, nagibMax) {
   return out;
 }
 
+
+// ─── Zaobljavanje krivina (bez oštrih lomova) ──────────────────────────────
+// Pretraga i string-pulling daju poligonalnu liniju s ravnim ćoškovima. Svaki unutrašnji vrh
+// zamjenjujemo glatkim lukom (kvadratna Bezier tangentna na oba kraka): tangenta t = R·tan(θ/2)
+// za radijus `radijusMin` (min. radijus iz parametara), ali najviše 45 % susjednih krakova da se
+// lukovi dva susjedna vrha nikad ne preklope. Pri vrlo oštrom zaokretu na kratkim krakovima luk
+// je širi od R koliko krakovi dozvoljavaju — i dalje bez ćoška. Visine novih tačaka se čitaju iz
+// DEM-a; ako luk na bilo kojem djelu pređe nagibMax, taj vrh ostaje kakav je (hard cutoff kao u pretrazi).
+function rdZaobli(path, sampleElev, params) {
+  if (!path || path.length < 3) return path;
+  const R = Math.max(8, params.radijusMin || 12);
+  const lat0 = path[0].lat, cosL = Math.max(0.15, Math.cos(lat0 * Math.PI / 180));
+  const X = q => (q.lon - path[0].lon) * 111320 * cosL, Y = q => (q.lat - lat0) * 111320;
+  const ll = (x, y) => ({ lat: lat0 + y / 111320, lon: path[0].lon + x / (111320 * cosL) });
+  const out = [path[0]];
+  for (let i = 1; i < path.length - 1; i++) {
+    const a = path[i - 1], v = path[i], b = path[i + 1];
+    const ax = X(a), ay = Y(a), vx = X(v), vy = Y(v), bx = X(b), by = Y(b);
+    const l1 = Math.hypot(vx - ax, vy - ay), l2 = Math.hypot(bx - vx, by - vy);
+    if (l1 < 1 || l2 < 1) { out.push(v); continue; }
+    const u1x = (vx - ax) / l1, u1y = (vy - ay) / l1, u2x = (bx - vx) / l2, u2y = (by - vy) / l2;
+    const theta = Math.acos(Math.max(-1, Math.min(1, u1x * u2x + u1y * u2y))); // zaokret smjera
+    if (theta < 0.05) { out.push(v); continue; }
+    const t = Math.min(R * Math.tan(Math.min(theta, Math.PI * 0.93) / 2), 0.45 * l1, 0.45 * l2);
+    const px = vx - u1x * t, py = vy - u1y * t, qx = vx + u2x * t, qy = vy + u2y * t;
+    const n = Math.max(5, Math.ceil(theta * Math.min(R, t / Math.max(0.2, Math.tan(theta / 2))) / 6));
+    const prev = out[out.length - 1], nova = [];
+    for (let k = 0; k <= n; k++) {
+      const f = k / n, g = 1 - f;
+      const x = g * g * px + 2 * g * f * vx + f * f * qx, y = g * g * py + 2 * g * f * vy + f * f * qy;
+      const pt = ll(x, y), e = sampleElev(pt.lat, pt.lon);
+      nova.push({ lat: pt.lat, lon: pt.lon, elev: Number.isFinite(e) ? e : v.elev });
+    }
+    // Provjera nagiba od prethodne tačke preko luka do sljedećeg vrha.
+    const niz = [prev, ...nova, b];
+    let ok = true;
+    for (let k = 1; k < niz.length; k++) {
+      const d = rdHaversine(niz[k - 1].lat, niz[k - 1].lon, niz[k].lat, niz[k].lon);
+      if (d > 0.5 && Math.abs(niz[k].elev - niz[k - 1].elev) / d * 100 > params.nagibMax) { ok = false; break; }
+    }
+    if (ok) nova.forEach(q => out.push(q)); else out.push(v);
+  }
+  out.push(path[path.length - 1]);
+  return out;
+}
+
 // ─── Validacija generisane trase (tačka 13 — osnovna verzija za Fazu 1) ───
 // Vraća statistiku po segmentu + globalne min/max/prosjek, i nivo upozorenja
 // (crveno/narandžasto/zeleno) po segmentu prema parametrima.
@@ -504,5 +550,5 @@ function rdKml(path, naziv, stacionaze, boja) {
 // Node.js test okruženje (tests/js/road-design.test.js) — browser globals se
 // ne diraju, isti obrazac kao offline-layer.js.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdValidateRoute, rdStacionaze, rdStacionazaTxt, RD_POPRECNI_KLASE, rdPoprecniNagib, rdGpx, rdKml, rdPresjek, rdZemljaniRadovi, rdKriticneDionice, rdNaTrasi };
+  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdZaobli, rdValidateRoute, rdStacionaze, rdStacionazaTxt, RD_POPRECNI_KLASE, rdPoprecniNagib, rdGpx, rdKml, rdPresjek, rdZemljaniRadovi, rdKriticneDionice, rdNaTrasi };
 }

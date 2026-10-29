@@ -174,4 +174,24 @@ t('UI: stacionaže crne s bijelim obrubom, crtice, dodir na trasu, zemljani rado
   assert.ok(html.includes('_rdPopupNaTrasi(path, e.latlng)') && html.includes('rdZemljaniRadovi(pn.seg') && html.includes('_rdPokaziDionicu('));
 });
 
+t('rdZaobli: oštar cik-cak postaje zaobljen (nema naglog skretanja), krajevi ostaju', () => {
+  const R = require(path.join(__dirname, '../../static/js/road-design.js'));
+  const m = (x, y) => ({ lat: 44.7 + y / 111320, lon: 16.3 + x / (111320 * Math.cos(44.7 * Math.PI / 180)), elev: 800 });
+  const sirova = [m(0, 0), m(120, 0), m(60, 40), m(180, 60), m(180, 160)];
+  const gl = R.rdZaobli(sirova, () => 800, { radijusMin: 12, nagibMax: 8 });
+  assert.strictEqual(gl[0], sirova[0]); assert.strictEqual(gl[gl.length - 1], sirova[4]);
+  assert.ok(gl.length > sirova.length * 3);
+  const maxZ = a => { let mx = 0; for (let i = 1; i < a.length - 1; i++) { const a1 = R.rdAzimuth(a[i - 1].lat, a[i - 1].lon, a[i].lat, a[i].lon), a2 = R.rdAzimuth(a[i].lat, a[i].lon, a[i + 1].lat, a[i + 1].lon); let d = Math.abs(a2 - a1) % 360; if (d > 180) d = 360 - d; mx = Math.max(mx, d); } return mx; };
+  assert.ok(maxZ(sirova) > 120, 'sirova ima ćoškove ' + maxZ(sirova));
+  assert.ok(maxZ(gl) < 55, 'zaobljena: najveći skok smjera ' + maxZ(gl));
+});
+
+t('rdZaobli: vrh ostaje ćoškast ako bi luk prešao max nagib', () => {
+  const R = require(path.join(__dirname, '../../static/js/road-design.js'));
+  const m = (x, y, e) => ({ lat: 44.7 + y / 111320, lon: 16.3 + x / (111320 * Math.cos(44.7 * Math.PI / 180)), elev: e });
+  const p3 = [m(0, 0, 800), m(100, 0, 807), m(100, 100, 814)];
+  const gl = R.rdZaobli(p3, (la, lo) => 900, { radijusMin: 12, nagibMax: 8 }); // DEM „lud”: luk bi imao 100 m skok
+  assert.strictEqual(gl.length, 3);
+});
+
 console.log('\n' + pass + ' prošlo, 0 palo — projektovanje šumskog puta');

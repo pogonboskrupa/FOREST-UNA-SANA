@@ -11212,7 +11212,8 @@ function _rdGenerate() {
           : '⚠ Model terena ne pokriva odabrane tačke');
         return;
       }
-      path = path ? path.concat(res.path.slice(1)) : res.path.slice();
+      const gladak = rdZaobli(res.path, _rdSample, params);
+      path = path ? path.concat(gladak.slice(1)) : gladak.slice();
       kljucni.push({ ozn: ozn[k + 1], i: path.length - 1 });
     }
     path._kljucni = kljucni;
