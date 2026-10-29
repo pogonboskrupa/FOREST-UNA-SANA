@@ -97,7 +97,7 @@
   (zadnjih n dana i isti datumi lani, `periodPromjene`; 'pg' ⇒ 30), prosjek čistih piksela, MAXCC 40 — više PU po pločici.
   Tasseled Cap Wetness/Greenness/Brightness (`tcw/tcg/tcb`): koeficijenti Baig 2014 (OLI) na B02 B03 B04 B08 B11 B12 — približno.
   LSWI = NDMI, ARVI (L2A već korigovan), NDBI i BAI namjerno nisu dodani.
-  Legenda na karti `#veg-map-leg` (200 px, zadano dolje lijevo iznad zooma — gore desno je legenda požara): ▾ skupi, ✕ sakrije
+  Legenda na karti `#veg-map-leg` (226 px od v3.5.0, zadano dolje lijevo iznad zooma — gore desno je legenda požara): ▾ skupi, ✕ sakrije
   SAMO legendu i ostavi čip `#veg-leg-chip` „🛰 Legenda …” za vraćanje; sloj ostaje uključen.
   CDSE konfiguracija pogona: „🔑 Otključaj konfiguraciju pogona (PIN)” (`USFVeg.otkljucaj`) — `CDSE_ENC` = ID šifrovan AES-GCM
   ključem iz PIN-a (`USFDriveKarte.kljucIzPina`/`desifruj`), `_pinUnos` s greškama `usf_veg_greske`. ID i PIN NIKAD u repo/commit/test;

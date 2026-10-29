@@ -169,7 +169,7 @@ t('pokretna legenda na karti: opis za svaku klasu svakog indeksa', () => {
   assert.ok(vj.includes("box.id = 'veg-map-leg'") && vj.includes("'usf_veg_leg'") && vj.includes('setPointerCapture'), 'prevlačenje i pamćenje položaja');
   assert.ok(HTML.includes('#veg-map-leg {') && HTML.includes('id="veg-leg-karta"'));
   assert.ok(vj.includes("cip.id = 'veg-leg-chip'") && vj.includes('cip.hidden = !st.on || !leg.skrivena'), '✕ skriva samo legendu, čip je vraća');
-  assert.ok(HTML.includes('#veg-leg-chip {') && /#veg-map-leg \{[^}]*width: 200px/.test(HTML), 'kompaktna legenda');
+  assert.ok(HTML.includes('#veg-leg-chip {') && /#veg-map-leg \{[^}]*width: 226px/.test(HTML), 'kompaktna legenda');
 });
 
 t('UI, APK i SW: moduli uključeni, pane iznad offline podloge, ključ nije u kodu', () => {
