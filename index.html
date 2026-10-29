@@ -280,6 +280,24 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .rd-tacka small { display:block; color:#80958a; font-size:10.5px; line-height:1.35; word-break:break-word; }
 .rd-tacka button { padding:7px 8px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:11.5px; cursor:pointer; white-space:nowrap; }
 .rd-tacka button.brisi { color:#f87171; border-color:#7f1d1d; }
+.rd-kreiraj { width:100%; margin:0 0 10px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:13px; font-size:15px; }
+.rd-kreiraj small { font-size:10.5px; font-weight:500; opacity:.85; }
+.rd-prof { width:100%; height:auto; display:block; background:#0b1220; border:1px solid #1f3b2d; border-radius:10px; margin:6px 0 8px; }
+.rdm-ov { position:fixed; inset:0; z-index:1100; background:rgba(2,10,6,.62); display:none; align-items:flex-end; justify-content:center; }
+.rdm-ov.show { display:flex; }
+.rdm-sheet { width:100%; max-width:520px; max-height:88vh; overflow-y:auto; background:#0a1a12; border:1px solid #1f3b2d; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom)); color:var(--text); }
+.rdm-zag { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:15px; }
+.rdm-zag button { border:0; background:#13281d; color:#cbd5e1; width:32px; height:32px; border-radius:50%; font-size:15px; }
+.rdm-red { display:grid; grid-template-columns:30px 1fr; gap:6px 10px; padding:10px 0; border-top:1px solid #1f3b2d; }
+.rdm-red:first-of-type { border-top:none; }
+.rdm-tx b { display:block; font-size:13px; } .rdm-tx small { display:block; color:#80958a; font-size:10.5px; word-break:break-word; }
+.rdm-bt { grid-column:1 / -1; display:flex; gap:6px; flex-wrap:wrap; }
+.rdm-bt button { padding:7px 10px; border-radius:9px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; }
+.rdm-bt button.brisi { color:#f87171; border-color:#7f1d1d; } .rdm-bt button:disabled { opacity:.35; }
+.rdm-red .rd-oz { background:var(--c); }
+.rdm-stanje { margin:10px 0 4px; font-size:12px; color:#f59e0b; } .rdm-stanje.ok { color:#4ade80; }
+.rdm-note { font-size:10.5px; color:#80958a; margin-bottom:10px; }
+.rdm-sheet .ng-glavno:disabled { opacity:.45; }
 .rd-dodaj { width:100%; margin-top:6px; padding:9px; border-radius:10px; border:1px dashed #335744; background:transparent; color:#9db0a7; font:inherit; font-size:12px; cursor:pointer; }
 .rd-preview { margin-top:10px; background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:9px 11px; font-size:12px; grid-template-columns:auto 1fr; gap:4px 10px; color:#e2e8f0; }
 .rd-param summary { cursor:pointer; color:var(--text); font-size:14px; font-weight:700; }
@@ -2829,12 +2847,13 @@ body.sl-uredi #sl-ured { display: block; }
       <div class="ul-hero-top"><span class="ul-ico">🛣</span><div><h3>Trasa preko modela terena</h3><p>Postavi A i B — trasa nikad ne prelazi maksimalni uzdužni nagib (šestarski korak L = ΔH / nagib). Teren: Copernicus DEM 30 m (offline za 5 općina).</p></div></div>
     </section>
 
+    <button class="ng-glavno rd-kreiraj" onclick="_rdModalOtvori()">🧭 Kreiraj trasu <small>pozicioniraj A, međutačke i B</small></button>
     <section class="ng-card">
       <h3>Tačke trase</h3>
       <div class="rd-tacka" style="--c:#4ade80"><span class="rd-oz">A</span><div><b>Početak</b><small id="rd-pt-a-info">Nije postavljena</small></div><button onclick="_rdPickPoint('start')">🗺 Karta</button><button onclick="_rdGpsPoint('start')">📍 GPS</button></div>
       <div class="rd-tacka" style="--c:#f87171"><span class="rd-oz">B</span><div><b>Kraj</b><small id="rd-pt-b-info">Nije postavljena</small></div><button onclick="_rdPickPoint('end')">🗺 Karta</button><button onclick="_rdGpsPoint('end')">📍 GPS</button></div>
-      <div id="rd-pt-via" class="rd-tacka" style="--c:#fbbf24;display:none"><span class="rd-oz">M</span><div><b>Međutačka</b><small id="rd-pt-c-info">Nije postavljena</small></div><button onclick="_rdPickPoint('via')">🗺 Karta</button><button class="brisi" onclick="_rdRemoveVia()" aria-label="Ukloni međutačku">✕</button></div>
-      <button id="rd-pt-via-add" class="rd-dodaj" onclick="_rdPickPoint('via')">➕ Dodaj međutačku (duže / složenije trase)</button>
+      <div id="rd-vias"></div>
+      <button id="rd-pt-via-add" class="rd-dodaj" onclick="_rdPickPoint('via+')">➕ Dodaj međutačku (duže / složenije trase)</button>
       <div id="rd-preview" class="rd-preview" style="display:none;"></div>
     </section>
 
@@ -2883,6 +2902,14 @@ body.sl-uredi #sl-ured { display: block; }
 <div id="inventura-panel" class="usf-panel">
   <div class="up-hdr"><h2>◎ Inventura šuma</h2><button class="up-close" onclick="switchMainTab('meni')">✕</button></div>
   <div class="up-body" id="inv-body"></div>
+</div>
+
+<!-- Kreiraj trasu: pozicioniranje A, međutačaka i B -->
+<div id="rd-modal" class="rdm-ov" onclick="if(event.target===this)_rdModalZatvori()">
+  <div class="rdm-sheet" role="dialog" aria-label="Kreiraj trasu">
+    <div class="rdm-zag"><b>🧭 Kreiraj trasu</b><button onclick="_rdModalZatvori()" aria-label="Zatvori">✕</button></div>
+    <div id="rdm-tijelo"></div>
+  </div>
 </div>
 
 <div id="primka-panel" class="usf-panel">
@@ -10899,8 +10926,10 @@ function _renderElevProfile(name, pts, alts, src, extraStatsHtml = '', slopeThre
 function closeProfilModal() { document.getElementById('profil-modal').classList.remove('show'); }
 
 // ─── UI: tačke A/B/(via), parametri, generisanje, sačuvane trase ──────────
-let _rdPoints = { start: null, end: null, via: null };  // {lat,lon,elev|null}
-let _rdMarkers = { start: null, end: null, via: null }; // L.circleMarker
+let _rdPoints = { start: null, end: null };  // {lat,lon,elev|null}
+let _rdMarkers = { start: null, end: null }; // L.circleMarker
+let _rdVias = [], _rdViaMarkers = [];        // međutačke (redom A → M1 → M2 … → B)
+const _RD_VIA_MAX = 8;
 let _rdDem = null;
 let _rdResultPath = null;
 let _rdResultVal = null;
@@ -10908,8 +10937,7 @@ let _rdResultLayer = null;
 let _rdResultParams = null;
 const _RD_PT_CFG = {
   start: { label: 'A', color: '#4ade80', infoId: 'rd-pt-a-info' },
-  end:   { label: 'B', color: '#f87171', infoId: 'rd-pt-b-info' },
-  via:   { label: 'M', color: '#fbbf24', infoId: 'rd-pt-c-info' }
+  end:   { label: 'B', color: '#f87171', infoId: 'rd-pt-b-info' }
 };
 
 function openPutSection() {
@@ -10924,8 +10952,6 @@ function openPutSection() {
     if (typeof RD_DEFAULT_PARAMS[k] === 'boolean') el.checked = !!p[k];
     else el.value = p[k];
   });
-  document.getElementById('rd-pt-via-add').style.display = _rdPoints.via ? 'none' : '';
-  document.getElementById('rd-pt-via').style.display = _rdPoints.via ? '' : 'none';
   _rdRenderPoints();
   _rdRenderSavedRoutes();
   _rdParamSazetak();
@@ -10939,6 +10965,37 @@ function _rdParamSazetak() {
 function _rdGpsPoint(which) {
   if (typeof lastP === 'undefined' || !lastP || !Number.isFinite(lastP.la)) { showToast('📍 Uključi GPS (Moja lokacija) pa pokušaj ponovo'); return; }
   _rdSetPoint(which, lastP.la, lastP.lo);
+}
+// Prozor „Kreiraj trasu”: A, međutačke i B na jednom mjestu (karta / GPS / ručni unos), pa jedno dugme za generisanje.
+function _rdModalOtvori() {
+  document.getElementById('rd-modal').classList.add('show');
+  _rdModalOsvjezi();
+}
+function _rdModalZatvori() { document.getElementById('rd-modal').classList.remove('show'); }
+function _rdModalSakrij() { document.getElementById('rd-modal')?.classList.remove('show'); }
+function _rdModalRed(which, oz, naziv, boja, t, vi) {
+  const w = `'${which}'`;
+  return `<div class="rdm-red" style="--c:${boja}"><span class="rd-oz">${oz}</span><div class="rdm-tx"><b>${naziv}</b><small>${t ? _rdTackaTxt(t) : 'Nije postavljena'}</small></div>
+    <div class="rdm-bt"><button onclick="_rdPickPoint(${w},true)">🗺 Karta</button><button onclick="_rdModalGps(${w})">📍 GPS</button><button onclick="_rdUnosKoord(${w})">⌨</button>${vi != null ? `<button onclick="_rdViaPomjeri(${vi},-1)" ${vi === 0 ? 'disabled' : ''}>↑</button><button onclick="_rdViaPomjeri(${vi},1)" ${vi === _rdVias.length - 1 ? 'disabled' : ''}>↓</button><button class="brisi" onclick="_rdRemoveVia(${vi})">✕</button>` : ''}</div></div>`;
+}
+function _rdModalGps(which) { _rdGpsPoint(which); }
+function _rdModalOsvjezi() {
+  const el = document.getElementById('rdm-tijelo');
+  if (!el || !document.getElementById('rd-modal').classList.contains('show')) return;
+  const a = _rdPoints.start, b = _rdPoints.end;
+  const spremno = a && b && !_rdNotReadyReason;
+  const stanje = !a || !b ? 'Postavite tačku A i tačku B' : _rdNotReadyReason ? '⏳ ' + _rdNotReadyReason : '✓ Spremno — ' + (_rdVias.length ? (_rdVias.length + 1) + ' dionice preko ' + _rdVias.length + ' međutačke' : 'direktna trasa A → B');
+  el.innerHTML = _rdModalRed('start', 'A', 'Početak', _RD_PT_CFG.start.color, a)
+    + _rdVias.map((v, i) => _rdModalRed('via:' + i, _rdViaOzn(i), 'Međutačka ' + (i + 1), '#fbbf24', v, i)).join('')
+    + _rdModalRed('end', 'B', 'Kraj', _RD_PT_CFG.end.color, b)
+    + (_rdVias.length < _RD_VIA_MAX ? '<button class="rd-dodaj" onclick="_rdPickPoint(\'via+\',true)">➕ Dodaj međutačku (ide se redom A → M1 → … → B)</button>' : '')
+    + `<div class="rdm-stanje ${spremno ? 'ok' : ''}">${stanje}</div>
+    <div class="rdm-note">Profil trase (nagib po dužini, uspon/silazak) se prikazuje u rezultatu.</div>
+    <button class="ng-glavno" ${spremno ? '' : 'disabled'} onclick="_rdModalGeneriši()">🧭 Kreiraj trasu i profil</button>`;
+}
+function _rdModalGeneriši() {
+  _rdModalZatvori();
+  _rdGenerate();
 }
 document.getElementById('put-panel')?.addEventListener('change', e => { if ((e.target.id || '').startsWith('rd-p-')) _rdParamSazetak(); });
 
@@ -10954,59 +11011,96 @@ function _rdReadParamsFromForm() {
 }
 function _rdCollectParams() { const p = _rdReadParamsFromForm(); rdSaveParams(p); return p; }
 
-// Panel je puni-ekran (pokriva kartu) — sakrij ga privremeno da korisnik može
-// kliknuti na kartu, pa ga ponovo prikaži nakon postavljanja tačke.
-function _rdPickPoint(which) {
+// Panel je puni-ekran (pokriva kartu) — sakrij ga (i prozor „Kreiraj trasu”) privremeno da korisnik može
+// kliknuti na kartu, pa ih ponovo prikaži nakon postavljanja tačke. which: 'start' | 'end' | 'via+' (nova međutačka) | 'via:i' (pomjeri).
+let _rdPickModal = false;
+function _rdPickPoint(which, izModala) {
+  _rdPickModal = !!izModala || document.getElementById('rd-modal')?.classList.contains('show');
   document.getElementById('put-panel').classList.remove('show');
-  const label = which === 'start' ? 'POČETNU tačku (A)' : which === 'end' ? 'ZAVRŠNU tačku (B)' : 'MEĐUTAČKU';
+  _rdModalSakrij();
+  if (which === 'via+' && _rdVias.length >= _RD_VIA_MAX) { showToast('⚠ Najviše ' + _RD_VIA_MAX + ' međutačaka'); _rdPickKraj(); return; }
+  const label = which === 'start' ? 'POČETNU tačku (A)' : which === 'end' ? 'ZAVRŠNU tačku (B)' : which === 'via+' ? 'MEĐUTAČKU' : 'novi položaj međutačke ' + _rdViaOzn(+which.slice(4));
   showToast('📍 Klikni na kartu: odaberi ' + label);
   map.getContainer().style.cursor = 'crosshair';
-  const handler = which === 'start' ? _rdOnMapClickStart : which === 'end' ? _rdOnMapClickEnd : _rdOnMapClickVia;
-  map.once('click', handler);
+  map.once('click', e => _rdSetPoint(which, e.latlng.lat, e.latlng.lng));
 }
-function _rdOnMapClickStart(e) { _rdSetPoint('start', e.latlng.lat, e.latlng.lng); }
-function _rdOnMapClickEnd(e) { _rdSetPoint('end', e.latlng.lat, e.latlng.lng); }
-function _rdOnMapClickVia(e) { _rdSetPoint('via', e.latlng.lat, e.latlng.lng); }
-
-function _rdSetPoint(which, lat, lon) {
-  const cfg = _RD_PT_CFG[which];
-  _rdPoints[which] = { lat, lon, elev: null };
-  _rdDem = null;
-  if (_rdMarkers[which]) map.removeLayer(_rdMarkers[which]);
-  const mk = L.circleMarker([lat, lon], { radius: 7, color: cfg.color, fillColor: cfg.color, fillOpacity: 1 }).addTo(map);
-  mk.bindTooltip(cfg.label, { permanent: true, direction: 'top', className: 'leaflet-tooltip' });
-  _rdMarkers[which] = mk;
+function _rdPickKraj() {
   map.getContainer().style.cursor = '';
   document.getElementById('put-panel').classList.add('show');
-  if (which === 'via') { document.getElementById('rd-pt-via-add').style.display = 'none'; document.getElementById('rd-pt-via').style.display = ''; }
-  _rdRenderPoints();
-  showToast('✓ Tačka ' + cfg.label + ' postavljena');
+  if (_rdPickModal) { _rdPickModal = false; _rdModalOtvori(); }
 }
-
-function _rdRemoveVia() {
-  if (_rdMarkers.via) { map.removeLayer(_rdMarkers.via); _rdMarkers.via = null; }
-  _rdPoints.via = null;
+const _rdViaOzn = i => 'M' + (i + 1);
+function _rdMarker(lat, lon, boja, oznaka) {
+  const mk = L.circleMarker([lat, lon], { radius: 7, color: boja, fillColor: boja, fillOpacity: 1 }).addTo(map);
+  mk.bindTooltip(oznaka, { permanent: true, direction: 'top', className: 'leaflet-tooltip' });
+  return mk;
+}
+function _rdSetPoint(which, lat, lon) {
   _rdDem = null;
-  document.getElementById('rd-pt-via-add').style.display = '';
-  document.getElementById('rd-pt-via').style.display = 'none';
+  if (which === 'start' || which === 'end') {
+    const cfg = _RD_PT_CFG[which];
+    _rdPoints[which] = { lat, lon, elev: null };
+    if (_rdMarkers[which]) map.removeLayer(_rdMarkers[which]);
+    _rdMarkers[which] = _rdMarker(lat, lon, cfg.color, cfg.label);
+  } else {
+    let i = which === 'via+' ? _rdVias.length : +which.slice(4);
+    if (!_rdVias[i]) i = _rdVias.length;
+    _rdVias[i] = { lat, lon, elev: null };
+    _rdViaMarkersOsvjezi();
+  }
+  _rdPickKraj();
   _rdRenderPoints();
+  showToast('✓ Tačka ' + (which === 'start' ? 'A' : which === 'end' ? 'B' : _rdViaOzn(which === 'via+' ? _rdVias.length - 1 : +which.slice(4))) + ' postavljena');
+}
+// Markeri međutačaka se uvijek crtaju iznova (redoslijed/brisanje mijenja oznake M1, M2 …).
+function _rdViaMarkersOsvjezi() {
+  _rdViaMarkers.forEach(m => map.removeLayer(m)); _rdViaMarkers = [];
+  _rdVias.forEach((v, i) => _rdViaMarkers.push(_rdMarker(v.lat, v.lon, '#fbbf24', _rdViaOzn(i))));
+}
+function _rdRemoveVia(i) {
+  _rdVias.splice(i, 1); _rdDem = null;
+  _rdViaMarkersOsvjezi(); _rdRenderPoints();
+}
+function _rdViaPomjeri(i, d) {
+  const j = i + d; if (j < 0 || j >= _rdVias.length) return;
+  [_rdVias[i], _rdVias[j]] = [_rdVias[j], _rdVias[i]]; _rdDem = null;
+  _rdViaMarkersOsvjezi(); _rdRenderPoints();
+}
+// Koordinate ukucane ručno: „lat, lon” u WGS84 (decimalni stepeni).
+async function _rdUnosKoord(which) {
+  const t = which === 'start' ? _rdPoints.start : which === 'end' ? _rdPoints.end : _rdVias[+which.slice(4)];
+  const v = await _dlgPrompt('Koordinate „širina, dužina” (WGS84, decimalno), npr. 44.52310, 16.21450', t ? t.lat.toFixed(6) + ', ' + t.lon.toFixed(6) : '', { title: '⌨ Unos koordinata', okLabel: 'Postavi' });
+  if (v == null) return;
+  const m = String(v).replace(/,/g, ' ').match(/-?\d+(?:\.\d+)?/g);
+  if (!m || m.length < 2) { showToast('⚠ Upiši dva broja: širina i dužina'); return; }
+  let la = parseFloat(m[0]), lo = parseFloat(m[1]);
+  if (Math.abs(la) > 90 && Math.abs(lo) <= 90) [la, lo] = [lo, la];
+  if (!(Math.abs(la) <= 90 && Math.abs(lo) <= 180)) { showToast('⚠ Koordinate nisu u opsegu'); return; }
+  _rdSetPoint(which, la, lo);
 }
 
 function _rdPaintPointInfo(which) {
   const cfg = _RD_PT_CFG[which];
-  const pt = _rdPoints[which];
   const infoEl = document.getElementById(cfg.infoId);
-  if (!infoEl) return;
-  if (!pt) { infoEl.textContent = 'Nije postavljena'; return; }
+  if (infoEl) infoEl.textContent = _rdTackaTxt(_rdPoints[which]);
+}
+function _rdTackaTxt(pt) {
+  if (!pt) return 'Nije postavljena';
   const elevTxt = pt.elev != null ? Math.round(pt.elev) + ' m nv' : '(visina: preuzima se pri pregledu)';
-  infoEl.textContent = `${pt.lat.toFixed(6)}, ${pt.lon.toFixed(6)} — ${elevTxt}`;
+  return `${pt.lat.toFixed(6)}, ${pt.lon.toFixed(6)} — ${elevTxt}`;
+}
+function _rdRenderVias() {
+  const el = document.getElementById('rd-vias'); if (!el) return;
+  el.innerHTML = _rdVias.map((v, i) => `<div class="rd-tacka" style="--c:#fbbf24"><span class="rd-oz">${_rdViaOzn(i)}</span><div><b>Međutačka ${i + 1}</b><small>${_rdTackaTxt(v)}</small></div><button onclick="_rdPickPoint('via:${i}')">🗺 Karta</button><button class="brisi" onclick="_rdRemoveVia(${i})" aria-label="Ukloni međutačku">✕</button></div>`).join('');
+  const add = document.getElementById('rd-pt-via-add'); if (add) add.style.display = _rdVias.length >= _RD_VIA_MAX ? 'none' : '';
 }
 
 function _rdRenderPoints() {
   _rdPaintPointInfo('start');
   _rdPaintPointInfo('end');
-  if (_rdPoints.via) _rdPaintPointInfo('via');
+  _rdRenderVias();
   _rdUpdatePreviewAndButton();
+  _rdModalOsvjezi();
 }
 
 let _rdNotReadyReason = 'Postavite obje tačke (A i B)';
@@ -11019,21 +11113,22 @@ async function _rdUpdatePreviewAndButton() {
     _rdNotReadyReason = 'Postavite obje tačke (A i B)';
     btn.style.opacity = '0.5';
     prevEl.style.display = 'none';
+    _rdModalOsvjezi();
     return;
   }
-  if (_rdDem && a.elev != null && b.elev != null && (!_rdPoints.via || _rdPoints.via.elev != null)) {
+  if (_rdDem && a.elev != null && b.elev != null && _rdVias.every(v => v.elev != null)) {
     _rdRenderPreviewStats(a, b);
     _rdNotReadyReason = null;
     btn.style.opacity = '1';
+    _rdModalOsvjezi();
     return;
   }
   prevEl.style.display = 'grid';
   prevEl.innerHTML = '<span style="grid-column:1/3;color:#94a3b8;">⏳ Učitavam model terena…</span>';
   _rdNotReadyReason = 'Model terena se još učitava — sačekajte par sekundi pa probajte ponovo';
   btn.style.opacity = '0.5';
-  const viaPt = _rdPoints.via;
-  const boundPts = [[a.lat, a.lon], [b.lat, b.lon]];
-  if (viaPt) boundPts.push([viaPt.lat, viaPt.lon]);
+  _rdModalOsvjezi();
+  const boundPts = [[a.lat, a.lon], [b.lat, b.lon], ..._rdVias.map(v => [v.lat, v.lon])];
   // Dovoljno široko područje i poprijeko na A–B: strm teren traži serpentine
   // (šestarski korak), a uski pojas oko prave linije ih ne dozvoljava.
   const b0 = L.latLngBounds(boundPts), c0 = b0.getCenter();
@@ -11050,6 +11145,7 @@ async function _rdUpdatePreviewAndButton() {
   } catch(e) { fetchErr = e; }
   if (window.USFDem && !_rdCop) { try { _rdCop = await USFDem.ucitaj(); } catch(e) {} }
   if (_rdPoints.start !== a || _rdPoints.end !== b) return; // tačke promijenjene u međuvremenu
+  const brVia = _rdVias.length;
   _rdDem = dem;
   if (!dem) {
     const reason = fetchErr ? fetchErr.message : 'nije dostupan za ovu oblast';
@@ -11059,13 +11155,15 @@ async function _rdUpdatePreviewAndButton() {
   }
   a.elev = _rdVisina(a.lat, a.lon);
   b.elev = _rdVisina(b.lat, b.lon);
-  if (_rdPoints.via) _rdPoints.via.elev = _rdVisina(_rdPoints.via.lat, _rdPoints.via.lon);
+  if (_rdVias.length !== brVia) return;
+  _rdVias.forEach(v => { v.elev = _rdVisina(v.lat, v.lon); });
   _rdPaintPointInfo('start');
   _rdPaintPointInfo('end');
-  if (_rdPoints.via) _rdPaintPointInfo('via');
+  _rdRenderVias();
   _rdRenderPreviewStats(a, b);
   _rdNotReadyReason = null;
   btn.style.opacity = '1';
+  _rdModalOsvjezi();
 }
 
 function _rdRenderPreviewStats(a, b) {
@@ -11094,36 +11192,35 @@ function _rdRouteLeg(dem, aLat, aLon, bLat, bLon, params) {
 }
 
 function _rdGenerate() {
-  const a = _rdPoints.start, b = _rdPoints.end, via = _rdPoints.via;
+  const a = _rdPoints.start, b = _rdPoints.end, vias = _rdVias;
   if (_rdNotReadyReason) { showToast('⚠ ' + _rdNotReadyReason); return; }
   if (!a || !b || !_rdDem || a.elev == null || b.elev == null) { showToast('⚠ Postavite obje tačke i sačekajte model terena'); return; }
-  if (via && via.elev == null) { showToast('⚠ Sačekajte da se učita visina međutačke'); return; }
+  if (vias.some(v => v.elev == null)) { showToast('⚠ Sačekajte da se učita visina međutačaka'); return; }
   const params = _rdCollectParams();
   const dem = _rdDem;
   showToast('⏳ Tražim optimalnu trasu…');
   const serpHint = params.bezSerpentina ? ', isključite "Ne pravi serpentine"' : '';
   setTimeout(() => {
-    let path;
-    if (via) {
-      const leg1 = _rdRouteLeg(dem, a.lat, a.lon, via.lat, via.lon, params);
-      if (!leg1.ok) { showToast('⚠ Nije moguće naći trasu do međutačke — probajte veći maksimalni nagib' + serpHint + ', ili pomjerite međutačku'); return; }
-      const leg2 = _rdRouteLeg(dem, via.lat, via.lon, b.lat, b.lon, params);
-      if (!leg2.ok) { showToast('⚠ Nije moguće naći trasu od međutačke do B — probajte veći maksimalni nagib' + serpHint + ', ili pomjerite međutačku'); return; }
-      path = leg1.path.concat(leg2.path.slice(1));
-    } else {
-      const res = _rdRouteLeg(dem, a.lat, a.lon, b.lat, b.lon, params);
+    const tacke = [a, ...vias, b], ozn = ['A', ...vias.map((_, i) => _rdViaOzn(i)), 'B'];
+    let path = null; const kljucni = [{ ozn: 'A', i: 0 }];
+    for (let k = 0; k < tacke.length - 1; k++) {
+      const res = _rdRouteLeg(dem, tacke[k].lat, tacke[k].lon, tacke[k + 1].lat, tacke[k + 1].lon, params);
       if (!res.ok) {
+        const dio = tacke.length > 2 ? ' (dionica ' + ozn[k] + '→' + ozn[k + 1] + ')' : '';
         showToast(res.reason === 'NO_ROUTE'
-          ? '⚠ Nije moguće naći trasu unutar zadanih parametara — probajte veći maksimalni nagib' + serpHint + ', dodajte međutačku, ili drugu tačku'
+          ? '⚠ Nije moguće naći trasu' + dio + ' — probajte veći maksimalni nagib' + serpHint + ', dodajte međutačku ili pomjerite tačku'
           : '⚠ Model terena ne pokriva odabrane tačke');
         return;
       }
-      path = res.path;
+      path = path ? path.concat(res.path.slice(1)) : res.path.slice();
+      kljucni.push({ ozn: ozn[k + 1], i: path.length - 1 });
     }
+    path._kljucni = kljucni;
     _rdResultPath = path;
     _rdResultVal = rdValidateRoute(path, params);
     _rdResultParams = params;
     _rdShowResult();
+    document.getElementById('rd-result')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, 30);
 }
 
@@ -11212,6 +11309,34 @@ function _rdSazetakHtml(path, val, params) {
     <div class="rd-traka">${['ok', 'warn', 'bad'].map(k => `<i style="width:${(m[k] / uk * 100).toFixed(2)}%;background:${_RD_BOJE[k]}"></i>`).join('')}</div>
     <div class="rd-leg"><span style="--c:${_RD_BOJE.ok}">≤${params.nagibPreporuceni} %: ${_msrFmt(m.ok)}</span><span style="--c:${_RD_BOJE.warn}">do ${params.nagibMax} %: ${_msrFmt(m.warn)}</span>${m.bad ? `<span style="--c:${_RD_BOJE.bad}">>${params.nagibMax} %: ${_msrFmt(m.bad)}</span>` : ''}</div>`;
 }
+// Profil trase kao dodatak rezultatu: visina po dužini, linija obojena po klasi nagiba, A / M / B oznake.
+function _rdProfilHtml(path, params) {
+  if (!path || path.length < 2 || path.some(q => !Number.isFinite(q.elev))) return '';
+  const d = [0];
+  for (let i = 1; i < path.length; i++) d.push(d[i - 1] + rdHaversine(path[i - 1].lat, path[i - 1].lon, path[i].lat, path[i].lon));
+  const uk = d[d.length - 1] || 1;
+  const hs = path.map(q => q.elev), hMin = Math.min(...hs), hMax = Math.max(...hs), raspon = Math.max(10, hMax - hMin);
+  let up = 0, dn = 0; for (let i = 1; i < hs.length; i++) { const dh = hs[i] - hs[i - 1]; if (dh > 0) up += dh; else dn -= dh; }
+  const W = 320, H = 130, L0 = 34, R0 = 8, T0 = 14, B0 = 18;
+  const x = m => L0 + m / uk * (W - L0 - R0), y = h => T0 + (1 - (h - hMin) / raspon) * (H - T0 - B0);
+  const boja = i => { const dd = d[i] - d[i - 1]; const n = dd > 0.01 ? Math.abs(hs[i] - hs[i - 1]) / dd * 100 : 0; return n > params.nagibMax ? _RD_BOJE.bad : n > params.nagibPreporuceni ? _RD_BOJE.warn : _RD_BOJE.ok; };
+  const korak = Math.max(1, Math.floor(path.length / 160));
+  let ispuna = `M${x(0).toFixed(1)},${H - B0}`, linije = '';
+  for (let i = 0; i < path.length; i += korak) {
+    ispuna += ` L${x(d[i]).toFixed(1)},${y(hs[i]).toFixed(1)}`;
+    if (i) { const j = Math.max(0, i - korak); linije += `<line x1="${x(d[j]).toFixed(1)}" y1="${y(hs[j]).toFixed(1)}" x2="${x(d[i]).toFixed(1)}" y2="${y(hs[i]).toFixed(1)}" stroke="${boja(i)}" stroke-width="2.4" stroke-linecap="round"/>`; }
+  }
+  ispuna += ` L${x(uk).toFixed(1)},${H - B0} Z`;
+  const kljucni = (path._kljucni || [{ ozn: 'A', i: 0 }, { ozn: 'B', i: path.length - 1 }]).map(k => `<line x1="${x(d[k.i]).toFixed(1)}" y1="${T0}" x2="${x(d[k.i]).toFixed(1)}" y2="${H - B0}" stroke="#94a3b8" stroke-dasharray="2 3" stroke-width="1"/><circle cx="${x(d[k.i]).toFixed(1)}" cy="${y(hs[k.i]).toFixed(1)}" r="3.5" fill="#0b1220" stroke="#e2e8f0" stroke-width="1.5"/><text x="${x(d[k.i]).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="9" fill="#cbd5e1">${k.ozn}</text>`).join('');
+  return `<div class="ng-podnaslov">Profil trase</div>
+    <svg class="rd-prof" viewBox="0 0 ${W} ${H}" role="img" aria-label="Profil trase">
+      <path d="${ispuna}" fill="rgba(34,197,94,.10)"/>
+      <text x="${L0 - 4}" y="${T0 + 3}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(hMax)}</text>
+      <text x="${L0 - 4}" y="${H - B0}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(hMin)}</text>
+      ${linije}${kljucni}
+    </svg>
+    <div class="rd-kpi"><div><b>▲ ${up.toFixed(0)} m</b><small>ukupni uspon</small></div><div><b>▼ ${dn.toFixed(0)} m</b><small>ukupni silazak</small></div><div><b>${Math.round(hMax)} m</b><small>najviša tačka</small></div><div><b>${Math.round(hMin)} m</b><small>najniža tačka</small></div></div>`;
+}
 function _rdPoprecniHtml(path) {
   const pn = rdPoprecniNagib(path, _rdVisina, 20);
   if (!pn.ukupno) return '';
@@ -11249,6 +11374,7 @@ function _rdShowResult() {
   resEl.innerHTML = `<section class="ng-card">
     <h3>Rezultat ${_rdResultPath._uredjeno ? '<small style="color:#a78bfa;font-weight:600">· ručno uređeno</small>' : ''}</h3>
     ${_rdSazetakHtml(_rdResultPath, v, _rdResultParams)}
+    ${_rdProfilHtml(_rdResultPath, _rdResultParams)}
     ${_rdPoprecniHtml(_rdResultPath)}
     <div class="rd-akc"><button onclick="_rdShowProfile()">↕ Profil</button><button onclick="_rdUredi()">✎ Uredi trasu</button><button class="${_rdStacOn ? 'on' : ''}" onclick="_rdStacToggle()">📏 Stacionaže</button></div>
     <div class="rd-akc"><button onclick="_rdIzvoz('kml')">⤓ KML</button><button onclick="_rdIzvoz('gpx')">⤓ GPX</button><button onclick="_rdIzvoz('csv')">⤓ CSV</button></div>
