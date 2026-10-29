@@ -11203,7 +11203,24 @@ const _RD_VARIJANTE = [
   { k: 'kratka', naziv: 'Najkraća', ik: '⚡', izm: p => ({ nagibPreporuceni: p.nagibMax }) }
 ];
 let _rdVarijante = [], _rdVarIdx = 0;
+// Ako stroga pretraga ne nađe put, postepeno se popušta (i korisnik to vidi u rezultatu): prvo se dozvole
+// serpentine, pa se ukine tvrda granica poprečnog nagiba. Nagib uzduž trase se NIKAD ne popušta.
+const _RD_POPUSTANJE = [
+  { naz: '', izm: () => ({}) },
+  { naz: 'dozvoljene serpentine', izm: p => p.bezSerpentina ? { bezSerpentina: false } : null },
+  { naz: 'poprečni nagib terena nije ograničen', izm: p => ({ bezSerpentina: false, poprecniNagibMax: 1000 }) }
+];
 function _rdTraziVarijantu(dem, tacke, ozn, params) {
+  let zadnja = null;
+  for (const lv of _RD_POPUSTANJE) {
+    const izm = lv.izm(params); if (!izm) continue;
+    const r = _rdTraziStrogo(dem, tacke, ozn, Object.assign({}, params, izm));
+    if (r.path) { r.opusteno = lv.naz; return r; }
+    zadnja = r;
+  }
+  return zadnja;
+}
+function _rdTraziStrogo(dem, tacke, ozn, params) {
   let path = null; const kljucni = [{ ozn: 'A', i: 0 }];
   for (let k = 0; k < tacke.length - 1; k++) {
     const res = _rdRouteLeg(dem, tacke[k].lat, tacke[k].lon, tacke[k + 1].lat, tacke[k + 1].lon, params);
@@ -11235,7 +11252,7 @@ function _rdGenerate() {
       if (r.path) {
         // Ista (gotovo identična) trasa kao već nađena se ne nudi dvaput.
         const dup = gotove.some(g => Math.abs(g.val.totalDist - r.val.totalDist) < 3 && Math.abs(g.val.maxSlopePct - r.val.maxSlopePct) < 0.2);
-        if (!dup) gotove.push({ ...v, path: r.path, val: r.val, params });
+        if (!dup) gotove.push({ ...v, path: r.path, val: r.val, params: Object.assign({}, params, { _opusteno: r.opusteno || '' }) });
       } else if (v.k === 'bal') gotove.greska = r;
       korak();
     }, 30);
@@ -11425,6 +11442,7 @@ function _rdShowResult(bezToasta) {
   resEl.innerHTML = `<section class="ng-card">
     <h3>Rezultat ${_rdResultPath._uredjeno ? '<small style="color:#a78bfa;font-weight:600">· ručno uređeno</small>' : ''}</h3>
     ${_rdVarijanteHtml()}
+    ${_rdResultParams._opusteno ? `<div class="rd-badge warn">⚠ Strogi uslovi nisu dali trasu — korišteno popuštanje: ${_rdResultParams._opusteno}. Nagib uzduž trase je i dalje unutar maksimalnog.</div>` : ''}
     ${_rdSazetakHtml(_rdResultPath, v, _rdResultParams)}
     ${_rdProfilHtml(_rdResultPath, _rdResultParams)}
     ${_rdPoprecniHtml(_rdResultPath)}
