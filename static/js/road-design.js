@@ -173,6 +173,9 @@ function rdFindRoute(opts) {
     startLat, startLon, endLat, endLon, sampleElev, params,
     maxIterations = 4000
   } = opts;
+  // opts.stat (opcionalno) = brojači za dijagnostiku (Postavke → Dijagnostika trase); bez njega se ništa ne mjeri.
+  const st = opts.stat || null;
+  if (st) Object.assign(st, { it: 0, otvoreno: 0, bezDem: 0, prestrmo: 0, serp: 0, zatvoreno: 0, najblize: Infinity, preDuga: 0, maxIt: maxIterations });
 
   const elevStart = sampleElev(startLat, startLon);
   const elevEnd = sampleElev(endLat, endLon);
@@ -212,11 +215,13 @@ function rdFindRoute(opts) {
     const cur = _rdHeapPop(open);
     if (closed.has(cur.key)) continue;
     closed.add(cur.key);
+    if (st) st.it++;
 
     const node = nodes.get(cur.key);
     const dRemaining = rdHaversine(node.lat, node.lon, endLat, endLon);
+    if (st && dRemaining < st.najblize) st.najblize = dRemaining;
     if (dRemaining <= reachTol) { reachedKey = cur.key; break; }
-    if (node.len > params.duzinaMax) continue; // sigurnosna kočnica — predugo, odustani od ove grane
+    if (node.len > params.duzinaMax) { if (st) st.preDuga++; continue; } // sigurnosna kočnica — predugo, odustani od ove grane
 
     const azToGoal = rdAzimuth(node.lat, node.lon, endLat, endLon);
     const dhRemaining = elevEnd - node.elev;
@@ -243,10 +248,10 @@ function rdFindRoute(opts) {
 
       const cand = rdDestPoint(node.lat, node.lon, az, L);
       const candElev = sampleElev(cand.lat, cand.lon);
-      if (candElev == null) continue; // van DEM pokrivenosti — preskoči pravac
+      if (candElev == null) { if (st) st.bezDem++; continue; } // van DEM pokrivenosti — preskoči pravac
 
       const slopePct = Math.abs(candElev - node.elev)/L*100;
-      if (slopePct > nagibMax) continue; // TVRDO odbačen kandidat — nikad se ne prelazi max nagib
+      if (slopePct > nagibMax) { if (st) st.prestrmo++; continue; } // TVRDO odbačen kandidat — nikad se ne prelazi max nagib
 
       // Ugao skretanja u odnosu na ULAZNI pravac u ovaj čvor (ne u odnosu na
       // pravac ka cilju) — koristi se ISKLJUČIVO za bezSerpentina TVRDI
@@ -257,7 +262,7 @@ function rdFindRoute(opts) {
         turnDiff = Math.abs(az - node.azIn);
         if (turnDiff > 180) turnDiff = 360 - turnDiff;
       }
-      if (params.bezSerpentina && turnDiff > RD_MAX_TURN_NO_SERPENTINE) continue; // TVRDO odbačen — serpentina zabranjena
+      if (params.bezSerpentina && turnDiff > RD_MAX_TURN_NO_SERPENTINE) { if (st) st.serp++; continue; } // TVRDO odbačen — serpentina zabranjena
 
       let penalty = 1;
       if (slopePct > params.nagibPreporuceni*1.5) penalty = 3.5;
@@ -281,7 +286,7 @@ function rdFindRoute(opts) {
       // jer ne utiče na TOK same pretrage, samo čisti rezultat naknadno.
 
       const candKey = keyFor(cand.lat, cand.lon);
-      if (closed.has(candKey)) continue;
+      if (closed.has(candKey)) { if (st) st.zatvoreno++; continue; }
       const tentG = node.g + L*penalty*angPenalty;
 
       const existing = nodes.get(candKey);
@@ -293,6 +298,7 @@ function rdFindRoute(opts) {
     }
   }
 
+  if (st) { st.otvoreno = open.length; st.iscrpljen = !reachedKey && open.length > 0; }
   if (!reachedKey) return { ok: false, reason: 'NO_ROUTE', path: null };
 
   const path = [];
