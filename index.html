@@ -11182,7 +11182,7 @@ function _rdRenderPreviewStats(a, b) {
   `;
 }
 
-function _rdIterBudget(straightDistM) { return Math.max(6000, Math.min(100000, Math.round(straightDistM * 40))); }
+function _rdIterBudget(straightDistM) { return Math.max(8000, Math.min(150000, Math.round(straightDistM * 60))); }
 
 // Copernicus 30 m direktno gdje postoji (tačne visine), inače DEM grid trase.
 function _rdSample(lat, lon) { const h = _rdVisina(lat, lon); return Number.isFinite(h) ? h : null; }

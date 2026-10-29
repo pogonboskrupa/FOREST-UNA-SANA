@@ -197,11 +197,14 @@ function rdFindRoute(opts) {
 
   const startKey = keyFor(startLat, startLon);
   const nodes = new Map();  // key -> {lat,lon,elev,parentKey,g,azIn}
-  nodes.set(startKey, { lat: startLat, lon: startLon, elev: elevStart, parentKey: null, g: 0, azIn: null });
+  nodes.set(startKey, { lat: startLat, lon: startLon, elev: elevStart, parentKey: null, g: 0, len: 0, azIn: null });
 
+  // Težinski A*: heuristika × hW (≥ 1) znatno smanjuje broj čvorova na kompleksnom terenu uz malo duži put;
+  // bez toga je na dužim trasama budžet iteracija često trošen na „šire” umjesto naprijed (NO_ROUTE).
+  const hW = Math.max(1, opts.heuristikaTezina || 1.6);
   const closed = new Set();
   const open = [];
-  _rdHeapPush(open, { f: rdHaversine(startLat, startLon, endLat, endLon), key: startKey });
+  _rdHeapPush(open, { f: hW * rdHaversine(startLat, startLon, endLat, endLon), key: startKey });
 
   const offsets = [0, 20, -20, 45, -45, 70, -70, 100, -100, 135, -135];
 
@@ -216,7 +219,7 @@ function rdFindRoute(opts) {
     const node = nodes.get(cur.key);
     const dRemaining = rdHaversine(node.lat, node.lon, endLat, endLon);
     if (dRemaining <= reachTol) { reachedKey = cur.key; break; }
-    if (node.g > params.duzinaMax) continue; // sigurnosna kočnica — predugo, odustani od ove grane
+    if (node.len > params.duzinaMax) continue; // sigurnosna kočnica — predugo, odustani od ove grane
 
     const azToGoal = rdAzimuth(node.lat, node.lon, endLat, endLon);
     const dhRemaining = elevEnd - node.elev;
@@ -305,8 +308,8 @@ function rdFindRoute(opts) {
 
       const existing = nodes.get(candKey);
       if (!existing || tentG < existing.g) {
-        nodes.set(candKey, { lat: cand.lat, lon: cand.lon, elev: candElev, parentKey: cur.key, g: tentG, azIn: az });
-        const f = tentG + rdHaversine(cand.lat, cand.lon, endLat, endLon);
+        nodes.set(candKey, { lat: cand.lat, lon: cand.lon, elev: candElev, parentKey: cur.key, g: tentG, len: node.len + L, azIn: az });
+        const f = tentG + hW * rdHaversine(cand.lat, cand.lon, endLat, endLon);
         _rdHeapPush(open, { f, key: candKey });
       }
     }
