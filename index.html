@@ -298,6 +298,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #put-panel .rd-kor-param .rd-param > summary::before { counter-increment:rdk; content:counter(rdk); display:inline-grid; place-items:center; width:22px; height:22px; margin-right:8px; border-radius:50%; background:#166534; color:#fff; font-size:12px; font-weight:800; vertical-align:middle; }
 .rd-tacka { border-radius:12px; transition:background .15s; }
 .rd-tacka:active { background:rgba(255,255,255,.04); }
+.rd-ideal { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.rd-ideal .ng-glavno { display:flex; flex-direction:column; align-items:center; gap:2px; background:linear-gradient(135deg,#1d4ed8,#0f766e); box-shadow:0 3px 12px rgba(15,118,110,.3); }
+.rd-ideal .ng-glavno small { font-size:10.5px; font-weight:500; opacity:.9; }
+.rd-ideal label { font-size:12px; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center; padding:0 4px; }
+.rd-ideal select { padding:5px 8px; background:#1f2937; color:#e2e8f0; border:1px solid #374151; border-radius:6px; font-size:12px; }
 .rd-gen { padding:15px; font-size:15px; letter-spacing:.2px; box-shadow:0 4px 16px rgba(34,197,94,.28); }
 .rd-kreiraj { width:100%; margin:0 0 10px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:13px; font-size:15px; }
 .rd-kreiraj small { font-size:10.5px; font-weight:500; opacity:.85; }
@@ -2891,6 +2896,7 @@ body.sl-uredi #sl-ured { display: block; }
     </section>
 
     <button id="rd-generate-btn" class="ng-glavno rd-gen" onclick="_rdGenerate()" style="opacity:0.5;">🧭 Generiši trasu</button>
+    <div class="rd-ideal"><button class="ng-glavno" onclick="_rdGenerateIdeal()">🌿 Idealna trasa <small>najmanje radova, koristi postojeće puteve</small></button><label>Krug oko A i B <select id="rd-ideal-r"><option value="200">200 m</option><option value="250" selected>250 m</option><option value="300">300 m</option></select></label></div>
     <div id="rd-result" style="display:none;margin-top:10px;"></div>
 
     <section class="ng-card" style="margin-top:10px;">
@@ -11142,7 +11148,8 @@ function _rdStatusOsvjezi() {
   const cip = (t, k) => `<span class="${k}">${t}</span>`;
   el.innerHTML = cip(a ? '✓ A' : '○ A', a ? 'ok' : '') + cip(b ? '✓ B' : '○ B', b ? 'ok' : '')
     + (_rdVias.length ? cip('◆ ' + _rdVias.length + ' međutačk' + (_rdVias.length === 1 ? 'a' : 'e'), 'ok') : '')
-    + (a && b ? cip(spremno ? '✓ Teren učitan' : '⏳ Teren se učitava', spremno ? 'ok' : 'cek') : '');
+    + (a && b ? cip(spremno ? '✓ Teren učitan' : '⏳ Teren se učitava', spremno ? 'ok' : 'cek') : '')
+    + (typeof rdIndeksPuteva === 'function' ? _rdPutStatusCip() : '');
 }
 function _rdRenderVias() {
   _rdStatusOsvjezi();
@@ -11292,6 +11299,79 @@ function _rdTraziStrogo(dem, tacke, ozn, params) {
   path._kljucni = kljucni;
   return { path, val: rdValidateRoute(path, params) };
 }
+// ── Postojeći putevi: KML sloj „Kamionski putevi” (ili sličan) → linije za prepoznavanje i za „idealnu” trasu.
+function _rdPostojeciLinije() {
+  if (typeof kmlLs === 'undefined') return { linije: [], imena: [] };
+  const obidji = (l, f) => { if (!l) return; if (l.eachLayer && !l.getLatLngs) { l.eachLayer(x => obidji(x, f)); return; } f(l); };
+  const jeLinija = l => l.getLatLngs && !(l instanceof L.Polygon) && !l._kmlIsPoint;
+  const skupi = test => { const linije = [], imena = []; kmlLs.filter(k => test(k.name || '')).forEach(k => { let n = 0; obidji(k.grp, l => { if (!jeLinija(l)) return; const ll = l.getLatLngs(), dij = Array.isArray(ll[0]) ? ll : [ll]; dij.forEach(d => { if (d.length > 1) { linije.push(d.map(q => [q.lat, q.lng])); n++; } }); }); if (n) imena.push(k.name); }); return { linije, imena }; };
+  let r = skupi(n => /kamion/i.test(n));
+  if (!r.linije.length) r = skupi(n => /(^|[^a-zčćšđž])(škp|skp|put|cest)/i.test(n) && !/odjel|odsjek|taksac|granic/i.test(n));
+  return r;
+}
+let _rdPutKes = null;
+function _rdPutIndeks() {
+  const r = _rdPostojeciLinije();
+  const sig = r.linije.length + ':' + r.imena.join('|');
+  if (!_rdPutKes || _rdPutKes.sig !== sig) _rdPutKes = { sig, imena: r.imena, idx: r.linije.length ? rdIndeksPuteva(r.linije, _rdSample) : null, br: r.linije.length };
+  return _rdPutKes;
+}
+// Obična trasa: dijelovi koji leže na postojećem putu (oba kraja i sredina segmenta ≤ 10 m) dobijaju level 'ex'.
+function _rdOznaciPostojece(path, val) {
+  const k = _rdPutIndeks(); if (!k.idx) return 0;
+  const on = (la, lo) => k.idx.blizu(la, lo, 10);
+  let n = 0;
+  val.segments.forEach(sg => { const a = path[sg.i - 1], b = path[sg.i]; if (on(a.lat, a.lon) && on(b.lat, b.lon) && on((a.lat + b.lat) / 2, (a.lon + b.lon) / 2)) { sg.level = 'ex'; a.ex = b.ex = true; n++; } });
+  return n;
+}
+function _rdPutStatusCip() {
+  const k = _rdPutIndeks();
+  return k.idx ? `<span class="ok">🚚 Postojeći putevi: ${k.br} linija (${_escHtml(k.imena.join(', '))})</span>` : '<span>🚚 Postojeći putevi: nije učitan sloj „Kamionski putevi”</span>';
+}
+// Idealna trasa: početak/kraj u krugu 200–300 m oko A/B, najmanje zemljanih radova, koristi postojeće puteve.
+function _rdGenerateIdeal() {
+  const a = _rdPoints.start, b = _rdPoints.end;
+  if (_rdNotReadyReason) { showToast('⚠ ' + _rdNotReadyReason); return; }
+  if (!a || !b || !_rdDem || a.elev == null || b.elev == null) { showToast('⚠ Postavite obje tačke i sačekajte model terena'); return; }
+  if (_rdVias.length) showToast('ℹ Idealna trasa ne koristi međutačke (računa se A → B)');
+  const params = _rdCollectParams(), zonaR = +(document.getElementById('rd-ideal-r')?.value) || 250;
+  showToast('⏳ Tražim idealnu trasu…');
+  setTimeout(() => {
+    const k = _rdPutIndeks(), dist = rdHaversine(a.lat, a.lon, b.lat, b.lon);
+    if (k.idx) k.idx.cvorovi.forEach(c => { if (c.elev == null) c.elev = _rdSample(c.lat, c.lon); });
+    const minLen = _rdMinDuzina(a.lat, a.lon, b.lat, b.lon, params);
+    const eff = Math.min(40000, Math.max(params.duzinaMax, minLen * 2.2)), p2 = Object.assign({}, params, { duzinaMax: eff });
+    const it = Math.min(600000, Math.max(120000, Math.round(dist * 80)));
+    const st = {};
+    const trazi = (pp, m) => rdFindIdeal({ startLat: a.lat, startLon: a.lon, endLat: b.lat, endLon: b.lon, sampleElev: _rdSample, params: pp, zonaR, maxIterations: m, indeks: k.idx, stat: st });
+    let r = trazi(p2, it), opusteno = '';
+    if (!r.ok && p2.bezSerpentina) { r = trazi(Object.assign({}, p2, { bezSerpentina: false }), it); opusteno = 'dozvoljene serpentine'; }
+    if (!r.ok && st.iscrpljen) { r = trazi(Object.assign({}, p2, { bezSerpentina: false }), Math.min(900000, it * 2)); opusteno = 'dozvoljene serpentine'; }
+    if (!r.ok) { showToast(minLen > 0 && minLen * 1.2 > params.duzinaMax ? `⚠ Nema idealne trase: visinska razlika traži najmanje ${(minLen / 1000).toFixed(1)} km puta — povećaj max nagib ili pomjeri tačke` : '⚠ Nije moguće naći idealnu trasu — povećaj krug, max nagib ili pomjeri tačke'); return; }
+    // novi dijelovi se pojednostave i zaobli, postojeći put ostaje tačno kakav je
+    const P = r.path, out = [P[0]]; let i = 0;
+    while (i < P.length - 1) {
+      let j = i + 1; const ex = P[j].ex;
+      while (j + 1 < P.length && P[j + 1].ex === ex) j++;
+      const dio = P.slice(i, j + 1);
+      let obr = dio;
+      if (!ex && dio.length > 2) obr = rdZaobli(rdPojednostavi(dio, _rdSample, p2.nagibMax), _rdSample, p2);
+      obr.slice(1).forEach((q, n) => out.push(Object.assign({}, q, { ex })));
+      i = j;
+    }
+    out._kljucni = [{ ozn: 'A', i: 0 }, { ozn: 'B', i: out.length - 1 }];
+    out._pristup = [[[a.lat, a.lon], [out[0].lat, out[0].lon]], [[out[out.length - 1].lat, out[out.length - 1].lon], [b.lat, b.lon]]];
+    out._ideal = { zonaR, pA: r.pristupA, pB: r.pristupB };
+    const val = rdValidateRoute(out, p2);
+    val.segments.forEach(sg => { if (out[sg.i].ex && out[sg.i - 1].ex) sg.level = 'ex'; });
+    _rdVarijante = []; 
+    _rdResultPath = out; _rdResultVal = val; _rdResultParams = Object.assign({}, params, { _opusteno: opusteno, _ideal: true });
+    _rdShowResult(true);
+    document.getElementById('rd-result')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    showToast(`✓ Idealna trasa: ${_msrFmt(val.totalDist)}`);
+  }, 30);
+}
+
 function _rdGenerate() {
   const a = _rdPoints.start, b = _rdPoints.end, vias = _rdVias;
   if (_rdNotReadyReason) { showToast('⚠ ' + _rdNotReadyReason); return; }
@@ -11310,6 +11390,7 @@ function _rdGenerate() {
       const pv = Object.assign({}, params, v.izm(params));
       const r = _rdTraziVarijantu(dem, tacke, ozn, pv);
       if (r.path) {
+        _rdOznaciPostojece(r.path, r.val);
         // Ista (gotovo identična) trasa kao već nađena se ne nudi dvaput.
         const dup = gotove.some(g => Math.abs(g.val.totalDist - r.val.totalDist) < 3 && Math.abs(g.val.maxSlopePct - r.val.maxSlopePct) < 0.2);
         if (!dup) gotove.push({ ...v, path: r.path, val: r.val, params: Object.assign({}, params, { _opusteno: r.opusteno || '' }) });
@@ -11348,7 +11429,7 @@ function _rdVarijanteHtml() {
 let _rdCop = null;          // Copernicus DEM (USFDem) — finije visine za poprečni nagib i uređivanje
 let _rdStacOn = true;       // stacionaže na karti
 let _rdEd = null;           // uređivanje trase { stari:[...], markeri:[] }
-const _RD_BOJE = { ok: '#22c55e', warn: '#f59e0b', bad: '#dc2626' };
+const _RD_BOJE = { ok: '#22c55e', warn: '#f59e0b', bad: '#dc2626', ex: '#60a5fa' };
 
 // Visina za poprečni nagib / pomjerenu tačku: Copernicus 30 m, inače DEM grid trase.
 function _rdVisina(lat, lon) {
@@ -11361,6 +11442,7 @@ function _rdCrtajTrasu(path, val, bezStac) {
   const g = L.layerGroup();
   const ll = path.map(p => [p.lat, p.lon]);
   L.polyline(ll, { color: '#fff', weight: 8, opacity: 0.85, pane: 'tragMsrLines', interactive: false }).addTo(g);
+  if (path._pristup) path._pristup.forEach(pr => L.polyline(pr, { color: '#94a3b8', weight: 3, dashArray: '2 7', opacity: 0.95, pane: 'tragMsrLines', interactive: false }).addTo(g));
   val.segments.forEach(sg => {
     const a = path[sg.i - 1], b = path[sg.i];
     L.polyline([[a.lat, a.lon], [b.lat, b.lon]], { color: _RD_BOJE[sg.level], weight: 5, opacity: 1, pane: 'tragMsrLines', interactive: false }).addTo(g);
@@ -11425,7 +11507,7 @@ function _rdDiscardResult() {
 }
 function _rdSazetakHtml(path, val, params) {
   const nWarn = val.segments.filter(x => x.level === 'warn').length, nBad = val.segments.filter(x => x.level === 'bad').length;
-  const m = { ok: 0, warn: 0, bad: 0 }; val.segments.forEach(x => { m[x.level] += x.distM; });
+  const m = { ok: 0, warn: 0, bad: 0, ex: 0 }; val.segments.forEach(x => { m[x.level] += x.distM; });
   const first = path[0], last = path[path.length - 1], dh = last.elev - first.elev;
   const badge = nBad ? `<div class="rd-badge bad">🔴 ${nBad} dionica prelazi maksimalni nagib (${params.nagibMax} %)</div>`
     : nWarn ? `<div class="rd-badge warn">🟠 ${nWarn} dionica iznad preporučenog, unutar maksimalnog nagiba</div>`
@@ -11435,8 +11517,8 @@ function _rdSazetakHtml(path, val, params) {
     <div class="rd-kpi"><div><b>${_msrFmt(val.totalDist)}</b><small>dužina</small></div><div><b>${dh >= 0 ? '+' : ''}${dh.toFixed(0)} m</b><small>visinska razl.</small></div><div><b>${val.maxSlopePct.toFixed(1)} %</b><small>maks. nagib</small></div><div><b>${val.avgSlopePct.toFixed(1)} %</b><small>prosj. nagib</small></div></div>
     ${(() => { const ravno = val.segments.filter(x => x.slopePct < params.nagibMin).reduce((t, x) => t + x.distM, 0); return ravno > uk * 0.15 ? `<div class="rd-badge warn">💧 ${_msrFmt(ravno)} (${(ravno / uk * 100).toFixed(0)} %) dužine je ispod minimalnog nagiba ${params.nagibMin} % — pazi na odvodnjavanje (poprečni pad, propusti)</div>` : ''; })()}
     <div class="ng-podnaslov">Uzdužni nagib po dužini</div>
-    <div class="rd-traka">${['ok', 'warn', 'bad'].map(k => `<i style="width:${(m[k] / uk * 100).toFixed(2)}%;background:${_RD_BOJE[k]}"></i>`).join('')}</div>
-    <div class="rd-leg"><span style="--c:${_RD_BOJE.ok}">≤${params.nagibPreporuceni} %: ${_msrFmt(m.ok)}</span><span style="--c:${_RD_BOJE.warn}">do ${params.nagibMax} %: ${_msrFmt(m.warn)}</span>${m.bad ? `<span style="--c:${_RD_BOJE.bad}">>${params.nagibMax} %: ${_msrFmt(m.bad)}</span>` : ''}</div>`;
+    <div class="rd-traka">${['ex', 'ok', 'warn', 'bad'].map(k => `<i style="width:${(m[k] / uk * 100).toFixed(2)}%;background:${_RD_BOJE[k]}"></i>`).join('')}</div>
+    <div class="rd-leg">${m.ex ? `<span style="--c:${_RD_BOJE.ex}">postojeći put: ${_msrFmt(m.ex)}</span>` : ''}<span style="--c:${_RD_BOJE.ok}">≤${params.nagibPreporuceni} %: ${_msrFmt(m.ok)}</span><span style="--c:${_RD_BOJE.warn}">do ${params.nagibMax} %: ${_msrFmt(m.warn)}</span>${m.bad ? `<span style="--c:${_RD_BOJE.bad}">>${params.nagibMax} %: ${_msrFmt(m.bad)}</span>` : ''}</div>`;
 }
 // Profil trase kao dodatak rezultatu: visina po dužini, linija obojena po klasi nagiba, A / M / B oznake.
 function _rdProfilHtml(path, params) {
@@ -11503,6 +11585,7 @@ function _rdShowResult(bezToasta) {
   resEl.innerHTML = `<section class="ng-card">
     <h3>Rezultat ${_rdResultPath._uredjeno ? '<small style="color:#a78bfa;font-weight:600">· ručno uređeno</small>' : ''}</h3>
     ${_rdResultParams._opusteno ? `<div class="rd-badge warn">⚠ Strogi uslovi nisu dali trasu — korišteno popuštanje: ${_rdResultParams._opusteno}. Nagib uzduž trase je i dalje unutar maksimalnog.</div>` : ''}
+    ${_rdResultPath._ideal ? `<div class="rd-badge ok">🌿 Idealna trasa (najmanje radova): početak ${Math.round(_rdResultPath._ideal.pA)} m od A, kraj ${Math.round(_rdResultPath._ideal.pB)} m od B — pristup je crtkana linija</div>` : ''}
     ${_rdSazetakHtml(_rdResultPath, v, _rdResultParams)}
     ${_rdProfilHtml(_rdResultPath, _rdResultParams)}
     ${_rdPoprecniHtml(_rdResultPath)}

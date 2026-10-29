@@ -405,6 +405,119 @@ function rdZaobli(path, sampleElev, params) {
   return out;
 }
 
+
+// ─── Postojeći putevi (KML „Kamionski putevi”) i „idealna” trasa ────────────
+// Indeks puteva: svaka linija se zgusne na tačke ≤ 15 m razmaka (čvorovi grafa) i smjesti u mrežu 30 m.
+// `blizu(lat, lon, r)` = najbliži čvor puta unutar r metara (ili null); čvorovi su povezani duž linije,
+// a čvorovi različitih linija na ≤ 6 m (raskrsnica) međusobno.
+function rdIndeksPuteva(linije, sampleElev) {
+  const cvorovi = [], G = 30, grid = new Map();
+  const lat0 = linije.length && linije[0].length ? linije[0][0][0] : 44.5, cosL = Math.max(0.15, Math.cos(lat0 * Math.PI / 180));
+  const X = lon => lon * 111320 * cosL, Y = lat => lat * 111320;
+  const kljuc = (x, y) => Math.floor(x / G) + ':' + Math.floor(y / G);
+  const dodaj = (lat, lon) => { const i = cvorovi.length; cvorovi.push({ lat, lon, x: X(lon), y: Y(lat), elev: sampleElev ? sampleElev(lat, lon) : null, adj: [] }); const k = kljuc(cvorovi[i].x, cvorovi[i].y); (grid.get(k) || grid.set(k, []).get(k)).push(i); return i; };
+  linije.forEach(P => {
+    let prev = -1;
+    for (let j = 0; j < P.length; j++) {
+      const a = P[j - 1], b = P[j];
+      if (j > 0) {
+        const d = rdHaversine(a[0], a[1], b[0], b[1]), n = Math.max(1, Math.ceil(d / 15));
+        for (let m = 1; m <= n; m++) {
+          const t = m / n, i = dodaj(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t);
+          if (prev >= 0) { cvorovi[prev].adj.push(i); cvorovi[i].adj.push(prev); }
+          prev = i;
+        }
+      } else prev = dodaj(b[0], b[1]);
+    }
+  });
+  const okolo = (x, y, r, f) => { const c = Math.ceil(r / G); const gx = Math.floor(x / G), gy = Math.floor(y / G); for (let i = -c; i <= c; i++) for (let j = -c; j <= c; j++) { const l = grid.get((gx + i) + ':' + (gy + j)); if (l) l.forEach(f); } };
+  // raskrsnice: čvorovi različitih linija na ≤ 6 m
+  cvorovi.forEach((c, i) => okolo(c.x, c.y, 6, j => { if (j > i && Math.hypot(cvorovi[j].x - c.x, cvorovi[j].y - c.y) <= 6 && !c.adj.includes(j)) { c.adj.push(j); cvorovi[j].adj.push(i); } }));
+  const najblizi = (lat, lon, r) => { const x = X(lon), y = Y(lat); let best = null, bd = r; okolo(x, y, r, i => { const d = Math.hypot(cvorovi[i].x - x, cvorovi[i].y - y); if (d <= bd) { bd = d; best = i; } }); return best === null ? null : { i: best, d: bd }; };
+  return { cvorovi, najblizi, blizu: (lat, lon, r) => !!najblizi(lat, lon, r), n: cvorovi.length };
+}
+
+// Idealna trasa: početak može biti bilo gdje u krugu `zonaR` oko A, kraj bilo gdje u krugu oko B; cijena =
+// dužina × kazna nagiba × (1 + 4·poprečni nagib) — poprečni nagib je zamjena za zemljane radove (usjek/nasip),
+// pa je najjeftinija trasa ona s najmanje radova. Postojeći putevi su skoro besplatni (0,12 × dužine, bez ograničenja nagiba).
+// Pristup od A do početka i od kraja do B se plaća 0,3 × dužine da trasa ne odluta daleko od zadanih tačaka.
+function rdFindIdeal(opts) {
+  const { startLat, startLon, endLat, endLon, sampleElev, params, zonaR = 250, maxIterations = 120000, indeks = null } = opts;
+  const st = opts.stat || null;
+  const nagibMax = params.nagibMax, pref = Math.max(0.1, params.nagibPreporuceni) / 100;
+  const lat0 = startLat, cosL = Math.max(0.15, Math.cos(lat0 * Math.PI / 180));
+  const X = lon => (lon - startLon) * 111320 * cosL, Y = lat => (lat - startLat) * 111320;
+  const keyFor = (lat, lon) => Math.round(X(lon) / 8) + ':' + Math.round(Y(lat) / 8);
+  const nodes = new Map(), closed = new Set(), open = [];
+  const dB = (lat, lon) => rdHaversine(lat, lon, endLat, endLon);
+  const put = (key, n, f) => { const e = nodes.get(key); if (!e || n.g < e.g) { nodes.set(key, n); _rdHeapPush(open, { f, key }); } };
+  const hOf = (lat, lon) => Math.max(0, dB(lat, lon) - zonaR) * 1.4;
+  if (st) Object.assign(st, { it: 0, strmo: 0, poprecno: 0, serp: 0, najblize: Infinity, naPutu: 0, iscrpljen: false });
+  // izvori: mreža 50 m unutar zone A
+  for (let dx = -zonaR; dx <= zonaR; dx += 50) for (let dy = -zonaR; dy <= zonaR; dy += 50) {
+    if (Math.hypot(dx, dy) > zonaR) continue;
+    const pt = rdDestPoint(rdDestPoint(startLat, startLon, 90, dx).lat, rdDestPoint(startLat, startLon, 90, dx).lon, 0, dy);
+    const e = sampleElev(pt.lat, pt.lon); if (e == null) continue;
+    const g = 0.3 * Math.hypot(dx, dy);
+    put(keyFor(pt.lat, pt.lon), { lat: pt.lat, lon: pt.lon, elev: e, parent: null, g, len: 0, azIn: null, ex: false }, g + hOf(pt.lat, pt.lon));
+  }
+  if (indeks) indeks.cvorovi.forEach((c, i) => { const d = rdHaversine(startLat, startLon, c.lat, c.lon); if (d <= zonaR && c.elev != null) { const g = 0.3 * d; put('r' + i, { lat: c.lat, lon: c.lon, elev: c.elev, parent: null, g, len: 0, azIn: null, ex: false, road: i }, g + hOf(c.lat, c.lon)); } });
+  const offsets = [0, 20, -20, 45, -45, 70, -70, 100, -100, 135, -135];
+  let goalKey = null, it = 0;
+  while (open.length && it++ < maxIterations) {
+    const cur = _rdHeapPop(open);
+    if (cur.goal) { goalKey = cur.goal; break; }
+    if (closed.has(cur.key)) continue; closed.add(cur.key);
+    const node = nodes.get(cur.key); if (!node) continue;
+    if (st) { st.it++; }
+    const d = dB(node.lat, node.lon);
+    if (st && d < st.najblize) st.najblize = d;
+    if (d <= zonaR) { _rdHeapPush(open, { f: node.g + 0.3 * d, goal: cur.key }); }
+    if (node.len > params.duzinaMax) continue;
+    // 1) kretanje po postojećem putu
+    if (node.road != null && indeks) {
+      indeks.cvorovi[node.road].adj.forEach(j => {
+        const c = indeks.cvorovi[j]; if (c.elev == null || closed.has('r' + j)) return;
+        const L = rdHaversine(node.lat, node.lon, c.lat, c.lon), g = node.g + L * 0.12;
+        put('r' + j, { lat: c.lat, lon: c.lon, elev: c.elev, parent: cur.key, g, len: node.len + L, azIn: rdAzimuth(node.lat, node.lon, c.lat, c.lon), ex: true, road: j }, g + hOf(c.lat, c.lon));
+        if (st) st.naPutu++;
+      });
+    }
+    // 2) novi put: šestarski ugao prema B
+    const azG = rdAzimuth(node.lat, node.lon, endLat, endLon);
+    const ciljElev = sampleElev(endLat, endLon) ?? node.elev, dh = ciljElev - node.elev, lNeed = rdSestarKorak(dh, params.nagibPreporuceni);
+    let phi = 0; if (lNeed > d && d > 0.5) phi = Math.acos(Math.max(-1, Math.min(1, d / lNeed))) * 180 / Math.PI;
+    const stepLen = Math.max(12, Math.min(60, d <= 60 ? Math.max(12, d) : 40));
+    for (const off of offsets) {
+      const ang = off === 0 ? 0 : (off > 0 ? phi + off - 20 : -phi + off + 20), az = (azG + ang + 360) % 360, L = stepLen;
+      let cand = rdDestPoint(node.lat, node.lon, az, L), candElev = sampleElev(cand.lat, cand.lon); if (candElev == null) continue;
+      let road = null;
+      if (indeks) { const sn = indeks.najblizi(cand.lat, cand.lon, 12); if (sn) { const c = indeks.cvorovi[sn.i]; if (c.elev != null) { cand = { lat: c.lat, lon: c.lon }; candElev = c.elev; road = sn.i; } } }
+      const Lr = road != null ? rdHaversine(node.lat, node.lon, cand.lat, cand.lon) : L;
+      const slope = Math.abs(candElev - node.elev) / Math.max(1, Lr) * 100;
+      if (slope > nagibMax) { if (st) st.strmo++; continue; }
+      let turn = 0; if (node.azIn != null) { turn = Math.abs(az - node.azIn); if (turn > 180) turn = 360 - turn; }
+      if (params.bezSerpentina && turn > RD_MAX_TURN_NO_SERPENTINE) { if (st) st.serp++; continue; }
+      const pa = rdDestPoint(cand.lat, cand.lon, (az + 90) % 360, 10), pb = rdDestPoint(cand.lat, cand.lon, (az + 270) % 360, 10);
+      const eA = sampleElev(pa.lat, pa.lon), eB = sampleElev(pb.lat, pb.lon);
+      let cross = 0; if (eA != null && eB != null) cross = Math.abs(eA - eB) / 20;
+      if (cross * 100 > params.poprecniNagibMax) { if (st) st.poprecno++; continue; }
+      const kazna = slope > params.nagibPreporuceni ? 1.8 + 3.2 * Math.min(1, (slope - params.nagibPreporuceni) / Math.max(1, nagibMax - params.nagibPreporuceni)) : 1;
+      const key = road != null ? 'r' + road : keyFor(cand.lat, cand.lon);
+      if (closed.has(key)) continue;
+      const g = node.g + Lr * (road != null ? 1 : kazna * (1 + 4 * cross));
+      put(key, { lat: cand.lat, lon: cand.lon, elev: candElev, parent: cur.key, g, len: node.len + Lr, azIn: az, ex: false, road: road != null ? road : undefined }, g + hOf(cand.lat, cand.lon));
+    }
+  }
+  if (st) st.iscrpljen = !goalKey && open.length > 0;
+  if (!goalKey) return { ok: false, reason: 'NO_ROUTE', path: null };
+  const path = []; let k = goalKey;
+  while (k) { const n = nodes.get(k); path.unshift({ lat: n.lat, lon: n.lon, elev: n.elev, ex: !!n.ex }); k = n.parent; }
+  return { ok: true, path, pristupA: rdHaversine(startLat, startLon, path[0].lat, path[0].lon), pristupB: rdHaversine(endLat, endLon, path[path.length - 1].lat, path[path.length - 1].lon) };
+}
+
+function rdPojednostavi(path, sampleElev, nagibMax) { return _rdSmoothPath(path, sampleElev, nagibMax); }
+
 // ─── Validacija generisane trase (tačka 13 — osnovna verzija za Fazu 1) ───
 // Vraća statistiku po segmentu + globalne min/max/prosjek, i nivo upozorenja
 // (crveno/narandžasto/zeleno) po segmentu prema parametrima.
@@ -556,5 +669,5 @@ function rdKml(path, naziv, stacionaze, boja) {
 // Node.js test okruženje (tests/js/road-design.test.js) — browser globals se
 // ne diraju, isti obrazac kao offline-layer.js.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdZaobli, rdValidateRoute, rdStacionaze, rdStacionazaTxt, RD_POPRECNI_KLASE, rdPoprecniNagib, rdGpx, rdKml, rdPresjek, rdZemljaniRadovi, rdKriticneDionice, rdNaTrasi };
+  module.exports = { RD_DEFAULT_PARAMS, rdHaversine, rdAzimuth, rdDestPoint, rdSestarKorak, rdPreview, rdFindRoute, rdFindIdeal, rdIndeksPuteva, rdPojednostavi, rdZaobli, rdValidateRoute, rdStacionaze, rdStacionazaTxt, RD_POPRECNI_KLASE, rdPoprecniNagib, rdGpx, rdKml, rdPresjek, rdZemljaniRadovi, rdKriticneDionice, rdNaTrasi };
 }
