@@ -76,7 +76,7 @@ t('rdFindRoute nikad ne prelazi nagibMax na terenu koji to zahtijeva (cik-cak um
   // Elevacija raste linearno sa geografskom širinom — veoma strmo (bilo bi ~30%+
   // direktnim putem), tjera pretragu da napravi duži put uz manji efektivni nagib.
   const steepElev = (lat, lon) => 500 + (lat - startLat) * 111320 * 0.30;
-  const params = Object.assign({}, RD_DEFAULT_PARAMS, { nagibMax: 8, nagibPreporuceni: 6 });
+  const params = Object.assign({}, RD_DEFAULT_PARAMS, { nagibMax: 8, nagibPreporuceni: 6, bezSerpentina: false });
   const res = rdFindRoute({ startLat, startLon, endLat, endLon, sampleElev: steepElev, params });
   assert.strictEqual(res.ok, true);
   for (let i = 1; i < res.path.length; i++) {

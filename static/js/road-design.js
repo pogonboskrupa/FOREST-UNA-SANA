@@ -43,7 +43,7 @@ const RD_DEFAULT_PARAMS = {
   duzinaMax: 8000,           // maksimalna dozvoljena dužina trase (m) — sigurnosna kočnica pretrage
   toleranNagib: 1,           // dozvoljena tolerancija nagiba (%) — rezervisano za Fazu 2 (blaže upozorenje)
   minRazmakSerpentina: 40,   // m — rezervisano za Fazu 2 (pune geometrijske serpentine)
-  bezSerpentina: false       // true = zabrani oštre zaokrete (skoro-obrtanje smjera) — vidi RD_MAX_TURN_NO_SERPENTINE
+  bezSerpentina: true        // true = zabrani oštre zaokrete (skoro-obrtanje smjera) — vidi RD_MAX_TURN_NO_SERPENTINE
 };
 
 // Prag (°) preko kojeg se zaokret u pretrazi smatra "serpentinom" (skoro-
