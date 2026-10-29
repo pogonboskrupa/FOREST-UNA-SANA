@@ -795,6 +795,9 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
   box-shadow:0 4px 12px rgba(0,0,0,.2); cursor:pointer;
 }
 #set-update-btn:disabled { opacity:.62; cursor:default; }
+.update-btns { display:flex; flex-direction:column; gap:6px; }
+#set-apk-btn { border:1px solid rgba(125,211,252,.4); border-radius:10px; padding:8px 13px; background:rgba(14,116,144,.28); color:#bae6fd; font-size:12px; font-weight:750; cursor:pointer; white-space:nowrap; }
+#set-apk-btn:disabled { opacity:.6; cursor:default; }
 #set-update-status { display:none; margin-top:13px; }
 #set-update-status.show { display:block; }
 .update-status-line { display:flex; align-items:center; gap:9px; color:#c9ded2; font-size:12px; line-height:1.35; }
@@ -1402,6 +1405,13 @@ body.rec-on #map-fabs, body.rec-on #ab-loc-popup { display: none !important; } /
 #ab-loc-popup .loc-alati #ab-msr.active { background:rgba(109,40,217,.32); border-color:#a78bfa; }
 #ab-loc-popup .loc-alati #ab-tragovi.recording { background:rgba(153,27,27,.3); border-color:#f87171; color:#fca5a5; }
 #ab-loc-popup .loc-alati #ab-tragovi.recording::after { content:''; position:absolute; top:6px; right:8px; width:8px; height:8px; border-radius:50%; background:#ef4444; animation:fabRecPulse 1.4s ease-in-out infinite; }
+/* v3.0.8: alati u Mojoj lokaciji — veće pločice s podnatpisom (sačuvano / u toku) */
+#ab-loc-popup .loc-alati { gap:8px; }
+#ab-loc-popup .loc-alati button { padding:11px 4px 9px; gap:3px; border-radius:15px; background:linear-gradient(160deg,color-mix(in srgb,currentColor 12%,var(--pn-bg-2, rgba(255,255,255,.05))),var(--pn-bg-2, rgba(255,255,255,.05)) 70%); border-color:color-mix(in srgb,currentColor 35%,var(--pn-line, rgba(134,239,172,.2))); }
+#ab-loc-popup .loc-alati button svg { width:26px; height:26px; }
+#ab-loc-popup .loc-alati button span { font-size:12px; font-weight:800; color:#eaf5ee; }
+#ab-loc-popup .loc-alati .la-sub { font-size:10px; font-weight:700; color:color-mix(in srgb,currentColor 80%,#9fb3a8); letter-spacing:.02em; }
+#ab-loc-popup .loc-alati #ab-msr.active .la-sub, #ab-loc-popup .loc-alati #ab-tragovi.recording .la-sub { color:#fff; }
 
 #ab-loc-popup .loc-btn-primary { box-shadow:0 2px 10px rgba(22,101,52,.45); }
 #ab-loc-popup .loc-btn-sek { border-color:var(--pn-line, rgba(134,239,172,.2)); background:var(--pn-bg-3, rgba(255,255,255,.06)); color:#d5e6dc; }
@@ -2257,9 +2267,9 @@ body.sl-uredi #sl-ured { display: block; }
   </div>
   <div class="loc-btn-row" style="margin-top:6px"><button class="loc-btn loc-btn-sek" onclick="_toggleLocPopup();USFTacke.naGps(true)">📷 Slikaj ovdje</button><button class="loc-btn loc-btn-sek" onclick="_toggleLocPopup();USFTacke.naGps(false)">📍 Tačka ovdje</button></div>
   <div class="loc-alati">
-    <button id="ab-msr" onclick="_toggleLocPopup();_toggleMsrPanel()" title="Mjerenja"><svg viewBox="0 0 24 24"><path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></svg><span>Mjerenja</span></button>
-    <button id="ab-tragovi" onclick="_toggleLocPopup();openTragoviPanel()" title="Tragovi"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg><span>Tragovi</span></button>
-    <button id="ab-tacka" onclick="_toggleLocPopup();USFTacke.dodaj()" title="Nova terenska tačka / fotografija"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg><span>Tačka</span></button>
+    <button id="ab-msr" onclick="_toggleLocPopup();_toggleMsrPanel()" title="Mjerenja"><svg viewBox="0 0 24 24"><path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></svg><span>Mjerenja</span><small class="la-sub" id="la-msr"></small></button>
+    <button id="ab-tragovi" onclick="_toggleLocPopup();openTragoviPanel()" title="Tragovi"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg><span>Tragovi</span><small class="la-sub" id="la-tragovi"></small></button>
+    <button id="ab-tacka" onclick="_toggleLocPopup();USFTacke.dodaj()" title="Nova terenska tačka / fotografija"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg><span>Tačka</span><small class="la-sub" id="la-tacka"></small></button>
   </div>
 </div>
 
@@ -2469,7 +2479,7 @@ body.sl-uredi #sl-ured { display: block; }
       <div class="update-card-head">
         <div class="update-card-icon">⇩</div>
         <div class="update-card-copy"><b>Ažuriranje aplikacije</b><small>Provjeri, preuzmi APK i pokreni instalaciju direktno iz aplikacije</small></div>
-        <button id="set-update-btn" onclick="checkForUpdate()">Provjeri</button>
+        <div class="update-btns"><button id="set-update-btn" onclick="checkForUpdate()">Provjeri</button><button id="set-apk-btn" onclick="preuzmiApk()" title="Preuzmi zadnji APK direktno">⬇ APK</button></div>
       </div>
       <div id="set-update-status" role="status" aria-live="polite">
         <div class="update-status-line"><span class="update-spinner"></span><span id="set-update-message">Priprema…</span></div>
@@ -3908,11 +3918,22 @@ function _updGpsSwitch() {
   const tbtn = document.getElementById('ab-loc-trag'); if (tbtn) tbtn.classList.toggle('recording', _tragOn);
   _updTragFab();
 }
+// Podnatpisi alata u Mojoj lokaciji: koliko je sačuvano i šta je u toku (osvježava se pri otvaranju).
+function _locAlatiOsvjezi() {
+  const set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+  let m = 0, tr = 0, tk = 0, snim = false;
+  try { m = _msrRegistry.length; } catch (e) {}
+  try { tr = _tragRegistry.length; snim = !!_tragOn; } catch (e) {}
+  try { tk = (window.USFTacke && USFTacke.citaj().length) || 0; } catch (e) {}
+  set('la-msr', _msrOn ? '● u toku' : m ? m + ' sačuvano' : 'novo');
+  set('la-tragovi', snim ? '● snimanje' : tr ? tr + ' sačuvano' : 'nema');
+  set('la-tacka', tk ? tk + ' tačaka' : 'nova');
+}
 function _toggleLocPopup() {
   const p = document.getElementById('ab-loc-popup');
   const opening = p.style.display === 'none' || !p.style.display;
   p.style.display = opening ? 'block' : 'none';
-  if (opening) _updGpsSwitch();
+  if (opening) { _updGpsSwitch(); _locAlatiOsvjezi(); }
 }
 function _locPopupCentriraj() { document.getElementById('ab-loc-popup').style.display = 'none'; fabLokacija(); }
 function _locPopupSnimiTrag() { document.getElementById('ab-loc-popup').style.display = 'none'; fabSnimTrag(); }
@@ -12476,6 +12497,25 @@ function _copyUid() {
   const txt = document.getElementById('set-uid-txt')?.textContent || '';
   if (!txt || txt.includes('nema interneta')) { showToast('⚠ UID još nije dostupan'); return; }
   navigator.clipboard?.writeText(txt).then(() => showToast('📋 UID kopiran — pošalji administratoru'));
+}
+// „Preuzmi APK”: zadnji APK iz GitHub releasea direktno (kad ažuriranje u app-u ne radi, za drugi telefon ili ručnu instalaciju).
+// U APK-u navigacija ide kroz shouldOverrideUrlLoading → preglednik telefona skida fajl; na računaru novi tab.
+async function preuzmiApk() {
+  const btn = document.getElementById('set-apk-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Tražim…'; }
+  const REL = 'https://github.com/pogonboskrupa/forest-una-sana/releases/latest';
+  let url = REL, naz = '';
+  try {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 12000);
+    const r = await fetch('https://api.github.com/repos/pogonboskrupa/forest-una-sana/releases?per_page=1', { signal: ctl.signal, headers: { Accept: 'application/vnd.github+json' } });
+    clearTimeout(t);
+    const j = await r.json(), a = ((j[0] && j[0].assets) || []).find(x => /\.apk$/i.test(x.name || ''));
+    if (a && /^https:\/\/github\.com\//.test(a.browser_download_url || '')) { url = a.browser_download_url; naz = a.name + (a.size ? ' (' + (a.size / 1048576).toFixed(1) + ' MB)' : ''); }
+  } catch (e) {}
+  if (btn) { btn.disabled = false; btn.textContent = '⬇ APK'; }
+  if (typeof AndroidUpdate !== 'undefined') location.href = url;
+  else { const el = document.createElement('a'); el.href = url; el.target = '_blank'; el.rel = 'noopener noreferrer'; document.body.appendChild(el); el.click(); el.remove(); }
+  showToast(naz ? '⬇ Preuzimam ' + naz : url === REL ? 'Otvaram stranicu zadnjeg izdanja — odaberi .apk' : '⬇ Preuzimanje APK-a');
 }
 function checkForUpdate() {
   if (typeof AndroidUpdate !== 'undefined' && AndroidUpdate.checkAndInstall) {
