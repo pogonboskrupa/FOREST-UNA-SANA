@@ -199,12 +199,9 @@ function rdFindRoute(opts) {
   const nodes = new Map();  // key -> {lat,lon,elev,parentKey,g,azIn}
   nodes.set(startKey, { lat: startLat, lon: startLon, elev: elevStart, parentKey: null, g: 0, len: 0, azIn: null });
 
-  // Težinski A*: heuristika × hW (≥ 1) znatno smanjuje broj čvorova na kompleksnom terenu uz malo duži put;
-  // bez toga je na dužim trasama budžet iteracija često trošen na „šire” umjesto naprijed (NO_ROUTE).
-  const hW = Math.max(1, opts.heuristikaTezina || 1.6);
   const closed = new Set();
   const open = [];
-  _rdHeapPush(open, { f: hW * rdHaversine(startLat, startLon, endLat, endLon), key: startKey });
+  _rdHeapPush(open, { f: rdHaversine(startLat, startLon, endLat, endLon), key: startKey });
 
   const offsets = [0, 20, -20, 45, -45, 70, -70, 100, -100, 135, -135];
 
@@ -263,28 +260,8 @@ function rdFindRoute(opts) {
       if (params.bezSerpentina && turnDiff > RD_MAX_TURN_NO_SERPENTINE) continue; // TVRDO odbačen — serpentina zabranjena
 
       let penalty = 1;
-      // Cilj je ravnomjeran PREPORUČENI nagib (kontura), ne najstrmiji dozvoljeni pravac uz padinu: što je nagib
-      // iznad preporučenog, to je kazna veća (kontinualno), pa se isplati zaobići/vijugati po padini.
-      if (slopePct > params.nagibPreporuceni) penalty = 1.8 + 3.2 * Math.min(1, (slopePct - params.nagibPreporuceni) / Math.max(1, nagibMax - params.nagibPreporuceni));
-      // Ravnomjeran pad: i blago odstupanje ISPOD preporučenog se plaća (nikad se ne gradi naizmjenično
-      // 1 % pa 8 %), a ispod nagibMin (odvodnjavanje) nešto više.
-      else if (slopePct < params.nagibMin) penalty = 1.25;
-      else penalty += 0.25 * Math.abs(slopePct - params.nagibPreporuceni) / Math.max(1, params.nagibPreporuceni);
-
-      // Poprečni nagib i oblik terena u kandidat-tački (±15 m okomito na pravac): preko poprecniNagibMax
-      // je usjek preskup/nestabilan ⇒ TVRDO odbačeno; jarci i grebeni (jaka zakrivljenost) se plaćaju.
-      const pa = rdDestPoint(cand.lat, cand.lon, (az + 90) % 360, 15), pb = rdDestPoint(cand.lat, cand.lon, (az + 270) % 360, 15);
-      const eA = sampleElev(pa.lat, pa.lon), eB = sampleElev(pb.lat, pb.lon);
-      if (eA != null && eB != null) {
-        const poprecni = Math.abs(eA - eB) / 30 * 100;
-        if (poprecni > params.poprecniNagibMax) continue;
-        if (poprecni > params.poprecniNagibMax * 0.7) penalty *= 1.3;
-        const zakr = Math.abs(eA + eB - 2 * candElev);
-        if (zakr > 6) penalty *= 1.5; else if (zakr > 3) penalty *= 1.2;
-      }
-      // Blaga linearna kazna za skretanje u odnosu na prethodni korak (kvadratna je pokvarila pretragu —
-      // vidi napomenu ispod): krivulja već u pretrazi, ne samo naknadno zaglađena.
-      penalty *= 1 + turnDiff / 1200;
+      if (slopePct > params.nagibPreporuceni*1.5) penalty = 3.5;
+      else if (slopePct > params.nagibPreporuceni) penalty = 1.8;
       const angPenalty = 1 + Math.abs(off)/400; // blaga kazna za skretanje, da ne luta bez potrebe
 
       // NAPOMENA (regresija otkrivena i uklonjena poslije v3.95.1): ovdje je
@@ -310,7 +287,7 @@ function rdFindRoute(opts) {
       const existing = nodes.get(candKey);
       if (!existing || tentG < existing.g) {
         nodes.set(candKey, { lat: cand.lat, lon: cand.lon, elev: candElev, parentKey: cur.key, g: tentG, len: node.len + L, azIn: az });
-        const f = tentG + hW * rdHaversine(cand.lat, cand.lon, endLat, endLon);
+        const f = tentG + rdHaversine(cand.lat, cand.lon, endLat, endLon);
         _rdHeapPush(open, { f, key: candKey });
       }
     }

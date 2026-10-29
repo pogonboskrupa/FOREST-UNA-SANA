@@ -11182,30 +11182,22 @@ function _rdRenderPreviewStats(a, b) {
   `;
 }
 
-function _rdIterBudget(straightDistM) { return Math.max(8000, Math.min(150000, Math.round(straightDistM * 60))); }
+function _rdIterBudget(straightDistM) { return Math.max(6000, Math.min(100000, Math.round(straightDistM * 40))); }
 
 // Copernicus 30 m direktno gdje postoji (tačne visine), inače DEM grid trase.
 function _rdSample(lat, lon) { const h = _rdVisina(lat, lon); return Number.isFinite(h) ? h : null; }
 function _rdRouteLeg(dem, aLat, aLon, bLat, bLon, params) {
-  const straightDist = rdHaversine(aLat, aLon, bLat, bLon), b = _rdIterBudget(straightDist);
-  // Prvo skoro-optimalna pretraga (hW 1,15 — prati konture i drži preporučeni nagib); samo ako ne uspije
-  // u pola budžeta, grublja i brža (hW 1,8) s većim budžetom — trasa je tada manje „fina”, ali postoji.
-  let r = null;
-  for (const [hW, f] of [[1.15, 0.5], [1.8, 1.2]]) {
-    r = rdFindRoute({ startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon, sampleElev: _rdSample, params,
-      maxIterations: Math.round(b * f), heuristikaTezina: hW });
-    if (r.ok || r.reason === 'DEM_MISSING') break;
-  }
-  return r;
+  const straightDist = rdHaversine(aLat, aLon, bLat, bLon);
+  return rdFindRoute({
+    startLat: aLat, startLon: aLon, endLat: bLat, endLon: bLon,
+    sampleElev: _rdSample,
+    params, maxIterations: _rdIterBudget(straightDist)
+  });
 }
 
 // Tri varijante iste trase (ista pretraga, drugačije težine): uravnotežena (zadani preporučeni nagib), najblaža
 // (niži ciljni nagib ⇒ duža, ravnomjernija) i najkraća (cilj = max nagib ⇒ najmanje dužine, više zemljanih radova).
-const _RD_VARIJANTE = [
-  { k: 'bal', naziv: 'Uravnotežena', ik: '⚖', izm: () => ({}) },
-  { k: 'blaga', naziv: 'Najblaža', ik: '🌿', izm: p => ({ nagibPreporuceni: Math.max(p.nagibMin + 0.5, p.nagibPreporuceni - 1.5) }) },
-  { k: 'kratka', naziv: 'Najkraća', ik: '⚡', izm: p => ({ nagibPreporuceni: p.nagibMax }) }
-];
+const _RD_VARIJANTE = [{ k: 'bal', naziv: 'Trasa', ik: '', izm: () => ({}) }]; // jedna trasa (bez alternativa)
 let _rdVarijante = [], _rdVarIdx = 0;
 // Ako stroga pretraga ne nađe put, postepeno se popušta (i korisnik to vidi u rezultatu): prvo se dozvole
 // serpentine, pa se ukine tvrda granica poprečnog nagiba. Nagib uzduž trase se NIKAD ne popušta.
@@ -11445,7 +11437,6 @@ function _rdShowResult(bezToasta) {
   resEl.style.display = 'block';
   resEl.innerHTML = `<section class="ng-card">
     <h3>Rezultat ${_rdResultPath._uredjeno ? '<small style="color:#a78bfa;font-weight:600">· ručno uređeno</small>' : ''}</h3>
-    ${_rdVarijanteHtml()}
     ${_rdResultParams._opusteno ? `<div class="rd-badge warn">⚠ Strogi uslovi nisu dali trasu — korišteno popuštanje: ${_rdResultParams._opusteno}. Nagib uzduž trase je i dalje unutar maksimalnog.</div>` : ''}
     ${_rdSazetakHtml(_rdResultPath, v, _rdResultParams)}
     ${_rdProfilHtml(_rdResultPath, _rdResultParams)}
