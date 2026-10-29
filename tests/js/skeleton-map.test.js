@@ -189,14 +189,17 @@ t('meni: grupe, SVG ikone (bez emoji) i status po kartici', () => {
   const meni = HTML.slice(a, b);
   assert.ok((meni.match(/class="meni-grp"/g) || []).length >= 4);
   const kartice = meni.match(/<button type="button" class="meni-card"[\s\S]*?<\/button>/g) || [];
-  assert.strictEqual(kartice.length, 13, 'Sječa i vjetroizvale uklonjena (pokriva Šumarstvo); Tačke i fotografije, Sjekačke linije, Sušenje-potkornjak, Primka, Inventura šuma dodane');
-  const red = ['mc-sumarstvo', 'mc-susenje', 'mc-pozari'].map(id => meni.indexOf('id="' + id + '"'));
-  assert.ok(red[0] > 0 && red[0] < red[1] && red[1] < red[2], 'Šumarstvo prvo, pa Sušenje-potkornjak, pa Požari');
+  assert.strictEqual(kartice.length, 14, 'Sječa i vjetroizvale uklonjena (pokriva Šumarstvo); Tačke i fotografije, Sjekačke linije, Sušenje-potkornjak, Primka, Inventura šuma dodane');
+  const red = ['mc-sumarstvo', 'mc-vitalnost', 'mc-susenje', 'mc-pozari'].map(id => meni.indexOf('id="' + id + '"'));
+  assert.ok(red[0] > 0 && red[0] < red[1] && red[1] < red[2] && red[2] < red[3], 'Šumarstvo, pa Satelitski snimci-vitalnost šume, pa Sušenje-potkornjak, pa Požari');
   const sus = HTML.slice(HTML.indexOf('<div id="susenje-panel"'), HTML.indexOf('<!-- Projektovanje šumskog puta -->'));
   ['id="tp-osvjezi"', 'id="tp-rez"', 'id="sum-susenje-switch"', 'id="sum-susenje-god"', 'id="sum-sus-proj-chk"'].forEach(x => assert.ok(sus.includes(x), 'Sušenje-potkornjak sadrži ' + x));
-  const sum = HTML.slice(HTML.indexOf('<div id="sumarstvo-panel"'), HTML.indexOf('<div id="susenje-panel"'));
+  const sum = HTML.slice(HTML.indexOf('<div id="sumarstvo-panel"'), HTML.indexOf('<div id="vitalnost-panel"'));
   assert.ok(!sum.includes('id="tp-rez"') && !sum.includes('id="sum-susenje-switch"') && !sum.includes('id="uk-veg-switch"'), 'tlo/potkornjak, NDVI i sušenje više nisu u Šumarstvu');
-  assert.ok(sus.indexOf('id="tp-rez"') < sus.indexOf('id="uk-veg-switch"') && sus.indexOf('id="uk-veg-switch"') < sus.indexOf('id="sum-susenje-switch"'), 'redoslijed: tlo, vitalnost, sušenje');
+  assert.ok(!sus.includes('id="uk-veg-switch"'), 'vitalnost krošnje više nije u Sušenje-potkornjak');
+  const vit = HTML.slice(HTML.indexOf('<div id="vitalnost-panel"'), HTML.indexOf('<div id="susenje-panel"'));
+  ['id="uk-veg-switch"', 'id="veg-ind"', 'id="veg-per"', 'id="veg-preuzmi"'].forEach(x => assert.ok(vit.includes(x), 'Satelitski snimci-vitalnost sadrži ' + x));
+  assert.ok(HTML.includes("function openVitalnostSection()") && HTML.includes("'vitalnost-panel','susenje-panel'"));
   for (const k of kartice) {
     assert.ok(/<span class="mc-ico"><svg/.test(k), 'ikona mora biti SVG');
     assert.ok(!/\p{Extended_Pictographic}/u.test(k), 'bez emoji u kartici');

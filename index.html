@@ -2350,9 +2350,15 @@ body.sl-uredi #sl-ured { display: block; }
         <span class="mc-stat" id="mc-stat-sumarstvo"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
+      <button type="button" class="meni-card" id="mc-vitalnost" onclick="openVitalnostSection()" style="--mc:#22d3ee">
+        <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M3 12c2.2-4.2 5.4-6.2 9-6.2s6.8 2 9 6.2c-2.2 4.2-5.4 6.2-9 6.2S5.2 16.2 3 12z"/></svg></span>
+        <span class="mc-txt"><b>Satelitski snimci-vitalnost šume</b><span>NDVI, EVI, NDMI i promjene prema lani</span></span>
+        <span class="mc-stat" id="mc-stat-vitalnost"></span>
+        <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
       <button type="button" class="meni-card" id="mc-susenje" onclick="openSusenjeSection()" style="--mc:#facc15">
         <span class="mc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="13.5" rx="4.5" ry="6"/><path d="M12 7.5v12M9 4.5l1.5 2.5M15 4.5 13.5 7M7.5 11H4M7.5 15.5H4.5M16.5 11H20M16.5 15.5h3"/></svg></span>
-        <span class="mc-txt"><b>Sušenje-potkornjak</b><span>Tlo i potkornjak, NDVI vitalnost, sušenje šume</span></span>
+        <span class="mc-txt"><b>Sušenje-potkornjak</b><span>Tlo i potkornjak, sušenje šume</span></span>
         <span class="mc-stat" id="mc-stat-susenje"></span>
         <svg class="mc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
@@ -2798,22 +2804,12 @@ body.sl-uredi #sl-ured { display: block; }
   </div>
 </div>
 
-<!-- Sušenje i potkornjak: tlo/PHENIPS (tlo-potkornjak.js) i sušenje (deadtrees.earth);
-     ID-ovi su isti kao u Šumarstvu, logika (_sum*, USFTlo, USFVeg) se nije mijenjala. -->
-<div id="susenje-panel" class="usf-panel">
-  <div class="up-hdr"><h2>🪲 Sušenje-potkornjak</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+<!-- Satelitski snimci — vitalnost šume (prije u Sušenje-potkornjak): NDVI/EVI/NDMI… USFVeg; ID-ovi uk-veg-*/veg-* nepromijenjeni. -->
+<div id="vitalnost-panel" class="usf-panel">
+  <div class="up-hdr"><h2>🛰 Satelitski snimci — vitalnost šume</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
   <div class="up-body">
-    <div class="sus-kes"><b>💾 Sve što učitaš u USK ostaje na telefonu</b><small>Očitanja tla i potkornjaka, NDVI pločice i karte sušenja koje si vidio rade i bez interneta (samo unutar Unsko-sanskog kantona).</small><div id="sus-kes-stat"></div></div>
     <section class="uk-grupa">
-      <h3>Tlo i potkornjak <small>vlažnost i temperatura tla, razvoj potkornjaka · zadnji rezultat radi bez interneta</small></h3>
-      <div class="tp-kartica">
-        <div class="tp-zag"><span>🪲 Očitanje za lokaciju</span><button id="tp-osvjezi" class="zp-glavno" onclick="USFTlo.osvjezi()">↻ Očitaj</button></div>
-        <p class="uk-izvor">Za GPS poziciju (ako je Moja lokacija uključena), inače za centar karte. Vlažnost tla 0–7 / 7–28 / 28–100 cm prema višegodišnjem prosjeku, temperatura tla i razvoj smrekovog potkornjaka (<i>Ips typographus</i>).</p>
-        <div id="tp-rez"></div>
-      </div>
-    </section>
-    <section class="uk-grupa">
-      <h3>Vitalnost krošnje <small>satelitski vegetacijski indeksi · zapamćene pločice rade bez interneta</small></h3>
+      <h3>Vitalnost šume <small>satelitski vegetacijski indeksi (Sentinel-2) · zapamćene pločice rade bez interneta</small></h3>
       <div class="loc-row"><span>🛰 Vegetacijski indeksi i promjene</span><div class="loc-switch" id="uk-veg-switch" onclick="USFVeg.prekidac()"></div></div>
       <div id="uk-veg-opts" class="uk-opts" style="display:none">
         <div class="zp-izbor"><label>Indeks<select id="veg-ind" onchange="USFVeg.postavi('ind',this.value)"><optgroup label="Stanje"><option value="ndvi">NDVI — vitalnost</option><option value="evi">EVI — gusta šuma</option><option value="ndmi">NDMI — voda u krošnji</option><option value="gndvi">GNDVI — rani stres (hlorofil)</option><option value="nbr">NBR — opožarenost</option><option value="msavi">MSAVI — sječine, podmladak</option><option value="mndwi">MNDWI — voda, mokrišta</option></optgroup><optgroup label="Tasseled Cap"><option value="tcw">Wetness — vlažnost, poremećaj šume</option><option value="tcg">Greenness — zelena biomasa</option><option value="tcb">Brightness — golo tlo, sječine</option></optgroup><optgroup label="Promjena prema lani"><option value="dndvi">dNDVI — sječa, sušenje, vjetroizvala</option><option value="dnbr">dNBR — jačina požara</option></optgroup></select></label>
@@ -2834,6 +2830,23 @@ body.sl-uredi #sl-ured { display: block; }
           <div class="veg-id-red"><input id="veg-id" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><button class="zp-glavno" onclick="USFVeg.povezi()">Spremi</button></div>
           <p class="uk-izvor">ID ostaje samo na ovom telefonu. Besplatno: 10 000 zahtjeva i 10 000 PU mjesečno po računu — jedna pločica = jedan zahtjev; zapamćene pločice se ne troše ponovo 5 dana.</p>
         </details>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Sušenje i potkornjak: tlo/PHENIPS (tlo-potkornjak.js) i sušenje (deadtrees.earth);
+     ID-ovi su isti kao u Šumarstvu, logika (_sum*, USFTlo, USFVeg) se nije mijenjala. -->
+<div id="susenje-panel" class="usf-panel">
+  <div class="up-hdr"><h2>🪲 Sušenje-potkornjak</h2><button class="up-close" onclick="switchMainTab('karta')">✕</button></div>
+  <div class="up-body">
+    <div class="sus-kes"><b>💾 Sve što učitaš u USK ostaje na telefonu</b><small>Očitanja tla i potkornjaka, NDVI pločice i karte sušenja koje si vidio rade i bez interneta (samo unutar Unsko-sanskog kantona).</small><div id="sus-kes-stat"></div></div>
+    <section class="uk-grupa">
+      <h3>Tlo i potkornjak <small>vlažnost i temperatura tla, razvoj potkornjaka · zadnji rezultat radi bez interneta</small></h3>
+      <div class="tp-kartica">
+        <div class="tp-zag"><span>🪲 Očitanje za lokaciju</span><button id="tp-osvjezi" class="zp-glavno" onclick="USFTlo.osvjezi()">↻ Očitaj</button></div>
+        <p class="uk-izvor">Za GPS poziciju (ako je Moja lokacija uključena), inače za centar karte. Vlažnost tla 0–7 / 7–28 / 28–100 cm prema višegodišnjem prosjeku, temperatura tla i razvoj smrekovog potkornjaka (<i>Ips typographus</i>).</p>
+        <div id="tp-rez"></div>
       </div>
     </section>
     <section class="uk-grupa">
@@ -8789,6 +8802,7 @@ function _driveKmlKraj(id, ok, poruka, kmz) {
   setTimeout(() => { _driveKmlRender(); if (window.USFOtv) USFOtv.render(); }, 1500);
 }
 function openSumarstvoSection() { if (!_pinOtkljucano()) { _pinTrazi(openSumarstvoSection); return; } _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
+function openVitalnostSection() { if (!_pinOtkljucano()) { _pinTrazi(openVitalnostSection); return; } _openStubPanel('vitalnost-panel', 'meni'); _sumPanelOsvjezi(); if (window.USFVeg && USFVeg.osvjezi) try { USFVeg.osvjezi(); } catch (e) {} }
 function openSusenjeSection() { if (!_pinOtkljucano()) { _pinTrazi(openSusenjeSection); return; } _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
 // Pregled offline keša sekcije (tlo: usf_tlo_mjesta, NDVI: Cache 'usf-veg', sušenje: Cache 'usf-susenje').
 async function _susKesStat() {
@@ -12499,7 +12513,7 @@ _temRestore();
 // GLAVNA NAVIGACIJA — Mapa / Karte / Meni / Postavke
 // =====================================================================
 let _activeMainTab = 'karta';
-const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel','primka-panel','inventura-panel'];
+const _ALL_PANELS = ['nagib-panel','karte-panel','meni-panel','postavke-panel','pozari-panel','sumarstvo-panel','vitalnost-panel','susenje-panel','put-panel','tematska-panel','ucitajkartu-panel','ucitajkml-panel','mjerenja-panel','tacke-panel','sjekacke-panel','primka-panel','inventura-panel'];
 function switchMainTab(tab) {
   _activeMainTab = tab;
   document.querySelectorAll('#main-tabs .mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
