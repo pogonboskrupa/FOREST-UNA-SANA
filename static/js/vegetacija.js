@@ -76,7 +76,7 @@
   const ulazi = k => (INDEKSI[INDEKSI[k].baza] || INDEKSI[k]).ulazi;
   const PERIODI = { '15': '15 dana', '30': '30 dana', '60': '60 dana', 'pg': 'isti mjesec prošle godine' };
 
-  const st = (() => { const p = { on: false, id: '', sloj: '', ind: 'ndvi', per: '30', op: 80 }; try { Object.assign(p, JSON.parse(localStorage.getItem(KLJUC) || '{}')); } catch (e) {} return p; })();
+  const st = (() => { const p = { on: false, id: '', sloj: '', ind: 'ndvi', per: '30', op: 80, sakr: {} }; try { Object.assign(p, JSON.parse(localStorage.getItem(KLJUC) || '{}')); } catch (e) {} return p; })();
   const pamti = () => { try { localStorage.setItem(KLJUC, JSON.stringify(st)); } catch (e) {} };
   const imaKes = typeof caches !== 'undefined';
   const vezaLosa = () => navigator.onLine === false || (typeof _vezaLoša === 'function' && _vezaLoša());
@@ -178,6 +178,38 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     } catch (e) { return stara ? stara.blob() : null; } finally { clearTimeout(t); }
   }
 
+  // ── Filter klasa: kvačice u legendi na karti ─────────────────────────
+  // Pločice dolaze s tačnom paletom klasa (diskretne boje), pa se klasa piksela nađe najbližom bojom palete;
+  // isključena klasa postaje providna. Stanje je po indeksu (st.sakr[indeks] = niz isključenih klasa) i pamti se.
+  const sakrivene = () => new Set((st.sakr && st.sakr[st.ind]) || []);
+  function filtrirajPlocicu(cv) {
+    const sk = sakrivene(); if (!sk.size) return;
+    const I = INDEKSI[st.ind], pal = I.boje.map(hexRgb), cx = cv.getContext('2d');
+    const im = cx.getImageData(0, 0, cv.width, cv.height), d = im.data, kes = new Map();
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 8) continue;
+      const kk = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+      let k = kes.get(kk);
+      if (k === undefined) { let nd = Infinity; k = 0; for (let j = 0; j < pal.length; j++) { const e = (pal[j][0] - d[i]) ** 2 + (pal[j][1] - d[i + 1]) ** 2 + (pal[j][2] - d[i + 2]) ** 2; if (e < nd) { nd = e; k = j; } } kes.set(kk, k); }
+      if (sk.has(k)) d[i + 3] = 0;
+    }
+    cx.putImageData(im, 0, 0);
+  }
+  function postaviKlase(lista) {
+    st.sakr = st.sakr || {}; st.sakr[st.ind] = lista; pamti();
+    if (sloj) sloj.redraw(); legendaNaKarti();
+  }
+  function prebaciKlasu(k) {
+    const sk = sakrivene(); sk.has(k) ? sk.delete(k) : sk.add(k); postaviKlase([...sk]);
+  }
+  function sveKlase(on) { postaviKlase(on ? [] : INDEKSI[st.ind].boje.map((_, i) => i)); }
+  // „Samo problematično”: klase čiji opis govori o gubitku/sječi/suši/stresu/požaru (po opisu klase, ne po broju).
+  function samoProblem() {
+    const I = INDEKSI[st.ind], re = /sječ|sušen|suh|stres|gubitak|oštećen|opožar|vjetroizval|oslabljen|požar|izražen|jak /i;
+    const dobre = (I.klase || []).map((t, i) => re.test(t) ? -1 : i).filter(i => i >= 0);
+    postaviKlase(dobre.length === I.boje.length ? [] : dobre);
+  }
+
   // ── Sloj ─────────────────────────────────────────────────────────────
   let sloj = null;
   function pane() {
@@ -192,6 +224,7 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
           const b = await plocica(c.z, c.x, c.y); if (!b) return;
           const bmp = await createImageBitmap(b); const cx = cv.getContext('2d'); cx.imageSmoothingEnabled = false;
           cx.drawImage(bmp, 0, 0, PL, PL); if (bmp.close) bmp.close();
+          filtrirajPlocicu(cv);
         })().catch(() => {}).finally(() => done(null, cv));
         return cv;
       }
@@ -249,6 +282,8 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     cip.onclick = () => legendaPokazi();
     document.body.appendChild(cip);
     const ruc = box.querySelector('.vml-ruc');
+    box.querySelector('.vml-tijelo').addEventListener('change', e => { const c = e.target.closest('input[data-k]'); if (c) prebaciKlasu(+c.dataset.k); });
+    box.querySelector('.vml-tijelo').addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (!b) return; const a = b.dataset.a; a === 'sve' ? sveKlase(true) : a === 'nista' ? sveKlase(false) : samoProblem(); });
     box.querySelector('.vml-x').onclick = () => { leg.skrivena = true; pamtiLeg(); legendaNaKarti(); uiSync(); };
     box.querySelector('.vml-saz').onclick = () => { leg.sazeta = !leg.sazeta; pamtiLeg(); legendaNaKarti(); };
     let drag = null;
@@ -276,10 +311,11 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     box.querySelector('.vml-nasl b').textContent = '⠿ ' + I.naziv;
     box.querySelector('.vml-nasl small').textContent = perTekst(st);
     box.querySelector('.vml-saz').textContent = leg.sazeta ? '▸' : '▾';
-    const red = i => { const o = { od: i ? I.pragovi[i - 1] : null, do: i < I.pragovi.length ? I.pragovi[i] : null }; return `<div class="vml-red"><i style="background:${I.boje[i]}"></i><b>${raspon(o)}</b><span>${esc((I.klase || [])[i] || '')}</span></div>`; };
+    const sk = sakrivene();
+    const red = i => { const o = { od: i ? I.pragovi[i - 1] : null, do: i < I.pragovi.length ? I.pragovi[i] : null }; return `<label class="vml-red${sk.has(i) ? ' off' : ''}"><input type="checkbox" data-k="${i}" ${sk.has(i) ? '' : 'checked'}><i style="background:${I.boje[i]}"></i><b>${raspon(o)}</b><span>${esc((I.klase || [])[i] || '')}</span></label>`; };
     box.querySelector('.vml-tijelo').innerHTML = leg.sazeta
       ? `<div class="veg-skala">${I.boje.map(b => `<i style="background:${b}"></i>`).join('')}</div><div class="veg-skala-br"><span>${br(I.pragovi[0])}</span><span>${br(I.pragovi[I.pragovi.length - 1])}</span></div>`
-      : Array.from({ length: n }, (_, k) => red(n - 1 - k)).join('') + '<p class="vml-opis">Dodir na kartu = vrijednost · oblaci prozirni</p>';
+      : '<div class="vml-akc"><button type="button" data-a="sve">☑ Sve</button><button type="button" data-a="nista">☐ Nijedna</button><button type="button" data-a="problem">⚠ Samo problem</button></div>' + Array.from({ length: n }, (_, k) => red(n - 1 - k)).join('') + '<p class="vml-opis">Kvačica = klasa se prikazuje · dodir na kartu = vrijednost</p>';
     if (leg.x != null && box._smjesti) box._smjesti(leg.x, leg.y); else if (box._zadano) box._zadano();
   }
   function legendaPokazi() { leg.skrivena = false; pamtiLeg(); legendaNaKarti(); uiSync(); }
@@ -376,7 +412,7 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     });
   }
 
-  root.USFVeg = { legendaPokazi, prekidac, postavi, povezi, otkljucaj, CDSE_ENC, preuzmi, obrisiKes, evalscript, period, periodPromjene, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
+  root.USFVeg = { filtrirajPlocicu, postaviKlase, legendaPokazi, prekidac, postavi, povezi, otkljucaj, CDSE_ENC, preuzmi, obrisiKes, evalscript, period, periodPromjene, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.USFVeg;
   if (typeof L !== 'undefined' && typeof map !== 'undefined' && map && map.getContainer) {
     registruj(); uiSync(); legenda(); if (st.on) crtaj();

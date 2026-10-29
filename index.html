@@ -2120,7 +2120,7 @@ body.sl-uredi #sl-ured { display: block; }
 #sus-kes-stat button { margin-left: auto; min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--pn-line); background: rgba(255,255,255,.04); color: var(--pn-txt); font-size: 11.5px; }
 .veg-skala-br { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--pn-dim); }
 /* Pokretna legenda NDVI/EVI/NDMI na karti (vegetacija.js legendaNaKarti) */
-#veg-map-leg { position: fixed; left: 8px; top: calc(100dvh - 480px); z-index: 491; width: 200px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 210px); overflow: auto; background: rgba(15,23,42,.94); border: 1px solid #475569; border-radius: 12px; color: #e2e8f0; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+#veg-map-leg { position: fixed; left: 8px; top: calc(100dvh - 480px); z-index: 491; width: 226px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 210px); overflow: auto; background: rgba(15,23,42,.94); border: 1px solid #475569; border-radius: 12px; color: #e2e8f0; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
 #veg-map-leg[hidden], #veg-leg-chip[hidden] { display: none; }
 #veg-map-leg .vml-ruc { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 9px; cursor: move; touch-action: none; position: sticky; top: 0; background: rgba(15,23,42,.98); }
 #veg-map-leg .vml-nasl { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
@@ -2129,6 +2129,11 @@ body.sl-uredi #sl-ured { display: block; }
 #veg-map-leg .vml-ruc button { flex: none; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #334155; color: #fff; cursor: pointer; font-size: 13px; }
 #veg-map-leg .vml-tijelo { padding: 2px 9px 7px; }
 #veg-map-leg .vml-red { display: grid; grid-template-columns: 12px 50px 1fr; gap: 5px; align-items: center; padding: 1.5px 0; font-size: 10px; line-height: 1.2; }
+#veg-map-leg .vml-red { grid-template-columns: 16px 12px 50px 1fr; cursor: pointer; }
+#veg-map-leg .vml-red input { width: 14px; height: 14px; margin: 0; accent-color: #22c55e; }
+#veg-map-leg .vml-red.off { opacity: .45; }
+#veg-map-leg .vml-akc { display: flex; gap: 4px; margin: 2px 0 5px; }
+#veg-map-leg .vml-akc button { flex: 1; padding: 4px 2px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #cbd5e1; font: 600 9.5px system-ui; }
 #veg-map-leg .vml-red i { width: 12px; height: 10px; border-radius: 2px; border: 1px solid rgba(0,0,0,.4); }
 #veg-map-leg .vml-red b { font-weight: 700; color: #f1f5f9; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #veg-map-leg .vml-red span { color: #cbd5e1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
