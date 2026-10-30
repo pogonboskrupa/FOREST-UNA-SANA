@@ -306,12 +306,37 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .rd-gen { padding:15px; font-size:15px; letter-spacing:.2px; box-shadow:0 4px 16px rgba(34,197,94,.28); }
 .rd-kreiraj { width:100%; margin:0 0 10px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:13px; font-size:15px; }
 .rd-kreiraj small { font-size:10.5px; font-weight:500; opacity:.85; }
+.rd-prof-box { background:#0b1220; border:1px solid #1f3b2d; border-radius:12px; padding:6px 6px 8px; margin:6px 0 6px; }
+.rd-prof-box .rd-prof { border:0; margin:0; background:transparent; touch-action:pan-y; cursor:crosshair; }
+.rd-prof-info { min-height:34px; margin-top:4px; padding:6px 9px; border-radius:9px; background:#0f1f17; border:1px solid #1a3326; color:#e2e8f0; font-size:12px; line-height:1.4; }
+.rd-prof-leg { display:flex; flex-wrap:wrap; gap:10px; margin:2px 2px 8px; font-size:10.5px; color:#9db0a7; }
+.rd-prof-leg span::before { content:''; display:inline-block; width:14px; height:4px; border-radius:2px; background:var(--c); margin-right:5px; vertical-align:middle; }
+.rd-prof-nap { font-size:11px; color:#80958a; line-height:1.45; margin-top:6px; }
 .rd-prof { width:100%; height:auto; display:block; background:#0b1220; border:1px solid #1f3b2d; border-radius:10px; margin:6px 0 8px; }
 .rdm-ov { position:fixed; inset:0; z-index:1100; background:rgba(2,10,6,.62); display:none; align-items:flex-end; justify-content:center; }
 .rdm-ov.show { display:flex; }
 .rdm-sheet { width:100%; max-width:520px; max-height:88vh; overflow-y:auto; background:#0a1a12; border:1px solid #1f3b2d; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom)); color:var(--text); }
 .rdm-zag { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:15px; }
 .rdm-zag button { border:0; background:#13281d; color:#cbd5e1; width:32px; height:32px; border-radius:50%; font-size:15px; }
+.rdm-zbir { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:0 0 10px; }
+.rdm-zbir div { background:#0f1f17; border:1px solid #1a3326; border-radius:10px; padding:7px 4px; text-align:center; }
+.rdm-zbir b { display:block; font-size:14px; } .rdm-zbir small { color:#80958a; font-size:10px; }
+.rdm-vrem { position:relative; }
+.rdm-red { border-top:0 !important; background:#0d1f16; border:1px solid #1a3326; border-radius:12px; padding:10px !important; margin:0; }
+.rdm-red.ok { border-color:color-mix(in srgb,var(--c) 45%,#1a3326); }
+.rdm-veza { display:flex; align-items:center; gap:10px; padding:2px 0 2px 14px; font-size:11px; color:#80958a; min-height:26px; }
+.rdm-veza i { width:2px; align-self:stretch; min-height:22px; background:linear-gradient(#334155,#334155); border-radius:2px; margin-right:2px; }
+.rdm-veza.dobro i { background:#22c55e; } .rdm-veza.lose i { background:#f59e0b; } .rdm-veza.lose { color:#fcd34d; }
+.rdm-veza b { color:#e2e8f0; }
+.rdm-opcije { margin:12px 0 4px; padding:10px; background:#0d1f16; border:1px solid #1a3326; border-radius:12px; }
+.rdm-seg { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:#0b1220; padding:3px; border-radius:11px; margin-bottom:9px; }
+.rdm-seg button { padding:9px 4px; border:0; border-radius:9px; background:transparent; color:#9db0a7; font:inherit; font-size:12px; font-weight:700; }
+.rdm-seg button.on { background:linear-gradient(135deg,#166534,#15803d); color:#fff; }
+.rdm-par { display:flex; flex-wrap:wrap; gap:8px 12px; font-size:12px; color:#cbd5e1; }
+.rdm-par label { display:flex; align-items:center; gap:5px; }
+.rdm-par input[type=number] { width:56px; padding:5px 6px; background:#1f2937; color:#e2e8f0; border:1px solid #374151; border-radius:7px; font-size:12px; }
+.rdm-par select { padding:5px 6px; background:#1f2937; color:#e2e8f0; border:1px solid #374151; border-radius:7px; font-size:12px; }
+.rdm-go { position:sticky; bottom:0; margin-top:8px; padding:15px; font-size:15px; }
 .rdm-red { display:grid; grid-template-columns:30px 1fr; gap:6px 10px; padding:10px 0; border-top:1px solid #1f3b2d; }
 .rdm-red:first-of-type { border-top:none; }
 .rdm-tx b { display:block; font-size:13px; } .rdm-tx small { display:block; color:#80958a; font-size:10.5px; word-break:break-word; }
@@ -11019,29 +11044,59 @@ function _rdModalOtvori() {
 }
 function _rdModalZatvori() { document.getElementById('rd-modal').classList.remove('show'); }
 function _rdModalSakrij() { document.getElementById('rd-modal')?.classList.remove('show'); }
+let _rdModNacin = 'obicna';
 function _rdModalRed(which, oz, naziv, boja, t, vi) {
   const w = `'${which}'`;
-  return `<div class="rdm-red" style="--c:${boja}"><span class="rd-oz">${oz}</span><div class="rdm-tx"><b>${naziv}</b><small>${t ? _rdTackaTxt(t) : 'Nije postavljena'}</small></div>
+  return `<div class="rdm-red${t ? ' ok' : ''}" style="--c:${boja}"><span class="rd-oz">${oz}</span><div class="rdm-tx"><b>${naziv}</b><small>${t ? _rdTackaTxt(t) : 'Nije postavljena — izaberi na karti, GPS-om ili upiši koordinate'}</small></div>
     <div class="rdm-bt"><button onclick="_rdPickPoint(${w},true)">🗺 Karta</button><button onclick="_rdModalGps(${w})">📍 GPS</button><button onclick="_rdUnosKoord(${w})">⌨</button>${vi != null ? `<button onclick="_rdViaPomjeri(${vi},-1)" ${vi === 0 ? 'disabled' : ''}>↑</button><button onclick="_rdViaPomjeri(${vi},1)" ${vi === _rdVias.length - 1 ? 'disabled' : ''}>↓</button><button class="brisi" onclick="_rdRemoveVia(${vi})">✕</button>` : ''}</div></div>`;
 }
 function _rdModalGps(which) { _rdGpsPoint(which); }
+// Veza između dvije tačke: ravna udaljenost, visinska razlika i nagib prave linije (crveno ako prelazi max nagib ⇒ trasa mora vijugati).
+function _rdModalVeza(p, q, par) {
+  if (!p || !q) return '<div class="rdm-veza"><i></i><span>—</span></div>';
+  const d = rdHaversine(p.lat, p.lon, q.lat, q.lon), dh = (p.elev != null && q.elev != null) ? q.elev - p.elev : null;
+  if (dh == null) return `<div class="rdm-veza"><i></i><span>${_msrFmt(d)} · visina se učitava…</span></div>`;
+  const n = d > 0 ? Math.abs(dh) / d * 100 : 0, min = Math.abs(dh) / (par.nagibMax / 100), lose = n > par.nagibMax;
+  return `<div class="rdm-veza ${lose ? 'lose' : 'dobro'}"><i></i><span>${_msrFmt(d)} · ${dh >= 0 ? '▲ +' : '▼ −'}${Math.abs(dh).toFixed(0)} m · nagib ravne linije <b>${n.toFixed(1)} %</b>${lose ? ` — put mora imati ≥ ${(min / 1000).toFixed(1)} km` : ' — može skoro ravno'}</span></div>`;
+}
 function _rdModalOsvjezi() {
   const el = document.getElementById('rdm-tijelo');
   if (!el || !document.getElementById('rd-modal').classList.contains('show')) return;
-  const a = _rdPoints.start, b = _rdPoints.end;
+  const a = _rdPoints.start, b = _rdPoints.end, par = _rdReadParamsFromForm();
   const spremno = a && b && !_rdNotReadyReason;
-  const stanje = !a || !b ? 'Postavite tačku A i tačku B' : _rdNotReadyReason ? '⏳ ' + _rdNotReadyReason : '✓ Spremno — ' + (_rdVias.length ? (_rdVias.length + 1) + ' dionice preko ' + _rdVias.length + ' međutačke' : 'direktna trasa A → B');
-  el.innerHTML = _rdModalRed('start', 'A', 'Početak', _RD_PT_CFG.start.color, a)
-    + _rdVias.map((v, i) => _rdModalRed('via:' + i, _rdViaOzn(i), 'Međutačka ' + (i + 1), '#fbbf24', v, i)).join('')
-    + _rdModalRed('end', 'B', 'Kraj', _RD_PT_CFG.end.color, b)
+  const stanje = !a || !b ? 'Postavi tačku A i tačku B' : _rdNotReadyReason ? '⏳ ' + _rdNotReadyReason : '✓ Spremno' + (_rdVias.length ? ' — ' + (_rdVias.length + 1) + ' dionice' : ' — direktna trasa A → B');
+  const tacke = [a, ..._rdVias, b];
+  let tl = _rdModalRed('start', 'A', 'Početak', _RD_PT_CFG.start.color, a);
+  _rdVias.forEach((v, i) => { tl += _rdModalVeza(tacke[i], tacke[i + 1], par) + _rdModalRed('via:' + i, _rdViaOzn(i), 'Međutačka ' + (i + 1), '#fbbf24', v, i); });
+  tl += _rdModalVeza(tacke[tacke.length - 2], b, par) + _rdModalRed('end', 'B', 'Kraj', _RD_PT_CFG.end.color, b);
+  const pk = _rdPutIndeks(), ide = _rdModNacin === 'idealna';
+  const uk = a && b ? tacke.slice(1).reduce((s2, t, i) => s2 + rdHaversine(tacke[i].lat, tacke[i].lon, t.lat, t.lon), 0) : 0;
+  const zbir = a && b && a.elev != null && b.elev != null ? `<div class="rdm-zbir"><div><b>${_msrFmt(uk)}</b><small>ravno ukupno</small></div><div><b>${(b.elev - a.elev >= 0 ? '+' : '−') + Math.abs(b.elev - a.elev).toFixed(0)} m</b><small>A → B visina</small></div><div><b>${(Math.abs(b.elev - a.elev) / (par.nagibMax / 100) / 1000).toFixed(1)} km</b><small>min. put pri ${par.nagibMax} %</small></div></div>` : '';
+  el.innerHTML = zbir + `<div class="rdm-vrem">${tl}</div>`
     + (_rdVias.length < _RD_VIA_MAX ? '<button class="rd-dodaj" onclick="_rdPickPoint(\'via+\',true)">➕ Dodaj međutačku (ide se redom A → M1 → … → B)</button>' : '')
-    + `<div class="rdm-stanje ${spremno ? 'ok' : ''}">${stanje}</div>
-    <div class="rdm-note">Profil trase (nagib po dužini, uspon/silazak) se prikazuje u rezultatu.</div>
-    <button class="ng-glavno" ${spremno ? '' : 'disabled'} onclick="_rdModalGeneriši()">🧭 Kreiraj trasu i profil</button>`;
+    + `<div class="rdm-opcije">
+        <div class="rdm-seg"><button class="${ide ? '' : 'on'}" onclick="_rdModNacinPostavi('obicna')">🧭 Obična trasa</button><button class="${ide ? 'on' : ''}" onclick="_rdModNacinPostavi('idealna')">🌿 Idealna (najmanje radova)</button></div>
+        <div class="rdm-par">
+          <label>Max nagib <input type="number" inputmode="decimal" step="0.5" value="${par.nagibMax}" onchange="_rdModPar('nagibMax',this.value)"> %</label>
+          <label>Preporučeni <input type="number" inputmode="decimal" step="0.5" value="${par.nagibPreporuceni}" onchange="_rdModPar('nagibPreporuceni',this.value)"> %</label>
+          ${ide ? `<label>Krug oko A i B <select onchange="_rdModKrug(this.value)">${[200, 250, 300].map(v => `<option value="${v}" ${(+document.getElementById('rd-ideal-r')?.value || 250) === v ? 'selected' : ''}>${v} m</option>`).join('')}</select></label>` : ''}
+          <label class="rdm-chk"><input type="checkbox" ${par.bezSerpentina ? 'checked' : ''} onchange="_rdModPar('bezSerpentina',this.checked)"> Bez serpentina</label>
+        </div>
+        <div class="rdm-note">${ide ? 'Početak i kraj trase se traže u krugu oko A i B (crtkana pristupna linija); bira se put s najmanje zemljanih radova' + (_rdVias.length ? ' (međutačke se u ovom načinu ne koriste)' : '') + (pk.idx ? ' i koristi postojeće puteve (' + pk.br + ' linija).' : '. Učitaj KML „Kamionski putevi” da koristi postojeće puteve.') : 'Trasa ide tačno od A do B' + (_rdVias.length ? ' preko međutačaka' : '') + '; nagib uzduž puta nikad ne prelazi maksimum.'}</div>
+      </div>
+      <div class="rdm-stanje ${spremno ? 'ok' : ''}">${stanje}</div>
+      <button class="ng-glavno rdm-go" ${spremno ? '' : 'disabled'} onclick="_rdModalGeneriši()">${ide ? '🌿 Napravi idealnu trasu i profil' : '🧭 Kreiraj trasu i profil'}</button>`;
+}
+function _rdModNacinPostavi(n) { _rdModNacin = n; _rdModalOsvjezi(); }
+function _rdModKrug(v) { const e = document.getElementById('rd-ideal-r'); if (e) e.value = v; }
+function _rdModPar(k, v) {
+  const e = document.getElementById('rd-p-' + k); if (!e) return;
+  if (e.type === 'checkbox') e.checked = !!v; else e.value = v;
+  _rdParamSazetak(); _rdModalOsvjezi();
 }
 function _rdModalGeneriši() {
   _rdModalZatvori();
-  _rdGenerate();
+  if (_rdModNacin === 'idealna') _rdGenerateIdeal(); else _rdGenerate();
 }
 document.getElementById('put-panel')?.addEventListener('change', e => { if ((e.target.id || '').startsWith('rd-p-')) _rdParamSazetak(); });
 
@@ -11515,7 +11570,7 @@ map.on('zoomend', () => {
   if (_rdResultLayer && _rdResultPath && !_rdEd) { map.removeLayer(_rdResultLayer); _rdResultLayer = _rdCrtajTrasu(_rdResultPath, _rdResultVal).addTo(map); }
 });
 function _rdDiscardResult() {
-  _rdUrediKraj(false);
+  _rdUrediKraj(false); _rdProfMakni();
   if (_rdResultLayer) { map.removeLayer(_rdResultLayer); _rdResultLayer = null; }
   _rdResultPath = null;
   _rdResultVal = null;
@@ -11539,33 +11594,83 @@ function _rdSazetakHtml(path, val, params) {
     <div class="rd-traka">${['ex', 'ok', 'warn', 'bad'].map(k => `<i style="width:${(m[k] / uk * 100).toFixed(2)}%;background:${_RD_BOJE[k]}"></i>`).join('')}</div>
     <div class="rd-leg">${m.ex ? `<span style="--c:${_RD_BOJE.ex}">postojeći put: ${_msrFmt(m.ex)}</span>` : ''}<span style="--c:${_RD_BOJE.ok}">≤${params.nagibPreporuceni} %: ${_msrFmt(m.ok)}</span><span style="--c:${_RD_BOJE.warn}">do ${params.nagibMax} %: ${_msrFmt(m.warn)}</span>${m.bad ? `<span style="--c:${_RD_BOJE.bad}">>${params.nagibMax} %: ${_msrFmt(m.bad)}</span>` : ''}</div>`;
 }
-// Profil trase kao dodatak rezultatu: visina po dužini, linija obojena po klasi nagiba, A / M / B oznake.
+// Profil trase kao dodatak rezultatu: mreža s oznakama (stacionaža × visina), linija obojena po klasi nagiba,
+// sjenčenje postojećeg puta, traka nagiba ispod grafika, oznake A / M / B i INTERAKTIVNI kursor
+// (dodir/povlačenje = stacionaža, visina i nagib; tačka se pokazuje i na karti).
+let _rdProf = null, _rdProfTacka = null;
+function _rdLijepKorak(raspon, ciljBr, koraci) { for (const k of koraci) if (raspon / k <= ciljBr) return k; return koraci[koraci.length - 1]; }
 function _rdProfilHtml(path, params) {
-  if (!path || path.length < 2 || path.some(q => !Number.isFinite(q.elev))) return '';
+  _rdProfMakni();
+  if (!path || path.length < 2 || path.some(q => !Number.isFinite(q.elev))) { _rdProf = null; return ''; }
   const d = [0];
   for (let i = 1; i < path.length; i++) d.push(d[i - 1] + rdHaversine(path[i - 1].lat, path[i - 1].lon, path[i].lat, path[i].lon));
-  const uk = d[d.length - 1] || 1;
-  const hs = path.map(q => q.elev), hMin = Math.min(...hs), hMax = Math.max(...hs), raspon = Math.max(10, hMax - hMin);
-  let up = 0, dn = 0; for (let i = 1; i < hs.length; i++) { const dh = hs[i] - hs[i - 1]; if (dh > 0) up += dh; else dn -= dh; }
-  const W = 320, H = 130, L0 = 34, R0 = 8, T0 = 14, B0 = 18;
-  const x = m => L0 + m / uk * (W - L0 - R0), y = h => T0 + (1 - (h - hMin) / raspon) * (H - T0 - B0);
-  const boja = i => { const dd = d[i] - d[i - 1]; const n = dd > 0.01 ? Math.abs(hs[i] - hs[i - 1]) / dd * 100 : 0; return n > params.nagibMax ? _RD_BOJE.bad : n > params.nagibPreporuceni ? _RD_BOJE.warn : _RD_BOJE.ok; };
-  const korak = Math.max(1, Math.floor(path.length / 160));
-  let ispuna = `M${x(0).toFixed(1)},${H - B0}`, linije = '';
+  const uk = d[d.length - 1] || 1, hs = path.map(q => q.elev);
+  const hMin0 = Math.min(...hs), hMax0 = Math.max(...hs), ky = _rdLijepKorak(Math.max(10, hMax0 - hMin0), 4, [5, 10, 20, 25, 50, 100, 200]);
+  const hMin = Math.floor(hMin0 / ky) * ky, hMax = Math.max(Math.ceil(hMax0 / ky) * ky, hMin + ky);
+  let up = 0, dn = 0, ex = 0;
+  for (let i = 1; i < hs.length; i++) { const dh = hs[i] - hs[i - 1]; if (dh > 0) up += dh; else dn -= dh; if (path[i].ex && path[i - 1].ex) ex += d[i] - d[i - 1]; }
+  const W = 340, H = 178, L0 = 40, R0 = 10, T0 = 12, B0 = 44, PH = H - T0 - B0, PW = W - L0 - R0;
+  const x = m => L0 + m / uk * PW, y = h => T0 + (1 - (h - hMin) / (hMax - hMin)) * PH;
+  const nag = i => { const dd = d[i] - d[i - 1]; return dd > 0.01 ? Math.abs(hs[i] - hs[i - 1]) / dd * 100 : 0; };
+  const boja = i => (path[i].ex && path[i - 1].ex) ? _RD_BOJE.ex : nag(i) > params.nagibMax ? _RD_BOJE.bad : nag(i) > params.nagibPreporuceni ? _RD_BOJE.warn : _RD_BOJE.ok;
+  let mreza = '';
+  for (let h = hMin; h <= hMax + 1e-6; h += ky) mreza += `<line x1="${L0}" y1="${y(h).toFixed(1)}" x2="${W - R0}" y2="${y(h).toFixed(1)}" stroke="#1f3b2d" stroke-width="1"/><text x="${L0 - 5}" y="${(y(h) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(h)}</text>`;
+  const kx = _rdLijepKorak(uk, 6, [100, 200, 250, 500, 1000, 2000, 5000]);
+  for (let m = 0; m <= uk + 1e-6; m += kx) mreza += `<line x1="${x(m).toFixed(1)}" y1="${T0}" x2="${x(m).toFixed(1)}" y2="${T0 + PH}" stroke="#16301f" stroke-width="1"/><text x="${x(m).toFixed(1)}" y="${T0 + PH + 11}" text-anchor="middle" font-size="8.5" fill="#80958a">${rdStacionazaTxt(m)}</text>`;
+  let ispuna = `M${x(0).toFixed(1)},${T0 + PH}`, linije = '', postoj = '', traka = '';
+  const korak = Math.max(1, Math.floor(path.length / 200));
   for (let i = 0; i < path.length; i += korak) {
     ispuna += ` L${x(d[i]).toFixed(1)},${y(hs[i]).toFixed(1)}`;
-    if (i) { const j = Math.max(0, i - korak); linije += `<line x1="${x(d[j]).toFixed(1)}" y1="${y(hs[j]).toFixed(1)}" x2="${x(d[i]).toFixed(1)}" y2="${y(hs[i]).toFixed(1)}" stroke="${boja(i)}" stroke-width="2.4" stroke-linecap="round"/>`; }
+    if (i) {
+      const j = Math.max(0, i - korak), c = boja(i);
+      linije += `<line x1="${x(d[j]).toFixed(1)}" y1="${y(hs[j]).toFixed(1)}" x2="${x(d[i]).toFixed(1)}" y2="${y(hs[i]).toFixed(1)}" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`;
+      traka += `<rect x="${x(d[j]).toFixed(1)}" y="${T0 + PH + 16}" width="${Math.max(0.8, x(d[i]) - x(d[j]) + 0.4).toFixed(1)}" height="9" fill="${c}"/>`;
+      if (path[i].ex && path[j].ex) postoj += `<rect x="${x(d[j]).toFixed(1)}" y="${T0}" width="${(x(d[i]) - x(d[j]) + 0.4).toFixed(1)}" height="${PH}" fill="${_RD_BOJE.ex}" opacity=".13"/>`;
+    }
   }
-  ispuna += ` L${x(uk).toFixed(1)},${H - B0} Z`;
-  const kljucni = (path._kljucni || [{ ozn: 'A', i: 0 }, { ozn: 'B', i: path.length - 1 }]).map(k => `<line x1="${x(d[k.i]).toFixed(1)}" y1="${T0}" x2="${x(d[k.i]).toFixed(1)}" y2="${H - B0}" stroke="#94a3b8" stroke-dasharray="2 3" stroke-width="1"/><circle cx="${x(d[k.i]).toFixed(1)}" cy="${y(hs[k.i]).toFixed(1)}" r="3.5" fill="#0b1220" stroke="#e2e8f0" stroke-width="1.5"/><text x="${x(d[k.i]).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="9" fill="#cbd5e1">${k.ozn}</text>`).join('');
+  ispuna += ` L${x(uk).toFixed(1)},${T0 + PH} Z`;
+  const kljucni = path._kljucni || [{ ozn: 'A', i: 0 }, { ozn: 'B', i: path.length - 1 }];
+  const oznake = kljucni.map(k => `<line x1="${x(d[k.i]).toFixed(1)}" y1="${T0}" x2="${x(d[k.i]).toFixed(1)}" y2="${T0 + PH + 26}" stroke="#94a3b8" stroke-dasharray="2 3"/><circle cx="${x(d[k.i]).toFixed(1)}" cy="${y(hs[k.i]).toFixed(1)}" r="4" fill="#0b1220" stroke="#e2e8f0" stroke-width="1.6"/><text x="${x(d[k.i]).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" font-weight="700" fill="#e2e8f0">${k.ozn}</text>`).join('');
+  // najstrmiji kontinuirani dio od ~100 m (po zaglađenom nagibu)
+  let najs = { n: 0, m: 0 };
+  for (let i = 0; i < path.length; i++) { let j = i; while (j < path.length - 1 && d[j] - d[i] < 100) j++; if (d[j] - d[i] > 30) { const n = Math.abs(hs[j] - hs[i]) / (d[j] - d[i]) * 100; if (n > najs.n) najs = { n, m: d[i] }; } }
+  _rdProf = { d, hs, path, uk, x, W, L0, R0, T0, PH, y, params };
   return `<div class="ng-podnaslov">Profil trase</div>
-    <svg class="rd-prof" viewBox="0 0 ${W} ${H}" role="img" aria-label="Profil trase">
-      <path d="${ispuna}" fill="rgba(34,197,94,.10)"/>
-      <text x="${L0 - 4}" y="${T0 + 3}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(hMax)}</text>
-      <text x="${L0 - 4}" y="${H - B0}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(hMin)}</text>
-      ${linije}${kljucni}
-    </svg>
-    <div class="rd-kpi"><div><b>▲ ${up.toFixed(0)} m</b><small>ukupni uspon</small></div><div><b>▼ ${dn.toFixed(0)} m</b><small>ukupni silazak</small></div><div><b>${Math.round(hMax)} m</b><small>najviša tačka</small></div><div><b>${Math.round(hMin)} m</b><small>najniža tačka</small></div></div>`;
+    <div class="rd-prof-box">
+      <svg id="rd-prof-svg" class="rd-prof" viewBox="0 0 ${W} ${H}" role="img" aria-label="Profil trase">
+        ${mreza}${postoj}<path d="${ispuna}" fill="rgba(34,197,94,.10)"/>${linije}${traka}${oznake}
+        <g id="rd-prof-kursor" style="display:none"><line id="rd-pk-l" y1="${T0}" y2="${T0 + PH + 26}" stroke="#fff" stroke-width="1"/><circle id="rd-pk-c" r="4.5" fill="#fff" stroke="#0b1220" stroke-width="2"/></g>
+      </svg>
+      <div id="rd-prof-info" class="rd-prof-info">👆 Dodirni ili povuci po profilu — vidiš stacionažu, visinu i nagib, a tačka se pokaže i na karti.</div>
+    </div>
+    <div class="rd-prof-leg"><span style="--c:${_RD_BOJE.ok}">≤ ${params.nagibPreporuceni} %</span><span style="--c:${_RD_BOJE.warn}">do ${params.nagibMax} %</span><span style="--c:${_RD_BOJE.bad}">&gt; ${params.nagibMax} %</span>${ex ? `<span style="--c:${_RD_BOJE.ex}">postojeći put</span>` : ''}</div>
+    <div class="rd-kpi"><div><b>▲ ${up.toFixed(0)} m</b><small>ukupni uspon</small></div><div><b>▼ ${dn.toFixed(0)} m</b><small>ukupni silazak</small></div><div><b>${Math.round(hMax0)} m</b><small>najviša tačka</small></div><div><b>${Math.round(hMin0)} m</b><small>najniža tačka</small></div></div>
+    <div class="rd-prof-nap">Najstrmiji dio (~100 m): <b>${najs.n.toFixed(1)} %</b> na stacionaži <b>${rdStacionazaTxt(najs.m)}</b>${ex ? ` · po postojećem putu ${_msrFmt(ex)}` : ''} · vertikalno uvećanje ×${(PH / ((hMax - hMin)) / (PW / uk)).toFixed(1)}</div>`;
+}
+function _rdProfMakni() { if (_rdProfTacka) { try { map.removeLayer(_rdProfTacka); } catch (e) {} _rdProfTacka = null; } }
+// Veže dodir/povlačenje na SVG profila (zove se poslije ubacivanja HTML-a u rezultat).
+function _rdProfilVezi() {
+  const svg = document.getElementById('rd-prof-svg'); if (!svg || !_rdProf) return;
+  const P = _rdProf, kur = document.getElementById('rd-prof-kursor'), kl = document.getElementById('rd-pk-l'), kc = document.getElementById('rd-pk-c'), info = document.getElementById('rd-prof-info');
+  const nadji = m => { let lo = 0, hi = P.d.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; P.d[mid] < m ? lo = mid : hi = mid; } return (m - P.d[lo]) <= (P.d[hi] - m) ? lo : hi; };
+  const idi = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * P.W;
+    const m = Math.max(0, Math.min(P.uk, (px - P.L0) / (P.W - P.L0 - P.R0) * P.uk)), i = nadji(m), h = P.hs[i];
+    // nagib: zaglađen ±40 m oko tačke
+    let a = i, b = i; while (a > 0 && P.d[i] - P.d[a] < 40) a--; while (b < P.d.length - 1 && P.d[b] - P.d[i] < 40) b++;
+    const n = P.d[b] > P.d[a] ? (P.hs[b] - P.hs[a]) / (P.d[b] - P.d[a]) * 100 : 0, an = Math.abs(n);
+    const c = (P.path[i].ex) ? _RD_BOJE.ex : an > P.params.nagibMax ? _RD_BOJE.bad : an > P.params.nagibPreporuceni ? _RD_BOJE.warn : _RD_BOJE.ok;
+    const cx = P.x(P.d[i]); kur.style.display = ''; kl.setAttribute('x1', cx); kl.setAttribute('x2', cx); kc.setAttribute('cx', cx); kc.setAttribute('cy', P.y(h));
+    info.innerHTML = `<b>${rdStacionazaTxt(P.d[i])}</b> · ${Math.round(h)} m nv · nagib <b style="color:${c}">${n >= 0 ? '↗ +' : '↘ −'}${an.toFixed(1)} %</b>${P.path[i].ex ? ' · <span style="color:' + _RD_BOJE.ex + '">postojeći put</span>' : ''}`;
+    const q = P.path[i];
+    if (!_rdProfTacka) _rdProfTacka = L.circleMarker([q.lat, q.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#f97316', fillOpacity: 1, interactive: false, pane: 'tragMsrLines' }).addTo(map);
+    else _rdProfTacka.setLatLng([q.lat, q.lon]);
+  };
+  let drzi = false;
+  svg.addEventListener('pointerdown', e => { drzi = true; try { svg.setPointerCapture(e.pointerId); } catch (x) {} idi(e); });
+  svg.addEventListener('pointermove', e => { if (drzi || e.pointerType === 'mouse') idi(e); });
+  const kraj = () => { drzi = false; };
+  svg.addEventListener('pointerup', kraj); svg.addEventListener('pointercancel', kraj);
 }
 function _rdPoprecniHtml(path) {
   const pn = rdPoprecniNagib(path, _rdVisina, 20);
@@ -11612,6 +11717,7 @@ function _rdShowResult(bezToasta) {
     <div class="rd-akc"><button onclick="_rdIzvoz('kml')">⤓ KML</button><button onclick="_rdIzvoz('gpx')">⤓ GPX</button><button onclick="_rdIzvoz('csv')">⤓ CSV</button></div>
     <div class="rd-akc"><button class="glavno" onclick="_rdSaveRoute()">💾 Sačuvaj trasu</button><button onclick="_rdDiscardResult()">Odbaci</button></div>
   </section>`;
+  _rdProfilVezi();
   if (!bezToasta) showToast(`✓ Trasa: ${_msrFmt(v.totalDist)}, max nagib ${v.maxSlopePct.toFixed(1)}%`);
 }
 function _rdStacToggle() { _rdStacOn = !_rdStacOn; if (_rdResultPath) _rdShowResult(); }
