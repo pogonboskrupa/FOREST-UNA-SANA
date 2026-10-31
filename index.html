@@ -284,6 +284,14 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .rd-var button { text-align:left; padding:8px 9px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
 .rd-var button.on { border-color:#4ade80; background:#0f2a1b; box-shadow:0 0 0 1px #4ade80 inset; }
 .rd-var small { display:block; color:#80958a; font-size:10px; margin-top:2px; }
+.rd-var-tab { overflow-x:auto; margin:4px 0 8px; }
+.rd-var-tab table { width:100%; border-collapse:collapse; font-size:11.5px; }
+.rd-var-tab th { color:#80958a; font-weight:600; text-align:left; padding:4px 5px; border-bottom:1px solid #1f3b2d; white-space:nowrap; }
+.rd-var-tab td { padding:7px 5px; border-bottom:1px solid #16301f; white-space:nowrap; color:#cbd5e1; }
+.rd-var-tab tr.akt td { background:rgba(34,197,94,.10); } .rd-var-tab tr.naj td b { color:#4ade80; } .rd-var-tab tr { cursor:pointer; }
+.rd-cijene { margin:4px 0 8px; font-size:12px; color:#cbd5e1; } .rd-cijene summary { cursor:pointer; padding:6px 0; }
+.rd-cij-grid { display:grid; gap:6px; } .rd-cij-grid label { display:flex; align-items:center; gap:6px; }
+.rd-cij-grid input { width:70px; padding:5px 6px; background:#1f2937; color:#e2e8f0; border:1px solid #374151; border-radius:7px; font-size:12px; }
 .rd-pin { width:30px; height:30px; border-radius:50%; background:var(--c); border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.5); display:grid; place-items:center; color:#0b1220; font:800 13px/1 system-ui,sans-serif; cursor:grab; }
 .rd-pop-akc { display:flex; gap:5px; margin:6px 0 4px; }
 .rd-pop-akc button { flex:1; padding:6px 4px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; font:inherit; font-size:12px; }
@@ -11446,6 +11454,53 @@ function _rdGenerateIdeal() {
   }, 30);
 }
 
+// ── Poređenje varijanti, procjena troška i izvještaj (A4 slika / PDF) — static/js/put-izvjestaj.js
+let _rdVarList = [], _rdVarBr = 0;
+const _rdCijene = () => { try { return Object.assign({}, USFPutIzv.CIJENE_ZADANO, JSON.parse(localStorage.getItem('usf_rd_cijene') || '{}')); } catch (e) { return Object.assign({}, USFPutIzv.CIJENE_ZADANO); } };
+function _rdZr(path) { const pn = rdPoprecniNagib(path, _rdVisina, 20), prm = _rdResultParams || RD_DEFAULT_PARAMS; return pn.ukupno ? rdZemljaniRadovi(pn.seg, prm.sirinaPuta) : null; }
+// Svaka NOVA trasa (generisana ili idealna) ulazi u listu za poređenje (≤ 4); prebacivanje između njih je ne dodaje ponovo.
+function _rdVarRegistruj() {
+  if (!_rdResultPath || _rdResultPath._varId) return;
+  _rdVarBr++; _rdResultPath._varId = _rdVarBr;
+  _rdVarList.push({ id: _rdVarBr, naziv: (_rdResultPath._ideal ? '🌿 Idealna' : '🧭 Obična') + ' #' + _rdVarBr, path: _rdResultPath, val: _rdResultVal, params: _rdResultParams, zr: _rdZr(_rdResultPath) });
+  if (_rdVarList.length > 4) _rdVarList.shift();
+}
+function _rdVarMetrike() { const c = _rdCijene(); return _rdVarList.map(v => ({ ...v, m: USFPutIzv.metrike(v.path, v.val, v.zr, c) })); }
+function _rdVarPrikazi(id) {
+  const v = _rdVarList.find(x => x.id === id); if (!v) return;
+  _rdResultPath = v.path; _rdResultVal = v.val; _rdResultParams = v.params; _rdShowResult(true);
+}
+function _rdVarUkloni(id) { _rdVarList = _rdVarList.filter(x => x.id !== id); if (_rdResultPath && _rdResultPath._varId === id) _rdResultPath._varId = 0; if (_rdResultPath) _rdShowResult(true); }
+function _rdCijenaPostavi(k, v) { const c = _rdCijene(); c[k] = Math.max(0, parseFloat(v) || 0); try { localStorage.setItem('usf_rd_cijene', JSON.stringify(c)); } catch (e) {} if (_rdResultPath) _rdShowResult(true); }
+function _rdVarHtml() {
+  if (!_rdVarList.length) return '';
+  const L2 = _rdVarMetrike(), best = L2.length > 1 ? USFPutIzv.najbolji(L2, 'trosak') : -1, c = _rdCijene(), akt = _rdResultPath && _rdResultPath._varId;
+  const th = `<tr><th></th><th>Dužina</th><th>Maks.</th><th>Iskop m³</th><th>Postoji</th><th>Trošak KM</th></tr>`;
+  const rows = L2.map((v, i) => `<tr class="${v.id === akt ? 'akt' : ''}${i === best ? ' naj' : ''}" onclick="_rdVarPrikazi(${v.id})"><td><b>${v.naziv}</b>${i === best ? ' ★' : ''}</td><td>${_msrFmt(v.m.dist)}</td><td>${v.m.maxN.toFixed(1)} %</td><td>${Math.round(v.m.iskop).toLocaleString('bs-BA')}</td><td>${Math.round(v.m.ex / Math.max(1, v.m.dist) * 100)} %</td><td><b>${Math.round(v.m.trosak).toLocaleString('bs-BA')}</b></td></tr>`).join('');
+  return `<div class="ng-podnaslov">Poređenje varijanti <small>${L2.length > 1 ? '★ = najjeftinija · dodir na red prikazuje trasu' : 'generiši još jednu (npr. Idealnu) za poređenje'}</small></div>
+    <div class="rd-var-tab"><table>${th}${rows}</table></div>
+    <details class="rd-cijene"><summary>💶 Jedinične cijene (orijentaciono)</summary><div class="rd-cij-grid">
+      <label>Zemljani radovi <input type="number" inputmode="decimal" value="${c.zemljani}" onchange="_rdCijenaPostavi('zemljani',this.value)"> KM/m³</label>
+      <label>Nova trasa <input type="number" inputmode="decimal" value="${c.nova}" onchange="_rdCijenaPostavi('nova',this.value)"> KM/m</label>
+      <label>Potporni zid <input type="number" inputmode="decimal" value="${c.zid}" onchange="_rdCijenaPostavi('zid',this.value)"> KM/m</label></div>
+      <div class="rd-pop-nap">Trošak = (iskop + nasip) × cijena radova + nova trasa × cijena kolovoza + zid. Postojeći put se ne naplaćuje.</div></details>
+    <div class="rd-akc"><button class="glavno" onclick="_rdIzvjestaj('pdf')">📄 Izvještaj PDF</button><button onclick="_rdIzvjestaj('png')">🖼 Slika A4</button>${akt ? `<button onclick="_rdVarUkloni(${akt})">✕ Izbaci ovu</button>` : ''}</div>`;
+}
+async function _rdIzvjestaj(format) {
+  if (!_rdResultPath || !_rdResultVal) { showToast('Prvo generiši trasu'); return; }
+  try {
+    const cv = document.createElement('canvas'), c = _rdCijene(), L2 = _rdVarMetrike(), best = L2.length > 1 ? USFPutIzv.najbolji(L2, 'trosak') : -1;
+    const pl = _rdPostojeciLinije().linije.filter(L3 => { const b = L.latLngBounds(_rdResultPath.map(q => [q.lat, q.lon])).pad(0.3); return L3.some(q => b.contains(q)); });
+    USFPutIzv.crtaj(cv, { naslov: _rdResultPath._ideal ? 'Idealna trasa' : 'Obična trasa', datum: new Date().toLocaleDateString('bs-BA'), params: _rdResultParams || RD_DEFAULT_PARAMS, path: _rdResultPath, val: _rdResultVal, zr: _rdZr(_rdResultPath), cijene: c,
+      stac: rdStacionazaTxt, putevi: pl, kljucni: _rdResultPath._kljucni, boje: _RD_BOJE, rdH: (a, b) => rdHaversine(a.lat, a.lon, b.lat, b.lon),
+      varijante: L2.map((v, i) => ({ naziv: v.naziv.replace(/[^\wčćšđžČĆŠĐŽ# ]/g, '').trim(), m: v.m, najjeftinija: i === best })) });
+    const dan = new Date().toISOString().slice(0, 10);
+    if (format === 'png') { const bl = await new Promise(r => cv.toBlob(r, 'image/png')); _izvozFajl('trasa_izvjestaj_' + dan + '.png', bl, 'image/png', 'Izvještaj o trasi'); return; }
+    const jb = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92)), bytes = new Uint8Array(await jb.arrayBuffer());
+    _izvozFajl('trasa_izvjestaj_' + dan + '.pdf', new Blob([USFPutIzv.pdfIzJpeg(bytes, cv.width, cv.height)], { type: 'application/pdf' }), 'application/pdf', 'Izvještaj o trasi');
+  } catch (e) { showToast('⚠ Izvještaj nije uspio: ' + (e && e.message || e)); }
+}
+
 function _rdGenerate() {
   const a = _rdPoints.start, b = _rdPoints.end, vias = _rdVias;
   if (_rdNotReadyReason) { showToast('⚠ ' + _rdNotReadyReason); return; }
@@ -11701,6 +11756,7 @@ function _rdPoprecniKlaseHtml(pn) {
     <div class="rd-pop-nap">Prosjek ${pn.sr.toFixed(0)} %, maks. ${pn.max.toFixed(0)} %. ${pn.poKlasi[3].m > 0 ? '⚠ Dionice preko 70 % traže potporne zidove ili pomjeranje trase. ' : ''}${pn.poKlasi[2].m > 0 ? 'Na 50–70 % računaj s punim usjekom.' : ''}</div>`;
 }
 function _rdShowResult(bezToasta) {
+  _rdVarRegistruj();
   if (_rdResultLayer) map.removeLayer(_rdResultLayer);
   _rdResultLayer = _rdCrtajTrasu(_rdResultPath, _rdResultVal).addTo(map);
   const v = _rdResultVal;
@@ -11711,6 +11767,7 @@ function _rdShowResult(bezToasta) {
     ${_rdResultParams._opusteno ? `<div class="rd-badge warn">⚠ Strogi uslovi nisu dali trasu — korišteno popuštanje: ${_rdResultParams._opusteno}. Nagib uzduž trase je i dalje unutar maksimalnog.</div>` : ''}
     ${_rdResultPath._ideal ? `<div class="rd-badge ok">🌿 Idealna trasa (najmanje radova): početak ${Math.round(_rdResultPath._ideal.pA)} m od A, kraj ${Math.round(_rdResultPath._ideal.pB)} m od B — pristup je crtkana linija</div>` : ''}
     ${_rdSazetakHtml(_rdResultPath, v, _rdResultParams)}
+    ${_rdVarHtml()}
     ${_rdProfilHtml(_rdResultPath, _rdResultParams)}
     ${_rdPoprecniHtml(_rdResultPath)}
     <div class="rd-akc"><button onclick="_rdShowProfile()">↕ Profil</button><button onclick="_rdUredi()">✎ Uredi trasu</button><button class="${_rdStacOn ? 'on' : ''}" onclick="_rdStacToggle()">📏 Stacionaže</button></div>
@@ -13059,6 +13116,7 @@ window.addEventListener('load', () => {
 <script src="static/js/sjekacke.js"></script>
 <script src="static/js/primka.js"></script>
 <script src="static/js/otvorenost.js"></script>
+<script src="static/js/put-izvjestaj.js"></script>
 <script src="static/js/inventura.js"></script>
 <script src="static/js/mjerenja-profil.js"></script>
 <script src="static/js/slika-karte.js"></script>
