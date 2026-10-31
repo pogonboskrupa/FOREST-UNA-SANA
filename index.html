@@ -284,6 +284,7 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 .rd-var button { text-align:left; padding:8px 9px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
 .rd-var button.on { border-color:#4ade80; background:#0f2a1b; box-shadow:0 0 0 1px #4ade80 inset; }
 .rd-var small { display:block; color:#80958a; font-size:10px; margin-top:2px; }
+.tk-jos { width:100%; margin:8px 0; padding:11px; border-radius:11px; border:1px dashed #335744; background:transparent; color:#9db0a7; font:inherit; font-size:12.5px; }
 .vp-red { display:flex; align-items:center; gap:10px; padding:9px 10px; margin:6px 0; border-radius:12px; background:#0f1f17; border:1px solid #1a3326; cursor:pointer; }
 .vp-nazv { flex:1; min-width:0; } .vp-nazv b { display:block; font-size:13px; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .vp-nazv small { color:#80958a; font-size:10.5px; }
 .vp-pct { text-align:right; border-left:3px solid var(--c); padding-left:10px; } .vp-pct b { font-size:16px; color:var(--c); display:block; } .vp-pct small { color:#9db0a7; font-size:10px; }
@@ -4482,14 +4483,21 @@ async function _tragStilUredi(id) {
   else { t.color = r.col; t.weight = r.stil.w; t.op = r.stil.op; t.dashStyle = r.stil.crta; }
   _tragRegSave(); _tragRegAddLayer(t); _tragRegRender(); _khStat();
 }
+function _tragRijedi(ll) {
+  if (ll.length <= 40) return ll;
+  const out = [ll[0]]; let zadnja = ll[0];
+  for (let i = 1; i < ll.length - 1; i++) { const dla = (ll[i][0] - zadnja[0]) * 111320, dlo = (ll[i][1] - zadnja[1]) * 79000; if (dla * dla + dlo * dlo >= 225) { out.push(ll[i]); zadnja = ll[i]; } }
+  out.push(ll[ll.length - 1]); return out;
+}
 function _tragRegAddLayer(t) {
   if (_tragLayers[t.id]) { try { map.removeLayer(_tragLayers[t.id]); } catch(e) {} }
   if (_tragHitLayers[t.id]) { try { map.removeLayer(_tragHitLayers[t.id]); } catch(e) {} }
   if (_tragLenMk[t.id]) { try { map.removeLayer(_tragLenMk[t.id]); } catch(e) {} delete _tragLenMk[t.id]; }
   const dashArray = _tragDashArray(t.dashStyle || _lineStyle.tragDash);
   const lls = t.pts.map(p => [p[0], p[1]]);
-  const line = L.polyline(lls, { color: t.color || '#f97316', weight: t.weight || _lineStyle.tragW, opacity: (t.op ?? (_lineStyle.tragOp||85))/100, dashArray, interactive: false, pane: 'tragMsrLines' });
-  const hit = L.polyline(lls, { weight: 24, opacity: 0.001, color: '#000', interactive: true, pane: 'tragMsrLines' });
+  const line = L.polyline(lls, { color: t.color || '#f97316', weight: t.weight || _lineStyle.tragW, opacity: (t.op ?? (_lineStyle.tragOp||85))/100, dashArray, interactive: false, pane: 'tragMsrLines', smoothFactor: 2 });
+  // Nevidljiv „hvatač” dodira je širok 24 px pa mu ne trebaju sve tačke: razrijeđen na ~15 m razmaka (150 tragova × 400 tačaka je na slabijem telefonu bilo ~2 s po pomicanju karte).
+  const hit = L.polyline(_tragRijedi(lls), { weight: 24, opacity: 0.001, color: '#000', interactive: true, pane: 'tragMsrLines', smoothFactor: 3 });
   const lenM = _tragCalcLen(t.pts);
   line.bindPopup(() => _tragPopupHtml(t, lenM), { maxWidth: 300, minWidth: 220, className: 'pk-pop' });
   hit.on('click', e => {

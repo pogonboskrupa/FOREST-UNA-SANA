@@ -135,29 +135,37 @@
     map.createPane('inventuraPane'); map.getPane('inventuraPane').style.zIndex = '416'; map.getPane('inventuraPane').style.pointerEvents = 'none';
     ren = L.canvas({ pane: 'inventuraPane', padding: 0.5 });
     grp = L.layerGroup().addTo(map); natpisi = L.layerGroup().addTo(map); aktGrp = L.layerGroup().addTo(map);
-    map.on('moveend zoomend', crtaj);
+    map.on('moveend zoomend', zakaziCrtaj);
     return true;
   }
   const BOJA = t => (t.st === 'snimljeno' ? '#22c55e' : '#f97316');
+  // moveend i zoomend se često javljaju zajedno — crta se JEDNOM, odgođeno (na slabijem telefonu je puno crtanje ~2,8 s).
+  function zakaziCrtaj() { clearTimeout(tajmer); tajmer = setTimeout(crtaj, 90); }
   function crtaj() {
+    clearTimeout(tajmer);
     if (!pripremi()) return;
     grp.clearLayers(); natpisi.clearLayers();
     if (crtamFilter) { aktGrp.clearLayers(); return; }
     const sve = sveTacke(); if (!sve.length) return;
     const z = map.getZoom(), gr = map.getBounds().pad(0.3), r = S.r, kv = krugVidljiv();
     let nK = 0, nN = 0;
+    // Veličina kruga na ekranu određuje detalj: sitan krug ne treba halo, unutrašnje krugove ni 72 tačke; centri se gase gdje se preklapaju.
+    const mpx = 156543.03392 * Math.cos(map.getCenter().lat * Math.PI / 180) / 2 ** z, pxR = r / mpx;
+    const nT = pxR < 10 ? 16 : pxR < 30 ? 36 : 72, halo = pxR >= 8, unutra = pxR >= 18, zauzeto = new Set();
     for (const { t } of sve) {
       const ll = L.latLng(t.la, t.lo), c = BOJA(t), akt = aktivni === t.id;
       if (kv && nK < MAX_KRUGOVA && gr.contains(ll) && !akt) {
         nK++;
-        const k = krugTacke(t.la, t.lo, r);
+        const k = krugTacke(t.la, t.lo, r, nT);
         const od = t.odj && odjel(t.odj), izab = selOn && sel.has(t.id);
-        L.polygon(k, { renderer: ren, pane: 'inventuraPane', color: izab ? '#ffffff' : od ? od.boja : '#ffffff', weight: izab ? 9 : od ? 7 : 5, opacity: izab || od ? 0.9 : 0.7, fill: false, interactive: false }).addTo(grp);
+        if (halo || izab || od) L.polygon(k, { renderer: ren, pane: 'inventuraPane', color: izab ? '#ffffff' : od ? od.boja : '#ffffff', weight: izab ? 9 : od ? 7 : 5, opacity: izab || od ? 0.9 : 0.7, fill: false, interactive: false }).addTo(grp);
         L.polygon(k, { renderer: ren, pane: 'inventuraPane', color: izab ? (selOdj ? selOdj.boja : '#facc15') : c, weight: izab ? 4 : 2.5, opacity: 0.95, fillColor: izab ? (selOdj ? selOdj.boja : '#facc15') : c, fillOpacity: izab ? 0.35 : 0.07, interactive: false }).addTo(grp);
         if (izab) L.marker(ll, { pane: 'inventuraPane', interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<span class="inv-izab">✓</span>' }) }).addTo(natpisi);
-        S.unutra.forEach(ru => L.polygon(krugTacke(t.la, t.lo, ru, 48), { renderer: ren, pane: 'inventuraPane', color: c, weight: 1.5, opacity: 0.8, dashArray: '5,5', fill: false, interactive: false }).addTo(grp));
+        if (unutra) S.unutra.forEach(ru => L.polygon(krugTacke(t.la, t.lo, ru, 48), { renderer: ren, pane: 'inventuraPane', color: c, weight: 1.5, opacity: 0.8, dashArray: '5,5', fill: false, interactive: false }).addTo(grp));
       }
-      if (!akt && S.vid !== false && (kv || S.centri) && gr.contains(ll)) L.circleMarker(ll, { renderer: ren, pane: 'inventuraPane', radius: kv ? 5 : 4, color: '#ffffff', weight: 2, fillColor: c, fillOpacity: 1, interactive: false }).addTo(grp);
+      let crtajCentar = !akt && S.vid !== false && (kv || S.centri) && gr.contains(ll);
+      if (crtajCentar) { const pp = map.project(ll, z), kc = Math.floor(pp.x / 7) + ':' + Math.floor(pp.y / 7); if (zauzeto.has(kc)) crtajCentar = false; else zauzeto.add(kc); }
+      if (crtajCentar) L.circleMarker(ll, { renderer: ren, pane: 'inventuraPane', radius: kv ? 5 : 4, color: '#ffffff', weight: 2, fillColor: c, fillOpacity: 1, interactive: false }).addTo(grp);
       // natpis = SAMO broj koji je korisnik dao (nazivi iz KML-a se ne prikazuju)
       if (t.br != null && t.br !== '' && kv && nN < MAX_NATPISA && gr.contains(ll)) {
         nN++;

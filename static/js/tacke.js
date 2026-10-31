@@ -310,7 +310,7 @@
   }
   function renderKartice() {
     const el = document.getElementById('tk-kartice'); if (!el) return;
-    const l = filtrirane();
+    const sve = filtrirane(), lim = LS.n || 60, l = sve.slice(0, lim); // 1500 kartica odjednom je blokiralo UI ~6 s na slabijem telefonu
     el.innerHTML = l.length ? l.map(t => {
       const k = kat(t.kat), ud = udaljenost(t), nf = (t.foto || []).length;
       return `<div class="tk-red${t.vis === false ? ' skriven' : ''}" style="--c:${k.boja}">
@@ -320,12 +320,13 @@
         ${ud ? `<div class="tk-ud"><b>${ud.split(' ')[0]}</b><small>${ud.split(' ')[1]}</small></div>` : ''}
         <div class="tk-red-akc"><button onclick="USFTacke.zoom('${t.id}')">🗺 Karta</button><button onclick="USFTacke.uredi('${t.id}')">✏ Uredi</button><button onclick="USFTacke.prikazi('${t.id}')">${t.vis === false ? '○ Skrivena' : '● Na karti'}</button></div>
       </div>`;
-    }).join('') : '<div class="treg-empty">Nema tačaka za ovaj filter.</div>';
+    }).join('') + (sve.length > l.length ? `<button class="tk-jos" onclick="USFTacke.jos()">Prikaži još (${sve.length - l.length})</button>` : '') : '<div class="treg-empty">Nema tačaka za ovaj filter.</div>';
     popuniMini(el);
   }
-  function filtriraj(v) { LS.vrsta = v; renderLista(); }
-  function sortiraj(v) { LS.sort = v; renderKartice(); }
-  function trazi(v) { LS.q = v; renderKartice(); }
+  function filtriraj(v) { LS.vrsta = v; LS.n = 60; renderLista(); }
+  function sortiraj(v) { LS.sort = v; LS.n = 60; renderKartice(); }
+  function trazi(v) { LS.q = v; LS.n = 60; renderKartice(); }
+  function jos() { LS.n = (LS.n || 60) + 120; renderKartice(); }
   function renderLista() {
     const el = document.getElementById('tacke-lista'); if (!el) return;
     const l = citaj();
@@ -473,7 +474,7 @@
     }));
   }
 
-  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, podijeliFoto, posalji, zaVrijeme, veziZaTrag, jpegSaGps, tekstTacaka, otvoriListu, zatvoriListu, filtriraj, sortiraj, trazi, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
+  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, podijeliFoto, posalji, zaVrijeme, veziZaTrag, jpegSaGps, tekstTacaka, otvoriListu, zatvoriListu, filtriraj, sortiraj, trazi, jos, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
   if (typeof module !== 'undefined') module.exports = { zip, crc32, KATEGORIJE, jpegSaGps };
   if (typeof L !== 'undefined' && imaKartu()) { registruj(); crtaj(); renderLista(); }
 })(typeof window !== 'undefined' ? window : globalThis);
