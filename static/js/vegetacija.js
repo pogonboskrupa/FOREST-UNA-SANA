@@ -29,7 +29,7 @@
         'šuma umjerene vitalnosti', 'vitalna šuma', 'gusta vitalna šuma', 'vrlo gusta šuma', 'najveća gustina (rijetko)'] },
     ndmi: { naziv: 'NDMI', ulazi: ['B08', 'B11'], v: '(s.B08-s.B11)/(s.B08+s.B11)', pragovi: [-0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5],
       boje: ['#7f3b08', '#b35806', '#e08214', '#fdb863', '#d9f0d3', '#a6dba0', '#5aae61', '#2b83ba', '#1a5490'],
-      opis: 'Voda u krošnji. Smreka napadnuta potkornjakom gubi vodu (NDMI pada) prije nego što iglice vidno požute.',
+      opis: 'Voda u krošnji. Smrča napadnuta potkornjakom gubi vodu (NDMI pada) prije nego što iglice vidno požute.',
       klase: ['golo/suho tlo, suha vegetacija', 'jak vodni stres — sušenje', 'vodni stres', 'umjeren stres (rana faza, provjeriti na terenu)', 'blag stres',
         'normalna vlažnost krošnje', 'dobra vlažnost', 'visoka vlažnost', 'vrlo visoka (gusti četinari, voda)'] },
     gndvi: { naziv: 'GNDVI', ulazi: ['B03', 'B08'], v: '(s.B08-s.B03)/(s.B08+s.B03)', pragovi: [0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8], boje: ZEMLJA,

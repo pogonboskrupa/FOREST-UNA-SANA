@@ -127,7 +127,7 @@
     const letSad = r.letDana7 > 0 && r.ph.pocetak && !r.dijapauza;
     const p = r.percentilKorijen;
     if (!letSad) return { t: 'Nizak', c: '#22c55e', z: r.ph.pocetak ? (r.dijapauza ? 'Kraj sezone: nova legla se ne zasnivaju (dan < 14,5 h).' : 'Nema dana za let u ±7 dana.') : 'Rojenje još nije počelo.' };
-    if (p != null && p < 20) return { t: 'Visok', c: '#dc2626', z: 'Let potkornjaka uz sušni stres smreke (korijenska zona ' + Math.round(p) + '. percentil) — smanjena odbrana smolom.' };
+    if (p != null && p < 20) return { t: 'Visok', c: '#dc2626', z: 'Let potkornjaka uz sušni stres smrče (korijenska zona ' + Math.round(p) + '. percentil) — smanjena odbrana smolom.' };
     if (p != null && p < 33) return { t: 'Povišen', c: '#ea580c', z: 'Let potkornjaka, tlo suše od uobičajenog.' };
     return { t: 'Umjeren', c: '#f59e0b', z: 'Let potkornjaka, vlažnost tla uobičajena.' };
   }
