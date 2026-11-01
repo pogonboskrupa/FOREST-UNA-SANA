@@ -1409,6 +1409,18 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 .kh-pl i { width:42px; height:42px; font-size:20px; }
 .kh-pl b { font-size:15px; }
 .kh-pl small { font-size:10.5px; }
+
+/* Atributi odjela (v3.9.1) */
+.atr-ov { position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.74); display:flex; align-items:flex-end; justify-content:center; }
+.atr-sheet { width:100%; max-width:520px; max-height:88vh; overflow-y:auto; background:#142a1f; border:1px solid #4d8a68; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom)); color:#f1f5f9; box-shadow:0 -10px 40px rgba(0,0,0,.7); }
+.atr-zag { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:15px; }
+.atr-zag button { border:1px solid #4d8a68; background:#223f31; color:#f1f5f9; width:32px; height:32px; border-radius:50%; }
+.atr-red { display:grid; grid-template-columns:42% 1fr; align-items:center; gap:8px; padding:6px 0; font-size:13px; color:#cfe0d6; }
+.atr-red input { padding:10px; border-radius:10px; border:1px solid #3f7457; background:#0f2218; color:#fff; font:inherit; font-size:14px; min-width:0; }
+.atr-nova { width:100%; margin:8px 0; padding:11px; border-radius:11px; border:1px dashed #5a9475; background:transparent; color:#bbf7d0; font:inherit; font-weight:700; }
+.atr-akc { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.atr-akc button { padding:13px; border-radius:12px; border:1px solid #5a9475; background:#0f2218; color:#f1f5f9; font:inherit; font-weight:800; }
+.atr-akc .glavno { background:linear-gradient(135deg,#166534,#15803d); border-color:#22c55e; }
 </style>
 <style>
 #poz-legends { position:fixed; top:calc(112px + env(safe-area-inset-top)); right:8px; z-index:490; width:210px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 150px); overflow:auto; background:#0f172a; border:1px solid #475569; border-radius:12px; }
@@ -6038,7 +6050,8 @@ function _kmlPopupHtml(layer) {
   const tip = layer._kmlIsPolygon ? 'Poligon' : (layer._kmlIsPoint ? 'Tačka' : 'Linija');
   const ikona = layer._kmlIsPolygon ? '▣' : (layer._kmlIsPoint ? '📍' : '〰');
   const sloj = kmlLs.find(k => k.grp && k.grp.hasLayer && k.grp.hasLayer(layer));
-  const redovi = Object.keys(ext).filter(k => !k.startsWith('usf_')).map(k => [k, ext[k]]);
+  let redovi = Object.keys(ext).filter(k => !k.startsWith('usf_')).map(k => [k, ext[k]]);
+  if (layer._kmlIsPolygon) redovi = _kmlAtribRedovi(ext);
   let otv = null;
   try {
     if (layer._kmlIsPolygon && typeof turf !== 'undefined') { const gj = layer.toGeoJSON(); redovi.unshift(['Površina', (turf.area(gj) / 10000).toLocaleString('bs-BA', { maximumFractionDigits: 2 }) + ' ha']); }
@@ -6048,6 +6061,7 @@ function _kmlPopupHtml(layer) {
     else if (layer.getLatLngs) { const l = layer.getLatLngs().flat(3); let d = 0; for (let i = 1; i < l.length; i++) d += l[i - 1].distanceTo(l[i]); redovi.unshift(['Dužina', d >= 1000 ? (d / 1000).toFixed(2) + ' km' : Math.round(d) + ' m']); }
   } catch(e) {}
   const dugmad = [];
+  if (layer._kmlIsPolygon && sloj && !sloj._ugradjeno) dugmad.push({ t: '📝 Atributi', on: `_kmlAtribUredi(${id})`, v: 'glavno' });
   if (layer._kmlIsPolygon && typeof npIzKml === 'function') dugmad.push({ t: '📐 Nagib poligona', on: `npIzKml(${id})`, v: 'glavno' });
   if (layer._kmlIsPolygon && window.USFSjek) dugmad.push({ t: '🪓 Sjekačke linije', on: `USFSjek.izKljuca('k:${id}')` });
   if (layer._kmlIsPolygon && typeof _odjelIzvjestaj === 'function') dugmad.push({ t: '📊 Izvještaj odjela', on: `_odjelIzvjestaj(${id})` });
@@ -6057,7 +6071,7 @@ function _kmlPopupHtml(layer) {
   if (sloj && !sloj._ugradjeno) dugmad.push({ t: '✏ Uredi', on: `_kmlUrediMeni(${id})` });
   // poligon (odjel/odsjek) se ne briše iz kartice — brisanje ostaje za linije/tačke (i projekat Sjekačkih linija)
   if (sloj && !sloj._ugradjeno && !layer._kmlIsPolygon) dugmad.push({ t: '🗑 Obriši', on: `_kmlObrisiObjekat(${id})`, v: 'opasno' });
-  return _popKartica({ ikona, boja: layer.options && layer.options.color, naslov: layer._kmlName, tip, meta: sloj ? sloj.name : '', redovi, opis: _kmlOpisHtml(layer._kmlDesc, sloj && sloj.name), dugmad });
+  return _popKartica({ ikona, boja: layer.options && layer.options.color, naslov: layer._kmlName, tip, meta: sloj ? sloj.name : '', redovi, opis: layer._kmlIsPolygon ? '' : _kmlOpisHtml(layer._kmlDesc, sloj && sloj.name), dugmad });
 }
 function _kmlOpenPopup(layer, latlng) {
   const pop = L.popup({ maxWidth: Math.min(440, window.innerWidth - 40), minWidth: Math.min(300, window.innerWidth - 40), className: 'pk-pop' }).setLatLng(layer._kmlIsPoint ? layer.getLatLng() : latlng).setContent(_kmlPopupHtml(layer)).openOn(map);
@@ -7015,6 +7029,66 @@ async function _kmlUrediMeni(id) {
   const r = _kmlPoStampu(id); if (!r) return;
   const i = await _dlgActions('✏ ' + (r.l._kmlName || 'Objekat'), [{ label: '📝 Naziv i opis' }, { label: '📐 Oblik — pomjeri tačke' }, { label: '🎨 Boja, linija i ispuna' }]);
   if (i === 0) _kmlUrediPodatke(id); else if (i === 1) _kmlUrediOblik(id); else if (i === 2) _kmlUrediStil(id);
+}
+
+// Atributi odjela/odsjeka: u kartici poligona samo Odjel, Odsjek, GK, ŠPP, godina sječe + kolone koje je korisnik dodao
+// (ExtendedData `usf_k_<naziv>`, npr. „Bespravna sječa”). Ostali atributi iz KML-a ostaju u fajlu, samo se ne prikazuju.
+const _ATR_POLJA = [
+  { id: 'odjel', naz: 'Odjel', re: /^(odjel|odj)$/, kanon: 'ODJEL' },
+  { id: 'odsjek', naz: 'Odsjek', re: /^(odsjek|ods)$/, kanon: 'ODSJEK' },
+  { id: 'gk', naz: 'GK (gazdinska klasa)', re: /^(gk|gkl)$|gazd.*klas|klasa/, kanon: 'GK' },
+  { id: 'spp', naz: 'ŠPP', re: /^spp$|sumskoprivred|sumsko.*podr/, kanon: 'SPP' },
+  { id: 'godina', naz: 'Godina sječe', re: /godin.*sje|sje.*godin|god.*sjec|^gs$/, kanon: 'GODINA_SJECE' }
+];
+const _atrNorm = k => String(k).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '');
+function _atrPronadji(ext) {
+  const out = {};
+  Object.keys(ext || {}).filter(k => !k.startsWith('usf_')).forEach(k => {
+    const n = _atrNorm(k);
+    const p = _ATR_POLJA.find(f => !out[f.id] && f.re.test(n));
+    if (p) out[p.id] = k;
+  });
+  return out;
+}
+function _atrVlastite(ext) { return Object.keys(ext || {}).filter(k => k.startsWith('usf_k_')).map(k => [k, k.slice(6)]); }
+function _kmlAtribRedovi(ext) {
+  const nadjen = _atrPronadji(ext), r = [];
+  _ATR_POLJA.forEach(f => { const v = nadjen[f.id] != null ? String(ext[nadjen[f.id]] ?? '').trim() : ''; if (v) r.push([f.naz, v]); });
+  _atrVlastite(ext).forEach(([k, naz]) => { const v = String(ext[k] ?? '').trim(); if (v) r.push([naz, v]); });
+  return r;
+}
+function _kmlAtribUredi(id) {
+  const r = _kmlPoStampu(id); if (!r) return;
+  map.closePopup();
+  const ext = r.l._kmlExtData || {}, nadjen = _atrPronadji(ext);
+  const polja = _ATR_POLJA.map(f => ({ kljuc: nadjen[f.id] || f.kanon, naz: f.naz, v: nadjen[f.id] != null ? String(ext[nadjen[f.id]] ?? '') : '' }))
+    .concat(_atrVlastite(ext).map(([k, naz]) => ({ kljuc: k, naz, v: String(ext[k] ?? ''), vlastito: true })));
+  let ov = document.getElementById('atr-ov'); if (ov) ov.remove();
+  ov = document.createElement('div'); ov.id = 'atr-ov'; ov.className = 'atr-ov';
+  const red = (f, i) => `<label class="atr-red"><span>${_escHtml(f.naz)}</span><input type="text" data-i="${i}" value="${_escHtml(f.v)}" autocomplete="off"></label>`;
+  const crtaj = () => { ov.querySelector('.atr-polja').innerHTML = polja.map(red).join(''); };
+  ov.innerHTML = `<div class="atr-sheet" role="dialog" aria-label="Atributi"><div class="atr-zag"><b>📝 ${_escHtml(r.l._kmlName || 'Odjel')}</b><button type="button" data-a="x" aria-label="Zatvori">✕</button></div>
+    <div class="atr-polja"></div><button type="button" class="atr-nova" data-a="nova">＋ Nova kolona (npr. Bespravna sječa)</button>
+    <div class="atr-akc"><button type="button" data-a="x">Odustani</button><button type="button" class="glavno" data-a="ok">Sačuvaj</button></div></div>`;
+  document.body.appendChild(ov); crtaj();
+  const sinhro = () => ov.querySelectorAll('input[data-i]').forEach(inp => { polja[+inp.dataset.i].v = inp.value; });
+  ov.addEventListener('click', async e => {
+    if (e.target === ov) { ov.remove(); return; }
+    const a = e.target.closest('[data-a]'); if (!a) return;
+    if (a.dataset.a === 'x') ov.remove();
+    else if (a.dataset.a === 'nova') {
+      sinhro();
+      const naz = ((await _dlgPrompt('Naziv nove kolone', '', { title: '＋ Nova kolona', okLabel: 'Dodaj' })) || '').trim().slice(0, 40);
+      if (!naz) return;
+      if (polja.some(f => _atrNorm(f.naz) === _atrNorm(naz))) { showToast('Kolona već postoji'); return; }
+      polja.push({ kljuc: 'usf_k_' + naz, naz, v: '', vlastito: true }); crtaj();
+      const ul = ov.querySelectorAll('input[data-i]'); ul[ul.length - 1].focus();
+    } else if (a.dataset.a === 'ok') {
+      sinhro();
+      const ok = _kmlPrimijeni(r.k, r.l, (doc, pm) => polja.forEach(f => _kmlPostaviExt(doc, pm, f.kljuc, f.v.trim() || null)));
+      ov.remove(); if (ok) showToast('✅ Atributi sačuvani');
+    }
+  });
 }
 async function _kmlUrediPodatke(id) {
   const r = _kmlPoStampu(id); if (!r) return;
