@@ -129,7 +129,13 @@ if (typeof window !== 'undefined') {
   const mapLegend=document.createElement('div');
   mapLegend.id='terrain-map-legend';
   document.body.appendChild(mapLegend);
-  mapLegend.addEventListener('click',()=>{mapLegend.classList.toggle('mini');try{localStorage.setItem('usf_terrain_leg_mini',mapLegend.classList.contains('mini')?'1':'0');}catch(e){}});
+  mapLegend.addEventListener('change',e=>{
+    const t=e.target;if(!t.matches||!t.matches('input[data-ki]'))return;
+    const list=terrainSlopeAktivne.map(k=>({...k}));list[Number(t.dataset.ki)].on=t.checked;primijeni(list);
+  });
+  mapLegend.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button[data-sva]');
+    if(b){const on=b.dataset.sva==='1';primijeni(terrainSlopeAktivne.map(k=>({...k,on})));return;}
+    if(e.target.closest&&e.target.closest('.tml-item,.tml-akc'))return;mapLegend.classList.toggle('mini');try{localStorage.setItem('usf_terrain_leg_mini',mapLegend.classList.contains('mini')?'1':'0');}catch(e){}});
   try{if(localStorage.getItem('usf_terrain_leg_mini')==='1')mapLegend.classList.add('mini');}catch(e){}
   const legend=()=>{
     let rows=[];
@@ -139,7 +145,8 @@ if (typeof window !== 'undefined') {
     const stavka=(c,t,isk)=>`<span class="tml-item"><i class="${isk?'bez':''}" style="background:${isk?'transparent':c}"></i>${t}</span>`;
     let html='';
 
-    if(saved.slope)html=`<div class="tml-title">Nagib terena (%)</div><div class="tml-row tml-slope">${terrainSlopeAktivne.map(k=>stavka(k.color,k.kratko||k.label.replace(' %',''),k.on===false)).join('')}</div>`;
+    if(saved.slope){const sl=(k,i)=>`<label class="tml-item tml-kv${k.on===false?' isk':''}"><input type="checkbox" data-ki="${i}" ${k.on===false?'':'checked'} aria-label="Prikaži ${k.kratko||''} %"><i class="${k.on===false?'bez':''}" style="background:${k.on===false?'transparent':k.color}"></i>${k.kratko||k.label.replace(' %','')}</label>`;
+      html=`<div class="tml-title">Nagib terena (%)</div><div class="tml-row tml-slope">${terrainSlopeAktivne.map(sl).join('')}</div><div class="tml-akc"><button type="button" data-sva="1">☑ Sve</button><button type="button" data-sva="0">☐ Nijedna</button></div>`;}
     else if(saved.aspect){const sm=terrainAspectSema();html=`<div class="tml-title">Ekspozicija · ravno ≤5 % bez boje</div><div class="tml-row tml-aspect${terrainAspectBroj===4?' a4':''}">${sm.oznake.map((t,i)=>stavka(sm.boje[i],t)).join('')}</div>`;}
     document.querySelectorAll('[data-asp-broj]').forEach(b=>b.classList.toggle('on',Number(b.dataset.aspBroj)===terrainAspectBroj));
     mapLegend.innerHTML=html;
@@ -225,13 +232,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v3.9.1';
+      if (label) label.textContent = 'v3.9.2';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v3.9.1';
+  if (badge) badge.textContent = 'Grmeč Navigator v3.9.2';
 })();
 
 
