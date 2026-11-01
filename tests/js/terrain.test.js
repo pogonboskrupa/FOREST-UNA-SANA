@@ -38,7 +38,7 @@ assert.equal(terrainSlopeClasses.map(k => k.label + ' ' + k.labelSt).join(' | ')
 const leg = html.slice(html.indexOf('#terrain-map-legend {'), html.indexOf('#terrain-map-legend .tml-title'));
 assert.ok(/bottom:76px/.test(leg) && /left:70px/.test(leg) && /right:76px/.test(leg) && /z-index:590/.test(leg), 'legenda se ne smije preklapati sa dugmadima');
 const tjs = fs.readFileSync(path.join(__dirname, '../../static/js/terrain-layers.js'), 'utf8');
-assert.ok(tjs.includes("mapLegend.id='terrain-map-legend'") && tjs.includes("mapLegend.style.display=html?'block':'none'"), 'legenda na karti samo kad je nagib ili ekspozicija uključena');
+assert.ok(tjs.includes("mapLegend.id='terrain-map-legend'") && tjs.includes("mapLegend.style.display=html&&!legSkr?'block':'none'"), 'legenda na karti samo kad je nagib ili ekspozicija uključena');
 assert.notEqual(terrainColor('shade',1,1),terrainColor('shade',-1,-1));
 assert.ok(html.includes('await cache.put(url, resp.clone())'), 'DEM tile mora biti sigurno upisan za offline rad');
 assert.ok(html.includes('URL.revokeObjectURL(objectUrl)'), 'Image fallback ne smije curiti object URL memoriju');

@@ -141,8 +141,36 @@ if (typeof window !== 'undefined') {
   mapLegend.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button[data-sva]');
     if(b&&b.dataset.asp){const on=b.dataset.sva==='1';for(let i=0;i<terrainAspectBroj;i++){const k=terrainAspectBroj+':'+i;on?terrainAspectSakr.delete(k):terrainAspectSakr.add(k);}aspPrim();return;}
     if(b){const on=b.dataset.sva==='1';primijeni(terrainSlopeAktivne.map(k=>({...k,on})));return;}
-    if(e.target.closest&&e.target.closest('.tml-item,.tml-akc'))return;mapLegend.classList.toggle('mini');try{localStorage.setItem('usf_terrain_leg_mini',mapLegend.classList.contains('mini')?'1':'0');}catch(e){}});
+    if(e.target===mapLegend&&Date.now()-legPomak<400)return;
+    const lb=e.target.closest&&e.target.closest('button[data-leg]');
+    if(lb){if(lb.dataset.leg==='sakrij')legSkrivena(true);else{mapLegend.classList.toggle('mini');try{localStorage.setItem('usf_terrain_leg_mini',mapLegend.classList.contains('mini')?'1':'0');}catch(e){}legend();}return;}
+    if(e.target.closest&&e.target.closest('.tml-item,.tml-akc,.tml-ruc'))return;mapLegend.classList.toggle('mini');try{localStorage.setItem('usf_terrain_leg_mini',mapLegend.classList.contains('mini')?'1':'0');}catch(e){}});
   try{if(localStorage.getItem('usf_terrain_leg_mini')==='1')mapLegend.classList.add('mini');}catch(e){}
+  // Pokretna i sakrivena legenda: ručka za prevlačenje, ✕ sakrije SAMO legendu (sloj ostaje, čip vraća).
+  let legSkr=false,legPos=null;
+  try{legSkr=localStorage.getItem('usf_terrain_leg_skr')==='1';legPos=JSON.parse(localStorage.getItem('usf_terrain_leg_pos')||'null');}catch(e){}
+  const legChip=document.createElement('button');legChip.id='terrain-leg-chip';legChip.type='button';legChip.style.display='none';
+  document.body.appendChild(legChip);
+  const legSkrivena=v=>{legSkr=v;try{localStorage.setItem('usf_terrain_leg_skr',v?'1':'0');}catch(e){}legend();};
+  legChip.addEventListener('click',()=>legSkrivena(false));
+  const legSmjesti=()=>{
+    if(!legPos||!Number.isFinite(legPos.x))return;
+    const minY=Math.max(58,(document.getElementById('top-bar')?.getBoundingClientRect().bottom||50)+8);
+    mapLegend.style.left=Math.max(0,Math.min(legPos.x,innerWidth-mapLegend.offsetWidth-4))+'px';
+    mapLegend.style.top=Math.max(minY,Math.min(legPos.y,innerHeight-mapLegend.offsetHeight-90))+'px';
+    mapLegend.style.right='auto';mapLegend.style.bottom='auto';mapLegend.style.margin='0';
+  };
+  let legDrag=null;
+  mapLegend.addEventListener('pointerdown',e=>{
+    const r=e.target.closest&&e.target.closest('.tml-ruc');if(!r||e.target.closest('button'))return;
+    const b=mapLegend.getBoundingClientRect();legDrag={x:e.clientX-b.left,y:e.clientY-b.top,m:false};
+    try{mapLegend.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();
+  });
+  mapLegend.addEventListener('pointermove',e=>{if(!legDrag)return;legDrag.m=true;legPos={x:e.clientX-legDrag.x,y:e.clientY-legDrag.y};legSmjesti();});
+  let legPomak=0;
+  const legStani=()=>{if(!legDrag)return;const m=legDrag.m;legDrag=null;if(m){legPomak=Date.now();const b=mapLegend.getBoundingClientRect();legPos={x:b.left,y:b.top};try{localStorage.setItem('usf_terrain_leg_pos',JSON.stringify(legPos));}catch(e){}}};
+  mapLegend.addEventListener('pointerup',legStani);mapLegend.addEventListener('pointercancel',legStani);
+  window.addEventListener('resize',()=>{if(mapLegend.style.display!=='none')legSmjesti();});
   const legend=()=>{
     let rows=[];
     if(saved.slope)rows.push(...terrainSlopeAktivne.map(k=>[k.on===false?'transparent':k.color,k.label+' '+k.labelSt+(k.on===false?' — bez boje':'')]));
@@ -150,15 +178,19 @@ if (typeof window !== 'undefined') {
     document.getElementById('terrain-legend').innerHTML=rows.map(([c,t])=>`<span style="display:inline-block;margin-right:12px"><i style="display:inline-block;width:12px;height:12px;background:${c};margin-right:5px"></i>${t}</span>`).join('')+(saved.aspect?'<div>Ravan teren (nagib do 5 %) nema ekspoziciju i ostaje bez boje.</div>':'')+(saved.shade?'<div>Hillshade: osvjetljenje sa sjeverozapada.</div>':'');
     const stavka=(c,t,isk)=>`<span class="tml-item"><i class="${isk?'bez':''}" style="background:${isk?'transparent':c}"></i>${t}</span>`;
     let html='';
+    const ruc=t=>`<div class="tml-ruc"><span class="tml-title">⠿ ${t}</span><button type="button" class="tml-skupi" data-leg="skupi" aria-label="Skupi legendu">${mapLegend.classList.contains('mini')?'▸':'▾'}</button><button type="button" class="tml-x" data-leg="sakrij" aria-label="Sakrij legendu (sloj ostaje)">✕</button></div>`;
 
     if(saved.slope){const sl=(k,i)=>`<label class="tml-item tml-kv${k.on===false?' isk':''}"><input type="checkbox" data-ki="${i}" ${k.on===false?'':'checked'} aria-label="Prikaži ${k.kratko||''} %"><i class="${k.on===false?'bez':''}" style="background:${k.on===false?'transparent':k.color}"></i>${k.kratko||k.label.replace(' %','')}</label>`;
-      html=`<div class="tml-title">Nagib terena (%)</div><div class="tml-row tml-slope">${terrainSlopeAktivne.map(sl).join('')}</div><div class="tml-akc"><button type="button" data-sva="1">☑ Sve</button><button type="button" data-sva="0">☐ Nijedna</button></div>`;}
+      html=`${ruc('Nagib terena (%)')}<div class="tml-row tml-slope">${terrainSlopeAktivne.map(sl).join('')}</div><div class="tml-akc"><button type="button" data-sva="1">☑ Sve</button><button type="button" data-sva="0">☐ Nijedna</button></div>`;}
     else if(saved.aspect){const sm=terrainAspectSema();
       const ea=(t,i)=>{const v=terrainAspectVid(i);return `<label class="tml-item tml-kv${v?'':' isk'}"><input type="checkbox" data-ka="${i}" ${v?'checked':''} aria-label="Prikaži ${t}"><i class="${v?'':'bez'}" style="background:${v?sm.boje[i]:'transparent'}"></i>${t}</label>`;};
-      html=`<div class="tml-title">Ekspozicija · ravno ≤5 % bez boje</div><div class="tml-row tml-aspect${terrainAspectBroj===4?' a4':''}">${sm.oznake.map(ea).join('')}</div><div class="tml-akc"><button type="button" data-sva="1" data-asp="1">☑ Sve</button><button type="button" data-sva="0" data-asp="1">☐ Nijedna</button></div>`;}
+      html=`${ruc('Ekspozicija · ravno ≤5 % bez boje')}<div class="tml-row tml-aspect${terrainAspectBroj===4?' a4':''}">${sm.oznake.map(ea).join('')}</div><div class="tml-akc"><button type="button" data-sva="1" data-asp="1">☑ Sve</button><button type="button" data-sva="0" data-asp="1">☐ Nijedna</button></div>`;}
     document.querySelectorAll('[data-asp-broj]').forEach(b=>b.classList.toggle('on',Number(b.dataset.aspBroj)===terrainAspectBroj));
     mapLegend.innerHTML=html;
-    mapLegend.style.display=html?'block':'none';
+    mapLegend.style.display=html&&!legSkr?'block':'none';
+    legChip.style.display=html&&legSkr?'block':'none';
+    legChip.textContent='🗺 Legenda '+(saved.slope?'nagiba':'ekspozicije');
+    if(html&&!legSkr)legSmjesti();
   };
   window._terrainToggle=(mode,on)=>{
     // Two categorical rasters cannot be read reliably on top of one another.
@@ -240,13 +272,13 @@ if (typeof window !== 'undefined') {
     const wrappedSettings = function() {
       oldSettings.apply(this, arguments);
       const label = document.getElementById('set-ver-txt');
-      if (label) label.textContent = 'v3.9.3';
+      if (label) label.textContent = 'v3.9.4';
     };
     wrappedSettings.__usfVersionFix = true;
     window._renderPostavke = wrappedSettings;
   }
   const badge = document.getElementById('meni-ver-badge');
-  if (badge) badge.textContent = 'Grmeč Navigator v3.9.3';
+  if (badge) badge.textContent = 'Grmeč Navigator v3.9.4';
 })();
 
 

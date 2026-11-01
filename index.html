@@ -529,6 +529,11 @@ html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#0f172
 #terrain-map-legend .tml-kv { cursor:pointer; padding:3px 2px; } #terrain-map-legend .tml-kv.isk { opacity:.55; }
 #terrain-map-legend .tml-kv input { width:16px; height:16px; margin:0; accent-color:#22c55e; flex:none; }
 #terrain-map-legend .tml-akc { display:flex; gap:6px; margin-top:6px; } #terrain-map-legend .tml-akc button { flex:1; padding:6px; border-radius:8px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font:700 11px system-ui; }
+#terrain-map-legend .tml-ruc { display:flex; align-items:center; gap:6px; cursor:move; touch-action:none; margin-bottom:5px; }
+#terrain-map-legend .tml-ruc .tml-title { flex:1; margin:0; } #terrain-map-legend.mini .tml-ruc { margin:0; }
+#terrain-map-legend .tml-ruc button { width:26px; height:26px; border-radius:8px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font-size:12px; padding:0; flex:none; }
+#terrain-leg-chip, #poz-leg-chip { position:fixed; bottom:84px; left:76px; z-index:590; padding:8px 12px; border-radius:999px; border:1px solid rgba(134,239,172,.4); background:rgba(10,24,18,.94); color:#d8e8df; font:700 12px system-ui; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+#poz-leg-chip { bottom:auto; left:auto; right:8px; top:calc(112px + env(safe-area-inset-top)); z-index:490; display:none; }
 #terrain-map-legend.mini .tml-row, #terrain-map-legend.mini .tml-akc { display:none; }
 #terrain-map-legend.mini .tml-title { margin:0; }
 #terrain-map-legend.mini .tml-title::after { content:' ▸'; }
@@ -2279,6 +2284,7 @@ body.sl-uredi #sl-ured { display: block; }
 <div id="sl-ured" class="sl-traka"></div>
 <div id="loc-dist-badge"></div>
 
+<button type="button" id="poz-leg-chip" onclick="_poziLegendaToggle(true)">🔥 Legenda požara</button>
 <div id="poz-legends">
 <div id="poz-legend-handle"><span>⠿ Legenda požara</span><button aria-label="Sakrij legendu" onclick="_poziLegendaToggle(false)">✕</button></div>
 <!-- Legenda projekcije opožarene površine (Požari) — vidi _poziOpozAzuriraj -->
@@ -8328,6 +8334,7 @@ function _poziLegendaVid() {
   let sloj = false; try { sloj = !!_poziOn; } catch(e) {} // _poziOn je let deklarisan niže (TDZ pri učitavanju)
   let pref = true; try { pref = localStorage.getItem('usf_poz_legenda') !== '0'; } catch(e) {}
   box.hidden = !(pref && sloj);
+  const cip = document.getElementById('poz-leg-chip'); if (cip) cip.style.display = (!pref && sloj) ? 'block' : 'none';
 }
 function _poziLegendaToggle(on) {
   document.getElementById('poz-legend-check').checked = !!on;
