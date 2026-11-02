@@ -1429,6 +1429,17 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 .atr-akc { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .atr-akc button { padding:13px; border-radius:12px; border:1px solid #5a9475; background:#0f2218; color:#f1f5f9; font:inherit; font-weight:800; }
 .atr-akc .glavno { background:linear-gradient(135deg,#166534,#15803d); border-color:#22c55e; }
+
+/* Admin: lista karata (v3.9.5) */
+.dk-uredi { width:100%; margin-top:8px; padding:11px; border-radius:11px; border:1px dashed #5a9475; background:transparent; color:#bbf7d0; font:inherit; font-weight:800; } .dk-uredi[hidden] { display:none; }
+.ka-ov { position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.74); display:flex; align-items:flex-end; justify-content:center; } .ka-forma { z-index:1110; }
+.ka-sheet { width:100%; max-width:520px; max-height:88vh; overflow-y:auto; background:#142a1f; border:1px solid #4d8a68; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom)); color:#f1f5f9; box-shadow:0 -10px 40px rgba(0,0,0,.7); }
+.ka-zag { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:15px; } .ka-zag button { border:1px solid #4d8a68; background:#223f31; color:#f1f5f9; width:32px; height:32px; border-radius:50%; }
+.ka-red { display:grid; grid-template-columns:1fr auto auto auto; gap:6px; align-items:center; padding:9px; margin-bottom:6px; border-radius:11px; background:#1c3a2b; border:1px solid #3f7457; } .ka-red small { display:block; color:#b6cbbf; font-size:11px; }
+.ka-red button { width:34px; height:34px; border-radius:9px; border:1px solid #5a9475; background:#0f2218; color:#f1f5f9; } .ka-red button:disabled { opacity:.3; } .ka-red .opasno { color:#fca5a5; border-color:#b45353; }
+.ka-nova { width:100%; margin:6px 0; padding:12px; border-radius:11px; border:1px dashed #5a9475; background:transparent; color:#bbf7d0; font:inherit; font-weight:700; }
+.ka-sheet label { display:block; margin:8px 0; font-size:12px; color:#cfe0d6; } .ka-sheet input { display:block; width:100%; box-sizing:border-box; margin-top:4px; padding:10px; border-radius:10px; border:1px solid #3f7457; background:#0f2218; color:#fff; font:inherit; font-size:14px; }
+.ka-nap, .ka-prazno { font-size:11.5px; color:#b6cbbf; } .ka-akc { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; } .ka-akc button { padding:13px; border-radius:12px; border:1px solid #5a9475; background:#0f2218; color:#f1f5f9; font:inherit; font-weight:800; } .ka-akc .glavno { background:linear-gradient(135deg,#166534,#15803d); border-color:#22c55e; }
 </style>
 <style>
 #poz-legends { position:fixed; top:calc(112px + env(safe-area-inset-top)); right:8px; z-index:490; width:210px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 150px); overflow:auto; background:#0f172a; border:1px solid #475569; border-radius:12px; }
@@ -8812,6 +8823,8 @@ const _DKG_URL = _DK_URL.replace('karte_drive.json', 'karte_github.json');
 let _dkLista = null, _dkNapredak = {}, _dkGh = [], _dkGhPokusano = false;
 async function _dkGhUcitaj() {
   _dkGhPokusano = true;
+  // Lista iz Firestore-a (uređuje admin u app-u, vidi static/js/karte-admin.js) ima prednost; bez nje ide JSON s GitHub-a
+  try { const f = window.USFKarteAdmin && await USFKarteAdmin.ucitaj(); if (f && f.length) { _dkGh = f; try { localStorage.setItem('usf_karte_gh', JSON.stringify(f)); } catch(e) {} return _dkGh; } } catch(e) {}
   for (const u of [_DKG_URL + '?t=' + Math.floor(Date.now() / 36e5), 'static/data/karte_github.json']) {
     const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
     try { const r = await fetch(u, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(tm)); if (r.ok) { const l = await r.json(); if (Array.isArray(l)) { _dkGh = l.filter(k => k && k.id && /^https:\/\/github\.com\/pogonboskrupa\/KARTE\/releases\/download\//.test(k.url || '')); try { localStorage.setItem('usf_karte_gh', JSON.stringify(_dkGh)); } catch(e) {} return _dkGh; } } } catch(e) {}
@@ -8853,8 +8866,11 @@ async function _driveKarteRender() {
       : n ? `<div class="dk-traka"><u style="width:${n.p || 0}%"></u></div><small>${n.p != null ? n.p + ' %' : '…'}${n.mb ? ' · ' + n.mb + ' MB' : ''}</small><button onclick="_dkPrekini('${k.id}')">Prekini</button>`
       : kljuc ? `<button class="glavno" onclick="_dkPreuzmi('${k.id}')">⬇ Preuzmi</button>` : `<button onclick="_dkOtkljucaj()">🔒 Otključaj PIN-om</button>`;
     return `<div class="dk-red"><div><b>${_escHtml(k.naziv)}</b><small>${_escHtml(k.opis || '')}${k.mb ? ' · ' + k.mb + ' MB' : ''}</small></div><div class="dk-akc">${desno}</div></div>`;
-  }).join('') + '<p class="set-nap">Karta se skida jednom i ostaje na telefonu za rad bez interneta. Za velike karte koristi WiFi.</p>';
+  }).join('') + '<p class="set-nap">Karta se skida jednom i ostaje na telefonu za rad bez interneta. Za velike karte koristi WiFi.</p><button id="ka-uredi" class="dk-uredi" hidden onclick="_dkAdminUredi()">⚙ Uredi listu karata (admin)</button>';
+  try { if (window.USFKarteAdmin && await USFKarteAdmin.jeAdmin()) { const b = document.getElementById('ka-uredi'); if (b) b.hidden = false; } } catch(e) {}
 }
+function _dkAdminUredi() { USFKarteAdmin.otvori(async () => { _dkGhPokusano = false; await _dkGhUcitaj(); _dkGhPokusano = true; _driveKarteRender(); }); }
+window.addEventListener('usf-fb-ready', () => { _dkGhPokusano = false; _driveKarteRender(); });
 // PIN karata je odvojen od PIN-a sekcija i nema heš u kodu: tačan je ako ključ izveden iz
 // njega dešifruje zapis liste (AES-GCM s pogrešnim ključem ne prolazi). Čuva se ključ, ne PIN.
 async function _dkOtkljucaj() {
@@ -13230,6 +13246,7 @@ window.addEventListener('load', () => {
 <script src="static/js/terrain-layers.js"></script>
 <script src="static/js/odjeli.js"></script>
 <script src="static/js/drive-karte.js"></script>
+<script src="static/js/karte-admin.js"></script>
 <script src="static/js/nagib-poligon.js"></script>
 <script src="static/js/tacke.js"></script>
 <script src="static/js/zima.js"></script>

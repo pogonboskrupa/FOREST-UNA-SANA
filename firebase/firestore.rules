@@ -60,6 +60,12 @@ service cloud.firestore {
       allow write: if jeAdmin();
     }
 
+    // Lista karata za preuzimanje (GitHub releasei) — čita svako prijavljen, uređuje samo admin (ekran u Karte → Učitaj kartu).
+    match /usf_karte/{doc} {
+      allow read: if jePrijavljen();
+      allow write: if jeAdmin();
+    }
+
     // Sačuvani tragovi — vlastiti upis (uzorno vezan uz uid), čitanje
     // dijeljeno (kolege na terenu vide tragove jedni drugih).
     match /usf_tragovi/{doc} {
