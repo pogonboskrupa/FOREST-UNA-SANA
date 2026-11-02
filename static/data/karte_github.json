@@ -17,5 +17,12 @@
   "opis": "server · ŠPD UNSKO SANSKE ŠUME (z12–16, nova verzija)",
   "mb": 1547,
   "url": "https://github.com/pogonboskrupa/KARTE/releases/download/29.10.2026_UNSKO/KARTA_APP_v5_z12-16_q95.mbtiles"
+ },
+ {
+  "id": "gh_unsko_v12",
+  "naziv": "Karta UNSKO V.1.2",
+  "opis": "server · ŠPD UNSKO SANSKE ŠUME (z12–17, najnovija verzija)",
+  "mb": 1762,
+  "url": "https://github.com/pogonboskrupa/KARTE/releases/download/V.1.2/KARTA_APP_v8_z12-17.mbtiles"
  }
 ]
