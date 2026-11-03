@@ -11,6 +11,19 @@
   function ucitaj() {
     if (_dem) return _dem;
     _dem = (async () => {
+      // Prvo Web Worker (glavna nit ostaje slobodna); bez Worker-a / uz grešku ide stari put na glavnoj niti
+      if (typeof Worker !== 'undefined' && typeof document !== 'undefined') {
+        try {
+          const d = await new Promise((res, rej) => {
+            const w = new Worker('static/js/dem-worker.js');
+            const kraj = () => { try { w.terminate(); } catch (e) {} };
+            w.onmessage = m => { kraj(); m.data.ok ? res(m.data) : rej(new Error(m.data.err)); };
+            w.onerror = er => { kraj(); rej(new Error(er.message || 'worker')); };
+            w.postMessage({ url: new URL(FAJL, document.baseURI).href, lib: new URL('static/libs/geotiff.js', document.baseURI).href });
+          });
+          return { data: d.data, W: d.W, H: d.H, ox: d.ox, oy: d.oy, rx: d.rx, ry: d.ry };
+        } catch (e) { /* rezerva ispod */ }
+      }
       const G = await root.USFDeadtrees.ucitajLib();
       const r = await fetch(FAJL);
       if (!r.ok) throw new Error('nema lokalnog DEM-a (' + r.status + ')');
