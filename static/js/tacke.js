@@ -448,6 +448,7 @@
     if (!fajlovi.length) { if (typeof showToast === 'function') showToast('Nema fotografija za slanje'); return false; }
     const tekst = tekstTacaka(l), dok = !!(opc && opc.dokument);
     if (typeof AndroidShare !== 'undefined' && (AndroidShare.stageFile || AndroidShare.shareFiles)) {
+      if (typeof showToast === 'function') showToast('📤 Pripremam ' + fajlovi.length + ' fotografija…');
       // APK: izbor aplikacija (WhatsApp, Viber…) — nikad tiho preuzimanje. Novi most šalje fajl po fajl (veliki JSON je pucao).
       try {
         if (AndroidShare.stageFile) {
@@ -461,7 +462,25 @@
       } catch (e) { if (typeof showToast === 'function') showToast('⚠ Slanje nije uspjelo: ' + (e && e.message || e) + (fajlovi.length > 10 ? ' — probaj s manje fotografija' : '')); return false; }
     }
     const fs = fajlovi.map(f => new File([f.bytes], f.ime, { type: 'image/jpeg' }));
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: fs })) { try { await navigator.share({ files: fs, title: 'Fotografije s lokacijom', text: tekst }); return true; } catch (e) { if (e && e.name === 'AbortError') return true; } }
+    const podaci = { files: fs, title: 'Fotografije s lokacijom', text: tekst };
+    if (navigator.share && navigator.canShare && navigator.canShare(podaci)) {
+      try { await navigator.share(podaci); return true; }
+      catch (e) {
+        if (e && e.name === 'AbortError') return true;
+        // Preglednik traži SVJEŽ dodir (priprema fotografija je potrošila dozvolu) — dugme koje zove isto dijeljenje, bez preuzimanja
+        if (e && e.name === 'NotAllowedError') return new Promise(res => {
+          document.getElementById('tk-spremno')?.remove();
+          const d = document.createElement('div'); d.id = 'tk-spremno'; d.className = 'tk-izb';
+          d.innerHTML = `<div class="tk-izb-sheet"><div class="tk-izb-zag"><b>📤 Spremno za slanje</b><button data-a="x" aria-label="Zatvori">✕</button></div><p class="tk-izb-nap">${fs.length} fotografija je pripremljeno. Dodirni dugme da izabereš WhatsApp, Viber…</p><button class="tk-izb-go" data-a="go">📤 Izaberi aplikaciju</button></div>`;
+          document.body.appendChild(d);
+          d.addEventListener('click', async ev => {
+            if (ev.target === d || (ev.target.closest('[data-a]') || {}).dataset?.a === 'x') { d.remove(); res(false); return; }
+            if ((ev.target.closest('[data-a]') || {}).dataset?.a !== 'go') return;
+            try { await navigator.share(podaci); d.remove(); res(true); } catch (er) { if (er && er.name === 'AbortError') { d.remove(); res(true); } else if (typeof showToast === 'function') showToast('⚠ Dijeljenje nije podržano: ' + (er && er.message || er)); }
+          });
+        });
+      }
+    }
     for (const f of fs) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
     if (typeof showToast === 'function') showToast('📥 Preuzeto ' + fs.length + ' fotografija (s GPS podacima u slici)');
     return true;
