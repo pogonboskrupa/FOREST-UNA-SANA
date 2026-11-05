@@ -1183,7 +1183,7 @@ public class MainActivity extends Activity {
                 for (int ci = 1; ci < uris.size(); ci++) clip.addItem(new android.content.ClipData.Item(uris.get(ci)));
                 send.setClipData(clip);
                 send.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-                if (text != null) send.putExtra(Intent.EXTRA_TEXT, text);
+                if (text != null && !text.isEmpty()) send.putExtra(Intent.EXTRA_TEXT, text);
                 if (title != null) send.putExtra(Intent.EXTRA_SUBJECT, title);
                 send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 Intent chooser = Intent.createChooser(send, title != null ? title : "Pošalji");

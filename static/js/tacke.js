@@ -448,7 +448,7 @@
       }
     }
     if (!fajlovi.length) { if (typeof showToast === 'function') showToast('Nema fotografija za slanje'); return false; }
-    const tekst = tekstTacaka(l), dok = !!(opc && opc.dokument);
+    const tekst = opc && opc.bezTeksta ? '' : tekstTacaka(l), dok = !!(opc && opc.dokument);
     // Metode za više fajlova su u DownloadBridge (window.AndroidDownload), ne u ShareBridge — zato je ranije uvijek išlo preuzimanje
     const most = [typeof AndroidDownload !== 'undefined' ? AndroidDownload : null, typeof AndroidShare !== 'undefined' ? AndroidShare : null].find(m => m && (m.stageFile || m.shareFiles));
     if (most) {
@@ -513,7 +513,7 @@
       <div class="tk-izb-alat"><button data-a="sve">☑ Sve (${sve.length})</button><button data-a="nista">☐ Nijedna</button><span id="tk-izb-br"></span></div>
       <div class="tk-izb-tijelo">${l.map(t => `<div class="tk-izb-grupa"><div class="tk-izb-naslov"><span>${kat(t.kat).ik} ${esc(t.naziv)}</span><button data-a="tacka" data-t="${t.id}">označi sve</button></div>
         <div class="tk-izb-mreza">${t.foto.map(f => `<label class="tk-izb-f"><img data-foto="${f}" alt=""><input type="checkbox" data-f="${f}"><i></i></label>`).join('')}</div></div>`).join('')}</div>
-      <p class="tk-izb-nap">WhatsApp i Viber primaju do ~30 fotografija odjednom. Koordinate i link na kartu idu u tekstu poruke.</p>
+      <label class="tk-izb-tekst"><input type="checkbox" id="tk-izb-tekst"> Dodaj naziv i lokaciju u poruku</label><p class="tk-izb-nap">WhatsApp i Viber primaju do ~30 fotografija odjednom.</p>
       <button class="tk-izb-go" data-a="go" disabled>📤 Pošalji</button></div>`;
     document.body.appendChild(el);
     popuniMini(el);
@@ -532,7 +532,7 @@
       else if (a.dataset.a === 'nista') { izbSet.clear(); osvjezi(); }
       else if (a.dataset.a === 'tacka') { const t = l.find(x => x.id === a.dataset.t); (t.foto || []).forEach(f => izbSet.add(f)); osvjezi(); }
       else if (a.dataset.a === 'go' && izbSet.size) {
-        const ok = await podijeliFoto(null, { foto: [...izbSet], dokument: false }); if (ok) el.remove();
+        const ok = await podijeliFoto(null, { foto: [...izbSet], dokument: false, bezTeksta: !el.querySelector('#tk-izb-tekst').checked }); if (ok) el.remove();
       }
     });
     osvjezi();
