@@ -128,7 +128,8 @@
     const izdanje = (id && e.svi.find(x => x[1] === +id)) || [e.datum, e.id];
     paneSloj(); uklonisloj();
     st.godina = g; st.id = izdanje[1]; st.datum = izdanje[0];
-    sloj = L.tileLayer(urlZa(st.id), { pane: 'waybackPane', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false, attribution: 'Esri World Imagery Wayback' }).addTo(map);
+    sloj = L.tileLayer(urlZa(st.id), { pane: 'waybackPane', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: !uspor.on, updateWhenZooming: false, attribution: 'Esri World Imagery Wayback' });
+    prati(sloj, 'd'); sloj.addTo(map);
     osvjezi();
     if (!id && !anim && ocjena.god !== g) ocijeniGodinu(g);
     if (uspor.on) usporediOsvjezi();
@@ -167,12 +168,27 @@
     if (b) b.style.clip = `rect(${nw.y}px, ${nw.x + sz.x}px, ${nw.y + sz.y}px, ${nw.x + x}px)`;
     razd.style.left = x + 'px';
   }
+  // Oznake strana + stanje učitavanja (⏳ dok se pločice te strane još učitavaju)
+  const ucit = { l: false, d: false };
+  function prati(sl, strana) {
+    ucit[strana] = true; natpisiStrana();
+    sl.on('loading', () => { ucit[strana] = true; natpisiStrana(); });
+    sl.on('load', () => { ucit[strana] = false; natpisiStrana(); });
+  }
+  function natpisiStrana() {
+    if (!razd) return;
+    const l = razd.querySelector('.wb-l'), d = razd.querySelector('.wb-d');
+    l.textContent = (ucit.l ? '⏳ ' : '') + (uspor.godina || ''); d.textContent = (ucit.d ? '⏳ ' : '') + (st.godina || '');
+    l.classList.toggle('uc', ucit.l); d.classList.toggle('uc', ucit.d);
+  }
   function usporediOsvjezi() {
     if (!uspor.on) return;
     const e = godine().find(x => x.godina === uspor.godina); if (!e) return;
     paneDrugi();
     if (sloj2) { try { map.removeLayer(sloj2); } catch (er) {} }
-    sloj2 = L.tileLayer(urlZa(uspor.id || e.id), { pane: 'waybackPane2', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false }).addTo(map);
+    sloj2 = L.tileLayer(urlZa(uspor.id || e.id), { pane: 'waybackPane2', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 4, updateWhenIdle: false, updateWhenZooming: false });
+    prati(sloj2, 'l'); sloj2.addTo(map);
+    if (sloj) { sloj.options.updateWhenIdle = false; sloj.options.keepBuffer = 4; }
     klipaj(); osvjezi();
   }
   function usporediUkljuci() {
@@ -181,7 +197,7 @@
     const l = godine().map(x => x.godina).sort((a, b) => a - b), ranija = l.filter(g => g < st.godina);
     uspor = { on: true, godina: ranija.length ? ranija[0] : l[l.length - 1], id: null };
     if (!razd) {
-      razd = document.createElement('div'); razd.id = 'wb-razd'; razd.innerHTML = '<span>⇆</span>';
+      razd = document.createElement('div'); razd.id = 'wb-razd'; razd.innerHTML = '<span>⇆</span><em class="wb-l"></em><em class="wb-d"></em>';
       let vuce = false;
       razd.addEventListener('pointerdown', e => { vuce = true; razd.setPointerCapture(e.pointerId); map.dragging.disable(); e.preventDefault(); });
       razd.addEventListener('pointermove', e => { if (!vuce) return; const r = map.getContainer().getBoundingClientRect(); razdX = Math.max(0.04, Math.min(0.96, (e.clientX - r.left) / r.width)); klipaj(); });
@@ -190,6 +206,7 @@
       map.on('move zoom viewreset resize', klipaj);
     }
     map.getContainer().appendChild(razd); razd.hidden = false; razdX = 0.5;
+    if (sloj) { sloj.options.updateWhenIdle = false; sloj.options.keepBuffer = 4; }
     usporediOsvjezi();
   }
   function usporediGasi() {
