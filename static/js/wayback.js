@@ -55,33 +55,44 @@
     try { const r = await fetch('static/data/wayback_izdanja.json'); if (r.ok) return (lista = await r.json()); } catch (e) {}
     return (lista = []);
   }
-  // Oblačnost izdanja na mjestu u centru karte: jedna pločica po izdanju, mjeri se na canvasu (Esri pločice imaju CORS).
-  // Wayback nema podatak o oblacima, pa se procjena radi iz same slike; null = nije moguće izmjeriti (mreža/CORS) → ne krije se.
+  // Oblačnost izdanja za CIJELI Unsko-sanski kanton (bbox granice): pločice z9 koje ga pokrivaju, mjere se samo pikseli unutar bbox-a.
+  // Wayback nema podatak o oblacima, pa se procjena radi iz slike; null = nije moguće izmjeriti (mreža/CORS) → ne krije se.
+  const USK = { w: 15.7287, e: 16.9010, s: 44.2501, n: 45.2311 }, ZO = 9;
   const oblaci = new Map();
-  function plocicaCentra() {
-    const z = Math.max(10, Math.min(15, Math.round(map.getZoom()))), c = map.getCenter(), n = Math.pow(2, z);
-    const x = Math.floor((c.lng + 180) / 360 * n), la = c.lat * Math.PI / 180;
-    const y = Math.floor((1 - Math.log(Math.tan(la) + 1 / Math.cos(la)) / Math.PI) / 2 * n);
-    return { z, x, y };
+  const svijetX = lo => (lo + 180) / 360 * Math.pow(2, ZO) * 256;
+  const svijetY = la => { const r = la * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, ZO) * 256; };
+  function plociceUSK() {
+    const x0 = svijetX(USK.w), x1 = svijetX(USK.e), y0 = svijetY(USK.n), y1 = svijetY(USK.s), out = [];
+    for (let ty = Math.floor(y0 / 256); ty <= Math.floor(y1 / 256); ty++) for (let tx = Math.floor(x0 / 256); tx <= Math.floor(x1 / 256); tx++) {
+      const rx = Math.max(x0, tx * 256) - tx * 256, ry = Math.max(y0, ty * 256) - ty * 256;
+      const rw = Math.min(x1, (tx + 1) * 256) - tx * 256 - rx, rh = Math.min(y1, (ty + 1) * 256) - ty * 256 - ry;
+      if (rw >= 1 && rh >= 1) out.push({ z: ZO, x: tx, y: ty, rx: Math.floor(rx), ry: Math.floor(ry), rw: Math.floor(rw), rh: Math.floor(rh) });
+    }
+    return out;
   }
-  function izmjeriOblake(id, t) {
-    const k = id + ':' + t.z + ':' + t.x + ':' + t.y;
-    if (oblaci.has(k)) return oblaci.get(k);
-    const p = new Promise(res => {
+  function izmjeriPlocicu(id, t) {
+    return new Promise(res => {
       const im = new Image(); im.crossOrigin = 'anonymous';
-      const tm = setTimeout(() => res(null), 8000);
-      im.onload = () => { clearTimeout(tm); try { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 128, 128); res(udioOblaka(x.getImageData(0, 0, 128, 128).data)); } catch (e) { res(null); } };
+      const tm = setTimeout(() => res(null), 10000);
+      im.onload = () => { clearTimeout(tm); try { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); x.drawImage(im, 0, 0); res({ u: udioOblaka(x.getImageData(t.rx, t.ry, t.rw, t.rh).data), w: t.rw * t.rh }); } catch (e) { res(null); } };
       im.onerror = () => { clearTimeout(tm); res(null); };
       im.src = urlZa(id).replace('{z}', t.z).replace('{y}', t.y).replace('{x}', t.x);
     });
-    oblaci.set(k, p); return p;
+  }
+  function izmjeriOblake(id) {
+    if (oblaci.has(id)) return oblaci.get(id);
+    const p = Promise.all(plociceUSK().map(t => izmjeriPlocicu(id, t))).then(r => {
+      const ok = r.filter(q => q && q.u != null); if (ok.length < Math.ceil(r.length / 2)) return null;
+      const w = ok.reduce((a, q) => a + q.w, 0); return ok.reduce((a, q) => a + q.u * q.w, 0) / w;
+    });
+    oblaci.set(id, p); return p;
   }
   let ocjena = { god: null, rez: null, tece: false };
   async function ocijeniGodinu(g) {
     const e = godine().find(x => x.godina === g); if (!e || typeof map === 'undefined') return;
-    const t = plocicaCentra(); ocjena = { god: g, rez: null, tece: true }; render();
+    ocjena = { god: g, rez: null, tece: true }; render();
     const izm = [];
-    for (let i = 0; i < e.svi.length; i += 4) izm.push(...await Promise.all(e.svi.slice(i, i + 4).map(async x => [x[1], await izmjeriOblake(x[1], t)])));
+    for (let i = 0; i < e.svi.length; i += 4) izm.push(...await Promise.all(e.svi.slice(i, i + 4).map(async x => [x[1], await izmjeriOblake(x[1])])));
     if (ocjena.god !== g) return;
     ocjena = { god: g, rez: new Map(izm), tece: false };
     // izabrano izdanje je preoblačno → najnovije čisto
@@ -139,10 +150,23 @@
     const lista = (dobra.length ? dobra : e.svi).slice().reverse();
     const nap = !rez ? `${e.svi.length} izdanja u ${e.godina}.`
       : dobra.length ? `Prikazani samo čisti snimci (oblaci/snijeg ≤ ${Math.round(PRAG_OBLAKA * 100)} %): ${dobra.length} od ${e.svi.length}.`
-      : `⚠ Svi snimci iz ${e.godina} imaju puno oblaka/snijega na ovom mjestu — prikazani su svi. Pokušaj drugu godinu.`;
+      : `⚠ Svi snimci iz ${e.godina} imaju puno oblaka/snijega na području USK — prikazani su svi. Pokušaj drugu godinu.`;
     const oz = x => { const u = rez && rez.get(x[1]); return u == null ? '' : ' · ☁ ' + Math.round(u * 100) + ' %'; };
     return `<label class="wb-dat">Datum snimka (izdanje)<select onchange="USFWayback.izdanje(this.value)">${lista.map(x => `<option value="${x[1]}"${x[1] === st.id ? ' selected' : ''}>${x[0].split('-').reverse().join('. ')}.${oz(x)}</option>`).join('')}</select><small>${nap}</small></label>
-      <button type="button" class="wb-iskljuci" onclick="USFWayback.ocijeni()">☁ Provjeri oblačnost za centar karte</button>`;
+      <button type="button" class="wb-iskljuci" onclick="USFWayback.ocijeni()">☁ Ponovi provjeru oblačnosti (USK)</button>`;
+  }
+  const jeWb = r => r.url.includes('wayback.maptiles.arcgis.com');
+  async function kesStat() {
+    try { const c = await caches.open('usf-tiles-v1'); return (await c.keys()).filter(jeWb).length; } catch (e) { return null; }
+  }
+  async function kesObrisi() {
+    if (typeof confirm === 'function' && !confirm('Obrisati sačuvane pločice satelitskih snimaka (Wayback)?')) return;
+    try { const c = await caches.open('usf-tiles-v1'); const k = (await c.keys()).filter(jeWb); await Promise.all(k.map(r => c.delete(r))); toast('🗑 Obrisano ' + k.length + ' pločica'); } catch (e) { toast('⚠ Brisanje nije uspjelo'); }
+    kesOsvjezi();
+  }
+  async function kesOsvjezi() {
+    const n = await kesStat();
+    document.querySelectorAll('.wb-kes-n').forEach(el => { el.textContent = n == null ? 'nije dostupno' : n + ' pločica'; });
   }
   function render() {
     const g = godine();
@@ -154,10 +178,12 @@
       el.innerHTML = glava + (g.length ? `<div class="wb-cipovi">${g.map(x => `<button type="button" class="${x.godina === st.godina ? 'on' : ''}" onclick="USFWayback.postavi(${x.godina})">${x.godina}</button>`).join('')}</div>
       ${st.godina ? izborDatuma() : ''}
       <label class="wb-op">Providnost <input type="range" min="20" max="100" step="5" value="${st.op}" oninput="USFWayback.opacity(this.value)"><span>${st.op} %</span></label>
+      <div class="wb-kes"><span>Keš snimaka: <b class="wb-kes-n">…</b></span><button type="button" class="wb-iskljuci" onclick="USFWayback.kesObrisi()">🗑 Obriši keš</button></div>
       ${st.godina ? '<button type="button" class="wb-iskljuci" onclick="USFWayback.iskljuci()">✕ Isključi snimak</button>' : ''}
       <p class="set-nap">Najnovije izdanje u izabranoj godini. Ako to područje te godine nije snimano, vidi se starija scena. Treba internet; pregledane pločice ostaju sačuvane.</p>` : '<p class="set-nap">Lista izdanja se učitava…</p>');
     });
+    kesOsvjezi();
   }
   async function pokreni() { render(); await ucitajListu(); render(); }
-  root.USFWayback = { ocijeni: () => { ocjena = { god: null, rez: null, tece: false }; oblaci.clear(); return st.godina && ocijeniGodinu(st.godina); }, postavi, izdanje, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
+  root.USFWayback = { kesObrisi, ocijeni: () => { ocjena = { god: null, rez: null, tece: false }; oblaci.clear(); return st.godina && ocijeniGodinu(st.godina); }, postavi, izdanje, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
 })(typeof window !== 'undefined' ? window : globalThis);

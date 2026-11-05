@@ -1460,6 +1460,7 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 /* Wayback — satelitski snimci po godinama (v4.1.0) */
 .wb-cipovi { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; } .wb-cipovi button { padding:9px 13px; border-radius:11px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font:800 14px system-ui; } .wb-cipovi button.on { background:linear-gradient(135deg,#166534,#15803d); border-color:#22c55e; color:#fff; }
 .wb-op { display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; margin:6px 0; } .wb-op input { flex:1; accent-color:#22c55e; } .wb-iskljuci { width:100%; margin:6px 0; padding:10px; border-radius:10px; border:1px solid #b45353; background:transparent; color:#fca5a5; font:700 13px system-ui; }
+.wb-kes { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; font-size:12px; color:#cbd5e1; }
 #wb-traka { position:fixed; top:calc(60px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:600; display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:999px; background:rgba(10,24,18,.94); border:1px solid rgba(134,239,172,.4); box-shadow:0 4px 14px rgba(0,0,0,.45); color:#f1f5f9; } #wb-traka[hidden] { display:none; }
 #wb-traka button { width:34px; height:34px; border-radius:50%; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font-size:14px; } .wb-god { text-align:center; min-width:96px; line-height:1.15; } .wb-god b { display:block; font-size:15px; } .wb-god small { font-size:10px; color:#b6cbbf; }
 .wb-dat { display:block; margin:8px 0; font-size:12px; color:#cbd5e1; } .wb-dat select { display:block; width:100%; margin-top:4px; padding:11px; border-radius:11px; border:1px solid #475569; background:#0f1f17; color:#f1f5f9; font:700 14px system-ui; } .wb-dat small { display:block; margin-top:3px; color:#94a3b8; font-size:11px; }
@@ -2579,7 +2580,6 @@ body.sl-uredi #sl-ured { display: block; }
       <div id="kh-pregled" class="kh-pregled" role="status"></div>
       <section class="karta-hub-card kh-gran" id="kh-gran"></section>
       <section class="karta-hub-card" id="kh-razmjera"></section>
-      <section class="karta-hub-card kh-wb wb-host" id="kh-wayback"></section>
       <div class="kh-grupa" id="kh-g-podloga">Podloga</div>
       <section class="karta-hub-card">
         <h3>🌍 Bazna karta</h3>
