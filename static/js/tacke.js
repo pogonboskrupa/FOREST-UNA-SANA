@@ -463,6 +463,11 @@
         return true;
       } catch (e) { if (typeof showToast === 'function') showToast('⚠ Slanje nije uspjelo: ' + (e && e.message || e) + (fajlovi.length > 10 ? ' — probaj s manje fotografija' : '')); return false; }
     }
+    // U APK-u nikad preuzimanje preko <a download> (daje „Greška pri čuvanju”): ako most za dijeljenje nije dostupan, kaži zašto.
+    if (typeof AndroidDownload !== 'undefined') {
+      if (typeof showToast === 'function') showToast('⚠ Dijeljenje nije dostupno u ovoj verziji (AndroidShare: ' + typeof AndroidShare + (typeof AndroidShare !== 'undefined' ? ', stageFile: ' + typeof AndroidShare.stageFile + ', shareFiles: ' + typeof AndroidShare.shareFiles : '') + ')');
+      return false;
+    }
     const fs = fajlovi.map(f => new File([f.bytes], f.ime, { type: 'image/jpeg' }));
     const podaci = { files: fs, title: 'Fotografije s lokacijom', text: tekst };
     if (navigator.share && navigator.canShare && navigator.canShare(podaci)) {
