@@ -429,7 +429,8 @@
     return out;
   }
   const mapaLink = t => 'https://www.google.com/maps?q=' + t.la.toFixed(6) + ',' + t.lo.toFixed(6);
-  const imeFajla = (t, i) => (t.naziv || 'foto').normalize('NFKD').replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 40) + '_' + (i + 1) + '.jpg';
+  // Ime MORA biti jedinstveno u cijelom slanju (više tačaka istog naziva davalo je isto ime → fajlovi se gazili / Downloads „Failed to build unique file”)
+  const imeFajla = (t, k, stamp) => (t.naziv || 'foto').normalize('NFKD').replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 30) + '_' + stamp + '_' + String(k + 1).padStart(2, '0') + '.jpg';
   const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
   // Tekst uz fotografije: vrsta, koordinate i link na kartu (radi i kad aplikacija za chat skine EXIF)
   function tekstTacaka(l) { return l.map(t => kat(t.kat).ik + ' ' + t.naziv + ' — ' + t.la.toFixed(6) + ', ' + t.lo.toFixed(6) + '\n' + mapaLink(t)).join('\n\n'); }
@@ -437,12 +438,13 @@
   async function podijeliFoto(ids, opc) {
     const izabrane = opc && opc.foto ? new Set(opc.foto) : null; // pojedinačno odabrane fotografije (izbor u listi)
     const l = citaj().filter(t => (!ids || ids.includes(t.id)) && (!izabrane || (t.foto || []).some(f => izabrane.has(f)))), fajlovi = [];
+    const stamp = new Date().toISOString().replace(/\D/g, '').slice(2, 12); // ggmmddHHMM
+    let i = 0;
     for (const t of l) {
-      let i = 0;
       for (const id of t.foto || []) {
         if (izabrane && !izabrane.has(id)) continue;
         const b = await idb('puna', 'readonly', st => st.get(id)).catch(() => null); if (!b) continue;
-        fajlovi.push({ ime: imeFajla(t, i++), bytes: jpegSaGps(new Uint8Array(await b.arrayBuffer()), { la: t.la, lo: t.lo, al: t.al, datum: t.datum }) });
+        fajlovi.push({ ime: imeFajla(t, i++, stamp), bytes: jpegSaGps(new Uint8Array(await b.arrayBuffer()), { la: t.la, lo: t.lo, al: t.al, datum: t.datum }) });
       }
     }
     if (!fajlovi.length) { if (typeof showToast === 'function') showToast('Nema fotografija za slanje'); return false; }
