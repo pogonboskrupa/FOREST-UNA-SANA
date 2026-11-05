@@ -81,13 +81,17 @@
     render();
   }
   function render() {
-    const el = document.getElementById('kh-wayback'); if (!el) return;
     const g = godine();
-    el.innerHTML = `<div class="kg-top"><i>🕰</i><div><h3>Satelitski snimci po godinama</h3><p class="kh-stat">${st.godina ? 'Prikazano: ' + st.godina : 'Esri Wayback · zadnjih 10 godina'}</p></div></div>
-      ${g.length ? `<div class="wb-cipovi">${g.map(x => `<button type="button" class="${x.godina === st.godina ? 'on' : ''}" onclick="USFWayback.postavi(${x.godina})">${x.godina}</button>`).join('')}</div>
+    document.querySelectorAll('.wb-host').forEach(el => {
+      const naslov = st.godina ? 'Prikazano: ' + st.godina : 'Esri Wayback · zadnjih 10 godina';
+      const glava = el.dataset.kompakt
+        ? `<h3>Satelitski snimci po godinama <small>${naslov}</small></h3>`
+        : `<div class="kg-top"><i>🕰</i><div><h3>Satelitski snimci po godinama</h3><p class="kh-stat">${naslov}</p></div></div>`;
+      el.innerHTML = glava + (g.length ? `<div class="wb-cipovi">${g.map(x => `<button type="button" class="${x.godina === st.godina ? 'on' : ''}" onclick="USFWayback.postavi(${x.godina})">${x.godina}</button>`).join('')}</div>
       <label class="wb-op">Providnost <input type="range" min="20" max="100" step="5" value="${st.op}" oninput="USFWayback.opacity(this.value)"><span>${st.op} %</span></label>
       ${st.godina ? '<button type="button" class="wb-iskljuci" onclick="USFWayback.iskljuci()">✕ Isključi snimak</button>' : ''}
-      <p class="set-nap">Najnovije izdanje u izabranoj godini. Ako to područje te godine nije snimano, vidi se starija scena. Treba internet; pregledane pločice ostaju sačuvane.</p>` : '<p class="set-nap">Lista izdanja se učitava…</p>'}`;
+      <p class="set-nap">Najnovije izdanje u izabranoj godini. Ako to područje te godine nije snimano, vidi se starija scena. Treba internet; pregledane pločice ostaju sačuvane.</p>` : '<p class="set-nap">Lista izdanja se učitava…</p>');
+    });
   }
   async function pokreni() { render(); await ucitajListu(); render(); }
   root.USFWayback = { postavi, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };

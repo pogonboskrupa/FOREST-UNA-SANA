@@ -2581,7 +2581,7 @@ body.sl-uredi #sl-ured { display: block; }
       <div id="kh-pregled" class="kh-pregled" role="status"></div>
       <section class="karta-hub-card kh-gran" id="kh-gran"></section>
       <section class="karta-hub-card" id="kh-razmjera"></section>
-      <section class="karta-hub-card kh-wb" id="kh-wayback"></section>
+      <section class="karta-hub-card kh-wb wb-host" id="kh-wayback"></section>
       <div class="kh-grupa" id="kh-g-podloga">Podloga</div>
       <section class="karta-hub-card">
         <h3>🌍 Bazna karta</h3>
@@ -2953,6 +2953,7 @@ body.sl-uredi #sl-ured { display: block; }
         </details>
       </div>
     </section>
+    <section class="uk-grupa wb-host" id="vit-wayback" data-kompakt="1"></section>
     <section class="uk-grupa" id="veg-prom">
       <h3>Provjera promjena po odjelima <small>gdje se u zadnjih 30 dana pojavio jak gubitak vegetacije (dNDVI)</small></h3>
       <div class="zp-izbor"><label>Odjeli<select id="veg-prom-opseg"><option value="pogled">u vidljivom dijelu karte</option><option value="sve">svi odjeli (do 150)</option></select></label>
@@ -9007,7 +9008,7 @@ function _driveKmlKraj(id, ok, poruka, kmz) {
   setTimeout(() => { _driveKmlRender(); if (window.USFOtv) USFOtv.render(); }, 1500);
 }
 function openSumarstvoSection() { if (!_pinOtkljucano()) { _pinTrazi(openSumarstvoSection); return; } _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
-function openVitalnostSection() { if (!_pinOtkljucano()) { _pinTrazi(openVitalnostSection); return; } _openStubPanel('vitalnost-panel', 'meni'); _sumPanelOsvjezi(); if (window.USFVeg && USFVeg.osvjezi) try { USFVeg.osvjezi(); } catch (e) {} }
+function openVitalnostSection() { if (!_pinOtkljucano()) { _pinTrazi(openVitalnostSection); return; } _openStubPanel('vitalnost-panel', 'meni'); _sumPanelOsvjezi(); try { if (window.USFWayback) USFWayback.render(); } catch (e) {} if (window.USFVeg && USFVeg.osvjezi) try { USFVeg.osvjezi(); } catch (e) {} }
 function openSusenjeSection() { if (!_pinOtkljucano()) { _pinTrazi(openSusenjeSection); return; } _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
 // Pregled offline keša sekcije (tlo: usf_tlo_mjesta, NDVI: Cache 'usf-veg', sušenje: Cache 'usf-susenje').
 async function _susKesStat() {
