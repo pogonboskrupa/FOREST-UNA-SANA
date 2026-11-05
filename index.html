@@ -1440,6 +1440,24 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 .ka-nova { width:100%; margin:6px 0; padding:12px; border-radius:11px; border:1px dashed #5a9475; background:transparent; color:#bbf7d0; font:inherit; font-weight:700; }
 .ka-sheet label { display:block; margin:8px 0; font-size:12px; color:#cfe0d6; } .ka-sheet input { display:block; width:100%; box-sizing:border-box; margin-top:4px; padding:10px; border-radius:10px; border:1px solid #3f7457; background:#0f2218; color:#fff; font:inherit; font-size:14px; }
 .ka-nap, .ka-prazno { font-size:11.5px; color:#b6cbbf; } .ka-akc { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; } .ka-akc button { padding:13px; border-radius:12px; border:1px solid #5a9475; background:#0f2218; color:#f1f5f9; font:inherit; font-weight:800; } .ka-akc .glavno { background:linear-gradient(135deg,#166534,#15803d); border-color:#22c55e; }
+
+/* Tačke — izbor fotografija za slanje (v3.9.7) */
+.tk-posalji { width:100%; margin:0 0 10px; padding:12px; border-radius:12px; border:1px solid #22c55e; background:linear-gradient(135deg,#14532d,#166534); color:#fff; font:800 14px system-ui; }
+.tk-izb { position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.76); display:flex; align-items:flex-end; justify-content:center; }
+.tk-izb-sheet { width:100%; max-width:560px; max-height:92vh; display:flex; flex-direction:column; background:#142a1f; border:1px solid #4d8a68; border-radius:18px 18px 0 0; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); color:#f1f5f9; }
+.tk-izb-zag { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:15px; } .tk-izb-zag button { width:32px; height:32px; border-radius:50%; border:1px solid #4d8a68; background:#223f31; color:#f1f5f9; }
+.tk-izb-alat { display:flex; gap:8px; align-items:center; margin-bottom:8px; } .tk-izb-alat button, .tk-izb-naslov button { padding:7px 11px; border-radius:9px; border:1px solid #5a9475; background:#0f2218; color:#e2e8f0; font:700 12px system-ui; }
+#tk-izb-br { margin-left:auto; font-weight:800; color:#86efac; } #tk-izb-br.veliko { color:#fbbf24; }
+.tk-izb-tijelo { overflow-y:auto; flex:1; min-height:120px; -webkit-overflow-scrolling:touch; }
+.tk-izb-naslov { display:flex; justify-content:space-between; align-items:center; margin:8px 0 5px; font-size:13px; font-weight:700; }
+.tk-izb-mreza { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.tk-izb-f { position:relative; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#0f2218; cursor:pointer; }
+.tk-izb-f img { width:100%; height:100%; object-fit:cover; display:block; } .tk-izb-f input { position:absolute; opacity:0; inset:0; }
+.tk-izb-f i { position:absolute; top:6px; right:6px; width:24px; height:24px; border-radius:50%; border:2px solid #fff; background:rgba(0,0,0,.45); box-sizing:border-box; }
+.tk-izb-f input:checked ~ i { background:#22c55e; border-color:#fff; } .tk-izb-f input:checked ~ i::after { content:'✓'; position:absolute; inset:0; display:grid; place-items:center; color:#052e16; font:900 14px system-ui; }
+.tk-izb-f input:checked + i, .tk-izb-f:has(input:checked) { outline:3px solid #22c55e; outline-offset:-3px; }
+.tk-izb-nap { font-size:11px; color:#b6cbbf; margin:8px 0; }
+.tk-izb-go { padding:14px; border-radius:12px; border:1px solid #22c55e; background:linear-gradient(135deg,#166534,#15803d); color:#fff; font:800 15px system-ui; } .tk-izb-go:disabled { opacity:.4; }
 </style>
 <style>
 #poz-legends { position:fixed; top:calc(112px + env(safe-area-inset-top)); right:8px; z-index:490; width:210px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 150px); overflow:auto; background:#0f172a; border:1px solid #475569; border-radius:12px; }

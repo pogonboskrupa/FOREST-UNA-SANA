@@ -338,6 +338,7 @@
     el.innerHTML = `<div class="tk-kpi">
         <div><b>${l.length}</b><span>tačaka</span></div><div><b>${nFoto}</b><span>fotografija</span></div><div><b>${naKarti}</b><span>na karti</span></div>
       </div>
+      ${nFoto ? `<button class="tk-posalji" onclick="USFTacke.izaberi()">📤 Pošalji fotografije (odaberi više)</button>` : ''}
       <div class="tk-alat">
         <div class="tk-cipovi">${cip('sve', '', 'Sve', l.length)}${nFoto ? cip('foto', '📷', 'Sa foto', l.filter(t => (t.foto || []).length).length) : ''}${KATEGORIJE.filter(k => po[k.k]).map(k => cip(k.k, k.ik, esc(k.t.split(',')[0]), po[k.k])).join('')}</div>
         <div class="tk-trazi">${l.length > 4 ? `<input type="search" placeholder="Traži tačku…" value="${esc(LS.q)}" oninput="USFTacke.trazi(this.value)" aria-label="Traži tačku">` : ''}
@@ -434,16 +435,18 @@
   function tekstTacaka(l) { return l.map(t => kat(t.kat).ik + ' ' + t.naziv + ' — ' + t.la.toFixed(6) + ', ' + t.lo.toFixed(6) + '\n' + mapaLink(t)).join('\n\n'); }
   // opc.dokument: šalje se kao fajlovi (WhatsApp/Viber ne rekompresuju, GPS iz slike ostaje); inače kao slike + tekst s lokacijama
   async function podijeliFoto(ids, opc) {
-    const l = citaj().filter(t => !ids || ids.includes(t.id)), fajlovi = [];
+    const izabrane = opc && opc.foto ? new Set(opc.foto) : null; // pojedinačno odabrane fotografije (izbor u listi)
+    const l = citaj().filter(t => (!ids || ids.includes(t.id)) && (!izabrane || (t.foto || []).some(f => izabrane.has(f)))), fajlovi = [];
     for (const t of l) {
       let i = 0;
       for (const id of t.foto || []) {
+        if (izabrane && !izabrane.has(id)) continue;
         const b = await idb('puna', 'readonly', st => st.get(id)).catch(() => null); if (!b) continue;
         fajlovi.push({ ime: imeFajla(t, i++), bytes: jpegSaGps(new Uint8Array(await b.arrayBuffer()), { la: t.la, lo: t.lo, al: t.al, datum: t.datum }) });
       }
     }
     if (!fajlovi.length) { if (typeof showToast === 'function') showToast('Nema fotografija za slanje'); return false; }
-    const tekst = tekstTacaka(l.filter(t => (t.foto || []).length)), dok = !!(opc && opc.dokument);
+    const tekst = tekstTacaka(l), dok = !!(opc && opc.dokument);
     if (typeof AndroidShare !== 'undefined' && AndroidShare.shareFiles) {
       try { AndroidShare.shareFiles(JSON.stringify(fajlovi.map(f => ({ name: f.ime, b64: b64(f.bytes) }))), 'Fotografije s lokacijom', tekst, dok); return true; } catch (e) {}
     }
@@ -460,6 +463,45 @@
       { label: '📎 Kao dokumenti — GPS ostaje u slici' }, { label: '🖼 Kao slike + tekst s koordinatama' }, { label: '⤓ KMZ (karta + fotografije)' }]);
     if (i === 0) podijeliFoto(ids, { dokument: true }); else if (i === 1) podijeliFoto(ids, {}); else if (i === 2) izvozKmz(ids);
   }
+  // Izbor više fotografija za slanje (WhatsApp/Viber): mreža sličica po tački, dodir = označi, pa „Pošalji”
+  let izbSet = new Set();
+  function izaberi() {
+    const l = citaj().filter(t => (t.foto || []).length);
+    if (!l.length) { if (typeof showToast === 'function') showToast('Nema fotografija za slanje'); return; }
+    const sve = l.flatMap(t => t.foto);
+    izbSet = new Set();
+    document.getElementById('tk-izb')?.remove();
+    const el = document.createElement('div'); el.id = 'tk-izb'; el.className = 'tk-izb';
+    el.innerHTML = `<div class="tk-izb-sheet" role="dialog" aria-label="Izbor fotografija"><div class="tk-izb-zag"><b>📤 Odaberi fotografije</b><button data-a="x" aria-label="Zatvori">✕</button></div>
+      <div class="tk-izb-alat"><button data-a="sve">☑ Sve (${sve.length})</button><button data-a="nista">☐ Nijedna</button><span id="tk-izb-br"></span></div>
+      <div class="tk-izb-tijelo">${l.map(t => `<div class="tk-izb-grupa"><div class="tk-izb-naslov"><span>${kat(t.kat).ik} ${esc(t.naziv)}</span><button data-a="tacka" data-t="${t.id}">označi sve</button></div>
+        <div class="tk-izb-mreza">${t.foto.map(f => `<label class="tk-izb-f"><img data-foto="${f}" alt=""><input type="checkbox" data-f="${f}"><i></i></label>`).join('')}</div></div>`).join('')}</div>
+      <p class="tk-izb-nap">WhatsApp i Viber primaju do ~30 fotografija odjednom. „Kao dokumenti” čuva GPS u slici.</p>
+      <button class="tk-izb-go" data-a="go" disabled>📤 Pošalji</button></div>`;
+    document.body.appendChild(el);
+    popuniMini(el);
+    const osvjezi = () => {
+      el.querySelectorAll('input[data-f]').forEach(c => { c.checked = izbSet.has(c.dataset.f); });
+      const n = izbSet.size, br = el.querySelector('#tk-izb-br'), go = el.querySelector('[data-a="go"]');
+      br.textContent = n ? 'odabrano: ' + n : ''; br.classList.toggle('veliko', n > 30);
+      go.disabled = !n; go.textContent = n ? '📤 Pošalji (' + n + ')' : '📤 Pošalji';
+    };
+    el.addEventListener('change', e => { const c = e.target.closest('input[data-f]'); if (!c) return; c.checked ? izbSet.add(c.dataset.f) : izbSet.delete(c.dataset.f); osvjezi(); });
+    el.addEventListener('click', async e => {
+      if (e.target === el) { el.remove(); return; }
+      const a = e.target.closest('[data-a]'); if (!a) return;
+      if (a.dataset.a === 'x') el.remove();
+      else if (a.dataset.a === 'sve') { sve.forEach(f => izbSet.add(f)); osvjezi(); }
+      else if (a.dataset.a === 'nista') { izbSet.clear(); osvjezi(); }
+      else if (a.dataset.a === 'tacka') { const t = l.find(x => x.id === a.dataset.t); (t.foto || []).forEach(f => izbSet.add(f)); osvjezi(); }
+      else if (a.dataset.a === 'go' && izbSet.size) {
+        const i = typeof _dlgActions === 'function' ? await _dlgActions('Pošalji ' + izbSet.size + ' fotografija', [
+          { label: '📎 Kao dokumenti — GPS ostaje u slici' }, { label: '🖼 Kao slike + tekst s koordinatama' }]) : 1;
+        if (i === 0 || i === 1) { const ok = await podijeliFoto(null, { foto: [...izbSet], dokument: i === 0 }); if (ok) el.remove(); }
+      }
+    });
+    osvjezi();
+  }
   // Tačke/fotografije snimljene dok je trag snimao (vremenski prozor) — ulaze u trag
   const zaVrijeme = (od, doo) => citaj().filter(t => { const m = Date.parse(t.datum); return Number.isFinite(m) && m >= od - 60000 && m <= doo + 60000; });
   function veziZaTrag(ids, tragId) { const l = citaj(); l.forEach(t => { if (ids.includes(t.id)) t.trag = tragId; }); pisi(l); }
@@ -474,7 +516,7 @@
     }));
   }
 
-  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, podijeliFoto, posalji, zaVrijeme, veziZaTrag, jpegSaGps, tekstTacaka, otvoriListu, zatvoriListu, filtriraj, sortiraj, trazi, jos, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
+  root.USFTacke = { KATEGORIJE, citaj, dodaj, nova, naGps, naKarti, uredi, obrisi, zoom, prikazi, izvozKmz, podijeliFoto, posalji, izaberi, zaVrijeme, veziZaTrag, jpegSaGps, tekstTacaka, otvoriListu, zatvoriListu, filtriraj, sortiraj, trazi, jos, fotoUrl, dodajFoto, obrisiFoto, crtaj, zip, crc32, renderLista };
   if (typeof module !== 'undefined') module.exports = { zip, crc32, KATEGORIJE, jpegSaGps };
   if (typeof L !== 'undefined' && imaKartu()) { registruj(); crtaj(); renderLista(); }
 })(typeof window !== 'undefined' ? window : globalThis);
