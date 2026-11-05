@@ -222,7 +222,7 @@
   }
   const imeOdjela = P => (typeof _odjelOznaka === 'function' ? _odjelOznaka(P) : '') || [P.odjel && 'Odjel ' + P.odjel, P.odsjek, P.naziv].filter(Boolean).join(' · ') || P.sloj;
   async function obradi(P) {
-    zatvoriIzbor(); odbaci();
+    kraj(); odbaci();
     toast('⏳ Učitavam zimski snimak…');
     try {
       const s = await snimak(P.ring);
@@ -254,22 +254,40 @@
   }
   function odbaci() { if (prev) { try { map.removeLayer(prev); } catch (e) {} prev = null; } const el = document.getElementById('kult-sheet'); if (el) el.hidden = true; S = null; }
 
-  function zatvoriIzbor() { const o = document.getElementById('kult-izbor'); if (o) o.remove(); }
-  function lista(q) {
-    const el = document.getElementById('kult-lista'); if (!el) return;
-    const sve = (typeof _kmlPoligoniOdabir === 'function' ? _kmlPoligoniOdabir() : []);
-    const nrm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
-    const t = nrm(q || ''), red = sve.filter(P => !t || nrm(imeOdjela(P) + ' ' + P.sloj).includes(t)).slice(0, 80);
-    root.__kultP = red;
-    el.innerHTML = sve.length ? (red.map((P, i) => `<button type="button" onclick="USFKultura.izaberi(${i})"><b>${esc(imeOdjela(P))}</b><small>${esc(P.sloj)}</small></button>`).join('') || '<p class="set-nap">Nema rezultata.</p>')
-      : '<p class="set-nap">Nema poligona. Učitaj „Granice taksacije” (Karte → Granice odjela).</p>';
+  // ── Izbor odjela dodirom na karti ───────────────────────────────────
+  let izb = null; // { grp, klik, moveend }
+  const uRingu = (la, lo, r) => { let u = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > lo) !== (r[j][1] > lo) && la < (r[j][0] - r[i][0]) * (lo - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) u = !u; return u; };
+  const bbPov = r => { let a = 90, b = -90, c = 180, d = -180; r.forEach(q => { a = Math.min(a, q[0]); b = Math.max(b, q[0]); c = Math.min(c, q[1]); d = Math.max(d, q[1]); }); return (b - a) * (d - c); };
+  function crtajIzbor() {
+    if (!izb) return;
+    izb.grp.clearLayers();
+    if (map.getZoom() < 11) { toast('Približi kartu da se vide odjeli'); return; }
+    const gr = map.getBounds().pad(0.1);
+    (typeof _kmlPoligoniOdabir === 'function' ? _kmlPoligoniOdabir() : []).filter(P => P.ring.some(q => gr.contains(q))).slice(0, 500).forEach(P => {
+      L.polygon(P.ring, { pane: 'kulturaPane', interactive: false, color: '#fde047', weight: 1.5, dashArray: '6 4', fillColor: '#fde047', fillOpacity: 0.06 }).addTo(izb.grp);
+    });
+  }
+  function kraj() {
+    if (izb) { try { map.getContainer().removeEventListener('click', izb.klik, true); map.off('moveend', izb.moveend); map.removeLayer(izb.grp); } catch (e) {} izb = null; }
+    const t = document.getElementById('kult-traka'); if (t) t.remove();
   }
   function otvori() {
-    zatvoriIzbor();
-    const o = document.createElement('div'); o.id = 'kult-izbor';
-    o.innerHTML = `<div class="kt-box"><h3>🌲 Označi kulturu (automatski)</h3><p class="set-nap">Izaberi odjel/odsjek iz „Granica taksacije”. Kultura se traži u zimskom snimku (tamnozeleno).</p>
-      <input type="search" placeholder="Traži odjel, odsjek…" oninput="USFKultura.trazi(this.value)"><div id="kult-lista"></div><button class="zp-glavno" onclick="USFKultura.zatvori()">Zatvori</button></div>`;
-    document.body.appendChild(o); lista('');
+    kraj(); odbaci();
+    const sve = typeof _kmlPoligoniOdabir === 'function' ? _kmlPoligoniOdabir() : [];
+    if (!sve.length) { toast('Nema poligona. Učitaj „Granice taksacije” (Karte → Granice odjela).'); return; }
+    if (!map.getPane('kulturaPane')) { map.createPane('kulturaPane'); const p = map.getPane('kulturaPane'); p.style.zIndex = '417'; p.style.pointerEvents = 'none'; }
+    if (typeof switchMainTab === 'function') switchMainTab('karta');
+    const klik = e => {
+      if (e.target.closest && e.target.closest('#kult-traka, .leaflet-control, #map-fabs, #zoom-grp, #layer-btn')) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      const ll = map.mouseEventToLatLng(e), nadjeni = sve.filter(P => uRingu(ll.lat, ll.lng, P.ring)).sort((a, b) => bbPov(a.ring) - bbPov(b.ring));
+      if (!nadjeni.length) { toast('Tu nema odjela — dodirni unutar žutog poligona'); return; }
+      const P = nadjeni[0]; kraj(); obradi(P);
+    };
+    izb = { grp: L.layerGroup().addTo(map), klik, moveend: crtajIzbor };
+    map.getContainer().addEventListener('click', klik, true); map.on('moveend', crtajIzbor);
+    const t = document.createElement('div'); t.id = 'kult-traka'; t.innerHTML = '<span>🌲 Dodirni odjel na karti</span><button type="button" onclick="USFKultura.zatvori()">✕ Odustani</button>'; document.body.appendChild(t);
+    crtajIzbor();
   }
-  root.USFKultura = { otvori, trazi: lista, zatvori: zatvoriIzbor, _mat: api, izaberi: i => { const P = (root.__kultP || [])[i]; if (P) obradi(P); }, sacuvaj, posalji, odbaci };
+  root.USFKultura = { otvori, zatvori: kraj, _mat: api, sacuvaj, posalji, odbaci };
 })(typeof window !== 'undefined' ? window : globalThis);
