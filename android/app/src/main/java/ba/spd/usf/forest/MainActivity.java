@@ -1177,7 +1177,11 @@ public class MainActivity extends Activity {
                 java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
                 for (File f : fs) uris.add(FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fileprovider", f));
                 Intent send = new Intent(Intent.ACTION_SEND_MULTIPLE);
-                send.setType(asDocument ? "*/*" : "image/jpeg");
+                // WhatsApp/Viber za više fajlova prihvataju SAMO slikovne tipove — sa */* su slali samo tekst bez slika
+                send.setType("image/jpeg");
+                android.content.ClipData clip = android.content.ClipData.newRawUri("fotografije", uris.get(0));
+                for (int ci = 1; ci < uris.size(); ci++) clip.addItem(new android.content.ClipData.Item(uris.get(ci)));
+                send.setClipData(clip);
                 send.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
                 if (text != null) send.putExtra(Intent.EXTRA_TEXT, text);
                 if (title != null) send.putExtra(Intent.EXTRA_SUBJECT, title);

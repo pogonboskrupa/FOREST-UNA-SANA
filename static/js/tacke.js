@@ -513,7 +513,7 @@
       <div class="tk-izb-alat"><button data-a="sve">☑ Sve (${sve.length})</button><button data-a="nista">☐ Nijedna</button><span id="tk-izb-br"></span></div>
       <div class="tk-izb-tijelo">${l.map(t => `<div class="tk-izb-grupa"><div class="tk-izb-naslov"><span>${kat(t.kat).ik} ${esc(t.naziv)}</span><button data-a="tacka" data-t="${t.id}">označi sve</button></div>
         <div class="tk-izb-mreza">${t.foto.map(f => `<label class="tk-izb-f"><img data-foto="${f}" alt=""><input type="checkbox" data-f="${f}"><i></i></label>`).join('')}</div></div>`).join('')}</div>
-      <p class="tk-izb-nap">WhatsApp i Viber primaju do ~30 fotografija odjednom. „Kao dokumenti” čuva GPS u slici.</p>
+      <p class="tk-izb-nap">WhatsApp i Viber primaju do ~30 fotografija odjednom. Koordinate i link na kartu idu u tekstu poruke.</p>
       <button class="tk-izb-go" data-a="go" disabled>📤 Pošalji</button></div>`;
     document.body.appendChild(el);
     popuniMini(el);
@@ -532,9 +532,7 @@
       else if (a.dataset.a === 'nista') { izbSet.clear(); osvjezi(); }
       else if (a.dataset.a === 'tacka') { const t = l.find(x => x.id === a.dataset.t); (t.foto || []).forEach(f => izbSet.add(f)); osvjezi(); }
       else if (a.dataset.a === 'go' && izbSet.size) {
-        const i = typeof _dlgActions === 'function' ? await _dlgActions('Pošalji ' + izbSet.size + ' fotografija', [
-          { label: '📎 Kao dokumenti — GPS ostaje u slici' }, { label: '🖼 Kao slike + tekst s koordinatama' }]) : 1;
-        if (i === 0 || i === 1) { const ok = await podijeliFoto(null, { foto: [...izbSet], dokument: i === 0 }); if (ok) el.remove(); }
+        const ok = await podijeliFoto(null, { foto: [...izbSet], dokument: false }); if (ok) el.remove();
       }
     });
     osvjezi();
