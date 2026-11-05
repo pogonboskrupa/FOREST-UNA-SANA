@@ -129,7 +129,7 @@
     paneSloj(); uklonisloj();
     st.godina = g; st.id = izdanje[1]; st.datum = izdanje[0];
     sloj = L.tileLayer(urlZa(st.id), { pane: 'waybackPane', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: !uspor.on, updateWhenZooming: false, attribution: 'Esri World Imagery Wayback' });
-    prati(sloj, 'd'); sloj.addTo(map);
+    prati(sloj, 'd'); sloj.addTo(map); sloj.on('tileload', klipaj); klipaj();
     osvjezi();
     if (!id && !anim && ocjena.god !== g) ocijeniGodinu(g);
     if (uspor.on) usporediOsvjezi();
@@ -160,12 +160,14 @@
   function paneDrugi() {
     if (!map.getPane('waybackPane2')) { map.createPane('waybackPane2'); const p = map.getPane('waybackPane2'); p.style.zIndex = '213'; p.style.pointerEvents = 'none'; }
   }
+  // LIJEVO = uspor.godina (sloj2), DESNO = izabrana godina (sloj) — isto kao oznake. Isječak ide na kontejner sloja (ne na pane):
+  // pane se skalira pri animaciji zuma pa je isječak na njemu "klizao"; kontejner samo prati pomjeranje karte.
   function klipaj() {
     if (!uspor.on || !razd) return;
     const nw = map.containerPointToLayerPoint([0, 0]), sz = map.getSize(), x = Math.round(razdX * sz.x);
-    const a = map.getPane('waybackPane'), b = map.getPane('waybackPane2');
-    if (a) a.style.clip = `rect(${nw.y}px, ${nw.x + x}px, ${nw.y + sz.y}px, ${nw.x}px)`;
-    if (b) b.style.clip = `rect(${nw.y}px, ${nw.x + sz.x}px, ${nw.y + sz.y}px, ${nw.x + x}px)`;
+    const D = sloj && sloj.getContainer && sloj.getContainer(), Lv = sloj2 && sloj2.getContainer && sloj2.getContainer();
+    if (Lv) Lv.style.clip = `rect(${nw.y}px, ${nw.x + x}px, ${nw.y + sz.y}px, ${nw.x}px)`;
+    if (D) D.style.clip = `rect(${nw.y}px, ${nw.x + sz.x}px, ${nw.y + sz.y}px, ${nw.x + x}px)`;
     razd.style.left = x + 'px';
   }
   // Oznake strana + stanje učitavanja (⏳ dok se pločice te strane još učitavaju)
@@ -187,7 +189,7 @@
     paneDrugi();
     if (sloj2) { try { map.removeLayer(sloj2); } catch (er) {} }
     sloj2 = L.tileLayer(urlZa(uspor.id || e.id), { pane: 'waybackPane2', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 4, updateWhenIdle: false, updateWhenZooming: false });
-    prati(sloj2, 'l'); sloj2.addTo(map);
+    prati(sloj2, 'l'); sloj2.addTo(map); sloj2.on('tileload', klipaj);
     if (sloj) { sloj.options.updateWhenIdle = false; sloj.options.keepBuffer = 4; }
     klipaj(); osvjezi();
   }
@@ -203,7 +205,7 @@
       razd.addEventListener('pointermove', e => { if (!vuce) return; const r = map.getContainer().getBoundingClientRect(); razdX = Math.max(0.04, Math.min(0.96, (e.clientX - r.left) / r.width)); klipaj(); });
       const kraj = () => { vuce = false; try { map.dragging.enable(); } catch (e) {} };
       razd.addEventListener('pointerup', kraj); razd.addEventListener('pointercancel', kraj);
-      map.on('move zoom viewreset resize', klipaj);
+      map.on('move zoom zoomend viewreset resize', klipaj);
     }
     map.getContainer().appendChild(razd); razd.hidden = false; razdX = 0.5;
     if (sloj) { sloj.options.updateWhenIdle = false; sloj.options.keepBuffer = 4; }
@@ -214,7 +216,7 @@
     uspor.on = false;
     if (sloj2) { try { map.removeLayer(sloj2); } catch (e) {} sloj2 = null; }
     if (razd) razd.hidden = true;
-    const a = map.getPane('waybackPane'); if (a) a.style.clip = '';
+    const a = sloj && sloj.getContainer && sloj.getContainer(); if (a) a.style.clip = '';
     osvjezi();
   }
   function usporediGodina(g, id) { uspor.godina = +g; uspor.id = id ? +id : null; usporediOsvjezi(); }
