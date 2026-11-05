@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '4.0.4';
+const APP_VERSION = '4.1.0';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -33,6 +33,8 @@ const APP_SHELL = [
   './static/js/odjeli.js',
   './static/js/drive-karte.js',
   './static/js/karte-admin.js',
+  './static/js/wayback.js',
+  './static/data/wayback_izdanja.json',
   './static/data/karte_drive.json',
   './static/data/kml_drive.json',
   './static/data/karte_github.json',
@@ -135,6 +137,7 @@ self.addEventListener('fetch', event => {
     url.includes('tile.opentopomap.org') ||
     url.includes('tile.openstreetmap.org') ||
     url.includes('arcgisonline.com') ||
+    url.includes('wayback.maptiles.arcgis.com') ||
     url.includes('.google.com/vt/')
   ) {
     _tileRespond(event, TILE_CACHE);
