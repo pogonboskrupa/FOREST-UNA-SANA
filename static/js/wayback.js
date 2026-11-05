@@ -26,7 +26,7 @@
   if (typeof module !== 'undefined') module.exports = { poGodinama, parsirajKonfig, urlZa };
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-  let lista = null, sloj = null, st = { godina: null, id: null, op: 100 };
+  let lista = null, sloj = null, st = { godina: null, id: null, datum: null, op: 100 };
   try { Object.assign(st, JSON.parse(localStorage.getItem(LS_KEY) || '{}'), { godina: null, id: null }); } catch (e) {}
   const pamti = () => { try { localStorage.setItem(LS_KEY, JSON.stringify({ op: st.op })); } catch (e) {} };
   const toast = t => { try { showToast(t); } catch (e) {} };
@@ -48,15 +48,18 @@
     if (!map.getPane('waybackPane')) { map.createPane('waybackPane'); map.getPane('waybackPane').style.zIndex = '212'; map.getPane('waybackPane').style.pointerEvents = 'none'; }
   }
   function uklonisloj() { if (sloj) { try { map.removeLayer(sloj); } catch (e) {} sloj = null; } }
-  function postavi(g) {
+  function postavi(g, id) {
     const e = godine().find(x => x.godina === g);
     if (!e) return;
+    const izdanje = (id && e.svi.find(x => x[1] === +id)) || [e.datum, e.id];
     paneSloj(); uklonisloj();
-    st.godina = g; st.id = e.id;
-    sloj = L.tileLayer(urlZa(e.id), { pane: 'waybackPane', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false, attribution: 'Esri World Imagery Wayback' }).addTo(map);
+    st.godina = g; st.id = izdanje[1]; st.datum = izdanje[0];
+    sloj = L.tileLayer(urlZa(st.id), { pane: 'waybackPane', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false, attribution: 'Esri World Imagery Wayback' }).addTo(map);
     osvjezi();
   }
-  function iskljuci() { uklonisloj(); st.godina = null; st.id = null; osvjezi(); }
+  // Izdanje (datum) unutar izabrane godine
+  function izdanje(id) { if (st.godina) postavi(st.godina, id); }
+  function iskljuci() { uklonisloj(); st.godina = null; st.id = null; st.datum = null; osvjezi(); }
   function korak(d) {
     const l = godine().map(x => x.godina).sort((a, b) => a - b); if (!l.length) return;
     const i = l.indexOf(st.godina); const n = i < 0 ? l[l.length - 1] : l[Math.max(0, Math.min(l.length - 1, i + d))];
@@ -77,8 +80,12 @@
   function osvjezi() {
     const b = traka(), e = godine().find(x => x.godina === st.godina);
     b.hidden = !e;
-    if (e) { b.querySelector('b').textContent = '🕰 ' + e.godina; b.querySelector('small').textContent = 'izdanje ' + e.datum; }
+    if (e) { b.querySelector('b').textContent = '🕰 ' + e.godina; b.querySelector('small').textContent = 'izdanje ' + (st.datum || e.datum); }
     render();
+  }
+  function izborDatuma() {
+    const e = godine().find(x => x.godina === st.godina); if (!e) return '';
+    return `<label class="wb-dat">Datum snimka (izdanje)<select onchange="USFWayback.izdanje(this.value)">${e.svi.slice().reverse().map(x => `<option value="${x[1]}"${x[1] === st.id ? ' selected' : ''}>${x[0].split('-').reverse().join('. ')}.</option>`).join('')}</select><small>${e.svi.length} izdanja u ${e.godina}.</small></label>`;
   }
   function render() {
     const g = godine();
@@ -88,11 +95,12 @@
         ? `<h3>Satelitski snimci po godinama <small>${naslov}</small></h3>`
         : `<div class="kg-top"><i>🕰</i><div><h3>Satelitski snimci po godinama</h3><p class="kh-stat">${naslov}</p></div></div>`;
       el.innerHTML = glava + (g.length ? `<div class="wb-cipovi">${g.map(x => `<button type="button" class="${x.godina === st.godina ? 'on' : ''}" onclick="USFWayback.postavi(${x.godina})">${x.godina}</button>`).join('')}</div>
+      ${st.godina ? izborDatuma() : ''}
       <label class="wb-op">Providnost <input type="range" min="20" max="100" step="5" value="${st.op}" oninput="USFWayback.opacity(this.value)"><span>${st.op} %</span></label>
       ${st.godina ? '<button type="button" class="wb-iskljuci" onclick="USFWayback.iskljuci()">✕ Isključi snimak</button>' : ''}
       <p class="set-nap">Najnovije izdanje u izabranoj godini. Ako to područje te godine nije snimano, vidi se starija scena. Treba internet; pregledane pločice ostaju sačuvane.</p>` : '<p class="set-nap">Lista izdanja se učitava…</p>');
     });
   }
   async function pokreni() { render(); await ucitajListu(); render(); }
-  root.USFWayback = { postavi, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
+  root.USFWayback = { postavi, izdanje, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
 })(typeof window !== 'undefined' ? window : globalThis);
