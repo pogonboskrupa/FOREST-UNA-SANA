@@ -1151,6 +1151,45 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Fotografije jedna po jedna (veliki JSON sa desetinama MB base64 je rušio JS/most i izbor za slanje se nije otvarao):
+        // stageFile(prvi=true) briše staro, zatim shareStaged otvara izbor aplikacija za sve pripremljene fajlove.
+        @JavascriptInterface
+        public boolean stageFile(String name, String b64, boolean prvi) {
+            try {
+                File dir = new File(getCacheDir(), "shared");
+                if (!dir.exists()) dir.mkdirs();
+                if (prvi) { File[] stari = dir.listFiles(); if (stari != null) for (File f : stari) f.delete(); }
+                String ime = name.replaceAll("[^A-Za-z0-9_.\\-]", "_");
+                FileOutputStream fos = new FileOutputStream(new File(dir, ime));
+                fos.write(Base64.decode(b64, Base64.DEFAULT));
+                fos.close();
+                return true;
+            } catch (Exception e) { return false; }
+        }
+
+        @JavascriptInterface
+        public void shareStaged(String title, String text, boolean asDocument) {
+            try {
+                File dir = new File(getCacheDir(), "shared");
+                File[] fs = dir.listFiles();
+                if (fs == null || fs.length == 0) { runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nema pripremljenih fajlova", Toast.LENGTH_SHORT).show()); return; }
+                java.util.Arrays.sort(fs);
+                java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+                for (File f : fs) uris.add(FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fileprovider", f));
+                Intent send = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                send.setType(asDocument ? "*/*" : "image/jpeg");
+                send.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                if (text != null) send.putExtra(Intent.EXTRA_TEXT, text);
+                if (title != null) send.putExtra(Intent.EXTRA_SUBJECT, title);
+                send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Intent chooser = Intent.createChooser(send, title != null ? title : "Pošalji");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                runOnUiThread(() -> startActivity(chooser));
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Greška pri dijeljenju: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }
+
         private String guessMime(String filename) {
             if (filename.endsWith(".png")) return "image/png";
             if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
