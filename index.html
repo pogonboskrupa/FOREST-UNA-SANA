@@ -1460,6 +1460,10 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 /* Wayback — satelitski snimci po godinama (v4.1.0) */
 .wb-cipovi { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; } .wb-cipovi button { padding:9px 13px; border-radius:11px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font:800 14px system-ui; } .wb-cipovi button.on { background:linear-gradient(135deg,#166534,#15803d); border-color:#22c55e; color:#fff; }
 .wb-op { display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; margin:6px 0; } .wb-op input { flex:1; accent-color:#22c55e; } .wb-iskljuci { width:100%; margin:6px 0; padding:10px; border-radius:10px; border:1px solid #b45353; background:transparent; color:#fca5a5; font:700 13px system-ui; }
+#wb-razd { position:absolute; top:0; bottom:0; width:0; z-index:650; border-left:3px solid #fff; box-shadow:0 0 6px rgba(0,0,0,.6); touch-action:none; } #wb-razd[hidden] { display:none; }
+#wb-razd span { position:absolute; top:50%; left:-19px; width:36px; height:36px; margin-top:-18px; border-radius:50%; background:#0f1f17; border:2px solid #fff; color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:ew-resize; }
+.s2-lista { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; } .s2-lista button { padding:7px 10px; border-radius:10px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font-size:12px; } .s2-lista button.on { border-color:#86efac; background:#14532d; } .s2-lista small { color:#93c5fd; }
+.wb-sn2 { display:block; } .wb-sn2:empty { display:none; }
 .wb-kes { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; font-size:12px; color:#cbd5e1; }
 #wb-traka { position:fixed; top:calc(60px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:600; display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:999px; background:rgba(10,24,18,.94); border:1px solid rgba(134,239,172,.4); box-shadow:0 4px 14px rgba(0,0,0,.45); color:#f1f5f9; } #wb-traka[hidden] { display:none; }
 #wb-traka button { width:34px; height:34px; border-radius:50%; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font-size:14px; } .wb-god { text-align:center; min-width:96px; line-height:1.15; } .wb-god b { display:block; font-size:15px; } .wb-god small { font-size:10px; color:#b6cbbf; }
@@ -2952,6 +2956,7 @@ body.sl-uredi #sl-ured { display: block; }
       </div>
     </section>
     <section class="uk-grupa wb-host" id="vit-wayback" data-kompakt="1"></section>
+    <section class="uk-grupa s2-host" id="vit-s2"></section>
   </div>
 </div>
 
@@ -7309,6 +7314,7 @@ function _kmlTraziHtml(upit) {
 // Karte tab: stanje offline karata i KML-a na karticama.
 function _khStat() {
   try { if (window.USFWayback) USFWayback.render(); } catch(e) {}
+  try { if (window.USFS2) USFS2.render(); } catch(e) {}
   const off = document.getElementById('kh-offline'), kml = document.getElementById('kh-kml');
   const bedz = (id, t) => { const e = document.getElementById(id); if (e) { e.hidden = !t; e.textContent = t || ''; } };
   try {
@@ -8998,7 +9004,7 @@ function _driveKmlKraj(id, ok, poruka, kmz) {
   setTimeout(() => { _driveKmlRender(); if (window.USFOtv) USFOtv.render(); }, 1500);
 }
 function openSumarstvoSection() { if (!_pinOtkljucano()) { _pinTrazi(openSumarstvoSection); return; } _openStubPanel('sumarstvo-panel', 'meni'); _sumPanelOsvjezi(); }
-function openVitalnostSection() { if (!_pinOtkljucano()) { _pinTrazi(openVitalnostSection); return; } _openStubPanel('vitalnost-panel', 'meni'); _sumPanelOsvjezi(); try { if (window.USFWayback) USFWayback.render(); } catch (e) {} if (window.USFVeg && USFVeg.osvjezi) try { USFVeg.osvjezi(); } catch (e) {} }
+function openVitalnostSection() { if (!_pinOtkljucano()) { _pinTrazi(openVitalnostSection); return; } _openStubPanel('vitalnost-panel', 'meni'); _sumPanelOsvjezi(); try { if (window.USFWayback) USFWayback.render(); if (window.USFS2) USFS2.render(); } catch (e) {} if (window.USFVeg && USFVeg.osvjezi) try { USFVeg.osvjezi(); } catch (e) {} }
 function openSusenjeSection() { if (!_pinOtkljucano()) { _pinTrazi(openSusenjeSection); return; } _openStubPanel('susenje-panel', 'meni'); _sumPanelOsvjezi(); _susKesStat(); }
 // Pregled offline keša sekcije (tlo: usf_tlo_mjesta, NDVI: Cache 'usf-veg', sušenje: Cache 'usf-susenje').
 async function _susKesStat() {
@@ -13266,6 +13272,7 @@ window.addEventListener('load', () => {
 <script src="static/js/drive-karte.js"></script>
 <script src="static/js/karte-admin.js"></script>
 <script src="static/js/wayback.js"></script>
+<script src="static/js/sentinel-scene.js"></script>
 <script src="static/js/nagib-poligon.js"></script>
 <script src="static/js/tacke.js"></script>
 <script src="static/js/zima.js"></script>

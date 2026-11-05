@@ -22,6 +22,21 @@
   function parsirajKonfig(obj) {
     return Object.entries(obj || {}).map(([id, v]) => { const m = /(\d{4}-\d{2}-\d{2})/.exec(v && v.itemTitle || ''); return m ? [m[1], +id] : null; }).filter(Boolean).sort((a, b) => a[0].localeCompare(b[0]));
   }
+  function parsirajMeta(obj) {
+    const m = {}; Object.entries(obj || {}).forEach(([id, v]) => { if (v && /^https:\/\/[^/]*arcgis\.com\//.test(v.metadataLayerUrl || '')) m[id] = v.metadataLayerUrl; });
+    return m;
+  }
+  // Atributi metadata sloja → { datum 'GGGG-MM-DD', rez (m), opis }
+  function citajMeta(attr) {
+    if (!attr) return null;
+    const a = {}; Object.keys(attr).forEach(k => { a[k.toUpperCase()] = attr[k]; });
+    let d = a.SRC_DATE2 != null ? a.SRC_DATE2 : a.SRC_DATE;
+    if (typeof d === 'number' && d > 1e11) d = new Date(d).toISOString().slice(0, 10);
+    else if (typeof d === 'number' && d > 19000000) { const t = String(d); d = t.slice(0, 4) + '-' + t.slice(4, 6) + '-' + t.slice(6, 8); }
+    else d = null;
+    const rez = +a.SRC_RES || +a.SAMP_RES || null;
+    return d ? { datum: d, rez, opis: a.NICE_DESC || a.SRC_DESC || '' } : null;
+  }
   const urlZa = id => URL.replace('{id}', id);
   // Udio „oblaka” u RGBA podacima pločice: svijetli (> 195) slabo zasićeni (raspon kanala < 28) pikseli; transparentni se ne broje.
   // Snijeg se broji isto — i on zaklanja šumu, pa je za pregled stanja šume jednako loš snimak.
@@ -36,11 +51,12 @@
     return n ? o / n : null;
   }
   const PRAG_OBLAKA = 0.15;
-  if (typeof module !== 'undefined') module.exports = { poGodinama, parsirajKonfig, urlZa, udioOblaka };
+  if (typeof module !== 'undefined') module.exports = { poGodinama, parsirajKonfig, parsirajMeta, citajMeta, urlZa, udioOblaka };
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-  let lista = null, sloj = null, st = { godina: null, id: null, datum: null, op: 100 };
+  let lista = null, sloj = null, sloj2 = null, razd = null, razdX = 0.5, anim = null, meta = {}, uspor = { on: false, godina: null, id: null }, st = { godina: null, id: null, datum: null, op: 100 };
   try { Object.assign(st, JSON.parse(localStorage.getItem(LS_KEY) || '{}'), { godina: null, id: null }); } catch (e) {}
+  try { meta = JSON.parse(localStorage.getItem('usf_wb_meta') || '{}') || {}; } catch (e) {}
   const pamti = () => { try { localStorage.setItem(LS_KEY, JSON.stringify({ op: st.op })); } catch (e) {} };
   const toast = t => { try { showToast(t); } catch (e) {} };
 
@@ -49,7 +65,7 @@
     try {
       const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 7000);
       const r = await fetch(CFG, { signal: ctl.signal }).finally(() => clearTimeout(tm));
-      if (r.ok) { const l = parsirajKonfig(await r.json()); if (l.length > 20) { lista = l; try { localStorage.setItem(LS_LISTA, JSON.stringify(l)); } catch (e) {} return lista; } }
+      if (r.ok) { const j = await r.json(), l = parsirajKonfig(j); if (l.length > 20) { lista = l; const m = parsirajMeta(j); if (Object.keys(m).length) { meta = m; try { localStorage.setItem('usf_wb_meta', JSON.stringify(m)); } catch (e) {} } try { localStorage.setItem(LS_LISTA, JSON.stringify(l)); } catch (e) {} return lista; } }
     } catch (e) {}
     try { const z = JSON.parse(localStorage.getItem(LS_LISTA) || 'null'); if (z && z.length > 20) return (lista = z); } catch (e) {}
     try { const r = await fetch('static/data/wayback_izdanja.json'); if (r.ok) return (lista = await r.json()); } catch (e) {}
@@ -114,11 +130,13 @@
     st.godina = g; st.id = izdanje[1]; st.datum = izdanje[0];
     sloj = L.tileLayer(urlZa(st.id), { pane: 'waybackPane', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false, attribution: 'Esri World Imagery Wayback' }).addTo(map);
     osvjezi();
-    if (!id && ocjena.god !== g) ocijeniGodinu(g);
+    if (!id && !anim && ocjena.god !== g) ocijeniGodinu(g);
+    if (uspor.on) usporediOsvjezi();
+    snimljenoOsvjezi();
   }
   // Izdanje (datum) unutar izabrane godine
   function izdanje(id) { if (st.godina) postavi(st.godina, id); }
-  function iskljuci() { uklonisloj(); st.godina = null; st.id = null; st.datum = null; osvjezi(); }
+  function iskljuci() { stani(); usporediGasi(); uklonisloj(); st.godina = null; st.id = null; st.datum = null; osvjezi(); }
   function korak(d) {
     const l = godine().map(x => x.godina).sort((a, b) => a - b); if (!l.length) return;
     const i = l.indexOf(st.godina); const n = i < 0 ? l[l.length - 1] : l[Math.max(0, Math.min(l.length - 1, i + d))];
@@ -126,12 +144,102 @@
   }
   function opacity(v) { st.op = Math.max(20, Math.min(100, +v || 100)); pamti(); if (sloj) sloj.setOpacity(st.op / 100); }
 
+  // ── Animacija godina ────────────────────────────────────────────────
+  function stani() { if (anim) { clearInterval(anim); anim = null; } const d = document.querySelector('#wb-traka [data-a="p"]'); if (d) d.textContent = '⏵'; }
+  function igraj() {
+    if (anim) { stani(); return; }
+    const l = godine().map(x => x.godina).sort((a, b) => a - b); if (l.length < 2) return;
+    let i = Math.max(0, l.indexOf(st.godina));
+    postavi(l[i]);
+    anim = setInterval(() => { i = (i + 1) % l.length; postavi(l[i]); }, 1800);
+    const d = document.querySelector('#wb-traka [data-a="p"]'); if (d) d.textContent = '⏸';
+  }
+
+  // ── Uporedba prije/poslije (klizač) ─────────────────────────────────
+  function paneDrugi() {
+    if (!map.getPane('waybackPane2')) { map.createPane('waybackPane2'); const p = map.getPane('waybackPane2'); p.style.zIndex = '213'; p.style.pointerEvents = 'none'; }
+  }
+  function klipaj() {
+    if (!uspor.on || !razd) return;
+    const nw = map.containerPointToLayerPoint([0, 0]), sz = map.getSize(), x = Math.round(razdX * sz.x);
+    const a = map.getPane('waybackPane'), b = map.getPane('waybackPane2');
+    if (a) a.style.clip = `rect(${nw.y}px, ${nw.x + x}px, ${nw.y + sz.y}px, ${nw.x}px)`;
+    if (b) b.style.clip = `rect(${nw.y}px, ${nw.x + sz.x}px, ${nw.y + sz.y}px, ${nw.x + x}px)`;
+    razd.style.left = x + 'px';
+  }
+  function usporediOsvjezi() {
+    if (!uspor.on) return;
+    const e = godine().find(x => x.godina === uspor.godina); if (!e) return;
+    paneDrugi();
+    if (sloj2) { try { map.removeLayer(sloj2); } catch (er) {} }
+    sloj2 = L.tileLayer(urlZa(uspor.id || e.id), { pane: 'waybackPane2', maxNativeZoom: 19, maxZoom: 22, opacity: st.op / 100, keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false }).addTo(map);
+    klipaj(); osvjezi();
+  }
+  function usporediUkljuci() {
+    if (!st.godina) { toast('Prvo izaberi godinu'); return; }
+    stani();
+    const l = godine().map(x => x.godina).sort((a, b) => a - b), ranija = l.filter(g => g < st.godina);
+    uspor = { on: true, godina: ranija.length ? ranija[0] : l[l.length - 1], id: null };
+    if (!razd) {
+      razd = document.createElement('div'); razd.id = 'wb-razd'; razd.innerHTML = '<span>⇆</span>';
+      let vuce = false;
+      razd.addEventListener('pointerdown', e => { vuce = true; razd.setPointerCapture(e.pointerId); map.dragging.disable(); e.preventDefault(); });
+      razd.addEventListener('pointermove', e => { if (!vuce) return; const r = map.getContainer().getBoundingClientRect(); razdX = Math.max(0.04, Math.min(0.96, (e.clientX - r.left) / r.width)); klipaj(); });
+      const kraj = () => { vuce = false; try { map.dragging.enable(); } catch (e) {} };
+      razd.addEventListener('pointerup', kraj); razd.addEventListener('pointercancel', kraj);
+      map.on('move zoom viewreset resize', klipaj);
+    }
+    map.getContainer().appendChild(razd); razd.hidden = false; razdX = 0.5;
+    usporediOsvjezi();
+  }
+  function usporediGasi() {
+    if (!uspor.on && !sloj2) return;
+    uspor.on = false;
+    if (sloj2) { try { map.removeLayer(sloj2); } catch (e) {} sloj2 = null; }
+    if (razd) razd.hidden = true;
+    const a = map.getPane('waybackPane'); if (a) a.style.clip = '';
+    osvjezi();
+  }
+  function usporediGodina(g, id) { uspor.godina = +g; uspor.id = id ? +id : null; usporediOsvjezi(); }
+  const usporediPrebaci = () => (uspor.on ? usporediGasi() : usporediUkljuci());
+
+  // ── Stvarni datum snimanja (Esri metadata sloj) na centru karte ─────
+  const snKes = new Map(); let snTm = null, snTekst = '';
+  async function snimljeno(id) {
+    const base = meta[id]; if (!base || typeof map === 'undefined') return null;
+    const c = map.getCenter(), z = Math.max(10, Math.min(17, Math.round(map.getZoom())));
+    const kljuc = id + ':' + z + ':' + c.lat.toFixed(3) + ':' + c.lng.toFixed(3);
+    if (snKes.has(kljuc)) return snKes.get(kljuc);
+    const get = async u => { const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 7000); try { const r = await fetch(u, { signal: ctl.signal }); return r.ok ? await r.json() : null; } finally { clearTimeout(tm); } };
+    let rez = null;
+    try {
+      let lay = 23 - z;
+      const info = await get(base + '?f=json');
+      const ls = info && info.layers; if (ls && ls.length) { const nad = ls.find(q => (String(q.name).match(/\d+/) || [])[0] == z); lay = nad ? nad.id : Math.min(ls.length - 1, Math.max(0, lay)); }
+      const q = base + '/' + lay + '/query?f=json&returnGeometry=false&outFields=*&inSR=4326&spatialRel=esriSpatialRelIntersects&geometryType=esriGeometryPoint&geometry=' + c.lng + ',' + c.lat;
+      const j = await get(q);
+      rez = j && j.features && j.features[0] ? citajMeta(j.features[0].attributes) : null;
+    } catch (e) {}
+    snKes.set(kljuc, rez); return rez;
+  }
+  function snimljenoOsvjezi() {
+    clearTimeout(snTm);
+    snTm = setTimeout(async () => {
+      if (!st.id) { snTekst = ''; } else {
+        const r = await snimljeno(st.id);
+        snTekst = r ? `📷 snimljeno ${r.datum.split('-').reverse().join('. ')}.${r.rez ? ' · ' + String(r.rez).replace('.', ',') + ' m' : ''}` : '';
+      }
+      document.querySelectorAll('.wb-sn').forEach(el => { el.textContent = snTekst; el.hidden = !snTekst; });
+      const t = document.querySelector('#wb-traka small.wb-sn2'); if (t) t.textContent = snTekst.replace('📷 snimljeno ', '📷 ');
+    }, 700);
+  }
+
   function traka() {
     let b = document.getElementById('wb-traka');
     if (!b) {
       b = document.createElement('div'); b.id = 'wb-traka'; b.hidden = true;
-      b.innerHTML = '<button type="button" data-a="-">◀</button><div class="wb-god"><b></b><small></small></div><button type="button" data-a="+">▶</button><button type="button" data-a="x" aria-label="Isključi">✕</button>';
-      b.addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'x') iskljuci(); else korak(a.dataset.a === '-' ? -1 : 1); });
+      b.innerHTML = '<button type="button" data-a="-">◀</button><div class="wb-god"><b></b><small></small><small class="wb-sn2"></small></div><button type="button" data-a="+">▶</button><button type="button" data-a="p" aria-label="Animacija">⏵</button><button type="button" data-a="u" aria-label="Uporedi">⇆</button><button type="button" data-a="x" aria-label="Isključi">✕</button>';
+      b.addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'x') iskljuci(); else if (a.dataset.a === 'p') igraj(); else if (a.dataset.a === 'u') usporediPrebaci(); else { stani(); korak(a.dataset.a === '-' ? -1 : 1); } });
       document.body.appendChild(b);
     }
     return b;
@@ -139,7 +247,7 @@
   function osvjezi() {
     const b = traka(), e = godine().find(x => x.godina === st.godina);
     b.hidden = !e;
-    if (e) { b.querySelector('b').textContent = '🕰 ' + e.godina; b.querySelector('small').textContent = 'izdanje ' + (st.datum || e.datum); }
+    if (e) { b.querySelector('b').textContent = '🕰 ' + (uspor.on ? uspor.godina + ' ⇆ ' + e.godina : e.godina); b.querySelector('small').textContent = 'izdanje ' + (st.datum || e.datum); }
     render();
   }
   function izborDatuma() {
@@ -153,6 +261,7 @@
       : `⚠ Svi snimci iz ${e.godina} imaju puno oblaka/snijega na području USK — prikazani su svi. Pokušaj drugu godinu.`;
     const oz = x => { const u = rez && rez.get(x[1]); return u == null ? '' : ' · ☁ ' + Math.round(u * 100) + ' %'; };
     return `<label class="wb-dat">Datum snimka (izdanje)<select onchange="USFWayback.izdanje(this.value)">${lista.map(x => `<option value="${x[1]}"${x[1] === st.id ? ' selected' : ''}>${x[0].split('-').reverse().join('. ')}.${oz(x)}</option>`).join('')}</select><small>${nap}</small></label>
+      <p class="set-nap wb-sn" hidden></p>
       <button type="button" class="wb-iskljuci" onclick="USFWayback.ocijeni()">☁ Ponovi provjeru oblačnosti (USK)</button>`;
   }
   const jeWb = r => r.url.includes('wayback.maptiles.arcgis.com');
@@ -168,6 +277,11 @@
     const n = await kesStat();
     document.querySelectorAll('.wb-kes-n').forEach(el => { el.textContent = n == null ? 'nije dostupno' : n + ' pločica'; });
   }
+  function usporediHtml(g) {
+    const tipka = `<button type="button" class="wb-iskljuci" onclick="USFWayback.uporedi()">${uspor.on ? '✕ Ugasi uporedbu' : '⇆ Uporedi s drugom godinom (klizač)'}</button>`;
+    if (!uspor.on) return tipka;
+    return `<label class="wb-dat">Lijeva strana (godina)<select onchange="USFWayback.usporediGodina(this.value)">${g.filter(x => x.godina !== st.godina).map(x => `<option value="${x.godina}"${x.godina === uspor.godina ? ' selected' : ''}>${x.godina}</option>`).join('')}</select><small>Desno je ${st.godina}. Povuci ⇆ na karti.</small></label>` + tipka;
+  }
   function render() {
     const g = godine();
     document.querySelectorAll('.wb-host').forEach(el => {
@@ -177,6 +291,7 @@
         : `<div class="kg-top"><i>🕰</i><div><h3>Satelitski snimci po godinama</h3><p class="kh-stat">${naslov}</p></div></div>`;
       el.innerHTML = glava + (g.length ? `<div class="wb-cipovi">${g.map(x => `<button type="button" class="${x.godina === st.godina ? 'on' : ''}" onclick="USFWayback.postavi(${x.godina})">${x.godina}</button>`).join('')}</div>
       ${st.godina ? izborDatuma() : ''}
+      ${st.godina ? usporediHtml(g) : ''}
       <label class="wb-op">Providnost <input type="range" min="20" max="100" step="5" value="${st.op}" oninput="USFWayback.opacity(this.value)"><span>${st.op} %</span></label>
       <div class="wb-kes"><span>Keš snimaka: <b class="wb-kes-n">…</b></span><button type="button" class="wb-iskljuci" onclick="USFWayback.kesObrisi()">🗑 Obriši keš</button></div>
       ${st.godina ? '<button type="button" class="wb-iskljuci" onclick="USFWayback.iskljuci()">✕ Isključi snimak</button>' : ''}
@@ -184,6 +299,6 @@
     });
     kesOsvjezi();
   }
-  async function pokreni() { render(); await ucitajListu(); render(); }
-  root.USFWayback = { kesObrisi, ocijeni: () => { ocjena = { god: null, rez: null, tece: false }; oblaci.clear(); return st.godina && ocijeniGodinu(st.godina); }, postavi, izdanje, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
+  async function pokreni() { render(); await ucitajListu(); render(); if (!pokreni.k) { pokreni.k = 1; try { map.on('moveend', () => { if (st.id) snimljenoOsvjezi(); }); } catch (e) {} } }
+  root.USFWayback = { kesObrisi, igraj, uporedi: usporediPrebaci, usporediGodina, ocijeni: () => { ocjena = { god: null, rez: null, tece: false }; oblaci.clear(); return st.godina && ocijeniGodinu(st.godina); }, postavi, izdanje, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
 })(typeof window !== 'undefined' ? window : globalThis);
