@@ -449,17 +449,18 @@
     }
     if (!fajlovi.length) { if (typeof showToast === 'function') showToast('Nema fotografija za slanje'); return false; }
     const tekst = tekstTacaka(l), dok = !!(opc && opc.dokument);
-    if (typeof AndroidShare !== 'undefined' && (AndroidShare.stageFile || AndroidShare.shareFiles)) {
+    // Metode za više fajlova su u DownloadBridge (window.AndroidDownload), ne u ShareBridge — zato je ranije uvijek išlo preuzimanje
+    const most = [typeof AndroidDownload !== 'undefined' ? AndroidDownload : null, typeof AndroidShare !== 'undefined' ? AndroidShare : null].find(m => m && (m.stageFile || m.shareFiles));
+    if (most) {
       if (typeof showToast === 'function') showToast('📤 Pripremam ' + fajlovi.length + ' fotografija…');
-      // APK: izbor aplikacija (WhatsApp, Viber…) — nikad tiho preuzimanje. Novi most šalje fajl po fajl (veliki JSON je pucao).
       try {
-        if (AndroidShare.stageFile) {
+        if (most.stageFile) {
           for (let k = 0; k < fajlovi.length; k++) {
-            if (!AndroidShare.stageFile(fajlovi[k].ime, b64(fajlovi[k].bytes), k === 0)) throw new Error('fajl ' + (k + 1) + ' nije pripremljen');
+            if (!most.stageFile(fajlovi[k].ime, b64(fajlovi[k].bytes), k === 0)) throw new Error('fajl ' + (k + 1) + ' nije pripremljen');
             await new Promise(r => setTimeout(r, 0));
           }
-          AndroidShare.shareStaged('Fotografije s lokacijom', tekst, dok);
-        } else AndroidShare.shareFiles(JSON.stringify(fajlovi.map(f => ({ name: f.ime, b64: b64(f.bytes) }))), 'Fotografije s lokacijom', tekst, dok);
+          most.shareStaged('Fotografije s lokacijom', tekst, dok);
+        } else most.shareFiles(JSON.stringify(fajlovi.map(f => ({ name: f.ime, b64: b64(f.bytes) }))), 'Fotografije s lokacijom', tekst, dok);
         return true;
       } catch (e) { if (typeof showToast === 'function') showToast('⚠ Slanje nije uspjelo: ' + (e && e.message || e) + (fajlovi.length > 10 ? ' — probaj s manje fotografija' : '')); return false; }
     }
