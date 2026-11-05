@@ -329,92 +329,6 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     const p = document.getElementById('veg-povezano'); if (p) p.textContent = st.id ? (st.sloj ? '✓ Povezano · sloj ' + st.sloj : '⚠ Nije provjereno') : '';
   }
 
-  // ── Provjera promjena po odjelima (dNDVI, zadnjih 30 dana prema istom periodu lani) ──────────────
-  // Za svaki poligon (Granice taksacije) čita pločice z13, klasifikuje piksele paletom dNDVI i računa udio i ha
-  // JAKOG/IZRAŽENOG gubitka (klase 0–1). Zahtjeve troši samo za pločice koje nisu u kešu; rezultat se pamti da se
-  // sljedeća provjera može uporediti („novo od prošle provjere”).
-  const KL_PROM = 'usf_veg_promjene', Z_PROM = 13;
-  const promKes = () => { try { return JSON.parse(localStorage.getItem(KL_PROM) || 'null'); } catch (e) { return null; } };
-  async function razrediPlocice(z, x, y, pal) {
-    const b = await plocica(z, x, y, false, { ind: 'dndvi', per: '30' }); if (!b) return null;
-    const bmp = await createImageBitmap(b), cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
-    const cx = cv.getContext('2d'); cx.imageSmoothingEnabled = false; cx.drawImage(bmp, 0, 0); if (bmp.close) bmp.close();
-    const d = cx.getImageData(0, 0, cv.width, cv.height).data, out = new Uint8Array(cv.width * cv.height).fill(255), kes = new Map();
-    for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-      if (d[i + 3] < 128) continue;
-      const kk = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2]; let k = kes.get(kk);
-      if (k === undefined) { let nd = Infinity; k = 0; for (let q = 0; q < pal.length; q++) { const e = (pal[q][0] - d[i]) ** 2 + (pal[q][1] - d[i + 1]) ** 2 + (pal[q][2] - d[i + 2]) ** 2; if (e < nd) { nd = e; k = q; } } kes.set(kk, k); }
-      out[j] = k;
-    }
-    return { w: cv.width, h: cv.height, k: out };
-  }
-  // Skupi piksele unutar prstena (scanline, par/nepar) i vrati brojače po klasama; px = točke prstena u projekciji zoom Z_PROM.
-  function brojiUPoligonu(px, dohvati) {
-    let y0 = Infinity, y1 = -Infinity; px.forEach(q => { y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); });
-    const br = new Uint32Array(9); let n = 0;
-    for (let y = Math.ceil(y0); y <= Math.floor(y1); y++) {
-      const xs = [];
-      for (let i = 0, j = px.length - 1; i < px.length; j = i++) { const a = px[i], b = px[j]; if ((a[1] <= y) !== (b[1] <= y)) xs.push(a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])); }
-      xs.sort((p, q) => p - q);
-      for (let t = 0; t + 1 < xs.length; t += 2) for (let x = Math.ceil(xs[t]); x <= Math.floor(xs[t + 1]); x++) { const k = dohvati(x, y); if (k === 255) continue; if (k !== undefined) { br[k]++; n++; } }
-    }
-    return { br, n };
-  }
-  async function promjene(poligoni, napredak) {
-    const pal = INDEKSI.dndvi.boje.map(hexRgb), plo = new Map(), px = [];
-    const pot = new Set();
-    poligoni.forEach(P => {
-      const q = P.ring.map(r => { const p = map.project(L.latLng(r[0], r[1]), Z_PROM); return [p.x, p.y]; }); px.push(q);
-      const xs = q.map(a => a[0]), ys = q.map(a => a[1]);
-      for (let x = Math.floor(Math.min(...xs) / PL); x <= Math.floor(Math.max(...xs) / PL); x++) for (let y = Math.floor(Math.min(...ys) / PL); y <= Math.floor(Math.max(...ys) / PL); y++) pot.add(x + ':' + y);
-    });
-    let gotovo = 0;
-    for (const kk of pot) { const [x, y] = kk.split(':').map(Number); plo.set(kk, await razrediPlocice(Z_PROM, x, y, pal)); napredak && napredak(++gotovo, pot.size); }
-    const rez = poligoni.map((P, i) => {
-      const lat = P.ring[0][0], mpx = 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** Z_PROM, ha1 = mpx * mpx / 1e4;
-      const { br, n } = brojiUPoligonu(px[i], (x, y) => { const t = plo.get(Math.floor(x / PL) + ':' + Math.floor(y / PL)); if (!t) return undefined; return t.k[Math.min(t.h - 1, y - Math.floor(y / PL) * PL) * t.w + Math.min(t.w - 1, x - Math.floor(x / PL) * PL)]; });
-      const tesko = br[0] + br[1];
-      return { kljuc: P.kljuc, naziv: [P.odjel && 'Odjel ' + P.odjel, P.odsjek, P.naziv].filter(Boolean).join(' · ') || P.sloj, bb: [Math.min(...P.ring.map(q => q[0])), Math.min(...P.ring.map(q => q[1])), Math.max(...P.ring.map(q => q[0])), Math.max(...P.ring.map(q => q[1]))], n, pct: n ? tesko / n * 100 : 0, ha: tesko * ha1, umjerenoHa: br[2] * ha1, ukHa: n * ha1 };
-    });
-    return { vrijeme: Date.now(), rez };
-  }
-  const poglediPoligona = () => (typeof _kmlPoligoniOdabir === 'function' ? _kmlPoligoniOdabir() : []);
-  let promRez = promKes();
-  function promStatus(t) { const e = document.getElementById('veg-prom-status'); if (e) e.textContent = t || ''; }
-  async function provjeriPromjene() {
-    if (!st.id) { promStatus('Prvo otključaj CDSE konfiguraciju (PIN) ili unesi ID niže.'); return; }
-    if (navigator.onLine === false) { promStatus('📴 Bez veze — provjera traži internet (zapamćene pločice se koriste ako postoje).'); }
-    const sve = poglediPoligona(); if (!sve.length) { promStatus('Nema poligona odjela — učitaj „Granice taksacije”.'); return; }
-    const opseg = document.getElementById('veg-prom-opseg')?.value || 'pogled', gr = map.getBounds();
-    const odabrani = (opseg === 'sve' ? sve : sve.filter(P => P.ring.some(r => gr.contains([r[0], r[1]])))).slice(0, 150);
-    if (!odabrani.length) { promStatus('U vidljivom dijelu karte nema odjela — približi ili izaberi „Svi odjeli”.'); return; }
-    const dugme = document.getElementById('veg-prom-dugme'); if (dugme) dugme.disabled = true;
-    try {
-      promStatus('⏳ Čitam snimke…');
-      const nova = await promjene(odabrani, (a, b) => promStatus(`⏳ Pločica ${a}/${b}…`));
-      const stara = promRez && promRez.rez ? new Map(promRez.rez.map(r => [r.kljuc, r])) : new Map();
-      nova.rez.forEach(r => { const s0 = stara.get(r.kljuc); r.delta = s0 ? r.pct - s0.pct : null; });
-      nova.rez.sort((a, b) => b.pct - a.pct);
-      promRez = nova;
-      try { localStorage.setItem(KL_PROM, JSON.stringify(promRez)); } catch (e) {}
-      promStatus(`✓ ${odabrani.length} odjela provjereno ${new Date(nova.vrijeme).toLocaleString('bs-BA')}`);
-      promPrikazi();
-    } catch (e) { promStatus('⚠ Provjera nije uspjela: ' + (e && e.message || e)); } finally { if (dugme) dugme.disabled = false; }
-  }
-  function promPrikazi() {
-    const el = document.getElementById('veg-prom-lista'); if (!el) return;
-    if (!promRez || !promRez.rez || !promRez.rez.length) { el.innerHTML = ''; return; }
-    const prag = +(document.getElementById('veg-prom-prag')?.value || 1);
-    const red = promRez.rez.filter(r => r.pct >= prag);
-    el.innerHTML = (red.length ? red.map((r, i) => `<div class="vp-red" onclick="USFVeg.promjenePokazi(${promRez.rez.indexOf(r)})"><div class="vp-nazv"><b>${esc(r.naziv)}</b><small>${r.ha.toFixed(1)} ha od ${r.ukHa.toFixed(0)} ha${r.umjerenoHa >= 0.5 ? ' · umjerenog još ' + r.umjerenoHa.toFixed(1) + ' ha' : ''}</small></div><div class="vp-pct" style="--c:${r.pct >= 10 ? '#dc2626' : r.pct >= 3 ? '#f59e0b' : '#eab308'}"><b>${r.pct.toFixed(1)} %</b>${r.delta == null ? '' : `<small>${r.delta >= 0.05 ? '▲ +' : r.delta <= -0.05 ? '▼ ' : '≈ '}${r.delta.toFixed(1)} od prošle</small>`}</div></div>`).join('') : '<div class="uk-izvor">Nijedan odjel nema gubitak ≥ ' + prag + ' % površine. 🌲</div>')
-      + `<p class="uk-izvor">Gubitak = klase „jak” i „izražen gubitak” dNDVI (zadnjih 30 dana prema istom periodu lani; oblaci/snijeg se ne računaju). Dodir na red prikazuje samo te klase na karti.</p>`;
-  }
-  function promjenePokazi(i) {
-    const r = promRez && promRez.rez[i]; if (!r) return;
-    if (r.bb) { try { map.fitBounds(L.latLngBounds([r.bb[0], r.bb[1]], [r.bb[2], r.bb[3]]).pad(0.25)); } catch (e) {} }
-    st.ind = 'dndvi'; st.per = '30'; st.sakr = st.sakr || {}; st.sakr.dndvi = [2, 3, 4, 5, 6, 7]; st.on = true; pamti(); uiSync(); crtaj();
-    if (typeof switchMainTab === 'function') switchMainTab('karta');
-  }
   function prekidac(on) { st.on = on === undefined ? !st.on : !!on; pamti(); uiSync(); crtaj(); }
   function postavi(k, v) {
     if (k === 'op') { st.op = Number(v); pamti(); if (sloj) sloj.setOpacity(st.op / 100); return; }
@@ -499,10 +413,10 @@ function evaluatePixel(ss,sc){let a=0,na=0,b=0,nb=0;for(let i=0;i<ss.length;i++)
     });
   }
 
-  root.USFVeg = { _brojiUPoligonu: brojiUPoligonu, provjeriPromjene, promjenePokazi, promPrikazi, filtrirajPlocicu, postaviKlase, legendaPokazi, prekidac, postavi, povezi, otkljucaj, CDSE_ENC, preuzmi, obrisiKes, evalscript, period, periodPromjene, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
+  root.USFVeg = { filtrirajPlocicu, postaviKlase, legendaPokazi, prekidac, postavi, povezi, otkljucaj, CDSE_ENC, preuzmi, obrisiKes, evalscript, period, periodPromjene, okvir, urlPlocice, idIspravan, INDEKSI, stanje: () => ({ ...st }) };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.USFVeg;
   if (typeof L !== 'undefined' && typeof map !== 'undefined' && map && map.getContainer) {
-    registruj(); uiSync(); legenda(); promPrikazi(); if (st.on) crtaj();
+    registruj(); uiSync(); legenda(); if (st.on) crtaj();
     window.addEventListener('online', () => javiStatus()); window.addEventListener('offline', () => javiStatus());
   }
 })(typeof window !== 'undefined' ? window : globalThis);
