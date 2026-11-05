@@ -1462,6 +1462,14 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 .wb-op { display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; margin:6px 0; } .wb-op input { flex:1; accent-color:#22c55e; } .wb-iskljuci { width:100%; margin:6px 0; padding:10px; border-radius:10px; border:1px solid #b45353; background:transparent; color:#fca5a5; font:700 13px system-ui; }
 #wb-razd { position:absolute; top:0; bottom:0; width:0; z-index:650; border-left:3px solid #fff; box-shadow:0 0 6px rgba(0,0,0,.6); touch-action:none; } #wb-razd[hidden] { display:none; }
 #wb-razd span { position:absolute; top:50%; left:-19px; width:36px; height:36px; margin-top:-18px; border-radius:50%; background:#0f1f17; border:2px solid #fff; color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:ew-resize; }
+#kult-izbor { position:fixed; inset:0; z-index:1150; background:rgba(0,0,0,.7); display:flex; align-items:flex-end; justify-content:center; }
+#kult-izbor .kt-box { width:100%; max-width:560px; max-height:82vh; overflow:auto; background:#142a1f; border:1px solid rgba(134,239,172,.35); border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom)); color:#e2e8f0; }
+#kult-izbor input { width:100%; box-sizing:border-box; padding:10px; border-radius:10px; border:1px solid #475569; background:#0f1f17; color:#f1f5f9; margin:8px 0; font-size:15px; }
+#kult-lista button { display:flex; flex-direction:column; align-items:flex-start; width:100%; padding:10px 12px; margin:4px 0; border-radius:10px; border:1px solid #334155; background:#0f1f17; color:#e2e8f0; text-align:left; } #kult-lista small { color:#93c5fd; }
+#kult-sheet { position:fixed; left:8px; right:8px; bottom:calc(64px + env(safe-area-inset-bottom)); z-index:900; max-width:520px; margin:0 auto; padding:12px; border-radius:16px; background:rgba(10,24,18,.96); border:1px solid rgba(134,239,172,.45); box-shadow:0 8px 24px rgba(0,0,0,.55); color:#e2e8f0; } #kult-sheet[hidden] { display:none; }
+#kult-sheet .kt-naz { font-weight:700; font-size:14px; } #kult-sheet .kt-inf { margin:6px 0; font-size:14px; } #kult-sheet label { display:flex; align-items:center; gap:8px; font-size:12px; margin:6px 0; } #kult-sheet input[type=range] { flex:1; } #kult-sheet select { padding:5px; border-radius:8px; background:#0f1f17; color:#e2e8f0; border:1px solid #475569; }
+#kult-sheet .kt-akc { display:flex; gap:6px; flex-wrap:wrap; } #kult-sheet .kt-akc button { flex:1; padding:9px; border-radius:10px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; }
+.kt-dugme { margin:8px 0; width:100%; }
 .s2-lista { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; } .s2-lista button { padding:7px 10px; border-radius:10px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font-size:12px; } .s2-lista button.on { border-color:#86efac; background:#14532d; } .s2-lista small { color:#93c5fd; }
 .wb-l, .wb-d { position:absolute; top:12px; padding:5px 10px; border-radius:999px; background:rgba(10,24,18,.92); border:1px solid rgba(134,239,172,.5); color:#fff; font:700 14px/1 system-ui,sans-serif; font-style:normal; white-space:nowrap; pointer-events:none; }
 .wb-l { right:22px; } .wb-d { left:22px; } .wb-l.uc, .wb-d.uc { border-color:#fbbf24; color:#fde68a; }
@@ -2880,6 +2888,7 @@ body.sl-uredi #sl-ured { display: block; }
         <div id="uk-tlo-leg"></div><div id="uk-tlo-status" class="uk-status"></div>
         <p class="uk-izvor">Dodir na kartu: tip tla, sastav jedinice, dubina, tekstura, drenaža, pH, skelet.</p>
       </div>
+      <button type="button" class="zp-glavno kt-dugme" onclick="USFKultura.otvori()">🌲 Označi kulturu (automatski)</button>
       <div class="loc-row"><span>❄ Zimski satelitski snimak</span><div class="loc-switch" id="uk-zima-switch" onclick="USKSlojevi.prekidac('zima')"></div></div>
       <div id="uk-zima-opts" class="uk-opts" style="display:none">
         <label class="uk-kl">Prozirnost <input type="range" min="20" max="100" id="uk-zima-op" oninput="USKSlojevi.prozirnost('zima',this.value)"></label>
@@ -13278,6 +13287,7 @@ window.addEventListener('load', () => {
 <script src="static/js/nagib-poligon.js"></script>
 <script src="static/js/tacke.js"></script>
 <script src="static/js/zima.js"></script>
+<script src="static/js/kultura.js"></script>
 <script src="static/js/usk-slojevi.js"></script>
 <script src="static/js/tlo-potkornjak.js"></script>
 <script src="static/js/vegetacija.js"></script>

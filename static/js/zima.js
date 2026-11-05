@@ -117,5 +117,5 @@
   }
   function velicina(p, odZ, doZ) { let b = 0; for (let z = odZ + 1; z <= doZ; z++) b += p.pojasevi[String(z)].bajtova; return b; }
 
-  root.USKZima = { manifest, napraviSloj, preuzmi, prekini, obrisi, obrisiPregledano, zauzece, stanje, velicina, mb, kljuc, u_toku: () => !!posao };
+  root.USKZima = { blobPlocice, manifest, napraviSloj, preuzmi, prekini, obrisi, obrisiPregledano, zauzece, stanje, velicina, mb, kljuc, u_toku: () => !!posao };
 })(typeof window !== 'undefined' ? window : globalThis);

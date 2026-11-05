@@ -2,7 +2,7 @@
 // Service Worker — Grmeč Navigator
 // Promijeni APP_VERSION pri svakom deploymentu → okida update
 // =====================================================================
-const APP_VERSION = '4.3.1';
+const APP_VERSION = '4.4.0';
 const APP_CACHE   = 'usf-app-v' + APP_VERSION;
 const TILE_CACHE  = 'usf-tiles-v1';
 const LIB_CACHE   = 'usf-lib-v1';
@@ -35,6 +35,7 @@ const APP_SHELL = [
   './static/js/karte-admin.js',
   './static/js/wayback.js',
   './static/js/sentinel-scene.js',
+  './static/js/kultura.js',
   './static/data/wayback_izdanja.json',
   './static/data/karte_drive.json',
   './static/data/kml_drive.json',
