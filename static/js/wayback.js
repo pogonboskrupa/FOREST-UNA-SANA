@@ -194,10 +194,17 @@
     sl.on('loading', () => { ucit[strana] = true; natpisiStrana(); });
     sl.on('load', () => { ucit[strana] = false; natpisiStrana(); });
   }
+  const fmtDat = d => (d ? d.split('-').reverse().join('. ') + '.' : '');
+  function datumLijevo() {
+    const e = godine().find(x => x.godina === uspor.godina); if (!e) return '';
+    const iz = e.svi.find(x => x[1] === +(uspor.id || e.id)) || [e.datum];
+    return iz[0];
+  }
   function natpisiStrana() {
     if (!razd) return;
     const l = razd.querySelector('.wb-l'), d = razd.querySelector('.wb-d');
-    l.textContent = (ucit.l ? '⏳ ' : '') + (uspor.godina || ''); d.textContent = (ucit.d ? '⏳ ' : '') + (st.godina || '');
+    l.innerHTML = `<b>${ucit.l ? '⏳ ' : ''}${uspor.godina || ''}</b><small>${fmtDat(datumLijevo())}</small>`;
+    d.innerHTML = `<b>${ucit.d ? '⏳ ' : ''}${st.godina || ''}</b><small>${fmtDat(st.datum)}</small>`;
     l.classList.toggle('uc', ucit.l); d.classList.toggle('uc', ucit.d);
   }
   function usporediOsvjezi() {
@@ -313,10 +320,14 @@
     const n = await kesStat();
     document.querySelectorAll('.wb-kes-n').forEach(el => { el.textContent = n == null ? 'nije dostupno' : n + ' pločica'; });
   }
+  function izborLijevo() {
+    const e = godine().find(x => x.godina === uspor.godina); if (!e || e.svi.length < 2) return '';
+    return `<label class="wb-dat">Lijeva strana — datum izdanja<select onchange="USFWayback.usporediGodina(${e.godina}, this.value)">${e.svi.slice().reverse().map(x => `<option value="${x[1]}"${x[1] === +(uspor.id || e.id) ? ' selected' : ''}>${fmtDat(x[0])}</option>`).join('')}</select></label>`;
+  }
   function usporediHtml(g) {
     const tipka = `<button type="button" class="wb-iskljuci" onclick="USFWayback.uporedi()">${uspor.on ? '✕ Ugasi uporedbu' : '⇆ Uporedi s drugom godinom (klizač)'}</button>`;
     if (!uspor.on) return tipka;
-    return `<label class="wb-dat">Lijeva strana (godina)<select onchange="USFWayback.usporediGodina(this.value)">${g.filter(x => x.godina !== st.godina).map(x => `<option value="${x.godina}"${x.godina === uspor.godina ? ' selected' : ''}>${x.godina}</option>`).join('')}</select><small>Desno je ${st.godina}. Povuci ⇆ na karti.</small></label>` + tipka;
+    return `<label class="wb-dat">Lijeva strana (godina)<select onchange="USFWayback.usporediGodina(this.value)">${g.filter(x => x.godina !== st.godina).map(x => `<option value="${x.godina}"${x.godina === uspor.godina ? ' selected' : ''}>${x.godina}</option>`).join('')}</select><small>Desno je ${st.godina}. Povuci ⇆ na karti.</small></label>` + izborLijevo() + tipka;
   }
   function render() {
     const g = godine();
