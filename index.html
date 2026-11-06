@@ -1462,15 +1462,11 @@ html.desk .usf-panel .up-body::-webkit-scrollbar-thumb { background: #1f3b2d; bo
 .wb-op { display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; margin:6px 0; } .wb-op input { flex:1; accent-color:#22c55e; } .wb-iskljuci { width:100%; margin:6px 0; padding:10px; border-radius:10px; border:1px solid #b45353; background:transparent; color:#fca5a5; font:700 13px system-ui; }
 #wb-razd { position:absolute; top:0; bottom:0; width:0; z-index:650; border-left:3px solid #fff; box-shadow:0 0 6px rgba(0,0,0,.6); touch-action:none; } #wb-razd[hidden] { display:none; }
 #wb-razd span { position:absolute; top:50%; left:-19px; width:36px; height:36px; margin-top:-18px; border-radius:50%; background:#0f1f17; border:2px solid #fff; color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:ew-resize; }
-#kult-traka { position:fixed; top:calc(60px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:700; display:flex; align-items:center; gap:10px; padding:8px 10px 8px 14px; border-radius:999px; background:rgba(10,24,18,.95); border:1px solid #fde047; color:#fef9c3; font-size:14px; box-shadow:0 4px 14px rgba(0,0,0,.5); } #kult-traka button { padding:6px 10px; border-radius:999px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; }
-#kult-sheet { position:fixed; left:8px; right:8px; bottom:calc(64px + env(safe-area-inset-bottom)); z-index:900; max-width:520px; margin:0 auto; padding:12px; border-radius:16px; background:rgba(10,24,18,.96); border:1px solid rgba(134,239,172,.45); box-shadow:0 8px 24px rgba(0,0,0,.55); color:#e2e8f0; } #kult-sheet[hidden] { display:none; }
-#kult-sheet .kt-naz { font-weight:700; font-size:14px; } #kult-sheet .kt-inf { margin:6px 0; font-size:14px; } #kult-sheet label { display:flex; align-items:center; gap:8px; font-size:12px; margin:6px 0; } #kult-sheet input[type=range] { flex:1; } #kult-sheet select { padding:5px; border-radius:8px; background:#0f1f17; color:#e2e8f0; border:1px solid #475569; }
-#kult-sheet .kt-akc { display:flex; gap:6px; flex-wrap:wrap; } #kult-sheet .kt-akc button { flex:1; padding:9px; border-radius:10px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; }
-.kt-dugme { margin:8px 0; width:100%; }
 .s2-lista { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; } .s2-lista button { padding:7px 10px; border-radius:10px; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font-size:12px; } .s2-lista button.on { border-color:#86efac; background:#14532d; } .s2-lista small { color:#93c5fd; }
 .wb-l, .wb-d { position:absolute; top:12px; padding:5px 10px; border-radius:999px; background:rgba(10,24,18,.92); border:1px solid rgba(134,239,172,.5); color:#fff; font:700 14px/1 system-ui,sans-serif; font-style:normal; white-space:nowrap; pointer-events:none; }
 .wb-l { right:22px; } .wb-d { left:22px; } .wb-l.uc, .wb-d.uc { border-color:#fbbf24; color:#fde68a; }
 .wb-sn2 { display:block; } .wb-sn2:empty { display:none; }
+.wb-sez { display:flex; gap:6px; margin:8px 0; } .wb-sez button { flex:1; padding:8px 4px; border-radius:12px; border:1px solid #475569; background:#0f1f17; color:#cbd5e1; display:flex; flex-direction:column; align-items:center; gap:2px; line-height:1.15; } .wb-sez button b { font-size:13px; } .wb-sez button small { font-size:10px; color:#94a3b8; } .wb-sez button.on { border-color:#86efac; background:#14532d; color:#fff; } .wb-sez button.on small { color:#bbf7d0; }
 .wb-kes { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; font-size:12px; color:#cbd5e1; }
 #wb-traka { position:fixed; top:calc(60px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:600; display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:999px; background:rgba(10,24,18,.94); border:1px solid rgba(134,239,172,.4); box-shadow:0 4px 14px rgba(0,0,0,.45); color:#f1f5f9; } #wb-traka[hidden] { display:none; }
 #wb-traka button { width:34px; height:34px; border-radius:50%; border:1px solid #475569; background:#0f1f17; color:#e2e8f0; font-size:14px; } .wb-god { text-align:center; min-width:96px; line-height:1.15; } .wb-god b { display:block; font-size:15px; } .wb-god small { font-size:10px; color:#b6cbbf; }
@@ -2885,7 +2881,6 @@ body.sl-uredi #sl-ured { display: block; }
         <div id="uk-tlo-leg"></div><div id="uk-tlo-status" class="uk-status"></div>
         <p class="uk-izvor">Dodir na kartu: tip tla, sastav jedinice, dubina, tekstura, drenaža, pH, skelet.</p>
       </div>
-      <button type="button" class="zp-glavno kt-dugme" onclick="USFKultura.otvori()">🌲 Označi kulturu (automatski)</button>
       <div class="loc-row"><span>❄ Zimski satelitski snimak</span><div class="loc-switch" id="uk-zima-switch" onclick="USKSlojevi.prekidac('zima')"></div></div>
       <div id="uk-zima-opts" class="uk-opts" style="display:none">
         <label class="uk-kl">Prozirnost <input type="range" min="20" max="100" id="uk-zima-op" oninput="USKSlojevi.prozirnost('zima',this.value)"></label>
@@ -13284,7 +13279,6 @@ window.addEventListener('load', () => {
 <script src="static/js/nagib-poligon.js"></script>
 <script src="static/js/tacke.js"></script>
 <script src="static/js/zima.js"></script>
-<script src="static/js/kultura.js"></script>
 <script src="static/js/usk-slojevi.js"></script>
 <script src="static/js/tlo-potkornjak.js"></script>
 <script src="static/js/vegetacija.js"></script>

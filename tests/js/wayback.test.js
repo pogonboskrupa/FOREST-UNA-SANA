@@ -18,3 +18,12 @@ console.log('wayback ok');
   console.assert(udioOblaka(new Uint8ClampedArray(0)) === null, 'prazno');
   console.log('wayback oblaci ok');
 }
+
+{
+  const lj = W.poGodinama(lista, 10, 2026, 'ljeto'), zi = W.poGodinama(lista, 10, 2026, 'zima');
+  assert.ok(lj.length > 3 && zi.length > 3, 'obje sezone imaju godine');
+  lj.forEach(x => x.svi.forEach(([d]) => assert.ok([5, 6, 7, 8, 9].includes(+d.slice(5, 7)), 'ljeto ' + d)));
+  zi.forEach(x => x.svi.forEach(([d]) => assert.ok([12, 1, 2, 3].includes(+d.slice(5, 7)), 'zima ' + d)));
+  assert.strictEqual(W.poGodinama(lista, 10, 2026, 'sve').length, g.length, 'sve = bez filtera');
+  console.log('wayback sezone ok');
+}

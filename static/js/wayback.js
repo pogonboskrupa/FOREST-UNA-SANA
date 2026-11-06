@@ -9,9 +9,12 @@
   const LS_KEY = 'usf_wb', LS_LISTA = 'usf_wb_lista';
 
   // [[datum, id], …] → { godina: {datum, id, svi:[[datum,id]…]} } za zadnjih `n` godina (najnovija prva)
-  function poGodinama(lista, n, tekuca) {
+  // Sezone (mjeseci izdanja): ljeto = vegetaciona sezona, LIŠĆE (V–IX); zima = BEZ lišća (XII–III); travanj/listopad/studeni su prijelaz.
+  const SEZONE = { ljeto: [5, 6, 7, 8, 9], zima: [12, 1, 2, 3] };
+  const uSezoni = (dat, sezona) => !sezona || sezona === 'sve' || (SEZONE[sezona] || []).includes(+String(dat).slice(5, 7));
+  function poGodinama(lista, n, tekuca, sezona) {
     const po = {};
-    (lista || []).forEach(([dat, id]) => { const g = +String(dat).slice(0, 4); if (g) (po[g] = po[g] || []).push([dat, id]); });
+    (lista || []).forEach(([dat, id]) => { const g = +String(dat).slice(0, 4); if (g && uSezoni(dat, sezona)) (po[g] = po[g] || []).push([dat, id]); });
     const out = [];
     for (let g = tekuca; g > tekuca - n; g--) {
       const sv = (po[g] || []).slice().sort((a, b) => a[0].localeCompare(b[0]));
@@ -51,13 +54,13 @@
     return n ? o / n : null;
   }
   const PRAG_OBLAKA = 0.15;
-  if (typeof module !== 'undefined') module.exports = { poGodinama, parsirajKonfig, parsirajMeta, citajMeta, urlZa, udioOblaka };
+  if (typeof module !== 'undefined') module.exports = { SEZONE, uSezoni, poGodinama, parsirajKonfig, parsirajMeta, citajMeta, urlZa, udioOblaka };
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-  let lista = null, sloj = null, sloj2 = null, razd = null, razdX = 0.5, anim = null, meta = {}, uspor = { on: false, godina: null, id: null }, st = { godina: null, id: null, datum: null, op: 100 };
-  try { Object.assign(st, JSON.parse(localStorage.getItem(LS_KEY) || '{}'), { godina: null, id: null }); } catch (e) {}
+  let lista = null, sloj = null, sezona = 'sve', sloj2 = null, razd = null, razdX = 0.5, anim = null, meta = {}, uspor = { on: false, godina: null, id: null }, st = { godina: null, id: null, datum: null, op: 100 };
+  try { Object.assign(st, JSON.parse(localStorage.getItem(LS_KEY) || '{}'), { godina: null, id: null }); sezona = ['sve', 'ljeto', 'zima'].includes(st.sezona) ? st.sezona : 'sve'; } catch (e) {}
   try { meta = JSON.parse(localStorage.getItem('usf_wb_meta') || '{}') || {}; } catch (e) {}
-  const pamti = () => { try { localStorage.setItem(LS_KEY, JSON.stringify({ op: st.op })); } catch (e) {} };
+  const pamti = () => { try { localStorage.setItem(LS_KEY, JSON.stringify({ op: st.op, sezona })); } catch (e) {} };
   const toast = t => { try { showToast(t); } catch (e) {} };
 
   async function ucitajListu() {
@@ -116,7 +119,7 @@
     if (dobra.length && !dobra.some(x => x[1] === st.id)) { postavi(g, dobra[dobra.length - 1][1]); return; }
     render();
   }
-  const godine = () => poGodinama(lista || [], 10, new Date().getFullYear());
+  const godine = () => poGodinama(lista || [], 10, new Date().getFullYear(), sezona);
 
   function paneSloj() {
     if (!map.getPane('waybackPane')) { map.createPane('waybackPane'); map.getPane('waybackPane').style.zIndex = '212'; map.getPane('waybackPane').style.pointerEvents = 'none'; }
@@ -142,6 +145,20 @@
     const l = godine().map(x => x.godina).sort((a, b) => a - b); if (!l.length) return;
     const i = l.indexOf(st.godina); const n = i < 0 ? l[l.length - 1] : l[Math.max(0, Math.min(l.length - 1, i + d))];
     postavi(n);
+  }
+  // Promjena sezone: zadrži godinu ako u novoj sezoni ima izdanje, inače najbližu godinu koja ga ima
+  function postaviSezonu(z) {
+    if (!['sve', 'ljeto', 'zima'].includes(z) || z === sezona) return;
+    stani(); sezona = z; pamti();
+    const l = godine().map(x => x.godina);
+    if (st.godina) {
+      if (l.includes(st.godina)) postavi(st.godina);
+      else if (l.length) postavi(l.reduce((a, b) => (Math.abs(b - st.godina) < Math.abs(a - st.godina) ? b : a)));
+      else { toast('Nema izdanja u toj sezoni'); iskljuci(); }
+    }
+    if (uspor.on && !l.includes(uspor.godina)) { uspor.godina = l.find(g => g !== st.godina) || null; uspor.id = null; if (uspor.godina) usporediOsvjezi(); else usporediGasi(); }
+    ocjena = { god: null, rez: null, tece: false };
+    render();
   }
   function opacity(v) { st.op = Math.max(20, Math.min(100, +v || 100)); pamti(); if (sloj) sloj.setOpacity(st.op / 100); }
 
@@ -308,7 +325,8 @@
       const glava = el.dataset.kompakt
         ? `<h3>Satelitski snimci po godinama <small>${naslov}</small></h3>`
         : `<div class="kg-top"><i>🕰</i><div><h3>Satelitski snimci po godinama</h3><p class="kh-stat">${naslov}</p></div></div>`;
-      el.innerHTML = glava + (g.length ? `<div class="wb-cipovi">${g.map(x => `<button type="button" class="${x.godina === st.godina ? 'on' : ''}" onclick="USFWayback.postavi(${x.godina})">${x.godina}</button>`).join('')}</div>
+      const sez = `<div class="wb-sez" role="group" aria-label="Sezona snimka">${[['ljeto', '☀ Ljeto', 'sa lišćem (V–IX)'], ['zima', '❄ Zima', 'bez lišća (XII–III)'], ['sve', 'Sve', 'cijela godina']].map(([k, n, t]) => `<button type="button" class="${k === sezona ? 'on' : ''}" title="${t}" onclick="USFWayback.sezona('${k}')"><b>${n}</b><small>${t}</small></button>`).join('')}</div>`;
+      el.innerHTML = glava + sez + (g.length ? `<div class="wb-cipovi">${g.map(x => `<button type="button" class="${x.godina === st.godina ? 'on' : ''}" onclick="USFWayback.postavi(${x.godina})">${x.godina}</button>`).join('')}</div>
       ${st.godina ? izborDatuma() : ''}
       ${st.godina ? usporediHtml(g) : ''}
       <label class="wb-op">Providnost <input type="range" min="20" max="100" step="5" value="${st.op}" oninput="USFWayback.opacity(this.value)"><span>${st.op} %</span></label>
@@ -319,5 +337,5 @@
     kesOsvjezi();
   }
   async function pokreni() { render(); await ucitajListu(); render(); if (!pokreni.k) { pokreni.k = 1; try { map.on('moveend', () => { if (st.id) snimljenoOsvjezi(); }); } catch (e) {} } }
-  root.USFWayback = { kesObrisi, igraj, uporedi: usporediPrebaci, usporediGodina, ocijeni: () => { ocjena = { god: null, rez: null, tece: false }; oblaci.clear(); return st.godina && ocijeniGodinu(st.godina); }, postavi, izdanje, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
+  root.USFWayback = { sezona: postaviSezonu, kesObrisi, igraj, uporedi: usporediPrebaci, usporediGodina, ocijeni: () => { ocjena = { god: null, rez: null, tece: false }; oblaci.clear(); return st.godina && ocijeniGodinu(st.godina); }, postavi, izdanje, iskljuci, korak, opacity, render: pokreni, godine: () => godine() };
 })(typeof window !== 'undefined' ? window : globalThis);
