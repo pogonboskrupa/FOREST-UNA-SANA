@@ -2428,6 +2428,7 @@ body.sl-uredi #sl-ured { display: block; }
   <div class="loc-toggles">
     <div class="loc-toggle-item"><span>🛰 GPS</span><div class="loc-switch" id="gps-switch" onclick="toggleGPS()"></div></div>
     <div class="loc-toggle-item"><span>🧭 Kompas</span><div class="loc-switch" id="compass-switch" onclick="_togCompassSwitch()"></div></div>
+    <div class="loc-toggle-item"><span>🎯 Prati me</span><div class="loc-switch" id="prati-switch" onclick="_togPratiMe()"></div></div>
     <div class="loc-toggle-item"><span>◎ Radijus</span><div class="loc-switch" id="radius-switch" onclick="_togRadiusRings()"></div></div>
   </div>
   <div class="loc-btn-row">
@@ -4100,13 +4101,14 @@ function onP(p) {
   }
 
   // Prati lokaciju dok se snima trag (osim u slobodnom pogledu)
-  if (_tragOn && !_tragPaused && !_recFreeView) map.panTo([la, lo], { animate: true, duration: 0.5 });
+  if (_pratiMe && !_pratiVuce && !(_tragOn && _tragPaused)) map.panTo([la, lo], { animate: true, duration: 0.5 });
 }
 
 function _updGpsSwitch() {
   const sw = document.getElementById('gps-switch'); if (sw) sw.classList.toggle('on', gpsOn);
   const cs = document.getElementById('compass-switch'); if (cs) cs.classList.toggle('on', _compassConeOn);
   const rs = document.getElementById('radius-switch'); if (rs) rs.classList.toggle('on', _radiusOn);
+  const ps = document.getElementById('prati-switch'); if (ps) ps.classList.toggle('on', _pratiMe);
   const btn = document.getElementById('ab-loc'); if (btn) btn.classList.toggle('active', gpsOn);
   // Dugme "Snimi trag" mora pokazati STVARNO stanje kad se popup otvori — trag
   // je mogao biti pokrenut/zaustavljen iz drugog panela (Tragovi lista).
@@ -4289,13 +4291,33 @@ function dst(la1,lo1,la2,lo2){const R=6371000,a=Math.sin((la2-la1)*Math.PI/360)*
 // mjeri OKOMITO odstupanje i ne hvata vraćanje istim putem (cik-cak), zato
 // _zbijPetlje (uzdužno sažimanje) MORA ići prije DP-a, ne umjesto njega.
 // =====================================================================
-let _recFreeView = false;
-// Povlačenje karte tokom snimanja = slobodan pogled (karta ne skače nazad na GPS); „🎯 Prati me” vraća praćenje.
-function _recBarSync() {
-  document.getElementById('rec-bar')?.classList.toggle('slobodno', _recFreeView);
-  const g = document.getElementById('rb-go'); if (g) g.textContent = _recFreeView ? '🎯 Prati me' : '🎯';
+// „Prati me”: karta ide za GPS-om. Uključuje se pri startu snimanja traga i prekidačem u Mojoj lokaciji; isključuje se
+// kad korisnik povlačenjem odmakne svoju poziciju od sredine ekrana više od 50 % puta do ruba (`_PRATI_PRAG`).
+let _pratiMe = false, _pratiVuce = false, _pratiTragom = false;
+const _PRATI_PRAG = 0.5;
+function _pratiSync() {
+  const slobodno = _tragOn && !_pratiMe;
+  document.getElementById('rec-bar')?.classList.toggle('slobodno', slobodno);
+  const g = document.getElementById('rb-go'); if (g) g.textContent = slobodno ? '🎯 Prati me' : '🎯';
+  const sw = document.getElementById('prati-switch'); if (sw) sw.classList.toggle('on', _pratiMe);
 }
-map.on('dragstart', () => { if (_tragOn && !_recFreeView) { _recFreeView = true; _recBarSync(); showToast('🗺 Slobodan pogled — dodirni 🎯 da se karta opet kreće za tobom'); } });
+function _recBarSync() { _pratiSync(); }
+function _pratiPostavi(on, tiho) {
+  on = !!on; if (on === _pratiMe) { _pratiSync(); return; }
+  _pratiMe = on; _pratiSync();
+  if (on && lastP) map.panTo([lastP.la, lastP.lo], { animate: true, duration: 0.5 });
+  if (!tiho) showToast(on ? '🎯 Prati me uključeno' : '🗺 Prati me isključeno');
+}
+function _togPratiMe() { _pratiTragom = false; _pratiPostavi(!_pratiMe); }
+map.on('dragstart', () => { _pratiVuce = true; });
+map.on('dragend', () => {
+  _pratiVuce = false;
+  if (!_pratiMe || !lastP) return;
+  const sz = map.getSize(), p = map.latLngToContainerPoint([lastP.la, lastP.lo]);
+  if (Math.abs(p.x - sz.x / 2) > _PRATI_PRAG * sz.x / 2 || Math.abs(p.y - sz.y / 2) > _PRATI_PRAG * sz.y / 2) {
+    _pratiPostavi(false, true); showToast('🗺 Slobodan pogled — uključi „Prati me” (🎯) da karta opet ide za tobom');
+  }
+});
 let _tragOn = false, _tragPaused = false, _tragLine = null, _tragPts = [];
 // Serija iz native bafera (npr. sat pod zaključanim ekranom = ~1800 tačaka): linija i
 // statistika se osvježe jednom na kraju, ne po tački (inače O(n²) i zamrzne app).
@@ -4409,6 +4431,7 @@ async function fabSnimTrag() {
     if (typeof AndroidGps !== 'undefined' && AndroidGps.setPaused) AndroidGps.setPaused(true);
     if (await _drainNativeGpsBuffer() === false) { showToast('⚠ Trag još nije sigurno spremljen — oslobodi prostor i pokušaj ponovo'); return; }
     _tragOn = false; _tragPaused = false;
+    if (_pratiTragom) { _pratiTragom = false; _pratiPostavi(false, true); } else _pratiSync();
     if (_tragLine) { map.removeLayer(_tragLine); _tragLine = null; }
     _tragLiveClear();
     document.getElementById('ab-loc-trag')?.classList.remove('recording');
@@ -4450,7 +4473,7 @@ async function _tragProvjeriProstor() {
 }
 function _fabSnimTragBegin() {
   if (!gpsOn) startGPS();
-  _recFreeView = false; _recBarSync();
+  _tragOn = true; _pratiTragom = !_pratiMe; _pratiPostavi(true, true);
   _tragOn = true; _tragPaused = false; _tragPts = []; _tragBuf = []; _tragLastT = Date.now(); _recT0 = Date.now();
   _tragPrekidi = { n: 0, maxS: 0, zadFix: Date.now() };
   _nativeReplayLast.trag = _tragLastT;
@@ -4522,7 +4545,7 @@ function _recSatOsvjezi() {
   const s = Math.max(0, Math.floor((Date.now() - t0) / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
   el.textContent = (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0');
 }
-function _recBarGo() { _recFreeView = false; _recBarSync(); if (lastP) map.panTo([lastP.la, lastP.lo]); }
+function _recBarGo() { _pratiPostavi(true, true); if (lastP) map.panTo([lastP.la, lastP.lo]); }
 
 // ── Registar tragova (sačuvani, lokalni, offline-first) ──────────────
 const _TRAG_REG_KEY = 'usf_tragovi';
