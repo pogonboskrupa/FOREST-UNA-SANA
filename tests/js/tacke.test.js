@@ -59,7 +59,7 @@ console.log(`  ${pass} testova prošlo`);
   const al = t + dv.getUint32(e[6] + 8); assert.strictEqual(dv.getUint32(al) / dv.getUint32(al + 4), 812);
   assert.strictEqual(jpegSaGps(new Uint8Array([1, 2, 3, 4]), { la: 1, lo: 1 }).length, 4, 'ne-JPEG se ne dira');
   const H = require('fs').readFileSync(__dirname + '/../../index.html', 'utf8'), J = require('fs').readFileSync(__dirname + '/../../android/app/src/main/java/ba/spd/usf/forest/MainActivity.java', 'utf8');
-  ['map.on(\'dragstart\'', '_recFreeView = true', '_tragFotoShare', 'USFTacke.zaVrijeme('].forEach(x => assert.ok(H.includes(x), x));
+  ['map.on(\'dragend\'', '_pratiPostavi(false', '_tragFotoShare', 'USFTacke.zaVrijeme('].forEach(x => assert.ok(H.includes(x), x));
   assert.ok(J.includes('public void shareFiles(') && J.includes('ACTION_SEND_MULTIPLE'));
   console.log('  ✔ v2.6.1: vrste, EXIF GPS, slobodan pogled, trag + foto');
 }
